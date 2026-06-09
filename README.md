@@ -65,6 +65,19 @@ Wishlist розглядається не як допоміжна функція,
 
 Wishlist повинен проєктуватися як самостійний модуль із власним PRD, API та сценаріями розвитку, навіть якщо в MVP реалізована лише базова функціональність.
 
+## AI-oriented direction
+
+Knyhovo будується з чистим data foundation — canonical book entities, price history, wishlist — що є необхідною передумовою для будь-якого AI-enhanced продукту.
+
+AI не є частиною MVP scope. Після стабілізації даних відкриваються можливості:
+
+- семантичний пошук книг (query understanding замість keyword matching);
+- рекомендації на основі wishlist, серії та жанру;
+- "що читати далі" на основі завершених книг;
+- price-aware рекомендації ("схожа книга дешевша зараз").
+
+Деталі — у [`docs/prd/ai-discovery.md`](docs/prd/ai-discovery.md) (future PRD stub).
+
 ## Очікувана структура репозиторію
 
 ```text

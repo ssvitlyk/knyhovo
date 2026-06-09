@@ -17,6 +17,12 @@
 - Wishlist з цільовою ціною та email-алертами (деталі — `wishlist.md`)
 - Провайдерна архітектура: новий скрапер додається без зміни core
 
+## AI-Oriented Positioning
+
+Knyhovo будується з чистою data foundation: canonical book entities, структурована price history, wishlist зі ставленням користувача до книг. Цей фундамент є стратегічною передумовою для AI-enhanced функцій у майбутньому — але AI не входить до MVP scope.
+
+**Стратегічний вектор:** після стабілізації MVP і накопичення даних відкриваються AI-можливості, перелічені нижче. Вони не впливають на архітектурні рішення MVP, але підтверджують цінність якісних даних вже зараз.
+
 ## Що НЕ робимо (в MVP)
 
 - Telegram-бот (джерело знань, не архітектурний фундамент)
@@ -25,6 +31,12 @@
 - Мобільний додаток
 - Публічні wishlist, імпорт списків
 - Інфраструктура: деплой, rate limiting → окремий `docs/prd/infrastructure.md`
+- **AI/ML (explicit out of scope для MVP):**
+  - LLM chat або conversational interface
+  - Embeddings та vector search
+  - Personalized recommendation engine
+  - AI-generated reviews або summaries
+  - Semantic / NLP-powered search
 
 ## Декомпозиція
 
@@ -64,6 +76,19 @@
 - Mobile-first верстка
 
 **E5–E6** → `docs/prd/wishlist.md`
+
+## AI-Related Future Opportunities
+
+> Не входять до MVP. Зафіксовані як стратегічний напрям після стабільного data foundation. Деталі — у [`docs/prd/ai-discovery.md`](ai-discovery.md).
+
+| Можливість | Що дає | Передумова |
+|-----------|--------|-----------|
+| Semantic book search | Query understanding замість keyword matching | Canonical entities + enough volume |
+| Similar book suggestions | "Схожі книги" на сторінці книги | Structured genre/author/series data |
+| Series-aware recommendations | Рекомендації наступної книги в серії | Series field у canonical_books |
+| Wishlist-based recommendations | Рекомендації на основі доданих книг | Wishlist + user history |
+| Price-aware recommendations | "Схожа книга дешевша зараз" | Price history + canonical matching |
+| "What to read next" | Персональні рекомендації | Wishlist + читацька активність |
 
 ## Відкриті питання
 
