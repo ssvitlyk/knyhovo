@@ -14,12 +14,18 @@
   "scripts": {
     "lint": "eslint src/",
     "typecheck": "tsc --noEmit",
-    "test": "echo 'No tests'",
+    "test": "vitest run",
     "build": "tsc"
   },
+  "dependencies": {
+    "@knyhovo/shared": "workspace:*",
+    "cheerio": "catalog:"
+  },
   "devDependencies": {
+    "@types/node": "^22.0.0",
     "eslint": "catalog:",
     "typescript": "catalog:",
-    "typescript-eslint": "catalog:"
+    "typescript-eslint": "catalog:",
+    "vitest": "catalog:"
   }
 }

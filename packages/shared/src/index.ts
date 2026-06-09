@@ -14,6 +14,9 @@ export type { ISBN, Book, CanonicalBook } from './types/book.js';
 
 export type {
   ProviderName,
+  Availability,
+  ScraperOptions,
+  RawProviderListing,
   ProviderListing,
   ScraperProvider,
   ScraperResult,
