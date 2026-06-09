@@ -3,6 +3,12 @@ import type { ISBN } from './book.js';
 import type { Money } from './money.js';
 
 /**
+ * Known provider slugs. Extend this union when a new scraper is added.
+ * The slug is used as a stable identifier across ProviderListing, ScraperProvider, and ScraperResult.
+ */
+export type ProviderName = 'yakaboo' | 'book-club';
+
+/**
  * A book entry as returned by a single provider (e.g. Yakaboo, BookClub).
  * One CanonicalBook may have multiple ProviderListings — one per provider that
  * carries the book.
@@ -11,8 +17,7 @@ export interface ProviderListing {
   readonly id: ProviderListingId;
   /** The canonical record this listing has been matched to. */
   readonly canonicalBookId: CanonicalBookId;
-  /** Provider slug, e.g. 'yakaboo' or 'book-club'. */
-  readonly provider: string;
+  readonly provider: ProviderName;
   /** Title as it appears on the provider's site (may differ from canonical title). */
   readonly title: string;
   /** Author as it appears on the provider's site. */
@@ -32,8 +37,7 @@ export interface ProviderListing {
  * no changes to the core pipeline are required.
  */
 export interface ScraperProvider {
-  /** Unique provider slug used in ProviderListing.provider, e.g. 'yakaboo'. */
-  readonly name: string;
+  readonly name: ProviderName;
   /** Fetch and parse current listings from the provider. Must not throw — collect errors into ScraperResult.errors instead. */
   scrape(): Promise<ScraperResult>;
 }
@@ -44,8 +48,7 @@ export interface ScraperProvider {
  * does not discard successfully scraped listings.
  */
 export interface ScraperResult {
-  /** Provider slug, mirrors ScraperProvider.name. */
-  readonly provider: string;
+  readonly provider: ProviderName;
   readonly listings: ProviderListing[];
   /** ISO 8601 timestamp of when the scrape was initiated. */
   readonly scrapedAt: string;

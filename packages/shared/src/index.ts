@@ -8,11 +8,12 @@ export type {
   WishlistItemId,
 } from './types/ids.js';
 
-export type { Money } from './types/money.js';
+export type { Currency, Money } from './types/money.js';
 
 export type { ISBN, Book, CanonicalBook } from './types/book.js';
 
 export type {
+  ProviderName,
   ProviderListing,
   ScraperProvider,
   ScraperResult,
