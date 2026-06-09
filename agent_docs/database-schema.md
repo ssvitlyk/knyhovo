@@ -4,27 +4,157 @@
 
 ## БД
 
-PostgreSQL (конкретна версія — TBD при старті інфраструктури).
+PostgreSQL 16 (локально — Docker, production — Railway managed).
 
-## Очікувані таблиці (чорновик)
+## ORM
 
+Prisma 6.x. Схема: `packages/api/prisma/schema.prisma`.
+Міграції: `packages/api/prisma/migrations/`.
+
+## Локальне середовище
+
+```bash
+# 1. Запустити PostgreSQL
+docker compose up -d
+
+# 2. Створити packages/api/.env (gitignored)
+echo 'DATABASE_URL="postgresql://knyhovo:knyhovo@localhost:5432/knyhovo"' > packages/api/.env
+
+# 3. Застосувати міграції
+pnpm --filter @knyhovo/api db:migrate
+
+# 4. Заповнити тестовими даними
+pnpm --filter @knyhovo/api db:seed
+
+# 5. Prisma Studio (браузер)
+pnpm --filter @knyhovo/api db:studio
 ```
-canonical_books       — унікальна книга (title, author, ISBN, ...)
-provider_listings     — запис від конкретного провайдера (book_id, provider, url, price, scraped_at)
-price_history         — зміна ціни (listing_id, price, recorded_at)
-users                 — користувачі (email, magic_link_token, ...)
-wishlist_items        — (user_id, book_id, target_price, created_at)
+
+## Enums
+
+```sql
+CREATE TYPE "provider" AS ENUM ('yakaboo', 'book-club');
+CREATE TYPE "currency" AS ENUM ('UAH');
+```
+
+Prisma-назви: `Provider.YAKABOO`, `Provider.BOOK_CLUB`, `Currency.UAH`.
+
+## Таблиці
+
+### canonical_books
+
+Унікальний запис книги. Єдина точка для wishlist, price alert та пошуку.
+
+```sql
+CREATE TABLE "canonical_books" (
+    "id"         TEXT        PRIMARY KEY,
+    "title"      TEXT        NOT NULL,
+    "author"     TEXT        NOT NULL,
+    "isbn"       TEXT,                      -- nullable; ISBN-13 або ISBN-10
+    "created_at" TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX "canonical_books_isbn_idx" ON "canonical_books"("isbn");
+```
+
+**Правило:** isbn не має unique constraint — якість ISBN досліджується у S3b/S4.
+
+### provider_listings
+
+Запис книги від конкретного провайдера. Один `canonical_books` може мати кілька listings від різних провайдерів або кілька видань від одного.
+
+```sql
+CREATE TABLE "provider_listings" (
+    "id"               TEXT      PRIMARY KEY,
+    "canonical_book_id" TEXT     NOT NULL REFERENCES "canonical_books"("id"),
+    "provider"         "provider" NOT NULL,
+    "title"            TEXT      NOT NULL,   -- назва як на сайті провайдера
+    "author"           TEXT      NOT NULL,
+    "isbn"             TEXT,
+    "price_amount"     INTEGER   NOT NULL,   -- копійки, завжди >= 0
+    "price_currency"   "currency" NOT NULL,
+    "url"              TEXT      NOT NULL,
+    "last_seen_at"     TIMESTAMP NOT NULL
+);
+
+CREATE UNIQUE INDEX "provider_listings_provider_url_key"
+    ON "provider_listings"("provider", "url");
+
+CREATE INDEX "provider_listings_provider_canonical_book_id_idx"
+    ON "provider_listings"("provider", "canonical_book_id");
+```
+
+### price_history
+
+**append-only: INSERT тільки. UPDATE і DELETE заборонені.**
+
+Незмінний лог змін ціни. Нові записи додаються при кожному scrape run якщо ціна змінилась.
+
+```sql
+CREATE TABLE "price_history" (
+    "id"                  TEXT      PRIMARY KEY,
+    "provider_listing_id" TEXT      NOT NULL REFERENCES "provider_listings"("id"),
+    "price_amount"        INTEGER   NOT NULL,
+    "price_currency"      "currency" NOT NULL,
+    "recorded_at"         TIMESTAMP NOT NULL
+);
+
+CREATE INDEX "price_history_provider_listing_id_recorded_at_idx"
+    ON "price_history"("provider_listing_id", "recorded_at");
+```
+
+**Перевірка відповідності:**
+```bash
+grep -r "priceHistoryPoint\.\(update\|delete\)" packages/
+# Очікуваний результат: порожньо
+```
+
+### users
+
+Зареєстровані користувачі (auth через Magic Link — реалізується у S8).
+
+```sql
+CREATE TABLE "users" (
+    "id"         TEXT      PRIMARY KEY,
+    "email"      TEXT      NOT NULL UNIQUE,
+    "created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### wishlist_items
+
+Персональний wishlist. Один запис per книга per користувач.
+
+```sql
+CREATE TABLE "wishlist_items" (
+    "id"                    TEXT      PRIMARY KEY,
+    "user_id"               TEXT      NOT NULL REFERENCES "users"("id"),
+    "canonical_book_id"     TEXT      NOT NULL REFERENCES "canonical_books"("id"),
+    "target_price_amount"   INTEGER,          -- null = алерт не налаштований
+    "target_price_currency" "currency",
+    "created_at"            TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    UNIQUE("user_id", "canonical_book_id")
+);
 ```
 
 ## Правила
 
-- Всі зміни схеми — через версіоновані міграції (інструмент TBD: Prisma / Drizzle / Flyway)
-- price_history ніколи не видаляється
-- canonical_books — єдина точка для wishlist та price alert
+- Всі зміни схеми — через `prisma migrate dev` (версіоновані міграції)
+- `price_history` — append-only: тільки INSERT у `packages/api` кодовій базі
+- `canonical_books` — єдина точка для wishlist та price alert
+- Гроші зберігаються у найменших одиницях (копійки): `349.99 UAH → 34999`
+- `canonical_books.isbn` — індексовано, але не unique (до S4 canonical matching)
 
-## [TODO: заповнити при старті packages/api]
+## Package scripts (`packages/api`)
 
-- Повна DDL
-- Indexes
-- Інструмент міграцій
-- Стратегія backup
+| Script | Команда |
+|--------|---------|
+| `db:generate` | `prisma generate` |
+| `db:migrate` | `prisma migrate dev` |
+| `db:seed` | `prisma db seed` |
+| `db:studio` | `prisma studio` |
+| `db:reset` | `prisma migrate reset` |
+
+## Backup стратегія
+
+TBD при старті S11 (Railway managed PostgreSQL має вбудований backup).
