@@ -35,3 +35,4 @@ _Поки немає — код ще не існує._
 | [docs/prd/web-mvp.md](docs/prd/web-mvp.md) | Чорновик |
 | [docs/prd/wishlist.md](docs/prd/wishlist.md) | Чорновик |
 | [docs/prd/canonical-matching.md](docs/prd/canonical-matching.md) | Чорновик |
+| [docs/prd/ai-discovery.md](docs/prd/ai-discovery.md) | Stub (future) |
