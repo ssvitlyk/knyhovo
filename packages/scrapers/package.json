@@ -19,7 +19,8 @@
   },
   "dependencies": {
     "@knyhovo/shared": "workspace:*",
-    "cheerio": "catalog:"
+    "cheerio": "catalog:",
+    "playwright": "catalog:"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
