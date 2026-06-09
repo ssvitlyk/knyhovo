@@ -1,0 +1,112 @@
+// append-only rule: price_history rows are INSERT-only. No UPDATE or DELETE.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ---------------------------------------------------------------------------
+// Enums
+// ---------------------------------------------------------------------------
+
+enum Provider {
+  YAKABOO   @map("yakaboo")
+  BOOK_CLUB @map("book-club")
+
+  @@map("provider")
+}
+
+enum Currency {
+  UAH
+
+  @@map("currency")
+}
+
+// ---------------------------------------------------------------------------
+// Models
+// ---------------------------------------------------------------------------
+
+model CanonicalBook {
+  id        String   @id @default(uuid())
+  title     String
+  author    String
+  /// null when no provider has supplied an ISBN for this book
+  isbn      String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  listings      ProviderListing[]
+  wishlistItems WishlistItem[]
+
+  @@index([isbn])
+  @@map("canonical_books")
+}
+
+model ProviderListing {
+  id              String   @id @default(uuid())
+  canonicalBookId String   @map("canonical_book_id")
+  provider        Provider
+  /// Title as it appears on the provider's site
+  title           String
+  /// Author as it appears on the provider's site
+  author          String
+  /// null when the provider page does not include an ISBN
+  isbn            String?
+  /// Price in the smallest currency unit (копійки). Always non-negative.
+  priceAmount     Int      @map("price_amount")
+  priceCurrency   Currency @map("price_currency")
+  /// Direct URL to the book's page on the provider's site
+  url             String
+  lastSeenAt      DateTime @map("last_seen_at")
+
+  canonicalBook CanonicalBook       @relation(fields: [canonicalBookId], references: [id])
+  priceHistory  PriceHistoryPoint[]
+
+  @@unique([provider, url])
+  @@index([provider, canonicalBookId])
+  @@map("provider_listings")
+}
+
+// append-only: INSERT only. No UPDATE or DELETE ever.
+model PriceHistoryPoint {
+  id                String   @id @default(uuid())
+  providerListingId String   @map("provider_listing_id")
+  /// Price in the smallest currency unit (копійки). Always non-negative.
+  priceAmount       Int      @map("price_amount")
+  priceCurrency     Currency @map("price_currency")
+  recordedAt        DateTime @map("recorded_at")
+
+  providerListing ProviderListing @relation(fields: [providerListingId], references: [id])
+
+  @@index([providerListingId, recordedAt])
+  @@map("price_history")
+}
+
+model User {
+  id        String   @id @default(uuid())
+  email     String   @unique
+  createdAt DateTime @default(now()) @map("created_at")
+
+  wishlistItems WishlistItem[]
+
+  @@map("users")
+}
+
+model WishlistItem {
+  id                  String    @id @default(uuid())
+  userId              String    @map("user_id")
+  canonicalBookId     String    @map("canonical_book_id")
+  /// null means no price alert is configured for this item
+  targetPriceAmount   Int?      @map("target_price_amount")
+  targetPriceCurrency Currency? @map("target_price_currency")
+  createdAt           DateTime  @default(now()) @map("created_at")
+
+  user          User          @relation(fields: [userId], references: [id])
+  canonicalBook CanonicalBook @relation(fields: [canonicalBookId], references: [id])
+
+  @@unique([userId, canonicalBookId])
+  @@map("wishlist_items")
+}

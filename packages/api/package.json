@@ -13,12 +13,25 @@
   },
   "scripts": {
     "lint": "eslint src/",
-    "typecheck": "tsc --noEmit",
+    "typecheck": "tsc -p tsconfig.all.json",
     "test": "echo 'No tests'",
-    "build": "tsc"
+    "build": "tsc",
+    "db:generate": "prisma generate",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "prisma db seed",
+    "db:studio": "prisma studio",
+    "db:reset": "prisma migrate reset"
+  },
+  "prisma": {
+    "seed": "tsx prisma/seed.ts"
+  },
+  "dependencies": {
+    "@prisma/client": "^6.9.0"
   },
   "devDependencies": {
     "eslint": "catalog:",
+    "prisma": "^6.9.0",
+    "tsx": "^4.19.4",
     "typescript": "catalog:",
     "typescript-eslint": "catalog:"
   }
