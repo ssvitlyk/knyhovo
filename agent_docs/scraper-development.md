@@ -19,6 +19,15 @@
 - Default: **кожні 12 годин**
 - Значення конфігурується через env variable `SCRAPE_INTERVAL_HOURS`
 
+> **MVP**: немає окремого scheduler-сервісу. Scrape запускається вручну:
+> ```bash
+> pnpm --filter @knyhovo/api scrape
+> ```
+> Для recurring local runs використовуй OS cron/launchd. Приклад crontab:
+> ```
+> 0 */12 * * * cd /path/to/knyhovo && pnpm --filter @knyhovo/api scrape
+> ```
+
 ## Canonical Matching
 
 Після скрапінгу результат проходить через canonical matching перед записом у БД.

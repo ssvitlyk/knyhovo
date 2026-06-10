@@ -21,6 +21,7 @@ interface FakeListing {
   provider: 'YAKABOO' | 'BOOK_CLUB';
   priceAmount: number;
   priceCurrency: 'UAH';
+  availability: 'IN_STOCK' | 'OUT_OF_STOCK' | 'UNKNOWN';
 }
 
 interface FindManyArgs {
@@ -60,8 +61,9 @@ function listing(
   canonicalBookId: string,
   provider: FakeListing['provider'],
   priceAmount: number,
+  availability: FakeListing['availability'] = 'IN_STOCK',
 ): FakeListing {
-  return { id, canonicalBookId, provider, priceAmount, priceCurrency: 'UAH' };
+  return { id, canonicalBookId, provider, priceAmount, priceCurrency: 'UAH', availability };
 }
 
 // Shared dataset:
@@ -241,6 +243,40 @@ describe('GET /api/search', () => {
     const body = res.json();
     expect(body.page).toBe(1);
     expect(body.pageSize).toBe(20);
+  });
+
+  // ── OUT_OF_STOCK exclusion ────────────────────────────────────────────────
+  it('excludes OUT_OF_STOCK offers from search results', async () => {
+    const books = [
+      book('oos1', 'Книга тільки OUT_OF_STOCK', 'Автор'),
+      book('oos2', 'Книга з одним IN_STOCK', 'Автор'),
+    ];
+    const listings = [
+      listing('oos-l1', 'oos1', 'YAKABOO', 34900, 'OUT_OF_STOCK'),
+      listing('oos-l2', 'oos2', 'YAKABOO', 34900, 'IN_STOCK'),
+      listing('oos-l3', 'oos2', 'BOOK_CLUB', 29900, 'OUT_OF_STOCK'),
+    ];
+    const app = appWith(books, listings);
+
+    // Book with only OUT_OF_STOCK listings must not appear
+    const res1 = await app.inject({
+      method: 'GET',
+      url: '/api/search',
+      query: { q: 'тільки OUT_OF_STOCK' },
+    });
+    expect(res1.statusCode).toBe(200);
+    expect(res1.json().totalItems).toBe(0);
+
+    // Book with one IN_STOCK and one OUT_OF_STOCK → offersCount 1
+    const res2 = await app.inject({
+      method: 'GET',
+      url: '/api/search',
+      query: { q: 'одним IN_STOCK' },
+    });
+    expect(res2.statusCode).toBe(200);
+    const body2 = res2.json();
+    expect(body2.totalItems).toBe(1);
+    expect(body2.items[0].offersCount).toBe(1);
   });
 
   // ── 400 cases ────────────────────────────────────────────────────────────

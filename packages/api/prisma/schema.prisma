@@ -26,6 +26,14 @@ enum Currency {
   @@map("currency")
 }
 
+enum Availability {
+  IN_STOCK     @map("in-stock")
+  OUT_OF_STOCK @map("out-of-stock")
+  UNKNOWN      @map("unknown")
+
+  @@map("availability")
+}
+
 // ---------------------------------------------------------------------------
 // Models
 // ---------------------------------------------------------------------------
@@ -61,6 +69,7 @@ model ProviderListing {
   /// Direct URL to the book's page on the provider's site
   url             String
   lastSeenAt      DateTime @map("last_seen_at")
+  availability    Availability @default(UNKNOWN) @map("availability")
 
   canonicalBook CanonicalBook       @relation(fields: [canonicalBookId], references: [id])
   priceHistory  PriceHistoryPoint[]

@@ -73,6 +73,8 @@ export interface ProviderListing {
   readonly url: string;
   /** ISO 8601 timestamp of the last successful scrape that found this listing. */
   readonly lastSeenAt: string;
+  /** Stock availability persisted from the last scrape that saw this listing. */
+  readonly availability: Availability;
 }
 
 /**

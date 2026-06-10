@@ -1,8 +1,8 @@
-import type { RawProviderListing, CanonicalBook, ProviderName, Currency } from '@knyhovo/shared';
+import type { RawProviderListing, CanonicalBook, ProviderName, Currency, Availability } from '@knyhovo/shared';
 import type { CanonicalBookId } from '@knyhovo/shared';
 import type { MatchResult } from '@knyhovo/scrapers';
 import { Prisma } from '@prisma/client';
-import type { PersistOutcome } from './types.js';
+import type { ListingPersistOutcome, UnavailableOutcome } from './types.js';
 
 const PROVIDER_NAME_MAP: Record<ProviderName, 'YAKABOO' | 'BOOK_CLUB'> = {
   yakaboo: 'YAKABOO',
@@ -21,10 +21,20 @@ export function mapCurrency(c: Currency): 'UAH' {
   return CURRENCY_MAP[c];
 }
 
+const AVAILABILITY_MAP: Record<Availability, 'IN_STOCK' | 'OUT_OF_STOCK' | 'UNKNOWN'> = {
+  'in-stock': 'IN_STOCK',
+  'out-of-stock': 'OUT_OF_STOCK',
+  unknown: 'UNKNOWN',
+};
+
+export function mapAvailability(a: Availability): 'IN_STOCK' | 'OUT_OF_STOCK' | 'UNKNOWN' {
+  return AVAILABILITY_MAP[a];
+}
+
 export async function persistListing(
   tx: Prisma.TransactionClient,
   ctx: { listing: RawProviderListing; result: MatchResult; scrapedAt: Date },
-): Promise<PersistOutcome> {
+): Promise<ListingPersistOutcome> {
   const { listing, result, scrapedAt } = ctx;
 
   // Preconditions: listing.price is NOT null, result.type is NOT 'conflict'
@@ -77,6 +87,7 @@ export async function persistListing(
         priceCurrency,
         url: listing.url,
         lastSeenAt: scrapedAt,
+        availability: mapAvailability(listing.availability),
       },
     });
 
@@ -101,6 +112,7 @@ export async function persistListing(
       title: string;
       author: string;
       lastSeenAt: Date;
+      availability: 'IN_STOCK' | 'OUT_OF_STOCK' | 'UNKNOWN';
       isbn?: string;
     } = {
       priceAmount,
@@ -108,6 +120,7 @@ export async function persistListing(
       title: listing.title,
       author,
       lastSeenAt: scrapedAt,
+      availability: mapAvailability(listing.availability),
     };
 
     if (existing.isbn === null && listing.isbn != null) {
@@ -132,4 +145,30 @@ export async function persistListing(
 
     return { kind: 'listing-updated', priceHistoryCreated: priceChanged };
   }
+}
+
+export async function markUnavailable(
+  tx: Prisma.TransactionClient,
+  ctx: { listing: RawProviderListing; scrapedAt: Date },
+): Promise<UnavailableOutcome> {
+  const { listing, scrapedAt } = ctx;
+  const provider = mapProviderName(listing.provider);
+  const existing = await tx.providerListing.findUnique({
+    where: { provider_url: { provider, url: listing.url } },
+  });
+
+  if (existing === null) {
+    // New listing with no price — nothing to persist (priceAmount is NOT NULL).
+    return { kind: 'skipped-new-no-price' };
+  }
+
+  await tx.providerListing.update({
+    where: { id: existing.id },
+    data: {
+      availability: mapAvailability(listing.availability),
+      lastSeenAt: scrapedAt,
+    },
+  });
+
+  return { kind: 'availability-updated' };
 }

@@ -12,6 +12,7 @@ export interface ListingRow {
   readonly provider: 'YAKABOO' | 'BOOK_CLUB';
   readonly priceAmount: number;
   readonly priceCurrency: 'UAH';
+  readonly availability: 'IN_STOCK' | 'OUT_OF_STOCK' | 'UNKNOWN';
 }
 
 export interface CanonicalBookRow {
