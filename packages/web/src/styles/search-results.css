@@ -1,0 +1,174 @@
+/* ============================================================
+   KNYHOVO · Search Results — page-level layout
+   Ported verbatim from the frozen design reference
+   (design-import/search-results-v1/Search Results Page.html).
+   Composes existing DS tokens only; no new colors / type / radii.
+   The review-only ".kn-usage-note" chrome is intentionally omitted.
+   ============================================================ */
+
+/* ---------- Layout (reused from approved homepage) ---------- */
+.page { max-width: var(--container-wide); margin: 0 auto; padding: 0 var(--gutter); }
+
+/* ---------- Header (reused from approved homepage) ---------- */
+.site-header { display: flex; align-items: center; gap: var(--space-8); padding: var(--space-5) 0; }
+.site-logo { height: 44px; display: block; }
+.site-nav { display: flex; gap: var(--space-6); margin-left: auto; }
+.nav-link { font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--text-body); transition: color var(--dur-fast) var(--ease-out); }
+.nav-link:hover { color: var(--accent); }
+.nav-link--active { color: var(--accent); font-weight: var(--fw-semibold); }
+.site-actions { display: flex; align-items: center; gap: var(--space-4); }
+
+/* Theme-aware logo swap (server-rendered; toggled purely via CSS to stay SSR-safe) */
+.site-logo--dark { display: none; }
+[data-theme="dark"] .site-logo--light { display: none; }
+[data-theme="dark"] .site-logo--dark { display: block; }
+
+/* ---------- Footer (reused from approved homepage) ---------- */
+.site-footer {
+  border-top: 1px solid var(--border);
+  padding: var(--space-10) 0 var(--space-12);
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3);
+}
+.footer-logo { height: 36px; }
+.footer-line { font-size: var(--fs-sm); color: var(--text-body); }
+.footer-copy { font-size: var(--fs-xs); color: var(--text-muted); }
+
+/* ============================================================
+   Search Results
+   ============================================================ */
+.results { padding: var(--space-8) 0 var(--space-16); min-height: 60vh; }
+.results .kn-badge { white-space: nowrap; }
+
+.results__eyebrow {
+  font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: var(--space-3);
+}
+.results__title { font-size: var(--fs-h2); margin-bottom: var(--space-6); }
+.results__title em { font-style: italic; color: var(--accent); }
+
+.results__search { max-width: 720px; margin-bottom: var(--space-8); }
+
+.results__toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-4); flex-wrap: wrap;
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-5); margin-bottom: var(--space-6);
+}
+.results__summary { font-size: var(--fs-sm); color: var(--text-muted); }
+.results__sort { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.results__sort-label { font-size: var(--fs-sm); color: var(--text-muted); margin-right: var(--space-1); }
+
+.results__grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
+
+/* ---------- Pagination ---------- */
+.kn-pagination {
+  display: flex; align-items: center; justify-content: center;
+  gap: var(--space-4); padding-top: var(--space-10);
+}
+.kn-pagination__pages { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; justify-content: center; }
+.kn-pagination__ellipsis {
+  font-size: var(--fs-sm); color: var(--text-muted);
+  padding: 0 var(--space-1); display: inline-flex; align-items: center; user-select: none;
+}
+
+/* ---------- Loading — frozen spec: warm surfaces, DS-compliant motion (no cold greys)
+   Staggered fade-in: 280ms ease-out, 50ms cascade. No infinite animations per DS rules.
+   Warm paper (--surface-accent) light theme / warm ink dark theme. ---------- */
+.kn-skeleton {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: var(--space-4);
+  box-shadow: var(--shadow-sm); display: flex; gap: var(--space-4);
+  min-height: 156px;
+}
+.kn-skeleton__cover {
+  width: 84px; height: 122px; flex: none;
+  border-radius: var(--radius-sm); background: var(--surface-accent);
+}
+.kn-skeleton__body { display: flex; flex-direction: column; gap: var(--space-3); flex: 1; min-width: 0; }
+.kn-skeleton__line { border-radius: var(--radius-xs); background: var(--surface-accent); height: 12px; }
+.kn-skeleton__line--badge { width: 88px; height: 18px; }
+.kn-skeleton__line--title { width: 72%; height: 18px; }
+.kn-skeleton__line--author { width: 45%; }
+.kn-skeleton__row { display: flex; align-items: center; gap: var(--space-3); margin-top: auto; }
+.kn-skeleton__line--price { width: 96px; height: 24px; }
+.kn-skeleton__line--store { width: 88px; }
+
+/* SearchBar loading — reuses .kn-field capsule so dims, radius + border stay exact */
+.kn-skeleton-search__icon { width: 20px; height: 20px; flex: none; border-radius: var(--radius-pill); }
+.kn-skeleton-search__query { height: 14px; width: 38%; }
+.kn-skeleton-search__button {
+  width: 92px; height: var(--control-md); margin-left: auto; flex: none;
+  border-radius: var(--radius-sm); background: var(--accent-weak);
+}
+
+/* Warm blocks settle in with a staggered opacity+lift — calm, one-shot, DS-compliant */
+@media (prefers-reduced-motion: no-preference) {
+  .kn-skeleton { animation: kn-fade-in 280ms var(--ease-out) both; }
+  .kn-skeleton:nth-child(2) { animation-delay:  50ms; }
+  .kn-skeleton:nth-child(3) { animation-delay: 100ms; }
+  .kn-skeleton:nth-child(4) { animation-delay: 150ms; }
+  .kn-skeleton:nth-child(5) { animation-delay: 200ms; }
+  .kn-skeleton:nth-child(6) { animation-delay: 250ms; }
+  .kn-skeleton:nth-child(7) { animation-delay: 300ms; }
+  .kn-skeleton:nth-child(8) { animation-delay: 350ms; }
+  @keyframes kn-fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+}
+
+/* ---------- SearchBar clear button (Typing state) ---------- */
+.results__search-clear {
+  display: block; margin-top: var(--space-2);
+  font-family: var(--font-body); font-size: var(--fs-xs);
+  color: var(--text-muted); background: none; border: none;
+  cursor: pointer; padding: 0;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.results__search-clear:hover { color: var(--accent); }
+
+/* ---------- Empty state ---------- */
+.kn-empty {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: var(--space-12) var(--space-6) var(--space-10);
+}
+.kn-empty__mascot {
+  height: 230px; object-fit: contain; margin-bottom: var(--space-5);
+  -webkit-mask-image: radial-gradient(ellipse 68% 66% at 50% 52%, black 58%, transparent 97%);
+  mask-image: radial-gradient(ellipse 68% 66% at 50% 52%, black 58%, transparent 97%);
+}
+.kn-empty__title { font-size: var(--fs-h3); margin-bottom: var(--space-2); }
+.kn-empty__text { font-size: var(--fs-body); color: var(--text-body); margin-bottom: var(--space-6); }
+.kn-empty__chips { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; justify-content: center; }
+.kn-empty__chips-label { font-size: var(--fs-sm); color: var(--text-muted); margin-right: var(--space-1); }
+
+/* Empty-state mascot swap by theme (magnifier light / lantern dark) */
+.kn-empty__mascot--dark { display: none; }
+[data-theme="dark"] .kn-empty__mascot--light { display: none; }
+[data-theme="dark"] .kn-empty__mascot--dark { display: block; }
+
+/* ---------- Error state (frozen tone — warm, calm) ---------- */
+.kn-error {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: var(--space-12) var(--space-6) var(--space-10); gap: var(--space-4);
+}
+.kn-error__title { font-size: var(--fs-h3); }
+.kn-error__text { font-size: var(--fs-body); color: var(--text-body); max-width: 460px; }
+
+/* ---------- Responsive (frozen spec) ----------
+   Desktop ≥768px: 2-column grid, horizontal BookCards, full pagination.
+   Mobile  <768px: 1 column, vertical BookCards, full-width search, 44px touch targets. */
+@media (max-width: 900px) {
+  .site-nav { display: none; }
+  .results__toolbar { flex-direction: column; align-items: flex-start; }
+  .kn-empty__mascot { height: 180px; }
+}
+@media (max-width: 767px) {
+  .results__grid { grid-template-columns: 1fr; max-width: none; }
+  .results__search { max-width: none; }
+  /* BookCards go vertical via page-level override; BookCard component itself is NOT modified */
+  .results__grid .kn-book,
+  .results__grid .kn-skeleton { flex-direction: column; }
+  .results__grid .kn-book__cover,
+  .results__grid .kn-skeleton__cover { width: 104px; height: 150px; }
+  .kn-skeleton { min-height: 0; }
+  .kn-pagination { flex-wrap: wrap; gap: var(--space-3); }
+  .kn-pagination .kn-btn { min-height: 44px; min-width: 44px; } /* 44px touch targets */
+}
