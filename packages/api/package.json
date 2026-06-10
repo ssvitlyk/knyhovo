@@ -15,6 +15,7 @@
     "lint": "eslint src/",
     "typecheck": "prisma generate && tsc -p tsconfig.all.json",
     "test": "vitest run",
+    "start": "tsx src/server.ts",
     "scrape": "tsx src/scripts/run-scrape.ts",
     "build": "tsc",
     "db:generate": "prisma generate",
@@ -29,7 +30,9 @@
   "dependencies": {
     "@knyhovo/scrapers": "workspace:*",
     "@knyhovo/shared": "workspace:*",
-    "@prisma/client": "^6.9.0"
+    "@prisma/client": "^6.9.0",
+    "fastify": "^5.8.5",
+    "zod": "^4.4.3"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",
