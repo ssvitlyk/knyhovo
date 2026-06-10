@@ -6,7 +6,9 @@
 
 ## Команди
 
-_Поки немає — код ще не існує._
+Монорепо (turbo): `pnpm lint` · `pnpm typecheck` · `pnpm test` · `pnpm build`
+
+Web: `pnpm --filter @knyhovo/web dev` (потребує API на :3000 для реальних результатів)
 
 ## Пакети
 
@@ -32,7 +34,7 @@ _Поки немає — код ще не існує._
 
 | PRD | Статус |
 |-----|--------|
-| [docs/prd/web-mvp.md](docs/prd/web-mvp.md) | Чорновик |
+| [docs/prd/web-mvp.md](docs/prd/web-mvp.md) | Затверджено |
 | [docs/prd/wishlist.md](docs/prd/wishlist.md) | Чорновик |
 | [docs/prd/canonical-matching.md](docs/prd/canonical-matching.md) | Чорновик |
 | [docs/prd/ai-discovery.md](docs/prd/ai-discovery.md) | Stub (future) |
