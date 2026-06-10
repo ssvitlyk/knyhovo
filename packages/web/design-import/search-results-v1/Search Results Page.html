@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<!-- @pattern name="Knyhovo Search Results" version="1.0" status="frozen"
+     note="Approved and frozen. Future iterations should extend this pattern rather than redesign it."
+     reuse="Stable Knyhovo pattern intended for direct reuse in Claude Code implementations.
+            Compose from window.KnyhovoDesignSystem_9fa616 exports only: SearchBar, BookCard,
+            Button, Badge, Chip, ThemeToggle. Spec: 'Search Results — Pattern Spec.html'. See CLAUDE.md." -->
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Knyhovo — Результати пошуку</title>
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+<style>
+  /* ---------- Layout (reused from approved homepage) ---------- */
+  .page { max-width: var(--container-wide); margin: 0 auto; padding: 0 var(--gutter); }
+
+  /* ---------- Header (reused from approved homepage) ---------- */
+  .site-header { display: flex; align-items: center; gap: var(--space-8); padding: var(--space-5) 0; }
+  .site-logo { height: 44px; display: block; }
+  .site-nav { display: flex; gap: var(--space-6); margin-left: auto; }
+  .nav-link { font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--text-body); transition: color var(--dur-fast) var(--ease-out); }
+  .nav-link:hover { color: var(--accent); }
+  .nav-link--active { color: var(--accent); font-weight: var(--fw-semibold); }
+  .site-actions { display: flex; align-items: center; gap: var(--space-4); }
+
+  /* ---------- Footer (reused from approved homepage) ---------- */
+  .site-footer {
+    border-top: 1px solid var(--border);
+    padding: var(--space-10) 0 var(--space-12);
+    display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3);
+  }
+  .footer-logo { height: 36px; }
+  .footer-line { font-size: var(--fs-sm); color: var(--text-body); }
+  .footer-copy { font-size: var(--fs-xs); color: var(--text-muted); }
+
+  /* ============================================================
+     NEW PATTERN — Search Results
+     Composes existing tokens only; no new colors / type / radii.
+     ============================================================ */
+  .results { padding: var(--space-8) 0 var(--space-16); min-height: 60vh; }
+  .results .kn-badge { white-space: nowrap; }
+
+  .results__eyebrow {
+    font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase;
+    color: var(--text-muted); margin-bottom: var(--space-3);
+  }
+  .results__title { font-size: var(--fs-h2); margin-bottom: var(--space-6); }
+  .results__title em { font-style: italic; color: var(--accent); }
+
+  .results__search { max-width: 720px; margin-bottom: var(--space-8); }
+
+  .results__toolbar {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: var(--space-4); flex-wrap: wrap;
+    border-top: 1px solid var(--border);
+    padding-top: var(--space-5); margin-bottom: var(--space-6);
+  }
+  .results__summary { font-size: var(--fs-sm); color: var(--text-muted); }
+  .results__sort { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+  .results__sort-label { font-size: var(--fs-sm); color: var(--text-muted); margin-right: var(--space-1); }
+
+  .results__grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
+
+  /* ---------- Pagination ---------- */
+  .kn-pagination {
+    display: flex; align-items: center; justify-content: center;
+    gap: var(--space-4); padding-top: var(--space-10);
+  }
+  .kn-pagination__pages { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; justify-content: center; }
+  .kn-pagination__ellipsis {
+    font-size: var(--fs-sm); color: var(--text-muted);
+    padding: 0 var(--space-1); display: inline-flex; align-items: center; user-select: none;
+  }
+
+  /* ---------- Loading — frozen spec: warm surfaces, DS-compliant motion (no cold greys)
+     Staggered fade-in: 280ms ease-out, 50ms cascade. No infinite animations per DS rules.
+     Warm paper (--surface-accent) light theme / warm ink dark theme. ---------- */
+  .kn-skeleton {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--radius-md); padding: var(--space-4);
+    box-shadow: var(--shadow-sm); display: flex; gap: var(--space-4);
+    min-height: 156px;
+  }
+  .kn-skeleton__cover {
+    width: 84px; height: 122px; flex: none;
+    border-radius: var(--radius-sm); background: var(--surface-accent);
+  }
+  .kn-skeleton__body { display: flex; flex-direction: column; gap: var(--space-3); flex: 1; min-width: 0; }
+  .kn-skeleton__line { border-radius: var(--radius-xs); background: var(--surface-accent); height: 12px; }
+  .kn-skeleton__line--badge { width: 88px; height: 18px; }
+  .kn-skeleton__line--title { width: 72%; height: 18px; }
+  .kn-skeleton__line--author { width: 45%; }
+  .kn-skeleton__row { display: flex; align-items: center; gap: var(--space-3); margin-top: auto; }
+  .kn-skeleton__line--price { width: 96px; height: 24px; }
+  .kn-skeleton__line--store { width: 88px; }
+
+  /* SearchBar loading — reuses .kn-field capsule so dims, radius + border stay exact */
+  .kn-skeleton-search__icon { width: 20px; height: 20px; flex: none; border-radius: var(--radius-pill); }
+  .kn-skeleton-search__query { height: 14px; width: 38%; }
+  .kn-skeleton-search__button {
+    width: 92px; height: var(--control-md); margin-left: auto; flex: none;
+    border-radius: var(--radius-sm); background: var(--accent-weak);
+  }
+
+  /* Warm blocks settle in with a staggered opacity+lift — calm, one-shot, DS-compliant */
+  @media (prefers-reduced-motion: no-preference) {
+    .kn-skeleton { animation: kn-fade-in 280ms var(--ease-out) both; }
+    .kn-skeleton:nth-child(2) { animation-delay:  50ms; }
+    .kn-skeleton:nth-child(3) { animation-delay: 100ms; }
+    .kn-skeleton:nth-child(4) { animation-delay: 150ms; }
+    .kn-skeleton:nth-child(5) { animation-delay: 200ms; }
+    .kn-skeleton:nth-child(6) { animation-delay: 250ms; }
+    .kn-skeleton:nth-child(7) { animation-delay: 300ms; }
+    .kn-skeleton:nth-child(8) { animation-delay: 350ms; }
+    @keyframes kn-fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+  }
+
+  /* ---------- SearchBar clear button (Typing state) ---------- */
+  .results__search-clear {
+    display: block; margin-top: var(--space-2);
+    font-family: var(--font-body); font-size: var(--fs-xs);
+    color: var(--text-muted); background: none; border: none;
+    cursor: pointer; padding: 0;
+    transition: color var(--dur-fast) var(--ease-out);
+  }
+  .results__search-clear:hover { color: var(--accent); }
+
+  /* ---------- Empty state ---------- */
+  .kn-empty {
+    display: flex; flex-direction: column; align-items: center; text-align: center;
+    padding: var(--space-12) var(--space-6) var(--space-10);
+  }
+  .kn-empty__mascot {
+    height: 230px; object-fit: contain; margin-bottom: var(--space-5);
+    -webkit-mask-image: radial-gradient(ellipse 68% 66% at 50% 52%, black 58%, transparent 97%);
+    mask-image: radial-gradient(ellipse 68% 66% at 50% 52%, black 58%, transparent 97%);
+  }
+  .kn-empty__title { font-size: var(--fs-h3); margin-bottom: var(--space-2); }
+  .kn-empty__text { font-size: var(--fs-body); color: var(--text-body); margin-bottom: var(--space-6); }
+  .kn-empty__chips { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; justify-content: center; }
+  .kn-empty__chips-label { font-size: var(--fs-sm); color: var(--text-muted); margin-right: var(--space-1); }
+
+  /* ---------- Responsive (frozen spec) ----------
+     Desktop ≥768px: 2-column grid, horizontal BookCards, full pagination.
+     Mobile  <768px: 1 column, vertical BookCards, full-width search, 44px touch targets. */
+  @media (max-width: 900px) {
+    .site-nav { display: none; }
+    .results__toolbar { flex-direction: column; align-items: flex-start; }
+    .kn-empty__mascot { height: 180px; }
+  }
+  @media (max-width: 767px) {
+    .results__grid { grid-template-columns: 1fr; max-width: none; }
+    .results__search { max-width: none; }
+    /* BookCards go vertical via page-level override; BookCard component itself is NOT modified */
+    .results__grid .kn-book,
+    .results__grid .kn-skeleton { flex-direction: column; }
+    .results__grid .kn-book__cover,
+    .results__grid .kn-skeleton__cover { width: 104px; height: 150px; }
+    .kn-skeleton { min-height: 0; }
+    .kn-pagination { flex-wrap: wrap; gap: var(--space-3); }
+    .kn-pagination .kn-btn { min-height: 44px; min-width: 44px; } /* 44px touch targets */
+  }
+
+  /* ---------- Frozen-status note (review chrome, matches the approved homepage note) ---------- */
+  .kn-usage-note {
+    position: fixed; bottom: 0; left: 0; right: 0;
+    background: var(--surface-accent); border-top: 1px solid var(--border);
+    padding: 8px 24px;
+    font-family: var(--font-body); font-size: var(--fs-xs); color: var(--text-muted);
+    display: flex; align-items: center; gap: 8px; z-index: 99;
+  }
+  .kn-usage-note b { color: var(--accent); font-weight: var(--fw-semibold); }
+  .kn-usage-note a { margin-left: auto; font-weight: var(--fw-medium); color: var(--accent); white-space: nowrap; }
+  .kn-usage-note a:hover { color: var(--accent-hover); }
+</style>
+</head>
+<body>
+  <div id="root"></div>
+  <div class="kn-usage-note">
+    <b>Knyhovo Search Results v1.0 — Frozen</b>
+    This pattern is approved and frozen. Future iterations may extend Search Results functionality, but must not redesign the established visual foundations.
+    <a href="Search Results — Pattern Spec.html">Специфікація патерну →</a>
+  </div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/_ds_bundle.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script type="text/babel" src="tweaks-panel.jsx"></script>
+  <script type="text/babel" src="search-results.jsx"></script>
+</body>
+</html>

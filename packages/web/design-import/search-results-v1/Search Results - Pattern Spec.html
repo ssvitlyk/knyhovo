@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<!-- @pattern name="Knyhovo Search Results" version="1.0" status="frozen" approved="2026-06-10"
+     note="This pattern is approved and frozen. Future iterations may extend Search Results
+           functionality, but must not redesign the established visual foundations."
+     reuse="Stable Knyhovo pattern for direct reuse in Claude Code. Compose only from
+            window.KnyhovoDesignSystem_9fa616 exports. See CLAUDE.md." -->
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Knyhovo DS — Search Results v1.0 Pattern Spec</title>
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<style>
+  body { background: var(--bg); }
+  .doc { max-width: 900px; margin: 0 auto; padding: var(--space-12) var(--gutter) var(--space-20); }
+
+  /* typography */
+  .doc__eyebrow { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); margin-bottom: var(--space-3); }
+  .doc h1 { font-size: var(--fs-h1); margin-bottom: var(--space-2); }
+  .doc h1 em { font-style: italic; color: var(--accent); }
+  .doc__lead { font-size: var(--fs-lead); color: var(--text-body); max-width: 58ch; margin-bottom: var(--space-4); }
+  .doc__frozen {
+    display: inline-flex; align-items: center; gap: var(--space-2);
+    background: var(--surface-accent); border: 1px solid var(--border);
+    border-radius: var(--radius-pill); padding: var(--space-1) var(--space-4);
+    font-size: var(--fs-xs); font-weight: var(--fw-semibold);
+    color: var(--accent); margin-bottom: var(--space-10);
+  }
+  .doc h2 { font-size: var(--fs-h3); margin: var(--space-12) 0 var(--space-4); padding-top: var(--space-6); border-top: 1px solid var(--border); }
+  .doc h3 { font-family: var(--font-body); font-size: var(--fs-body); font-weight: var(--fw-semibold); color: var(--text); margin: var(--space-6) 0 var(--space-2); }
+  .doc p, .doc li { font-size: var(--fs-body); color: var(--text-body); line-height: var(--lh-normal); }
+  .doc ul, .doc ol { padding-left: 1.2em; display: flex; flex-direction: column; gap: var(--space-2); margin: var(--space-3) 0; }
+  .doc code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.85em; background: var(--surface-accent); border: 1px solid var(--border); border-radius: var(--radius-xs); padding: 1px 5px; color: var(--text); }
+  .doc pre { background: var(--surface-sunk); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-5); overflow-x: auto; margin: var(--space-4) 0; }
+  .doc pre code { background: none; border: none; padding: 0; font-size: 0.8125rem; line-height: 1.6; display: block; white-space: pre; }
+  .back-link { font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--accent); display: inline-block; margin-bottom: var(--space-8); }
+  .back-link:hover { color: var(--accent-hover); }
+
+  /* tables */
+  table { width: 100%; border-collapse: collapse; margin: var(--space-4) 0; font-size: var(--fs-sm); }
+  th { text-align: left; font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); font-weight: var(--fw-semibold); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border-strong); }
+  td { padding: var(--space-3); border-bottom: 1px solid var(--border); color: var(--text-body); vertical-align: top; }
+  td:first-child { color: var(--text); font-weight: var(--fw-medium); white-space: nowrap; }
+
+  /* anatomy wireframe */
+  .anatomy { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: var(--space-6); margin: var(--space-5) 0; display: flex; flex-direction: column; gap: var(--space-3); }
+  .wf { border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4); display: flex; align-items: center; gap: var(--space-3); font-size: var(--fs-sm); color: var(--text-body); background: var(--surface-sunk); min-height: 44px; }
+  .wf--tall { min-height: 96px; align-items: flex-start; }
+  .wf__num { flex: none; width: 22px; height: 22px; border-radius: var(--radius-pill); background: var(--accent); color: var(--text-on-accent); font-size: var(--fs-xs); font-weight: var(--fw-semibold); display: inline-flex; align-items: center; justify-content: center; }
+  .wf__grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); flex: 1; }
+  .wf__cell { border: 1px dashed var(--border); border-radius: var(--radius-xs); padding: var(--space-2) var(--space-3); font-size: var(--fs-xs); color: var(--text-muted); background: var(--surface); }
+
+  /* state table chips */
+  .state-pill { display: inline-block; font-size: var(--fs-xs); font-weight: var(--fw-medium); padding: 2px 8px; border-radius: var(--radius-pill); background: var(--surface-accent); color: var(--text-muted); border: 1px solid var(--border); }
+  .state-pill--active { background: var(--accent); color: var(--text-on-accent); border-color: var(--accent); }
+
+  /* pagination example */
+  .pag-example { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: var(--space-3) 0; font-family: var(--font-body); font-size: var(--fs-sm); }
+  .pag-btn { min-width: 32px; height: 32px; border-radius: var(--radius-sm); border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-body); font-size: var(--fs-sm); display: inline-flex; align-items: center; justify-content: center; padding: 0 var(--space-3); cursor: default; }
+  .pag-btn--current { background: var(--accent); color: var(--text-on-accent); border-color: var(--accent); font-weight: var(--fw-semibold); }
+  .pag-btn--nav { font-size: var(--fs-xs); }
+  .pag-ellipsis { color: var(--text-muted); padding: 0 4px; }
+  .pag-row { display: flex; flex-direction: column; gap: var(--space-1); margin: var(--space-3) 0; }
+  .pag-label { font-size: var(--fs-xs); color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: var(--space-1); }
+
+  @media print { .back-link { display: none; } .doc h2 { break-after: avoid; } .anatomy, pre, table { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<main class="doc">
+  <a class="back-link" href="Search Results Page.html">← Жива сторінка патерну</a>
+  <p class="doc__eyebrow">KNYHOVO DESIGN SYSTEM · SEARCH RESULTS · FROZEN PATTERN SPEC</p>
+  <h1>Knyhovo Search Results <em>v1.0</em></h1>
+  <p class="doc__lead">Офіційна специфікація патерну сторінки результатів пошуку. Складена виключно з затверджених компонентів DS v1.0. Жоден захищений актив не змінено.</p>
+  <div class="doc__frozen">✦ Затверджено і заморожено · 10.06.2026 · Future iterations may extend this pattern but must not redesign the established visual foundations.</div>
+
+  <!-- ═══ ANATOMY ══════════════════════════════════════════════════════════════════ -->
+  <h2>Анатомія сторінки</h2>
+  <div class="anatomy" aria-label="Схема сторінки">
+    <div class="wf"><span class="wf__num">1</span>Header — логотип · навігація (активний: «Каталог») · ThemeToggle · «Увійти»</div>
+    <div class="wf"><span class="wf__num">2</span>Eyebrow + h1: Результати для <em>«запит»</em> — Lora italic, var(--accent)</div>
+    <div class="wf"><span class="wf__num">3</span>SearchBar — капсула, передзаповнена запитом (max-width 720px) + × Очистити (Typing state)</div>
+    <div class="wf"><span class="wf__num">4</span>Toolbar: «Знайдено N книг» ←→ Сортування: [Chip] [Chip] [Chip]</div>
+    <div class="wf wf--tall"><span class="wf__num">5</span>
+      <div class="wf__grid">
+        <div class="wf__cell">BookCard</div><div class="wf__cell">BookCard</div>
+        <div class="wf__cell">BookCard</div><div class="wf__cell">BookCard</div>
+      </div>
+    </div>
+    <div class="wf"><span class="wf__num">6</span>Pagination: [← Назад] [1] [2] … [N] [Далі →] — по центру</div>
+    <div class="wf"><span class="wf__num">7</span>Footer — логотип · слоган · копірайт</div>
+  </div>
+
+  <!-- ═══ 1. FOOTER BEHAVIOUR ══════════════════════════════════════════════════════ -->
+  <h2>1 · Поведінка футера</h2>
+  <p>Футер <strong>завжди присутній</strong> у всіх трьох станах сторінки — результати, завантаження, порожньо. Макет і вміст ідентичні між станами і темами.</p>
+  <table>
+    <thead><tr><th>Стан</th><th>Футер</th></tr></thead>
+    <tbody>
+      <tr><td>Результати</td><td>Завжди відображається під пагінацією</td></tr>
+      <tr><td>Завантаження</td><td>Завжди відображається під сіткою скелетонів</td></tr>
+      <tr><td>Порожньо</td><td>Завжди відображається під секцією порожнього стану</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ═══ 2. SEARCHBAR STATES ══════════════════════════════════════════════════════ -->
+  <h2>2 · Стани SearchBar</h2>
+  <table>
+    <thead><tr><th>Стан</th><th>Опис</th><th>Реалізація</th></tr></thead>
+    <tbody>
+      <tr>
+        <td><span class="state-pill">Idle</span></td>
+        <td>Порожнє поле — іконка пошуку + placeholder «Назва книги, автора або ISBN…»</td>
+        <td>Стандартний <code>&lt;SearchBar /&gt;</code> без value</td>
+      </tr>
+      <tr>
+        <td><span class="state-pill">Typing</span></td>
+        <td>Користувач вводить запит. Під SearchBar з'являється кнопка <strong>× Очистити запит</strong> (<code>--text-muted</code>, hover → <code>--accent</code>). Очищення скидає query і committed.</td>
+        <td><code>&lt;SearchBar value={query} /&gt;</code> + <code>.results__search-clear</code> коли <code>query.length &gt; 0</code></td>
+      </tr>
+      <tr>
+        <td><span class="state-pill">Loading</span></td>
+        <td>Скелетон SearchBar — точна копія капсули <code>.kn-field</code> з теплими блоками. Замінює справжній SearchBar під час завантаження.</td>
+        <td><code>&lt;SearchBarSkeleton /&gt;</code> — reuses <code>.kn-field</code> class</td>
+      </tr>
+      <tr>
+        <td><span class="state-pill">Results</span></td>
+        <td>Введений запит <strong>зберігається</strong> у полі після пошуку. Кнопка очищення видима.</td>
+        <td><code>value={committed}</code> — controlled component</td>
+      </tr>
+      <tr>
+        <td><span class="state-pill">Empty</span></td>
+        <td>Введений запит <strong>зберігається точно як надруковано</strong>. Не очищується автоматично. Кнопка очищення видима.</td>
+        <td>Ідентично стану Results — <code>value={committed}</code></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ═══ 3. BOOKCARD HIERARCHY ═════════════════════════════════════════════════════ -->
+  <h2>3 · Ієрархія метаданих BookCard</h2>
+  <p>Заморожено. Ніколи не змінюйте пріоритет або візуальний акцент цих елементів.</p>
+  <table>
+    <thead><tr><th>Пріоритет</th><th>Елемент</th><th>Стиль</th></tr></thead>
+    <tbody>
+      <tr><td>1 — Primary</td><td>Поточна ціна</td><td>Великий serif, <code>--accent</code> — найпомітніший елемент картки після назви</td></tr>
+      <tr><td>2 — Secondary</td><td>Стара ціна (якщо є)</td><td>Закреслений, <code>--text-muted</code>, менший розмір</td></tr>
+      <tr><td>3 — Tertiary</td><td>Назва магазину</td><td>Завжди <code>--text-muted</code>. <strong>Ніколи не виділяти, не використовувати акцентний колір, не конкурувати з назвою книги або ціною.</strong></td></tr>
+    </tbody>
+  </table>
+  <p>Бейдж призначається за пріоритетом: «Найкраща ціна» (<code>tone="green"</code>) → «-N%» (<code>tone="solid"</code>) → «Новинка» (<code>tone="accent"</code>). Максимум один бейдж на картку.</p>
+
+  <!-- ═══ 4. PAGINATION ════════════════════════════════════════════════════════════ -->
+  <h2>4 · Пагінація — офіційний патерн</h2>
+  <p>Зібрано виключно з компонента <code>Button</code> + токенів. Жодної нової візуальної мови. Вигляд ідентичний у світлій і темній темах.</p>
+
+  <h3>Алгоритм усічення (getPageItems)</h3>
+  <ul>
+    <li>Завжди показувати першу і останню сторінки.</li>
+    <li>Завжди показувати поточну сторінку.</li>
+    <li>Показувати одну суміжну сторінку до і після поточної, якщо можливо.</li>
+    <li>Якщо між відображуваними сторінками лише одна прихована — показати її замість «…».</li>
+    <li>«…» лише коли прихованих сторінок більше однієї.</li>
+    <li>Якщо загальна кількість сторінок ≤ 7 — показати всі без усічення.</li>
+  </ul>
+
+  <h3>Приклади</h3>
+  <div class="pag-row">
+    <div class="pag-label">≤ 7 сторінок — показати всі</div>
+    <div class="pag-example">
+      <span class="pag-btn pag-btn--nav">← Назад</span>
+      <span class="pag-btn">1</span><span class="pag-btn">2</span><span class="pag-btn pag-btn--current">3</span><span class="pag-btn">4</span><span class="pag-btn">5</span><span class="pag-btn">6</span><span class="pag-btn">7</span>
+      <span class="pag-btn pag-btn--nav">Далі →</span>
+    </div>
+  </div>
+  <div class="pag-row">
+    <div class="pag-label">Початок (поточна: 4, всього: 24)</div>
+    <div class="pag-example">
+      <span class="pag-btn pag-btn--nav">← Назад</span>
+      <span class="pag-btn">1</span><span class="pag-btn">2</span><span class="pag-btn">3</span><span class="pag-btn pag-btn--current">4</span><span class="pag-btn">5</span><span class="pag-ellipsis">…</span><span class="pag-btn">24</span>
+      <span class="pag-btn pag-btn--nav">Далі →</span>
+    </div>
+  </div>
+  <div class="pag-row">
+    <div class="pag-label">Середина (поточна: 12, всього: 24)</div>
+    <div class="pag-example">
+      <span class="pag-btn pag-btn--nav">← Назад</span>
+      <span class="pag-btn">1</span><span class="pag-ellipsis">…</span><span class="pag-btn">11</span><span class="pag-btn pag-btn--current">12</span><span class="pag-btn">13</span><span class="pag-ellipsis">…</span><span class="pag-btn">24</span>
+      <span class="pag-btn pag-btn--nav">Далі →</span>
+    </div>
+  </div>
+  <div class="pag-row">
+    <div class="pag-label">Кінець (поточна: 22, всього: 25) — одна прихована → заповнити</div>
+    <div class="pag-example">
+      <span class="pag-btn pag-btn--nav">← Назад</span>
+      <span class="pag-btn">1</span><span class="pag-ellipsis">…</span><span class="pag-btn">21</span><span class="pag-btn pag-btn--current">22</span><span class="pag-btn">23</span><span class="pag-btn">24</span><span class="pag-btn">25</span>
+      <span class="pag-btn pag-btn--nav">Далі →</span>
+    </div>
+  </div>
+  <div class="pag-row">
+    <div class="pag-label">Велика кількість (поточна: 2323, всього: 5000)</div>
+    <div class="pag-example">
+      <span class="pag-btn pag-btn--nav">← Назад</span>
+      <span class="pag-btn">1</span><span class="pag-ellipsis">…</span><span class="pag-btn">2322</span><span class="pag-btn pag-btn--current">2323</span><span class="pag-btn">2324</span><span class="pag-ellipsis">…</span><span class="pag-btn">5000</span>
+      <span class="pag-btn pag-btn--nav">Далі →</span>
+    </div>
+  </div>
+
+  <h3>Специфікація кнопок</h3>
+  <table>
+    <thead><tr><th>Елемент / стан</th><th>Специфікація</th></tr></thead>
+    <tbody>
+      <tr><td>← Назад / Далі →</td><td><code>Button variant="secondary" size="sm"</code></td></tr>
+      <tr><td>Номери сторінок</td><td><code>Button variant="ghost" size="sm"</code></td></tr>
+      <tr><td>Поточна сторінка</td><td><code>variant="primary"</code> + <code>aria-current="page"</code></td></tr>
+      <tr><td>Hover</td><td>Стандартний Button hover — нових ефектів не додавати</td></tr>
+      <tr><td>Disabled</td><td>«← Назад» на стор. 1; «Далі →» на останній — стандартний <code>:disabled</code> (opacity 0.45)</td></tr>
+      <tr><td>«…» ellipsis</td><td><code>.kn-pagination__ellipsis</code> — <code>--text-muted</code>, не інтерактивний</td></tr>
+      <tr><td>Мобільна адаптація</td><td>&lt;768px: рядок переноситься (<code>flex-wrap</code>), всі кнопки <code>min 44×44px</code></td></tr>
+      <tr><td>Поведінка переходу</td><td>Зміна сторінки → <code>window.scrollTo(top)</code>; сортування / новий пошук → скидання на стор. 1</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ═══ 5. VIEW MODES ════════════════════════════════════════════════════════════ -->
+  <h2>5 · Режим перегляду</h2>
+  <p><strong>List View виключено з MVP.</strong> Grid View — єдиний підтримуваний макет у Search Results v1.0. Перемикач вигляду не відображається. Заморожено: нова версія, що додає List View, повинна окремо специфікувати адаптивну поведінку BookCard у горизонтальному списку.</p>
+  <table>
+    <thead><tr><th>Макет</th><th>Статус MVP</th></tr></thead>
+    <tbody>
+      <tr><td>Grid View (сітка)</td><td>✓ Єдиний затверджений режим v1.0</td></tr>
+      <tr><td>List View (список)</td><td>Відкладено. Не реалізовувати без окремої специфікації.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ═══ 6. LOADING STATES ════════════════════════════════════════════════════════ -->
+  <h2>6 · Стани завантаження — офіційний патерн</h2>
+  <p>Принцип: очікування виглядає як «відпочинок у затишній книгарні». Жодних холодних сірих блоків і стандартних спінерів.</p>
+  <table>
+    <thead><tr><th>Патерн</th><th>Специфікація</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>SearchBar loading</td>
+        <td>Використовує справжній клас капсули <code>.kn-field</code> — розміри, радіус 16px і тінь точно відповідають затвердженому SearchBar. Всередині: кругла іконка 20px, лінія запиту 38% ширини, блок кнопки 92px (<code>--accent-weak</code>). Фон: <code>--surface-accent</code>.</td>
+      </tr>
+      <tr>
+        <td>BookCard skeleton</td>
+        <td>Дзеркалить анатомію BookCard 1:1 — обкладинка 84×122 (<code>--radius-sm</code>), зона бейджа 88×18, заголовок 72%, автор 45%, рядок ціна 96×24 + магазин 88×12. <code>min-height: 156px</code> → нульові зсуви макету при завантаженні даних. <code>--radius-md</code>, <code>--shadow-sm</code>, hairline-бордер.</td>
+      </tr>
+      <tr>
+        <td>Повне завантаження</td>
+        <td>SearchBar skeleton + тулбар («Шукаємо найкращі ціни…») + сітка скелетонів у тому ж grid з <code>gap: --space-5</code>. Кількість скелетонів = <code>perPage</code>.</td>
+      </tr>
+      <tr>
+        <td>Анімація</td>
+        <td>Стагований fade-in: <strong>280ms ease-out</strong>, 50ms каскад між картками. Одноразовий — без нескінченних циклів. Статичні теплі блоки при <code>prefers-reduced-motion</code>. Жодного shimmer, жодного scale-пульсу.</td>
+      </tr>
+      <tr>
+        <td>Кольори поверхонь</td>
+        <td>Світла тема: <code>--surface-accent</code> → тепло-паперовий #F4E7D3. Темна тема: той самий токен → #2A2521 (тепло-чорнильний). <strong>Ніколи cold-grey.</strong></td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ═══ 7. EMPTY STATE ════════════════════════════════════════════════════════════ -->
+  <h2>7 · Порожній стан — заморожено</h2>
+  <p>Ілюстративний порожній стан є навмисним і підкреслює ідентичність бренду. Книговик виступає провідником, що допомагає читачам продовжити подорож. <strong>Не спрощувати, не мінімізувати.</strong></p>
+  <table>
+    <thead><tr><th>Елемент</th><th>Специфікація</th></tr></thead>
+    <tbody>
+      <tr><td>Маскот</td><td>Лупа (<code>mascot-magnifier.png</code>) у світлій темі · Ліхтар (<code>mascot-lantern.png</code>) у темній. Висота 230px (desktop) / 180px (≤900px). Ніколи не замінювати на іконки або generic-ілюстрації.</td></tr>
+      <tr><td>Ієрархія повідомлень</td><td>1. Заголовок: «Книгу не знайдено» (<code>--fs-h3</code>, Lora). 2. Підтримувальний текст: «Спробуйте іншу назву або ISBN.» 3. Популярні запити: Chip-компоненти, клік ініціює новий пошук.</td></tr>
+      <tr><td>Теми</td><td>Обидві теми мають ілюстрацію маскота — лише поза / аксесуар змінюється.</td></tr>
+      <tr><td>Запит</td><td>Введений запит зберігається в SearchBar точно як надруковано. Кнопка «× Очистити» доступна.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ═══ 8. RESPONSIVE ════════════════════════════════════════════════════════════ -->
+  <h2>8 · Адаптивність</h2>
+  <table>
+    <thead><tr><th>Брейкпоїнт</th><th>Правила</th></tr></thead>
+    <tbody>
+      <tr>
+        <td>Desktop ≥ 768px</td>
+        <td>Двоколонкова сітка BookCard. Горизонтальні BookCard (обкладинка ліворуч). Повна пагінація в один рядок. SearchBar max-width 720px. Тулбар в один рядок (підсумок ←→ сортування).</td>
+      </tr>
+      <tr>
+        <td>≤ 900px</td>
+        <td>Навігація хедера ховається (як на головній). Тулбар складається у стовпчик. Маскот: 180px.</td>
+      </tr>
+      <tr>
+        <td>Mobile &lt; 768px</td>
+        <td>Одна колонка. BookCard і скелетони переходять у вертикальну композицію через page-level CSS — компонент BookCard <strong>не змінюється</strong>. SearchBar на всю ширину. Чипи сортування переносяться природно. Пагінація переноситься, всі кнопки мін. <strong>44×44px</strong> для комфортного тачу.</td>
+      </tr>
+    </tbody>
+  </table>
+
+  <!-- ═══ 9. CLAUDE CODE NOTES ══════════════════════════════════════════════════════ -->
+  <h2>9 · Нотатки для Claude Code</h2>
+  <h3>Структура компонента</h3>
+  <pre><code>const { SearchBar, BookCard, Button, Badge, Chip, ThemeToggle } = KnyhovoDS;
+
+&lt;SearchResultsPage&gt;
+  &lt;SiteHeader /&gt;                      // «Каталог» — активний пункт
+
+  &lt;main class="results"&gt;
+    eyebrow + h1 (запит у &lt;em&gt; — Lora italic, var(--accent))
+
+    &lt;div class="results__search"&gt;
+      {loading ? &lt;SearchBarSkeleton /&gt; : &lt;SearchBar value={committed} /&gt;}
+      {!loading &amp;&amp; query &amp;&amp; &lt;button class="results__search-clear"&gt;× Очистити&lt;/button&gt;}
+    &lt;/div&gt;
+
+    toolbar: aria-live summary + Chip×3 (selected = active sort)
+
+    {loading} → SkeletonCard × perPage (grid, same gap)
+    {empty}   → EmptyState (mascot + message + Chip suggestions)
+    {results} → BookCard grid + Pagination
+  &lt;/main&gt;
+
+  &lt;SiteFooter /&gt;                      // завжди присутній
+&lt;/SearchResultsPage&gt;</code></pre>
+
+  <h3>Ключові правила імплементації</h3>
+  <ul>
+    <li><strong>Тема:</strong> лише <code>data-theme</code> на <code>&lt;html&gt;</code>; маскот: magnifier ↔ lantern; лого: light ↔ dark.</li>
+    <li><strong>Ціна:</strong> формат «245 ₴» (пробіл перед ₴).</li>
+    <li><strong>Плюралізація:</strong> 1 книга / 2–4 книги / 5+ книг; <code>aria-live="polite"</code> на підсумку.</li>
+    <li><strong>Бейдж:</strong> пріоритет — cheapest → знижка → новинка; максимум один.</li>
+    <li><strong>Пагінація:</strong> алгоритм <code>getPageItems(current, total)</code> — завжди перша+остання+поточна+±1; заповнення однієї прихованої сторінки замість «…».</li>
+    <li><strong>Сортування/пошук:</strong> скидає сторінку на 1.</li>
+    <li><strong>Footer:</strong> завжди рендериться — у всіх трьох станах.</li>
+    <li><strong>Доступність:</strong> пагінація — <code>&lt;nav&gt;</code> + <code>aria-current="page"</code>; сортування — <code>role="group"</code> + <code>aria-label</code>; скелетони — <code>aria-hidden="true"</code>.</li>
+    <li><strong>Layout shift:</strong> скелетони мають <code>min-height: 156px</code> — ідентичний реальним картками.</li>
+  </ul>
+
+  <!-- ═══ 10. FROZEN STATUS ════════════════════════════════════════════════════════ -->
+  <h2>10 · Статус: затверджено і заморожено</h2>
+  <p><strong>«This pattern is approved and frozen. Future iterations may extend Search Results functionality, but must not redesign the established visual foundations.»</strong></p>
+  <p>Заморожено разом із патерном:</p>
+  <ul>
+    <li>Типографіка заголовка результатів (Lora italic, var(--accent) для запиту)</li>
+    <li>Вигляд SearchBar і SearchBar skeleton (точні розміри капсули)</li>
+    <li>Хедер і навігація (активний пункт: «Каталог»)</li>
+    <li>Візуальний дизайн BookCard (компонент незмінний)</li>
+    <li>Вигляд сортувальних контролів (Chip selected)</li>
+    <li>Композиція порожнього стану і використання маскота (ілюстративний, навмисний — не спрощувати)</li>
+    <li>Кольорова палітра, типографіка, відступи, тіні, бордери</li>
+    <li>Всі затверджені бренд-активи v1.0 (логотип, маскот)</li>
+  </ul>
+
+  <h3>Machine-readable note (для майбутніх сесій Claude)</h3>
+  <pre><code>{
+  "pattern": "Knyhovo Search Results",
+  "version": "1.0",
+  "status": "frozen",
+  "approved": "2026-06-10",
+  "note": "This pattern is approved and frozen. Future iterations may extend Search Results functionality, but must not redesign the established visual foundations.",
+  "reuse": "Stable Knyhovo pattern intended for direct reuse in Claude Code implementations.",
+  "files": [
+    "Search Results Page.html",
+    "search-results.jsx",
+    "Search Results — Pattern Spec.html"
+  ],
+  "components": ["SearchBar", "BookCard", "Button", "Badge", "Chip", "ThemeToggle"],
+  "viewMode": "grid-only",
+  "listView": "excluded-from-mvp",
+  "pagination": "getPageItems algorithm — always first+last+current+±1; fill single hidden pages; ellipsis only for gaps &gt; 1",
+  "loading": {
+    "animation": "staggered fade-in 280ms ease-out 50ms cascade, no infinite loops",
+    "surfaces": "--surface-accent (warm paper light / warm ink dark), never cold grey",
+    "searchBarSkeleton": "reuses .kn-field capsule — exact dims, radius, border preserved",
+    "bookCardSkeleton": "min-height:156px — zero layout shift on data load"
+  },
+  "emptyState": "approved Knyhovyk mascot (magnifier light / lantern dark) — illustration-driven, do NOT simplify",
+  "footer": "always present in all three states (results / loading / empty)",
+  "searchBarStates": ["idle", "typing+clear-button", "loading-skeleton", "results-query-preserved", "empty-query-preserved"],
+  "bookCardHierarchy": "primary=price, secondary=oldPrice (muted strikethrough), tertiary=store (always muted)",
+  "breakpoints": {
+    "desktop": "&gt;=768px: 2-col grid, horizontal BookCards",
+    "mobile": "&lt;768px: 1-col, vertical BookCards via page CSS (component untouched), 44px touch targets"
+  },
+  "doNotModify": [
+    "hero typography", "SearchBar appearance", "header/nav",
+    "BookCard visual design", "sorting controls", "empty state composition",
+    "mascot usage", "color palette", "typography", "spacing", "shadows/borders"
+  ]
+}</code></pre>
+</main>
+</body>
+</html>
