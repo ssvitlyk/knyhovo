@@ -20,8 +20,9 @@ export function SearchControl({ initialQuery }: { readonly initialQuery: string 
   const [value, setValue] = useState(initialQuery);
 
   const submit = (next: string): void => {
-    const trimmed = next.trim();
-    if (trimmed) router.push(searchHref(trimmed));
+    // An empty / whitespace-only query resets to the initial state (`/search`,
+    // no `q`); `searchHref` returns `/search` for blank input.
+    router.push(searchHref(next));
   };
 
   const clear = (): void => {
