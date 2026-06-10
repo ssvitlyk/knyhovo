@@ -14,7 +14,8 @@
   "scripts": {
     "lint": "eslint src/",
     "typecheck": "prisma generate && tsc -p tsconfig.all.json",
-    "test": "echo 'No tests'",
+    "test": "vitest run",
+    "scrape": "tsx src/scripts/run-scrape.ts",
     "build": "tsc",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
@@ -26,6 +27,8 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@knyhovo/scrapers": "workspace:*",
+    "@knyhovo/shared": "workspace:*",
     "@prisma/client": "^6.9.0"
   },
   "devDependencies": {
@@ -34,6 +37,7 @@
     "prisma": "^6.9.0",
     "tsx": "^4.19.4",
     "typescript": "catalog:",
-    "typescript-eslint": "catalog:"
+    "typescript-eslint": "catalog:",
+    "vitest": "catalog:"
   }
 }
