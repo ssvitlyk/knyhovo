@@ -3,8 +3,9 @@ import type { FastifyInstance, FastifyServerOptions } from 'fastify';
 import { STATUS_CODES } from 'node:http';
 import type { PrismaClient } from '@prisma/client';
 import { ZodError } from 'zod';
-import { ValidationError } from './errors.js';
+import { ValidationError, BadRequestError, BookNotFoundError } from './errors.js';
 import { registerSearchRoute } from './search/route.js';
+import { registerBooksRoute } from './books/route.js';
 
 /** Shape of every error response emitted by the API. */
 interface ErrorBody {
@@ -75,11 +76,22 @@ export function buildApp(prisma: PrismaClient): FastifyInstance {
       void reply.code(400).send(body);
       return;
     }
+    if (error instanceof BadRequestError) {
+      const body: ErrorBody = { error: { code: error.code, message: error.message } };
+      void reply.code(400).send(body);
+      return;
+    }
+    if (error instanceof BookNotFoundError) {
+      const body: ErrorBody = { error: { code: error.code, message: error.message } };
+      void reply.code(404).send(body);
+      return;
+    }
     const body: ErrorBody = { error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } };
     void reply.code(500).send(body);
   });
 
   registerSearchRoute(app, prisma);
+  registerBooksRoute(app, prisma);
 
   return app;
 }
