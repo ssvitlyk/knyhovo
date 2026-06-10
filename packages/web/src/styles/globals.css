@@ -1,0 +1,11 @@
+/* Knyhovo web — global stylesheet.
+   Imports the frozen design-system tokens + component classes in the exact
+   order of the reference bundle's styles.css, then the page-level layout. */
+@import './ds/fonts.css';
+@import './ds/colors.css';
+@import './ds/typography.css';
+@import './ds/spacing.css';
+@import './ds/effects.css';
+@import './ds/base.css';
+@import './ds/components.css';
+@import './search-results.css';

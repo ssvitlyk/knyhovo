@@ -111,6 +111,20 @@ describe('GET /api/search', () => {
     });
   });
 
+  it('returns 200 for a percent-encoded Cyrillic query (q=Кобзар)', async () => {
+    const app = appWith(BOOKS, LISTINGS);
+    // Encoded exactly as a correct client (e.g. the web app's encodeURIComponent) sends it.
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/search?q=%D0%9A%D0%BE%D0%B1%D0%B7%D0%B0%D1%80',
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.items).toHaveLength(1);
+    expect(body.items[0].title).toBe('Кобзар');
+    expect(body).toMatchObject({ page: 1, pageSize: 20 });
+  });
+
   it('matches on title', async () => {
     const app = appWith(BOOKS, LISTINGS);
     const res = await app.inject({ method: 'GET', url: '/api/search', query: { q: 'пісня' } });
