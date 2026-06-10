@@ -35,9 +35,10 @@ pnpm --filter @knyhovo/api db:studio
 ```sql
 CREATE TYPE "provider" AS ENUM ('yakaboo', 'book-club');
 CREATE TYPE "currency" AS ENUM ('UAH');
+CREATE TYPE "availability" AS ENUM ('in-stock', 'out-of-stock', 'unknown');
 ```
 
-Prisma-назви: `Provider.YAKABOO`, `Provider.BOOK_CLUB`, `Currency.UAH`.
+Prisma-назви: `Provider.YAKABOO`, `Provider.BOOK_CLUB`, `Currency.UAH`, `Availability.IN_STOCK`, `Availability.OUT_OF_STOCK`, `Availability.UNKNOWN`.
 
 ## Таблиці
 
@@ -74,7 +75,8 @@ CREATE TABLE "provider_listings" (
     "price_amount"     INTEGER   NOT NULL,   -- копійки, завжди >= 0
     "price_currency"   "currency" NOT NULL,
     "url"              TEXT      NOT NULL,
-    "last_seen_at"     TIMESTAMP NOT NULL
+    "last_seen_at"     TIMESTAMP NOT NULL,
+    "availability"     "availability" NOT NULL DEFAULT 'unknown'
 );
 
 CREATE UNIQUE INDEX "provider_listings_provider_url_key"

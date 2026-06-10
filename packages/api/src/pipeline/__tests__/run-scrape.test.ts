@@ -39,6 +39,7 @@ type FakeProviderListingRow = {
   priceCurrency: string;
   url: string;
   lastSeenAt: Date;
+  availability: string;
 };
 
 type FakePriceHistoryRow = {
@@ -263,6 +264,7 @@ describe('runScrapePipeline', () => {
       priceCurrency: 'UAH',
       url: 'https://yakaboo.ua/kobzar',
       lastSeenAt: FIXED_DATE,
+      availability: 'IN_STOCK',
     };
     const { db, providerListings, priceHistory } = makeFakePrisma(
       [existingCanonical],
@@ -309,6 +311,7 @@ describe('runScrapePipeline', () => {
       priceCurrency: 'UAH',
       url: 'https://yakaboo.ua/kobzar',
       lastSeenAt: FIXED_DATE,
+      availability: 'IN_STOCK',
     };
     const { db, priceHistory } = makeFakePrisma([existingCanonical], [existingListing]);
 
@@ -329,7 +332,7 @@ describe('runScrapePipeline', () => {
     expect(priceHistory).toHaveLength(0);
   });
 
-  // Test 8: null price → skipped
+  // Test 8: null price, new listing → skipped-new-no-price
   it('skips listings with null price and does not create canonical or provider listing', async () => {
     const { db, canonicalBooks, providerListings, priceHistory } = makeFakePrisma();
 
@@ -343,6 +346,7 @@ describe('runScrapePipeline', () => {
 
     const { metrics } = results[0]!;
     expect(metrics.skippedNoPrice).toBe(1);
+    expect(metrics.availabilityUpdated).toBe(0);
     expect(metrics.priceHistoryCreated).toBe(0);
     expect(canonicalBooks).toHaveLength(0);
     expect(providerListings).toHaveLength(0);
@@ -384,6 +388,163 @@ describe('runScrapePipeline', () => {
     expect(providerListings).toHaveLength(2);
     expect(providerListings[0]!.canonicalBookId).toBe(canonicalBooks[0]!.id);
     expect(providerListings[1]!.canonicalBookId).toBe(canonicalBooks[0]!.id);
+  });
+
+  // Test: null price + existing listing → updates availability and lastSeenAt, no price history
+  it('updates availability and lastSeenAt for an existing listing when price is null, without price history', async () => {
+    const existingCanonical: FakeCanonicalRow = {
+      id: 'book-unavail',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: null,
+      createdAt: FIXED_DATE,
+    };
+    const existingListing: FakeProviderListingRow = {
+      id: 'pl-unavail',
+      canonicalBookId: 'book-unavail',
+      provider: 'YAKABOO',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: null,
+      priceAmount: 20000,
+      priceCurrency: 'UAH',
+      url: 'https://yakaboo.ua/kobzar',
+      lastSeenAt: FIXED_DATE,
+      availability: 'IN_STOCK',
+    };
+    const { db, providerListings, priceHistory } = makeFakePrisma([existingCanonical], [existingListing]);
+
+    const listing = makeListing({ price: null, availability: 'out-of-stock' });
+    const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+    const { results } = await runScrapePipeline({
+      prisma: db as unknown as PrismaClient,
+      providers: [scraper],
+    });
+
+    const { metrics } = results[0]!;
+    expect(metrics.availabilityUpdated).toBe(1);
+    expect(metrics.skippedNoPrice).toBe(0);
+    expect(metrics.priceHistoryCreated).toBe(0);
+    expect(priceHistory).toHaveLength(0);
+    expect(providerListings[0]!.availability).toBe('OUT_OF_STOCK');
+    expect(providerListings[0]!.lastSeenAt).toEqual(new Date(SCRAPED_AT));
+    expect(providerListings[0]!.priceAmount).toBe(20000); // price unchanged
+  });
+
+  // Test: priced but out-of-stock listing → persisted with OUT_OF_STOCK availability
+  it('persists a priced but out-of-stock listing with OUT_OF_STOCK availability', async () => {
+    const { db, providerListings, priceHistory } = makeFakePrisma();
+
+    const listing = makeListing({ price: { amount: 34900, currency: 'UAH' }, availability: 'out-of-stock' });
+    const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+    const { results } = await runScrapePipeline({
+      prisma: db as unknown as PrismaClient,
+      providers: [scraper],
+    });
+
+    const { metrics } = results[0]!;
+    expect(metrics.created).toBe(1);
+    expect(metrics.providerListingsCreated).toBe(1);
+    expect(providerListings[0]!.availability).toBe('OUT_OF_STOCK');
+    expect(priceHistory).toHaveLength(1);
+  });
+
+  // Test: availability transitions — unknown → in-stock
+  it('transitions availability from UNKNOWN to IN_STOCK when scraped as in-stock', async () => {
+    const existingCanonical: FakeCanonicalRow = {
+      id: 'book-trans-1',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: null,
+      createdAt: FIXED_DATE,
+    };
+    const existingListing: FakeProviderListingRow = {
+      id: 'pl-trans-1',
+      canonicalBookId: 'book-trans-1',
+      provider: 'YAKABOO',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: null,
+      priceAmount: 34900,
+      priceCurrency: 'UAH',
+      url: 'https://yakaboo.ua/kobzar',
+      lastSeenAt: FIXED_DATE,
+      availability: 'UNKNOWN',
+    };
+    const { db, providerListings } = makeFakePrisma([existingCanonical], [existingListing]);
+
+    const listing = makeListing({ price: { amount: 34900, currency: 'UAH' }, availability: 'in-stock' });
+    const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+    await runScrapePipeline({ prisma: db as unknown as PrismaClient, providers: [scraper] });
+
+    expect(providerListings[0]!.availability).toBe('IN_STOCK');
+  });
+
+  // Test: availability transitions — in-stock → out-of-stock (with price)
+  it('transitions availability from IN_STOCK to OUT_OF_STOCK when scraped as out-of-stock with price', async () => {
+    const existingCanonical: FakeCanonicalRow = {
+      id: 'book-trans-2',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: null,
+      createdAt: FIXED_DATE,
+    };
+    const existingListing: FakeProviderListingRow = {
+      id: 'pl-trans-2',
+      canonicalBookId: 'book-trans-2',
+      provider: 'YAKABOO',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: null,
+      priceAmount: 34900,
+      priceCurrency: 'UAH',
+      url: 'https://yakaboo.ua/kobzar',
+      lastSeenAt: FIXED_DATE,
+      availability: 'IN_STOCK',
+    };
+    const { db, providerListings } = makeFakePrisma([existingCanonical], [existingListing]);
+
+    const listing = makeListing({ price: { amount: 34900, currency: 'UAH' }, availability: 'out-of-stock' });
+    const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+    await runScrapePipeline({ prisma: db as unknown as PrismaClient, providers: [scraper] });
+
+    expect(providerListings[0]!.availability).toBe('OUT_OF_STOCK');
+  });
+
+  // Test: availability transitions — out-of-stock → in-stock
+  it('transitions availability from OUT_OF_STOCK to IN_STOCK when scraped as in-stock', async () => {
+    const existingCanonical: FakeCanonicalRow = {
+      id: 'book-trans-3',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: null,
+      createdAt: FIXED_DATE,
+    };
+    const existingListing: FakeProviderListingRow = {
+      id: 'pl-trans-3',
+      canonicalBookId: 'book-trans-3',
+      provider: 'YAKABOO',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: null,
+      priceAmount: 34900,
+      priceCurrency: 'UAH',
+      url: 'https://yakaboo.ua/kobzar',
+      lastSeenAt: FIXED_DATE,
+      availability: 'OUT_OF_STOCK',
+    };
+    const { db, providerListings } = makeFakePrisma([existingCanonical], [existingListing]);
+
+    const listing = makeListing({ price: { amount: 34900, currency: 'UAH' }, availability: 'in-stock' });
+    const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+    await runScrapePipeline({ prisma: db as unknown as PrismaClient, providers: [scraper] });
+
+    expect(providerListings[0]!.availability).toBe('IN_STOCK');
   });
 
   // Test 9: one listing failure does not stop the run

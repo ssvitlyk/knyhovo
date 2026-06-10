@@ -69,7 +69,7 @@ const _badRaw: RawProviderListing = {
   availability: 'unknown',
 };
 
-// ProviderListing — persisted DB entity (has id, canonicalBookId, lastSeenAt)
+// ProviderListing — persisted DB entity (has id, canonicalBookId, lastSeenAt, availability)
 const _listing: ProviderListing = {
   id: 'pl-1' as ProviderListingId,
   canonicalBookId: 'cb-1' as CanonicalBookId,
@@ -80,6 +80,7 @@ const _listing: ProviderListing = {
   price: { amount: 34999, currency: 'UAH' },
   url: 'https://yakaboo.ua/kobzar.html',
   lastSeenAt: '2026-06-09T00:00:00.000Z',
+  availability: 'in-stock',
 };
 
 // ProviderListing rejects unknown provider
@@ -94,6 +95,7 @@ const _badListing: ProviderListing = {
   price: { amount: 34999, currency: 'UAH' },
   url: 'https://rozetka.ua/kobzar.html',
   lastSeenAt: '2026-06-09T00:00:00.000Z',
+  availability: 'in-stock',
 };
 
 // ScraperProvider shape — scrape accepts optional ScraperOptions

@@ -4,7 +4,7 @@ import type { CanonicalBookId } from '@knyhovo/shared';
 import { Prisma } from '@prisma/client';
 import type { RunScrapeOptions, PipelineResult, ProviderRunResult, Logger } from './types.js';
 import { createMetrics } from './metrics.js';
-import { persistListing } from './persist-listing.js';
+import { persistListing, markUnavailable } from './persist-listing.js';
 
 export async function runScrapePipeline(opts: RunScrapeOptions): Promise<PipelineResult> {
   const logger: Logger = opts.logger ?? {
@@ -41,21 +41,18 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
 
     for (const listing of scrapeResult.listings) {
       if (listing.price === null) {
-        // A null price means the book is currently unavailable (out of stock /
-        // delisted). We skip persistence entirely because ProviderListing.priceAmount
-        // is NOT NULL — there is no price to store.
-        //
-        // KNOWN LIMITATION: if a ProviderListing already exists with an old price,
-        // skipping leaves that stale price and lastSeenAt in the DB, so the book
-        // still appears available at its last known price even after it disappeared
-        // from sale.
-        //
-        // TODO(S6): persist availability state. Once the schema gains an availability
-        // field (e.g. ProviderListing.availability / isAvailable, sourced from
-        // RawProviderListing.availability), mark the existing listing as
-        // out-of-stock here and refresh lastSeenAt instead of skipping it. This
-        // needs a Prisma schema change and is intentionally out of S5 scope.
-        metrics.skippedNoPrice++;
+        // No price means the book is currently unavailable. Instead of skipping
+        // entirely (which left stale prices in the DB), refresh availability and
+        // lastSeenAt on an existing listing. A brand-new listing with no price has
+        // nothing to persist (priceAmount is NOT NULL), so it is skipped.
+        const outcome = await opts.prisma.$transaction((tx: Prisma.TransactionClient) =>
+          markUnavailable(tx, { listing, scrapedAt }),
+        );
+        if (outcome.kind === 'availability-updated') {
+          metrics.availabilityUpdated++;
+        } else {
+          metrics.skippedNoPrice++;
+        }
         continue;
       }
 

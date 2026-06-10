@@ -17,6 +17,7 @@ export interface ScrapeMetrics {
   providerListingsCreated: number;
   providerListingsUpdated: number;
   priceHistoryCreated: number;
+  availabilityUpdated: number;
   skippedNoPrice: number;
   errors: number;
 }
@@ -43,6 +44,12 @@ export interface RunScrapeOptions {
   logger?: Logger;
 }
 
-export type PersistOutcome =
+export type ListingPersistOutcome =
   | { kind: 'listing-created'; createdCanonical: CanonicalBook | null; priceHistoryCreated: boolean }
   | { kind: 'listing-updated'; priceHistoryCreated: boolean };
+
+export type UnavailableOutcome =
+  | { kind: 'availability-updated' }
+  | { kind: 'skipped-new-no-price' };
+
+export type PersistOutcome = ListingPersistOutcome | UnavailableOutcome;

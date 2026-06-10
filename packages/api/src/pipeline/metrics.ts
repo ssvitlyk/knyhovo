@@ -15,6 +15,7 @@ export function createMetrics(): ScrapeMetrics {
     providerListingsCreated: 0,
     providerListingsUpdated: 0,
     priceHistoryCreated: 0,
+    availabilityUpdated: 0,
     skippedNoPrice: 0,
     errors: 0,
   };
@@ -44,6 +45,7 @@ export function formatSummary(
     `  inserted: ${m.priceHistoryCreated}`,
     '',
     `Skipped no price: ${m.skippedNoPrice}`,
+    `Availability updated: ${m.availabilityUpdated}`,
     `Errors: ${m.errors}`,
   ];
 

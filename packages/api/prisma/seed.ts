@@ -1,4 +1,4 @@
-import { PrismaClient, Currency, Provider } from '@prisma/client';
+import { PrismaClient, Currency, Provider, Availability } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -38,7 +38,7 @@ async function main(): Promise<void> {
         url: 'https://yakaboo.ua/kobzar-shevchenko.html',
       },
     },
-    update: { priceAmount: 24900, lastSeenAt: now },
+    update: { priceAmount: 24900, lastSeenAt: now, availability: Availability.IN_STOCK },
     create: {
       id: '00000000-0000-0000-0001-000000000001',
       canonicalBookId: kobzar.id,
@@ -50,6 +50,7 @@ async function main(): Promise<void> {
       priceCurrency: Currency.UAH,
       url: 'https://yakaboo.ua/kobzar-shevchenko.html',
       lastSeenAt: now,
+      availability: Availability.IN_STOCK,
     },
   });
 
@@ -61,7 +62,7 @@ async function main(): Promise<void> {
         url: 'https://book-club.com.ua/kobzar.html',
       },
     },
-    update: { priceAmount: 23500, lastSeenAt: now },
+    update: { priceAmount: 23500, lastSeenAt: now, availability: Availability.IN_STOCK },
     create: {
       id: '00000000-0000-0000-0001-000000000002',
       canonicalBookId: kobzar.id,
@@ -73,6 +74,7 @@ async function main(): Promise<void> {
       priceCurrency: Currency.UAH,
       url: 'https://book-club.com.ua/kobzar.html',
       lastSeenAt: now,
+      availability: Availability.IN_STOCK,
     },
   });
 
@@ -84,7 +86,7 @@ async function main(): Promise<void> {
         url: 'https://yakaboo.ua/tini-zabutykh-predkiv.html',
       },
     },
-    update: { priceAmount: 18000, lastSeenAt: now },
+    update: { priceAmount: 18000, lastSeenAt: now, availability: Availability.IN_STOCK },
     create: {
       id: '00000000-0000-0000-0001-000000000003',
       canonicalBookId: tini.id,
@@ -96,6 +98,7 @@ async function main(): Promise<void> {
       priceCurrency: Currency.UAH,
       url: 'https://yakaboo.ua/tini-zabutykh-predkiv.html',
       lastSeenAt: now,
+      availability: Availability.IN_STOCK,
     },
   });
 

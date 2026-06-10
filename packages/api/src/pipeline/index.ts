@@ -1,6 +1,6 @@
 export { runScrapePipeline } from './run-scrape.js';
 export { createMetrics, formatSummary } from './metrics.js';
-export { mapProviderName, mapCurrency, persistListing } from './persist-listing.js';
+export { mapProviderName, mapCurrency, persistListing, markUnavailable } from './persist-listing.js';
 export type {
   ScrapeMetrics,
   Logger,
@@ -8,5 +8,7 @@ export type {
   PipelineResult,
   RunScrapeOptions,
   PersistOutcome,
+  ListingPersistOutcome,
+  UnavailableOutcome,
   ConflictReason,
 } from './types.js';

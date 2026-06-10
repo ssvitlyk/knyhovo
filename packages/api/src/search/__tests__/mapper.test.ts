@@ -12,8 +12,8 @@ function row(overrides: Partial<CanonicalBookRow> = {}): CanonicalBookRow {
   };
 }
 
-function listing(provider: ListingRow['provider'], priceAmount: number): ListingRow {
-  return { provider, priceAmount, priceCurrency: 'UAH' };
+function listing(provider: ListingRow['provider'], priceAmount: number, availability: ListingRow['availability'] = 'IN_STOCK'): ListingRow {
+  return { provider, priceAmount, priceCurrency: 'UAH', availability };
 }
 
 describe('toSearchItem', () => {
@@ -36,14 +36,40 @@ describe('toSearchItem', () => {
 
   it('ignores listings with a non-finite/null price (defensive) and excludes empties', () => {
     // Cast through unknown to simulate a null price slipping through.
-    const bad = { provider: 'YAKABOO', priceAmount: null, priceCurrency: 'UAH' } as unknown as ListingRow;
+    const bad = { provider: 'YAKABOO', priceAmount: null, priceCurrency: 'UAH', availability: 'IN_STOCK' } as unknown as ListingRow;
     expect(toSearchItem(row({ listings: [bad] }))).toBeNull();
   });
 
   it('keeps only priced listings when some are valid', () => {
-    const bad = { provider: 'YAKABOO', priceAmount: null, priceCurrency: 'UAH' } as unknown as ListingRow;
+    const bad = { provider: 'YAKABOO', priceAmount: null, priceCurrency: 'UAH', availability: 'IN_STOCK' } as unknown as ListingRow;
     const item = toSearchItem(row({ listings: [bad, listing('BOOK_CLUB', 15000)] }));
     expect(item!.offersCount).toBe(1);
     expect(item!.providers[0]!.provider).toBe('book-club');
+  });
+
+  it('excludes OUT_OF_STOCK listings from providers/lowestPrice/offersCount', () => {
+    const item = toSearchItem(
+      row({ listings: [listing('YAKABOO', 34900, 'IN_STOCK'), listing('BOOK_CLUB', 29900, 'OUT_OF_STOCK')] }),
+    );
+    expect(item).not.toBeNull();
+    expect(item!.offersCount).toBe(1);
+    expect(item!.lowestPrice).toEqual({ amount: 34900, currency: 'UAH' });
+    expect(item!.providers.map((p) => p.provider)).toEqual(['yakaboo']);
+  });
+
+  it('returns null when all listings are OUT_OF_STOCK', () => {
+    const item = toSearchItem(
+      row({ listings: [listing('YAKABOO', 34900, 'OUT_OF_STOCK'), listing('BOOK_CLUB', 29900, 'OUT_OF_STOCK')] }),
+    );
+    expect(item).toBeNull();
+  });
+
+  it('includes UNKNOWN listings', () => {
+    const item = toSearchItem(
+      row({ listings: [listing('YAKABOO', 34900, 'UNKNOWN')] }),
+    );
+    expect(item).not.toBeNull();
+    expect(item!.offersCount).toBe(1);
+    expect(item!.providers[0]!.provider).toBe('yakaboo');
   });
 });

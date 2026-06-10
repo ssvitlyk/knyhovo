@@ -25,6 +25,7 @@ function hasPrice(listing: ListingRow): boolean {
 export function toSearchItem(row: CanonicalBookRow): SearchItemDto | null {
   const providers: ProviderOfferDto[] = row.listings
     .filter(hasPrice)
+    .filter((listing) => listing.availability !== 'OUT_OF_STOCK')
     .map((listing) => ({
       provider: PROVIDER_SLUG[listing.provider],
       price: { amount: listing.priceAmount, currency: listing.priceCurrency },
