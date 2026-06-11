@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { Badge } from '@/components/ds/Badge';
 import { BookCard } from '@/components/ds/BookCard';
 import { formatMoney, providerDisplayName } from '@/lib/format';
@@ -24,15 +25,16 @@ export function ResultsGrid({ items }: { readonly items: readonly SearchItemDto[
         const lowestProvider = item.providers[0];
         const isCheapest = item.lowestPrice.amount === cheapest;
         return (
-          <BookCard
-            key={item.id}
-            title={item.title}
-            author={item.author}
-            price={formatMoney(item.lowestPrice)}
-            store={lowestProvider ? providerDisplayName(lowestProvider.provider) : null}
-            offersCount={item.offersCount}
-            badge={isCheapest ? <Badge tone="green">Найкраща ціна</Badge> : null}
-          />
+          <Link key={item.id} href={`/books/${item.id}`} className="results__card-link">
+            <BookCard
+              title={item.title}
+              author={item.author}
+              price={formatMoney(item.lowestPrice)}
+              store={lowestProvider ? providerDisplayName(lowestProvider.provider) : null}
+              offersCount={item.offersCount}
+              badge={isCheapest ? <Badge tone="green">Найкраща ціна</Badge> : null}
+            />
+          </Link>
         );
       })}
     </div>

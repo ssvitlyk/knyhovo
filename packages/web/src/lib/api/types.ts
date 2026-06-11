@@ -1,4 +1,4 @@
-import type { ProviderName } from '@knyhovo/shared';
+import type { ProviderName, Availability } from '@knyhovo/shared';
 
 /**
  * Frontend mirror of the S8a `GET /api/search` response contract
@@ -37,4 +37,32 @@ export interface SearchResponseDto {
   readonly pageSize: number;
   readonly totalItems: number;
   readonly totalPages: number;
+}
+
+/**
+ * Frontend mirror of the S7a `GET /api/books/:id` contract
+ * (packages/api/src/books/dto.ts). The DTOs are not exported from
+ * `@knyhovo/shared`, and the architecture forbids web → api imports, so the
+ * shape is mirrored here. `ProviderName` and `Availability` are the single
+ * source-of-truth types imported from the shared package.
+ */
+
+export interface BookProviderDto {
+  readonly provider: ProviderName;
+  readonly price: MoneyDto;
+  readonly availability: Availability;
+  readonly url: string;
+  readonly lastSeenAt: string;
+}
+
+export interface BookDetailsDto {
+  readonly id: string;
+  readonly title: string;
+  readonly author: string;
+  readonly isbn: string | null;
+  readonly description: string | null;
+  readonly coverUrl: string | null;
+  readonly lowestPrice: MoneyDto | null;
+  readonly offersCount: number;
+  readonly providers: readonly BookProviderDto[];
 }

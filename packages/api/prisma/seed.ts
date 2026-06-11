@@ -5,10 +5,10 @@ const prisma = new PrismaClient();
 async function main(): Promise<void> {
   // CanonicalBook 1: Кобзар (з ISBN)
   const kobzar = await prisma.canonicalBook.upsert({
-    where: { id: '00000000-0000-0000-0000-000000000001' },
+    where: { id: '00000000-0000-4000-8000-000000000001' },
     update: {},
     create: {
-      id: '00000000-0000-0000-0000-000000000001',
+      id: '00000000-0000-4000-8000-000000000001',
       title: 'Кобзар',
       author: 'Тарас Шевченко',
       isbn: '9786176795063',
@@ -17,10 +17,10 @@ async function main(): Promise<void> {
 
   // CanonicalBook 2: Тіні забутих предків (без ISBN)
   const tini = await prisma.canonicalBook.upsert({
-    where: { id: '00000000-0000-0000-0000-000000000002' },
+    where: { id: '00000000-0000-4000-8000-000000000002' },
     update: {},
     create: {
-      id: '00000000-0000-0000-0000-000000000002',
+      id: '00000000-0000-4000-8000-000000000002',
       title: 'Тіні забутих предків',
       author: 'Михайло Коцюбинський',
       isbn: null,
@@ -40,7 +40,7 @@ async function main(): Promise<void> {
     },
     update: { priceAmount: 24900, lastSeenAt: now, availability: Availability.IN_STOCK },
     create: {
-      id: '00000000-0000-0000-0001-000000000001',
+      id: '00000000-0000-4000-8001-000000000001',
       canonicalBookId: kobzar.id,
       provider: Provider.YAKABOO,
       title: 'Кобзар',
@@ -64,7 +64,7 @@ async function main(): Promise<void> {
     },
     update: { priceAmount: 23500, lastSeenAt: now, availability: Availability.IN_STOCK },
     create: {
-      id: '00000000-0000-0000-0001-000000000002',
+      id: '00000000-0000-4000-8001-000000000002',
       canonicalBookId: kobzar.id,
       provider: Provider.BOOK_CLUB,
       title: 'Кобзар. Повне видання',
@@ -88,7 +88,7 @@ async function main(): Promise<void> {
     },
     update: { priceAmount: 18000, lastSeenAt: now, availability: Availability.IN_STOCK },
     create: {
-      id: '00000000-0000-0000-0001-000000000003',
+      id: '00000000-0000-4000-8001-000000000003',
       canonicalBookId: tini.id,
       provider: Provider.YAKABOO,
       title: 'Тіні забутих предків',
@@ -107,28 +107,28 @@ async function main(): Promise<void> {
     skipDuplicates: true,
     data: [
       {
-        id: '00000000-0000-0000-0002-000000000001',
+        id: '00000000-0000-4000-8002-000000000001',
         providerListingId: kobzarYakaboo.id,
         priceAmount: 27000,
         priceCurrency: Currency.UAH,
         recordedAt: yesterday,
       },
       {
-        id: '00000000-0000-0000-0002-000000000002',
+        id: '00000000-0000-4000-8002-000000000002',
         providerListingId: kobzarYakaboo.id,
         priceAmount: 24900,
         priceCurrency: Currency.UAH,
         recordedAt: now,
       },
       {
-        id: '00000000-0000-0000-0002-000000000003',
+        id: '00000000-0000-4000-8002-000000000003',
         providerListingId: kobzarBookclub.id,
         priceAmount: 23500,
         priceCurrency: Currency.UAH,
         recordedAt: now,
       },
       {
-        id: '00000000-0000-0000-0002-000000000004',
+        id: '00000000-0000-4000-8002-000000000004',
         providerListingId: tiniYakaboo.id,
         priceAmount: 18000,
         priceCurrency: Currency.UAH,
@@ -142,7 +142,7 @@ async function main(): Promise<void> {
     where: { email: 'test@knyhovo.dev' },
     update: {},
     create: {
-      id: '00000000-0000-0000-0003-000000000001',
+      id: '00000000-0000-4000-8003-000000000001',
       email: 'test@knyhovo.dev',
     },
   });
@@ -157,7 +157,7 @@ async function main(): Promise<void> {
     },
     update: {},
     create: {
-      id: '00000000-0000-0000-0004-000000000001',
+      id: '00000000-0000-4000-8004-000000000001',
       userId: user.id,
       canonicalBookId: kobzar.id,
       targetPriceAmount: 20000,
