@@ -34,13 +34,16 @@ function sendRaw(port: number, requestLine: string): Promise<string> {
 }
 
 describe('clientErrorHandler (HTTP-parser level)', () => {
-  it('returns an informative 400 envelope for an unescaped non-ASCII URL', async () => {
+  it('returns an informative 400 envelope for a malformed URL (control character)', async () => {
     app = buildApp(stubPrisma);
     await app.listen({ port: 0, host: '127.0.0.1' });
     const { port } = app.server.address() as AddressInfo;
 
-    // Raw (non-percent-encoded) Cyrillic in the query → llhttp HPE_INVALID_URL.
-    const response = await sendRaw(port, 'GET /api/search?q=Кобзар HTTP/1.1');
+    // A raw control character (0x01) in the request target is rejected by
+    // llhttp with HPE_INVALID_URL, exercising the clientErrorHandler at the
+    // HTTP-parser layer. (Raw non-ASCII bytes such as Cyrillic are no longer
+    // rejected by the parser on Node 20.19+, so they cannot drive this branch.)
+    const response = await sendRaw(port, 'GET /api/search?q=\x01 HTTP/1.1');
 
     const statusLine = response.split('\r\n')[0];
     const body = response.slice(response.indexOf('\r\n\r\n') + 4);
