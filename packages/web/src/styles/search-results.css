@@ -59,6 +59,7 @@
 .results__sort-label { font-size: var(--fs-sm); color: var(--text-muted); margin-right: var(--space-1); }
 
 .results__grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
+.results__card-link { display: block; text-decoration: none; color: inherit; }
 
 /* ---------- Pagination ---------- */
 .kn-pagination {

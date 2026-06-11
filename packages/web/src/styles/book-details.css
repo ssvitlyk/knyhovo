@@ -1,0 +1,85 @@
+/* ============================================================
+   KNYHOVO · Book Details — page-level layout
+   Ported verbatim from the frozen design reference
+   (design-import/book-details-v1-1/Book Details - Exploration.html).
+   Composes existing DS tokens only; no new colors / type / radii.
+   ============================================================ */
+
+.bd-eyebrow { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); margin-bottom: var(--space-3); }
+.bd-h1 { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--fs-h2); line-height: var(--lh-tight); letter-spacing: var(--ls-tight); color: var(--text); margin-bottom: var(--space-2); text-wrap: pretty; }
+.bd-h2 { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--fs-h3); line-height: var(--lh-snug); color: var(--text); margin-bottom: var(--space-5); }
+.bd-author { font-size: var(--fs-lead); color: var(--text-body); margin-bottom: var(--space-5); }
+
+.bd-crumbs { font-size: var(--fs-sm); color: var(--text-muted); margin-bottom: var(--space-8); }
+.bd-crumbs span { color: var(--text); }
+
+.bd-cover { border: 1px solid var(--border); border-radius: var(--radius-md); background: linear-gradient(135deg, var(--surface-accent), var(--surface-sunk)); box-shadow: var(--shadow-md); display: flex; align-items: center; justify-content: center; flex: none; object-fit: cover; }
+.bd-cover span { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-faint); }
+.bd-cover--md { width: 220px; height: 320px; }
+
+.bd-desc p { margin: 0 0 var(--space-4); max-width: 66ch; text-wrap: pretty; }
+.bd-desc p:last-child { margin-bottom: 0; }
+
+.bd-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5) var(--space-10); max-width: 720px; margin: 0; }
+.bd-meta dt { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); margin-bottom: 2px; }
+.bd-meta dd { margin: 0; color: var(--text); font-weight: var(--fw-medium); }
+.bd-meta dd.bd-meta--missing { color: var(--text-faint); font-weight: var(--fw-regular); }
+
+.bd-section { margin: var(--space-12) 0 0; }
+.bd-updated { font-size: var(--fs-xs); color: var(--text-muted); margin-top: var(--space-3); }
+
+.bd-offer__avail--in { color: var(--brand-green); }
+.bd-offer__avail--low { color: var(--accent); }
+.bd-offer__avail--out { color: var(--text-faint); }
+.bd-offer__avail--unknown { color: var(--text-muted); }
+
+.bd-hint { display: flex; gap: var(--space-3); align-items: flex-start; background: var(--surface-sunk); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-4) var(--space-5); font-size: var(--fs-sm); color: var(--text-muted); max-width: 66ch; }
+.bd-hint svg { flex: none; color: var(--icon-muted); margin-top: 1px; }
+
+.bdc-grid { display: grid; grid-template-columns: minmax(0, 1fr) 460px; gap: var(--space-12); align-items: start; }
+.bdc-idrow { display: flex; gap: var(--space-8); margin-bottom: var(--space-8); }
+.bdc-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); padding: var(--space-6); }
+.bdc-best { background: var(--accent-weak); border-radius: var(--radius-md); padding: var(--space-5); margin: var(--space-4) 0 var(--space-2); }
+.bdc-best__pricerow { display: flex; align-items: baseline; gap: var(--space-3); margin: var(--space-2) 0 var(--space-1); }
+.bdc-best__price { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: 2.25rem; line-height: 1; color: var(--accent); }
+.bdc-best__old { font-size: var(--fs-body); color: var(--text-muted); text-decoration: line-through; }
+.bdc-best__store { font-size: var(--fs-sm); color: var(--text-body); margin-bottom: var(--space-4); }
+.bdc-best__store b { color: var(--text); }
+.bdc-row { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) 0; border-top: 1px solid var(--border); }
+.bdc-row:first-of-type { border-top: none; }
+.bdc-row__store { font-weight: var(--fw-medium); color: var(--text); flex: 1; min-width: 0; }
+.bdc-row__avail { font-size: var(--fs-xs); white-space: nowrap; }
+.bdc-row__price { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: 1.25rem; color: var(--accent); white-space: nowrap; }
+.bdc-row__old { font-size: var(--fs-xs); color: var(--text-muted); text-decoration: line-through; white-space: nowrap; }
+.bdc-row--out { opacity: 0.66; }
+.bdc-row--out .bdc-row__price { color: var(--text-faint); }
+
+.bd-unavail { display: flex; flex-direction: column; align-items: center; text-align: center; padding: var(--space-4) var(--space-4) var(--space-5); }
+.bd-unavail__mascot { height: 230px; object-fit: contain; margin-bottom: var(--space-4); -webkit-mask-image: radial-gradient(ellipse 68% 66% at 50% 52%, black 58%, transparent 97%); mask-image: radial-gradient(ellipse 68% 66% at 50% 52%, black 58%, transparent 97%); }
+.bd-unavail__mascot--dark { display: none; }
+[data-theme="dark"] .bd-unavail__mascot--light { display: none; }
+[data-theme="dark"] .bd-unavail__mascot--dark { display: block; }
+.bd-unavail__title { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--fs-h3); color: var(--text); margin-bottom: var(--space-2); }
+.bd-unavail__text { font-size: var(--fs-body); color: var(--text-body); max-width: 42ch; margin-bottom: var(--space-5); text-wrap: pretty; }
+
+.bd-sk { background: var(--surface-accent); border-radius: var(--radius-xs); }
+.bd-sk--card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .bd-stagger > * { animation: bd-fade-in 280ms var(--ease-out) both; }
+  .bd-stagger > *:nth-child(2) { animation-delay: 50ms; }
+  .bd-stagger > *:nth-child(3) { animation-delay: 100ms; }
+  .bd-stagger > *:nth-child(4) { animation-delay: 150ms; }
+  .bd-stagger > *:nth-child(5) { animation-delay: 200ms; }
+  .bd-stagger > *:nth-child(6) { animation-delay: 250ms; }
+  @keyframes bd-fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+}
+
+@media (max-width: 900px) {
+  .bd-unavail__mascot { height: 180px; }
+}
+@media (max-width: 767px) {
+  .bdc-grid { grid-template-columns: 1fr; gap: var(--space-8); }
+  .bd-meta { grid-template-columns: 1fr; }
+  .bd-section { margin-top: var(--space-8); }
+}

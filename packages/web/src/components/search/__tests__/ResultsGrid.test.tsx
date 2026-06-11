@@ -37,4 +37,15 @@ describe('ResultsGrid', () => {
     render(<ResultsGrid items={ITEMS} />);
     expect(screen.getAllByText('Найкраща ціна')).toHaveLength(1);
   });
+
+  it('wraps each card in a link to /books/:id', () => {
+    render(<ResultsGrid items={ITEMS} />);
+
+    // Each item title should be inside a link pointing to the correct book page
+    const linkA = screen.getByRole('link', { name: /Дорожча книга/ });
+    expect(linkA.getAttribute('href')).toBe('/books/a');
+
+    const linkB = screen.getByRole('link', { name: /Найдешевша книга/ });
+    expect(linkB.getAttribute('href')).toBe('/books/b');
+  });
 });
