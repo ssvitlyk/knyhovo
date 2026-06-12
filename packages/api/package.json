@@ -28,6 +28,7 @@
     "seed": "tsx prisma/seed.ts"
   },
   "dependencies": {
+    "@fastify/cookie": "^11.0.2",
     "@knyhovo/scrapers": "workspace:*",
     "@knyhovo/shared": "workspace:*",
     "@prisma/client": "^6.9.0",

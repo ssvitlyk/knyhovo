@@ -123,6 +123,52 @@ CREATE TABLE "users" (
 );
 ```
 
+### login_codes
+
+Одноразові OTP-коди для passwordless входу. Код зберігається у вигляді HMAC-SHA256 хешу.
+
+```sql
+CREATE TABLE "login_codes" (
+    "id"          TEXT      PRIMARY KEY,
+    "user_id"     TEXT      NOT NULL REFERENCES "users"("id"),
+    "code_hash"   TEXT      NOT NULL,              -- HMAC-SHA256 hex (не plaintext)
+    "expires_at"  TIMESTAMP NOT NULL,
+    "consumed_at" TIMESTAMP,                        -- null = ще не використано
+    "attempts"    INTEGER   NOT NULL DEFAULT 0,    -- лічильник невдалих спроб
+    "created_at"  TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX "login_codes_user_id_idx" ON "login_codes"("user_id");
+CREATE INDEX "login_codes_expires_at_idx" ON "login_codes"("expires_at");
+```
+
+**Правила:**
+- `code_hash` — HMAC-SHA256 з `AUTH_SECRET`, ніколи plaintext
+- Rate-limit рахує ВСІ записи (включно consumed/expired) у вікні
+- `attempts >= maxVerifyAttempts` → код споживається й подальші спроби відхиляються
+
+### sessions
+
+Серверні сесії після успішного OTP-входу. Token зберігається у вигляді SHA-256 хешу.
+
+```sql
+CREATE TABLE "sessions" (
+    "id"         TEXT      PRIMARY KEY,
+    "user_id"    TEXT      NOT NULL REFERENCES "users"("id"),
+    "token_hash" TEXT      NOT NULL UNIQUE,         -- SHA-256 hex opaque token
+    "expires_at" TIMESTAMP NOT NULL,
+    "created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX "sessions_user_id_idx" ON "sessions"("user_id");
+CREATE INDEX "sessions_expires_at_idx" ON "sessions"("expires_at");
+```
+
+**Правила:**
+- Token надсилається клієнту у httpOnly cookie `kn_session`; у БД — лише хеш
+- TTL: 30 днів за замовчуванням
+- Expired сесії очищуються при наступному `request-code` запиті
+
 ### wishlist_items
 
 Персональний wishlist. Один запис per книга per користувач.

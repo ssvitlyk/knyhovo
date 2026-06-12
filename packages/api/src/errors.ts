@@ -36,3 +36,44 @@ export class BookNotFoundError extends Error {
     this.name = 'BookNotFoundError';
   }
 }
+
+/**
+ * Domain-level error raised when a request requires authentication but no
+ * valid session was found. The Fastify error handler maps this to HTTP 401.
+ */
+export class UnauthorizedError extends Error {
+  readonly code = 'AUTH_REQUIRED';
+
+  constructor(message = 'Authentication required.') {
+    super(message);
+    this.name = 'UnauthorizedError';
+  }
+}
+
+/**
+ * Domain-level error raised when login code verification fails for any reason.
+ * A generic message is used so callers cannot distinguish between "code wrong",
+ * "code expired", "user not found", etc. (no oracle).
+ * The Fastify error handler maps this to HTTP 401.
+ */
+export class InvalidCredentialsError extends Error {
+  readonly code = 'AUTH_INVALID_CODE';
+
+  constructor(message = 'Invalid or expired code.') {
+    super(message);
+    this.name = 'InvalidCredentialsError';
+  }
+}
+
+/**
+ * Domain-level error raised when the login-code rate limit is exceeded.
+ * The Fastify error handler maps this to HTTP 429.
+ */
+export class RateLimitedError extends Error {
+  readonly code = 'RATE_LIMITED';
+
+  constructor(message = 'Too many requests. Please try again later.') {
+    super(message);
+    this.name = 'RateLimitedError';
+  }
+}

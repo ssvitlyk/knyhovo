@@ -1,11 +1,21 @@
 import Fastify from 'fastify';
 import type { FastifyInstance, FastifyServerOptions } from 'fastify';
+import cookie from '@fastify/cookie';
 import { STATUS_CODES } from 'node:http';
 import type { PrismaClient } from '@prisma/client';
 import { ZodError } from 'zod';
-import { ValidationError, BadRequestError, BookNotFoundError } from './errors.js';
+import {
+  ValidationError,
+  BadRequestError,
+  BookNotFoundError,
+  UnauthorizedError,
+  InvalidCredentialsError,
+  RateLimitedError,
+} from './errors.js';
 import { registerSearchRoute } from './search/route.js';
 import { registerBooksRoute } from './books/route.js';
+import { registerAuthRoute } from './auth/route.js';
+import type { AuthDeps } from './auth/service.js';
 
 /** Shape of every error response emitted by the API. */
 interface ErrorBody {
@@ -61,9 +71,18 @@ const clientErrorHandler: NonNullable<FastifyServerOptions['clientErrorHandler']
  *
  * Prisma is injected so tests can supply a fake client and production can pass
  * the shared singleton from `db.ts`.
+ *
+ * `authDeps` is optional. When omitted, auth routes are NOT registered — this
+ * keeps existing search/books tests green without needing AUTH_SECRET in env.
+ * Production (server.ts) builds real AuthDeps and passes them here.
  */
-export function buildApp(prisma: PrismaClient): FastifyInstance {
+export function buildApp(prisma: PrismaClient, authDeps?: AuthDeps): FastifyInstance {
   const app = Fastify({ logger: false, clientErrorHandler });
+
+  // Register cookie plugin — required for session cookie support.
+  // @fastify/cookie is queued before listen() so app.inject() in tests
+  // awaits it automatically.
+  void app.register(cookie);
 
   app.setErrorHandler((error, _request, reply): void => {
     if (error instanceof ValidationError) {
@@ -86,12 +105,34 @@ export function buildApp(prisma: PrismaClient): FastifyInstance {
       void reply.code(404).send(body);
       return;
     }
+    if (error instanceof UnauthorizedError) {
+      const body: ErrorBody = { error: { code: error.code, message: error.message } };
+      void reply.code(401).send(body);
+      return;
+    }
+    if (error instanceof InvalidCredentialsError) {
+      const body: ErrorBody = { error: { code: error.code, message: error.message } };
+      void reply.code(401).send(body);
+      return;
+    }
+    if (error instanceof RateLimitedError) {
+      const body: ErrorBody = { error: { code: error.code, message: error.message } };
+      void reply.code(429).send(body);
+      return;
+    }
     const body: ErrorBody = { error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } };
     void reply.code(500).send(body);
   });
 
   registerSearchRoute(app, prisma);
   registerBooksRoute(app, prisma);
+
+  // Auth routes are only registered when deps are provided.
+  // Tests that don't exercise auth can call buildApp(prisma) without
+  // setting AUTH_SECRET in process.env.
+  if (authDeps) {
+    registerAuthRoute(app, authDeps);
+  }
 
   return app;
 }
