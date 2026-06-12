@@ -137,9 +137,92 @@ Email нормалізується: trim + toLowerCase на межі API.
 
 ## Wishlist
 
-- `GET /wishlist` — wishlist поточного користувача
-- `POST /wishlist` — додати книгу
-- `DELETE /wishlist/:bookId` — видалити книгу
-- `PATCH /wishlist/:bookId` — оновити targetPrice
+Усі endpoints вимагають валідної сесійної cookie `kn_session` (httpOnly). Без неї повертається `AUTH_REQUIRED` 401.
 
-*(реалізується у S9)*
+### `GET /api/wishlist`
+
+Повернути wishlist поточного автентифікованого користувача з актуальними цінами.
+
+**Auth:** Required (cookie `kn_session`)
+
+**Response 200:**
+```json
+{
+  "items": [
+    {
+      "book": {
+        "id": "uuid",
+        "title": "Кобзар",
+        "author": "Тарас Шевченко",
+        "isbn": null,
+        "coverUrl": null,
+        "lowestPrice": { "amount": 29900, "currency": "UAH" },
+        "offersCount": 2,
+        "providers": [
+          {
+            "provider": "book-club",
+            "price": { "amount": 29900, "currency": "UAH" },
+            "availability": "in-stock",
+            "url": "https://book-club.com.ua/...",
+            "lastSeenAt": "2026-01-01T00:00:00.000Z"
+          }
+        ]
+      },
+      "createdAt": "2026-01-01T00:00:00.000Z"
+    }
+  ]
+}
+```
+
+OUT_OF_STOCK listings are excluded from `providers`, `lowestPrice`, and `offersCount`. Books remain in the list even when all providers are OUT_OF_STOCK (`providers: [], lowestPrice: null, offersCount: 0`).
+
+**Errors:** `AUTH_REQUIRED` 401
+
+---
+
+### `POST /api/wishlist`
+
+Додати книгу до wishlist поточного користувача. Ідемпотентний — повторний виклик для тієї самої книги повертає `{ok: true}`.
+
+**Auth:** Required (cookie `kn_session`)
+
+**Body:** `{ "bookId": "uuid" }`
+
+**Response 200:** `{ "ok": true }`
+
+**Errors:**
+- `VALIDATION_ERROR` 400 — `bookId` відсутній або не є валідним UUID
+- `AUTH_REQUIRED` 401 — відсутня або невалідна сесія
+- `BOOK_NOT_FOUND` 404 — книга з заданим `bookId` не знайдена
+
+---
+
+### `GET /api/wishlist/status/:bookId`
+
+Перевірити, чи є книга у wishlist поточного користувача.
+
+**Auth:** Required (cookie `kn_session`)
+
+**Path params:** `bookId` — UUID canonical book
+
+**Response 200:** `{ "inWishlist": true }` або `{ "inWishlist": false }`
+
+**Errors:**
+- `VALIDATION_ERROR` 400 — `bookId` не є валідним UUID
+- `AUTH_REQUIRED` 401 — відсутня або невалідна сесія
+
+---
+
+### `DELETE /api/wishlist/:bookId`
+
+Видалити книгу з wishlist поточного користувача. Ідемпотентний — якщо книга вже не у wishlist, повертає `{ok: true}`.
+
+**Auth:** Required (cookie `kn_session`)
+
+**Path params:** `bookId` — UUID canonical book
+
+**Response 200:** `{ "ok": true }`
+
+**Errors:**
+- `VALIDATION_ERROR` 400 — `bookId` не є валідним UUID
+- `AUTH_REQUIRED` 401 — відсутня або невалідна сесія

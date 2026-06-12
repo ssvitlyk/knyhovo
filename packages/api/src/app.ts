@@ -15,6 +15,7 @@ import {
 import { registerSearchRoute } from './search/route.js';
 import { registerBooksRoute } from './books/route.js';
 import { registerAuthRoute } from './auth/route.js';
+import { registerWishlistRoute } from './wishlist/route.js';
 import type { AuthDeps } from './auth/service.js';
 
 /** Shape of every error response emitted by the API. */
@@ -132,6 +133,7 @@ export function buildApp(prisma: PrismaClient, authDeps?: AuthDeps): FastifyInst
   // setting AUTH_SECRET in process.env.
   if (authDeps) {
     registerAuthRoute(app, authDeps);
+    registerWishlistRoute(app, prisma, authDeps);
   }
 
   return app;

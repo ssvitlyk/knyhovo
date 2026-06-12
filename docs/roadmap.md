@@ -273,6 +273,12 @@ S3a: Scraper Yakaboo          S3b: Canonical Matching дослідження
 
 **Мета:** персональний wishlist з цільовою ціною і merge після входу.
 
+> **Backend Wishlist API реалізовано** (server-side, прив'язаний до автентифікованого
+> користувача): `GET/POST /api/wishlist`, `GET /api/wishlist/status/:bookId`,
+> `DELETE /api/wishlist/:bookId`. `GET` повертає rich book cards (як Search/Book Details).
+> **Відкладено на окремі сесії:** Wishlist UI, localStorage для анонімів, merge-on-login,
+> targetPrice (PATCH). Деталі контракту — у `agent_docs/api-reference.md`.
+
 **Що робимо:**
 - API endpoints: GET/POST/DELETE/PATCH `/wishlist`
 - localStorage wishlist для анонімних користувачів
