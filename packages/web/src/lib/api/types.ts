@@ -66,3 +66,13 @@ export interface BookDetailsDto {
   readonly offersCount: number;
   readonly providers: readonly BookProviderDto[];
 }
+
+/**
+ * Frontend mirror of the S8 auth user shape
+ * (packages/api/src/auth/dto.ts — AuthUserDto).
+ */
+export interface AuthUserDto {
+  readonly id: string;
+  readonly email: string;
+  readonly createdAt: string;
+}

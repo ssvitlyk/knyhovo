@@ -238,27 +238,33 @@ S3a: Scraper Yakaboo          S3b: Canonical Matching дослідження
 
 ---
 
-## S8 — Auth: Magic Link
+## S8 — Auth: Passwordless OTP
 
-**Мета:** реєстрація та вхід через Email Magic Link (Resend).
+**Мета:** реєстрація та вхід через Email + 6-значний OTP-код, серверна сесія у httpOnly cookie.
+
+> **Реалізовано як OTP + server-side opaque session** (замість Magic Link / Resend / JWT).
+> Без реального email-провайдера: `ConsoleMailer` виводить код у stdout (dev).
 
 **Що робимо:**
-- Resend SDK у `packages/api`
-- `POST /auth/magic-link` — надіслати листа
-- `GET /auth/verify?token=` — верифікація, видача сесії
-- JWT або cookie-based сесія після верифікації
-- Email шаблон Magic Link (HTML через Resend)
-- UI: форма email, сторінка "перевірте пошту", redirect після входу
-- Auth middleware у Fastify для захищених routes
+- `POST /api/auth/request-code` — генерувати 6-значний OTP, зберегти HMAC-SHA256 хеш у `login_codes`
+- `POST /api/auth/verify-code` — перевірити код (timing-safe), видати сесію (`sessions` + httpOnly cookie `kn_session`)
+- `GET /api/auth/me` — повернути поточного користувача за сесійною cookie
+- `POST /api/auth/logout` — видалити сесію, очистити cookie
+- Server-side опaque session (SHA-256 хеш у БД, plaintext token у cookie)
+- Rate-limit: 5 кодів за 15 хв; max 5 спроб перевірки коду
+- TTL коду: 10 хв; TTL сесії: 30 днів
+- `@fastify/cookie` для роботи з cookie
+- Web клієнтський stub: `packages/web/src/lib/api/auth.ts`
+- Нові таблиці: `login_codes`, `sessions`
 
 **Залежності:** S6 (API), S7 (Web UI).
 
 **Acceptance Criteria:**
-- Повний flow: email → лист → клік → залогінений
-- Token одноразовий: повторний клік → помилка
-- Token має TTL (наприклад, 15 хвилин)
-- `POST /auth/magic-link` з некоректним email → 422
-- Захищені routes → 401 без валідної сесії
+- Повний flow: email → код у stdout → verify → cookie → me
+- Код одноразовий: повторна перевірка → 401 AUTH_INVALID_CODE
+- Код має TTL 10 хвилин
+- Rate limit: >5 запитів за вікно → 429 RATE_LIMITED
+- Захищені routes → 401 AUTH_REQUIRED без валідної сесії
 - `turbo run test` green
 
 ---
