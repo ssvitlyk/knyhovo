@@ -34,6 +34,8 @@ describe('OffersPanel', () => {
         providers={[BOOKCLUB_OFFER, YAKABOO_OFFER]}
         lowestPrice={BOOKCLUB_OFFER.price}
         offersCount={2}
+        bookId="book-1"
+        initialInWishlist={false}
       />,
     );
 
@@ -63,6 +65,8 @@ describe('OffersPanel', () => {
         providers={[UNKNOWN_OFFER]}
         lowestPrice={UNKNOWN_OFFER.price}
         offersCount={1}
+        bookId="book-1"
+        initialInWishlist={false}
       />,
     );
 
@@ -70,7 +74,15 @@ describe('OffersPanel', () => {
   });
 
   it('with no offers shows the unavailable state and no CTAs', () => {
-    render(<OffersPanel providers={[]} lowestPrice={null} offersCount={0} />);
+    render(
+      <OffersPanel
+        providers={[]}
+        lowestPrice={null}
+        offersCount={0}
+        bookId="book-1"
+        initialInWishlist={false}
+      />,
+    );
 
     expect(screen.getByText('Зараз немає в наявності')).toBeInTheDocument();
 

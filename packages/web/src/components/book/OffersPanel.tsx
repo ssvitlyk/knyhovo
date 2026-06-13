@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ds/Badge';
+import { WishlistToggle } from './WishlistToggle';
 import { formatMoney, providerDisplayName } from '@/lib/format';
 import type { Availability } from '@knyhovo/shared';
 import type { BookProviderDto, MoneyDto } from '@/lib/api/types';
@@ -7,6 +8,8 @@ export interface OffersPanelProps {
   readonly providers: readonly BookProviderDto[];
   readonly lowestPrice: MoneyDto | null;
   readonly offersCount: number;
+  readonly bookId: string;
+  readonly initialInWishlist: boolean;
 }
 
 const UKRAINIAN_MONTHS = [
@@ -47,7 +50,13 @@ function formatUpdatedNote(providers: readonly BookProviderDto[]): string {
  * per-provider comparison rows. When no offers are available shows the
  * "unavailable" mascot state instead.
  */
-export function OffersPanel({ providers, lowestPrice: _lowestPrice, offersCount }: OffersPanelProps): React.JSX.Element {
+export function OffersPanel({
+  providers,
+  lowestPrice: _lowestPrice,
+  offersCount,
+  bookId,
+  initialInWishlist,
+}: OffersPanelProps): React.JSX.Element {
   if (providers.length === 0) {
     return (
       <aside className="bdc-panel">
@@ -59,6 +68,7 @@ export function OffersPanel({ providers, lowestPrice: _lowestPrice, offersCount 
             Наразі жодна книгарня не має цієї книги в наявності. Загляньте пізніше — ми оновлюємо ціни щодня.
           </p>
         </div>
+        <WishlistToggle bookId={bookId} initialInWishlist={initialInWishlist} />
       </aside>
     );
   }
@@ -93,6 +103,7 @@ export function OffersPanel({ providers, lowestPrice: _lowestPrice, offersCount 
         >
           Перейти до книгарні
         </a>
+        <WishlistToggle bookId={bookId} initialInWishlist={initialInWishlist} />
       </div>
       <div>
         {rest.map((o) => {
