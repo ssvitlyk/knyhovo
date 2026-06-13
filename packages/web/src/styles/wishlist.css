@@ -1,0 +1,274 @@
+/* ============================================================
+   KNYHOVO · Wishlist (Бажанки) — page-level layout
+   Ported from the frozen design reference
+   (design-import/wishlist-v1/Wishlist v1.0 - Hybrid Freeze v2.html).
+   Desktop = Variant D · Mobile = Variant C accordion.
+   Composes existing DS tokens only; no new colors / type / radii.
+   ============================================================ */
+
+/* ---------- Page scaffold ---------- */
+.wishlist { padding: var(--space-8) 0 var(--space-16); min-height: 60vh; }
+
+/* ---------- Hero / page head ---------- */
+.v1-page-head {
+  display: flex; align-items: flex-start; justify-content: space-between;
+  gap: var(--space-8); margin-bottom: var(--space-8);
+}
+.v1-page-head-left { flex: 1; min-width: 0; }
+.v1-page-head-right { display: flex; flex-direction: column; align-items: flex-end; gap: var(--space-1); flex: none; }
+
+.v1-eyebrow {
+  font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: var(--space-3);
+}
+.v1-h1 {
+  font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--fs-h2);
+  line-height: var(--lh-tight); letter-spacing: var(--ls-tight);
+  color: var(--text); margin-bottom: var(--space-3); text-wrap: pretty;
+}
+.v1-h1 em { font-style: italic; color: var(--accent); }
+.v1-h1--mob { font-size: var(--fs-h3); }
+.v1-sub { font-size: var(--fs-body); color: var(--text-body); max-width: 60ch; text-wrap: pretty; }
+
+/* ---------- Single-column content wrapper ---------- */
+.v1-single { max-width: 940px; }
+
+/* ---------- Section head (Книги зі знижками / Інші бажанки) ---------- */
+.hy-group-head {
+  display: flex; align-items: baseline; gap: var(--space-3);
+  padding-bottom: var(--space-4);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: var(--space-4);
+}
+.hy-group-head--mob { padding-bottom: var(--space-3); margin-bottom: var(--space-3); }
+.hy-group-title {
+  font-family: var(--font-display); font-weight: var(--fw-semibold);
+  font-size: var(--fs-h3); color: var(--text); margin: 0;
+}
+.hy-group-count {
+  font-size: var(--fs-sm); color: var(--text-muted);
+  background: var(--surface-accent); border-radius: var(--radius-pill);
+  padding: 2px var(--space-3); line-height: 1.4;
+}
+
+/* ---------- Section containers ---------- */
+.hy-front {
+  background: var(--surface-accent); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: var(--space-5) var(--space-6);
+  margin-bottom: var(--space-6);
+}
+.hy-group { margin-bottom: var(--space-6); }
+
+/* Quiet message inside the «Книги зі знижками» section (no discount data yet). */
+.hy-front-empty { margin: 0; color: var(--text-muted); font-size: var(--fs-sm); }
+
+/* ---------- Quiet banner (no discounts state) ---------- */
+.v1-quiet-banner {
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: var(--space-4) var(--space-5);
+  color: var(--text-muted); font-size: var(--fs-sm);
+  margin-bottom: var(--space-5);
+}
+.v1-quiet-banner svg { flex: none; margin-top: 2px; color: var(--icon-muted); }
+.v1-quiet-banner p { margin: 0; }
+.v1-quiet-banner p + p { margin-top: var(--space-1); color: var(--text-muted); }
+
+/* ---------- Desktop rows list ---------- */
+.v1-rows { display: flex; flex-direction: column; }
+
+/* ---------- Desktop WishlistRow grid ---------- */
+.v1-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0,1fr) auto auto auto auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--border);
+  min-height: 104px;
+}
+.v1-rows .v1-row:first-child { border-top: none; }
+.v1-row--out { opacity: 0.6; }
+
+.v1-cover {
+  width: 48px; height: 70px; flex: none;
+  border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--surface-accent), var(--surface-sunk));
+  border: 1px solid var(--border);
+  display: block;
+}
+.v1-row-main { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.v1-row-title {
+  font-family: var(--font-display); font-weight: var(--fw-semibold);
+  font-size: var(--fs-title); color: var(--text);
+  text-decoration: none; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+a.v1-row-title:hover { color: var(--accent); }
+.v1-row-author { font-size: var(--fs-sm); color: var(--text-muted); }
+
+/* Status column (badge + upcoming) */
+.v1-row-status { display: flex; flex-direction: column; gap: var(--space-1); align-items: flex-start; min-width: 120px; }
+
+/* Price stack column */
+.v1-pricecell { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; min-width: 100px; }
+.v1-pricecell__price {
+  font-family: var(--font-display); font-weight: var(--fw-semibold);
+  font-size: 1.25rem; color: var(--accent);
+}
+.v1-pricecell__store { font-size: var(--fs-xs); color: var(--text-muted); }
+.v1-pricecell__pending { font-size: var(--fs-sm); color: var(--text-muted); font-style: italic; }
+
+/* CTA column */
+.v1-row-ctas { display: flex; gap: var(--space-2); align-items: center; flex: none; }
+
+/* Actions column (icon buttons) */
+.v1-row-actions { display: flex; gap: var(--space-1); align-items: center; flex: none; }
+
+/* ---------- Icon button (Remove etc.) ---------- */
+.wl-iconbtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; min-width: 32px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: transparent; color: var(--icon-muted); cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+.wl-iconbtn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.wl-iconbtn:disabled { opacity: 0.45; cursor: not-allowed; }
+.wl-iconbtn svg { width: 16px; height: 16px; }
+
+/* ---------- Mobile accordion card ---------- */
+.hy-mcards { display: flex; flex-direction: column; gap: var(--space-3); }
+
+.hy-mcard {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); overflow: hidden;
+}
+.hy-mcard-top {
+  display: grid; grid-template-columns: 36px minmax(0,1fr) auto auto;
+  align-items: center; gap: var(--space-3);
+  padding: var(--space-4); cursor: pointer;
+  border: none; background: transparent; width: 100%; text-align: left;
+  color: inherit;
+}
+.hy-mcard-top:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+
+.v1-mob-cover {
+  width: 36px; height: 52px; flex: none;
+  border-radius: var(--radius-xs);
+  background: linear-gradient(135deg, var(--surface-accent), var(--surface-sunk));
+  border: 1px solid var(--border);
+  display: block;
+}
+
+.hy-mcard-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.v1-mob-row-title {
+  font-family: var(--font-display); font-weight: var(--fw-semibold);
+  font-size: var(--fs-sm); color: var(--text);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.v1-mob-row-author { font-size: var(--fs-xs); color: var(--text-muted); }
+
+.hy-mcard-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; flex: none; }
+.hy-mcard-price {
+  font-family: var(--font-display); font-weight: var(--fw-semibold);
+  font-size: 1rem; color: var(--accent);
+}
+.hy-mcard-price--faint { color: var(--text-muted); font-weight: var(--fw-regular); }
+.hy-mcard-store { font-size: var(--fs-xs); color: var(--text-muted); }
+
+/* Chevron rotate on expand */
+.hy-mcard-chev {
+  display: inline-flex; align-items: center; color: var(--icon-muted);
+  transition: transform var(--dur-fast) var(--ease-out); flex: none;
+}
+.hy-mcard-chev--open { transform: rotate(180deg); }
+.hy-mcard-chev svg { width: 16px; height: 16px; }
+
+/* Expanded body */
+.hy-mcard-body { padding: 0 var(--space-4) var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.hy-mcard-meta { display: flex; justify-content: space-between; align-items: baseline; font-size: var(--fs-sm); gap: var(--space-4); }
+.hy-mcard-meta > span:first-child { color: var(--text-muted); }
+.hy-mcard-cta { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); padding: var(--space-3) var(--space-4); border-top: 1px solid var(--border); }
+.hy-mcard-actions { display: flex; justify-content: flex-end; gap: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--border); }
+
+/* ---------- Auth-required state ---------- */
+.wl-auth-required {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: var(--space-12) var(--space-6) var(--space-10); gap: var(--space-4);
+}
+.wl-auth-required__title { font-size: var(--fs-h3); margin: 0; }
+.wl-auth-required__text { font-size: var(--fs-body); color: var(--text-body); max-width: 460px; margin: 0; }
+.wl-auth-required__note { font-size: var(--fs-sm); color: var(--text-muted); max-width: 380px; margin: 0; }
+
+/* ---------- Empty state (Wishlist-specific) ---------- */
+.wl-empty {
+  display: flex; flex-direction: column; align-items: center; text-align: center;
+  padding: var(--space-12) var(--space-6) var(--space-10);
+}
+.wl-empty__mascot {
+  height: 230px; object-fit: contain; margin-bottom: var(--space-5);
+  -webkit-mask-image: radial-gradient(ellipse 68% 66% at 50% 52%, black 58%, transparent 97%);
+  mask-image: radial-gradient(ellipse 68% 66% at 50% 52%, black 58%, transparent 97%);
+}
+.wl-empty__title { font-size: var(--fs-h3); margin-bottom: var(--space-2); }
+.wl-empty__text { font-size: var(--fs-body); color: var(--text-body); max-width: 52ch; margin-bottom: var(--space-6); text-wrap: pretty; }
+
+/* Theme-aware mascot swap */
+.wl-empty__mascot--dark { display: none; }
+[data-theme="dark"] .wl-empty__mascot--light { display: none; }
+[data-theme="dark"] .wl-empty__mascot--dark { display: block; }
+
+/* ---------- WishlistToggle (book details integration) ---------- */
+.wl-toggle { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-4); }
+.wl-toggle__note { font-size: var(--fs-xs); color: var(--text-muted); }
+
+/* ---------- Skeleton rows (loading state) ---------- */
+.v1-sk-block { background: var(--surface-accent); border-radius: var(--radius-xs); display: block; }
+.v1-sk-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0,1fr) 60px 80px;
+  align-items: center; gap: var(--space-4);
+  padding: var(--space-4) 0; border-top: 1px solid var(--border); min-height: 104px;
+}
+.v1-sk-row:first-child { border-top: none; }
+.v1-sk-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: var(--space-4); min-height: 88px;
+}
+
+/* Loading skeleton animations */
+@media (prefers-reduced-motion: no-preference) {
+  .v1-sk-row,
+  .v1-sk-card { animation: wl-fade-in 280ms var(--ease-out) both; }
+  .v1-sk-row:nth-child(2), .v1-sk-card:nth-child(2) { animation-delay:  50ms; }
+  .v1-sk-row:nth-child(3), .v1-sk-card:nth-child(3) { animation-delay: 100ms; }
+  .v1-sk-row:nth-child(4), .v1-sk-card:nth-child(4) { animation-delay: 150ms; }
+  .v1-sk-row:nth-child(5), .v1-sk-card:nth-child(5) { animation-delay: 200ms; }
+  @keyframes wl-fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+}
+
+/* ---------- Desktop/mobile visibility toggle ----------
+   WishlistRow visible ≥768px; WishlistCard visible <768px.
+   Both are rendered in the DOM; CSS shows the appropriate one. */
+.wl-show-mobile { display: none; }
+.wl-show-desktop { display: grid; }
+
+/* ---------- Responsive ---------- */
+@media (max-width: 900px) {
+  .v1-h1 { font-size: var(--fs-h3); }
+  .wl-empty__mascot { height: 180px; }
+}
+
+@media (max-width: 767px) {
+  .wl-show-desktop { display: none; }
+  .wl-show-mobile { display: block; }
+
+  .v1-page-head { flex-direction: column; gap: var(--space-4); }
+  .v1-page-head-right { align-items: flex-start; }
+
+  .hy-front { padding: var(--space-4); }
+
+  /* 44px touch targets on interactive elements */
+  .wl-iconbtn { width: 44px; height: 44px; min-width: 44px; }
+  .hy-mcard-top { min-height: 44px; }
+}

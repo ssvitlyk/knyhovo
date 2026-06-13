@@ -76,3 +76,41 @@ export interface AuthUserDto {
   readonly email: string;
   readonly createdAt: string;
 }
+
+/**
+ * Frontend mirror of the S9 wishlist contract
+ * (packages/api/src/wishlist/dto.ts). The DTOs are not exported from
+ * `@knyhovo/shared`, and the architecture forbids web → api imports, so the
+ * shape is mirrored here. `ProviderName` and `Availability` are the single
+ * source-of-truth types imported from the shared package.
+ */
+
+export interface WishlistProviderDto {
+  readonly provider: ProviderName;
+  readonly price: MoneyDto;
+  readonly availability: Availability;
+  readonly url: string;
+  readonly lastSeenAt: string;
+}
+
+export interface WishlistBookDto {
+  readonly id: string;
+  readonly title: string;
+  readonly author: string;
+  readonly isbn: string | null;
+  /** Always null from the S9 API — cover scraping not yet implemented. */
+  readonly coverUrl: string | null;
+  readonly lowestPrice: MoneyDto | null;
+  readonly offersCount: number;
+  /** Provider offers sorted ascending by price; OUT_OF_STOCK excluded. */
+  readonly providers: readonly WishlistProviderDto[];
+}
+
+export interface WishlistItemDto {
+  readonly book: WishlistBookDto;
+  readonly createdAt: string;
+}
+
+export interface WishlistResponseDto {
+  readonly items: readonly WishlistItemDto[];
+}
