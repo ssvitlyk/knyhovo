@@ -20,6 +20,9 @@ export function SiteHeader(): React.JSX.Element {
         <a href="/search" className="nav-link nav-link--active">
           Каталог
         </a>
+        <a href="/wishlist" className="nav-link">
+          Бажанки
+        </a>
         <a href="#" className="nav-link">
           Знижки
         </a>

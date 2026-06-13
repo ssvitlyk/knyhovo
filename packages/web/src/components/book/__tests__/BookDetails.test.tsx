@@ -30,20 +30,20 @@ const BOOK_WITH_DESC: BookDetailsDto = {
 
 describe('BookDetails', () => {
   it('renders the book title as a heading and the author', () => {
-    render(<BookDetails book={BOOK_NO_DESC} />);
+    render(<BookDetails book={BOOK_NO_DESC} initialInWishlist={false} />);
 
     expect(screen.getByRole('heading', { name: 'Кобзар' })).toBeInTheDocument();
     expect(screen.getByText('Тарас Шевченко')).toBeInTheDocument();
   });
 
   it('renders the bd-hint copy when description is null', () => {
-    render(<BookDetails book={BOOK_NO_DESC} />);
+    render(<BookDetails book={BOOK_NO_DESC} initialInWishlist={false} />);
 
     expect(screen.getByText(/Опис ще не додано/)).toBeInTheDocument();
   });
 
   it('renders the description text and no hint when description is present', () => {
-    render(<BookDetails book={BOOK_WITH_DESC} />);
+    render(<BookDetails book={BOOK_WITH_DESC} initialInWishlist={false} />);
 
     expect(screen.getByText('Збірка поетичних творів Тараса Шевченка.')).toBeInTheDocument();
     expect(screen.queryByText(/Опис ще не додано/)).not.toBeInTheDocument();

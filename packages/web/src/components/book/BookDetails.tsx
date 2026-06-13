@@ -2,12 +2,17 @@ import type { BookDetailsDto } from '@/lib/api/types';
 import { BookMeta } from './BookMeta';
 import { OffersPanel } from './OffersPanel';
 
+export interface BookDetailsProps {
+  readonly book: BookDetailsDto;
+  readonly initialInWishlist: boolean;
+}
+
 /**
  * BookDetails — main two-column layout for the book details page.
  * Left column: cover, title/author, description (or hint), metadata.
- * Right column: offers panel with best price and per-provider rows.
+ * Right column: offers panel with best price, per-provider rows, and wishlist toggle.
  */
-export function BookDetails({ book }: { readonly book: BookDetailsDto }): React.JSX.Element {
+export function BookDetails({ book, initialInWishlist }: BookDetailsProps): React.JSX.Element {
   return (
     <div className="bdc-grid">
       <div className="bdc-left">
@@ -38,7 +43,13 @@ export function BookDetails({ book }: { readonly book: BookDetailsDto }): React.
         </h2>
         <BookMeta isbn={book.isbn} />
       </div>
-      <OffersPanel providers={book.providers} lowestPrice={book.lowestPrice} offersCount={book.offersCount} />
+      <OffersPanel
+        providers={book.providers}
+        lowestPrice={book.lowestPrice}
+        offersCount={book.offersCount}
+        bookId={book.id}
+        initialInWishlist={initialInWishlist}
+      />
     </div>
   );
 }
