@@ -73,6 +73,66 @@
 
 ---
 
+### `GET /api/books/:id/price-history`
+
+Chart-ready price history for one canonical book. Returns the most relevant
+provider listing's history with computed aggregates. When the book exists but
+has no history in the requested period, returns an empty-state response (HTTP
+200, all aggregates `null`, `points: []`) — not a 404.
+
+**Path params:** `id` — UUID canonical book
+
+**Query params:**
+- `period` — `30d` | `90d` | `1y` | `all` (default: `90d`)
+
+**Response 200 — with history:**
+```json
+{
+  "bookId": "uuid",
+  "period": "90d",
+  "currency": "UAH",
+  "current":  { "amount": 28000, "currency": "UAH", "availability": "in-stock",     "recordedAt": "2026-03-15T00:00:00.000Z" },
+  "lowest":   { "amount": 25000, "currency": "UAH", "recordedAt": "2026-02-01T00:00:00.000Z" },
+  "highest":  { "amount": 34900, "currency": "UAH", "recordedAt": "2026-01-15T00:00:00.000Z" },
+  "typicalRange": { "min": 26000, "max": 32000, "currency": "UAH" },
+  "change": { "amount": -2000, "percent": -7 },
+  "points": [
+    { "amount": 30000, "currency": "UAH", "availability": "in-stock",     "recordedAt": "2026-01-15T00:00:00.000Z" },
+    { "amount": 28000, "currency": "UAH", "availability": "in-stock",     "recordedAt": "2026-03-15T00:00:00.000Z" }
+  ]
+}
+```
+
+**Response 200 — empty-state (book exists, no history in window):**
+```json
+{
+  "bookId": "uuid",
+  "period": "90d",
+  "currency": "UAH",
+  "current": null,
+  "lowest": null,
+  "highest": null,
+  "typicalRange": null,
+  "change": null,
+  "points": []
+}
+```
+
+**Aggregate rules:**
+- `current` — last point (includes `availability`).
+- `lowest` / `highest` — points with min / max amount (no `availability` field).
+- `typicalRange` — if ≥5 points: sort amounts, drop one min + one max, take remainder range; else lowest/highest amounts.
+- `change.amount` = current − first (signed копійки); `change.percent` = rounded %; 0 when first amount ≤ 0.
+- Out-of-stock points are included; their stored amount is never zeroed.
+- All amounts are integer копійки.
+
+**Errors:**
+- `BAD_REQUEST` 400 — `id` is not a valid UUID
+- `VALIDATION_ERROR` 400 — `period` is not one of `30d`, `90d`, `1y`, `all`
+- `BOOK_NOT_FOUND` 404 — no book with the given UUID exists
+
+---
+
 ## Auth
 
 Passwordless OTP (Email + 6-digit code) з серверними opaque-сесіями у httpOnly cookie `kn_session`.
