@@ -298,6 +298,28 @@ S3a: Scraper Yakaboo          S3b: Canonical Matching дослідження
 
 ---
 
+## W5 — Price History API ✅
+
+**Мета:** HTTP endpoint `GET /api/books/:id/price-history` — chart-ready payload для UI.
+
+> **Реалізовано.** Новий модуль `packages/api/src/books/price-history/` (dto / schema /
+> repository / mapper / service / route). Endpoint повертає детермінований DTO з агрегатами
+> (current / lowest / highest / typicalRange / change / points) для найрелевантнішого
+> провайдера. Пустий стан (книга є, але нема точок у вікні) → HTTP 200 з `null`-агрегатами та
+> `points: []`. Покриття тестами ≥ 80%; всі 232 тести зелені.
+
+**Acceptance Criteria:**
+- ✅ Endpoint існує та зареєстрований
+- ✅ Книга з history → chart-ready DTO
+- ✅ Книга без history в window → empty DTO (не 404)
+- ✅ Invalid UUID → 400 BAD_REQUEST
+- ✅ Invalid period → 400 VALIDATION_ERROR
+- ✅ Missing book → 404 BOOK_NOT_FOUND
+- ✅ Out-of-stock points без нульових цін
+- ✅ Детерміновані зелені тести; no UI / alerts / verdicts / digests / AI changes
+
+---
+
 ## W3 — Price History Foundation ✅
 
 **Мета:** інфраструктура історії цін як основа для price intelligence.
