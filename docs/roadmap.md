@@ -298,6 +298,27 @@ S3a: Scraper Yakaboo          S3b: Canonical Matching дослідження
 
 ---
 
+## W3 — Price History Foundation ✅
+
+**Мета:** інфраструктура історії цін як основа для price intelligence.
+
+> **Реалізовано.** `price_history` тепер має поле `availability` та індекс
+> `(provider_listing_id, price_amount)`. Виділений модуль `packages/api/src/price-history/`
+> (`repository` + `service`) інкапсулює правило снапшота. Pipeline (`persist-listing.ts`)
+> створює запис **лише коли змінилась ціна АБО доступність** — включно з переходом у
+> out-of-stock. Read-API готове під майбутні фічі: `findLatest`, `findHistory` (таймлайн),
+> `findLowestPrice`.
+
+**Поза скоупом (наступні сесії):** графіки на сторінці книги, verdict-бейджі, розрахунок
+економії, секція знижок, тижневі дайджести, price alerts, target prices.
+
+**Acceptance Criteria:**
+- історія цін зберігається в часі, дублікати-снапшоти відсутні
+- снапшот фіксує і зміну доступності, не лише ціни
+- усі тести детерміновані; `pnpm --filter @knyhovo/api test` green
+
+---
+
 ## S10 — Price Alert Engine
 
 **Мета:** email-сповіщення при падінні ціни нижче цільової.

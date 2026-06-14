@@ -47,6 +47,7 @@ type FakePriceHistoryRow = {
   providerListingId: string;
   priceAmount: number;
   priceCurrency: string;
+  availability: string;
   recordedAt: Date;
 };
 
@@ -390,8 +391,9 @@ describe('runScrapePipeline', () => {
     expect(providerListings[1]!.canonicalBookId).toBe(canonicalBooks[0]!.id);
   });
 
-  // Test: null price + existing listing → updates availability and lastSeenAt, no price history
-  it('updates availability and lastSeenAt for an existing listing when price is null, without price history', async () => {
+  // Test: null price + existing listing whose availability changes → availability
+  // updated AND one price-history snapshot recorded (price OR availability rule).
+  it('records a price-history snapshot when an existing listing goes out of stock with null price', async () => {
     const existingCanonical: FakeCanonicalRow = {
       id: 'book-unavail',
       title: 'Кобзар',
@@ -425,8 +427,11 @@ describe('runScrapePipeline', () => {
     const { metrics } = results[0]!;
     expect(metrics.availabilityUpdated).toBe(1);
     expect(metrics.skippedNoPrice).toBe(0);
-    expect(metrics.priceHistoryCreated).toBe(0);
-    expect(priceHistory).toHaveLength(0);
+    expect(metrics.priceHistoryCreated).toBe(1);
+    expect(priceHistory).toHaveLength(1);
+    // Snapshot keeps the last known price and records the new availability.
+    expect(priceHistory[0]!.priceAmount).toBe(20000);
+    expect(priceHistory[0]!.availability).toBe('OUT_OF_STOCK');
     expect(providerListings[0]!.availability).toBe('OUT_OF_STOCK');
     expect(providerListings[0]!.lastSeenAt).toEqual(new Date(SCRAPED_AT));
     expect(providerListings[0]!.priceAmount).toBe(20000); // price unchanged

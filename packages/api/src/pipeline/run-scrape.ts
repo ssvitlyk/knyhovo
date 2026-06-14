@@ -50,6 +50,9 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
         );
         if (outcome.kind === 'availability-updated') {
           metrics.availabilityUpdated++;
+          if (outcome.priceHistoryCreated) {
+            metrics.priceHistoryCreated++;
+          }
         } else {
           metrics.skippedNoPrice++;
         }

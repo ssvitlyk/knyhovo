@@ -90,7 +90,9 @@ CREATE INDEX "provider_listings_provider_canonical_book_id_idx"
 
 **append-only: INSERT тільки. UPDATE і DELETE заборонені.**
 
-Незмінний лог змін ціни. Нові записи додаються при кожному scrape run якщо ціна змінилась.
+Незмінний лог змін ціни та доступності. Новий запис додається при scrape run **лише якщо змінилась ціна АБО доступність** (`price_amount` / `price_currency` / `availability`) — інакше дублікат не створюється. Логіку інкапсулює `packages/api/src/price-history/` (`shouldCreateSnapshot` / `recordPriceChange`); pipeline (`persist-listing.ts`) викликає її при створенні, оновленні та переході в out-of-stock.
+
+`availability` фіксує стан листингу на момент снапшота. Для out-of-stock-снапшота (ціна відсутня) зберігається остання відома ціна листингу.
 
 ```sql
 CREATE TABLE "price_history" (
@@ -98,12 +100,19 @@ CREATE TABLE "price_history" (
     "provider_listing_id" TEXT      NOT NULL REFERENCES "provider_listings"("id"),
     "price_amount"        INTEGER   NOT NULL,
     "price_currency"      "currency" NOT NULL,
+    "availability"        "availability" NOT NULL DEFAULT 'unknown',
     "recorded_at"         TIMESTAMP NOT NULL
 );
 
+-- Таймлайн / latest price (ASC; Postgres сканує у зворотному напрямку для latest).
 CREATE INDEX "price_history_provider_listing_id_recorded_at_idx"
     ON "price_history"("provider_listing_id", "recorded_at");
+-- Lowest-price-ever та майбутні verdict-розрахунки.
+CREATE INDEX "price_history_provider_listing_id_price_amount_idx"
+    ON "price_history"("provider_listing_id", "price_amount");
 ```
+
+Read-запити (`packages/api/src/price-history/repository.ts`): `findLatest`, `findHistory` (таймлайн ASC, опційне вікно since/until), `findLowestPrice`.
 
 **Перевірка відповідності:**
 ```bash
