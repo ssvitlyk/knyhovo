@@ -3,6 +3,7 @@ import type { CanonicalBookId } from '@knyhovo/shared';
 import type { MatchResult } from '@knyhovo/scrapers';
 import { Prisma } from '@prisma/client';
 import type { ListingPersistOutcome, UnavailableOutcome } from './types.js';
+import { recordPriceChange } from '../price-history/service.js';
 
 const PROVIDER_NAME_MAP: Record<ProviderName, 'YAKABOO' | 'BOOK_CLUB'> = {
   yakaboo: 'YAKABOO',
@@ -91,21 +92,16 @@ export async function persistListing(
       },
     });
 
-    await tx.priceHistoryPoint.create({
-      data: {
-        providerListingId: created.id,
-        priceAmount,
-        priceCurrency,
-        recordedAt: scrapedAt,
-      },
+    await recordPriceChange(tx, {
+      providerListingId: created.id,
+      previous: null,
+      next: { priceAmount, priceCurrency, availability: mapAvailability(listing.availability) },
+      recordedAt: scrapedAt,
     });
 
     return { kind: 'listing-created', createdCanonical, priceHistoryCreated: true };
   } else {
     // EXISTING listing — do NOT change canonicalBookId
-    const priceChanged =
-      existing.priceAmount !== priceAmount || existing.priceCurrency !== priceCurrency;
-
     const updateData: {
       priceAmount: number;
       priceCurrency: 'UAH';
@@ -132,18 +128,19 @@ export async function persistListing(
       data: updateData,
     });
 
-    if (priceChanged) {
-      await tx.priceHistoryPoint.create({
-        data: {
-          providerListingId: existing.id,
-          priceAmount,
-          priceCurrency,
-          recordedAt: scrapedAt,
-        },
-      });
-    }
+    // Record a snapshot when price OR availability changed.
+    const { created } = await recordPriceChange(tx, {
+      providerListingId: existing.id,
+      previous: {
+        priceAmount: existing.priceAmount,
+        priceCurrency: existing.priceCurrency,
+        availability: existing.availability,
+      },
+      next: { priceAmount, priceCurrency, availability: mapAvailability(listing.availability) },
+      recordedAt: scrapedAt,
+    });
 
-    return { kind: 'listing-updated', priceHistoryCreated: priceChanged };
+    return { kind: 'listing-updated', priceHistoryCreated: created };
   }
 }
 
@@ -170,5 +167,22 @@ export async function markUnavailable(
     },
   });
 
-  return { kind: 'availability-updated' };
+  // No new price (out of stock / parse miss), but availability may have changed.
+  // Record a snapshot keyed on the last known price when availability changed.
+  const { created } = await recordPriceChange(tx, {
+    providerListingId: existing.id,
+    previous: {
+      priceAmount: existing.priceAmount,
+      priceCurrency: existing.priceCurrency,
+      availability: existing.availability,
+    },
+    next: {
+      priceAmount: existing.priceAmount,
+      priceCurrency: existing.priceCurrency,
+      availability: mapAvailability(listing.availability),
+    },
+    recordedAt: scrapedAt,
+  });
+
+  return { kind: 'availability-updated', priceHistoryCreated: created };
 }

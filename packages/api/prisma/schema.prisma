@@ -80,17 +80,23 @@ model ProviderListing {
 }
 
 // append-only: INSERT only. No UPDATE or DELETE ever.
+// A new row is recorded only when price OR availability changed (see price-history/service.ts).
 model PriceHistoryPoint {
   id                String   @id @default(uuid())
   providerListingId String   @map("provider_listing_id")
   /// Price in the smallest currency unit (копійки). Always non-negative.
   priceAmount       Int      @map("price_amount")
   priceCurrency     Currency @map("price_currency")
+  /// Availability of the listing at the moment this snapshot was recorded.
+  availability      Availability @default(UNKNOWN) @map("availability")
   recordedAt        DateTime @map("recorded_at")
 
   providerListing ProviderListing @relation(fields: [providerListingId], references: [id])
 
+  // Timeline / latest-price queries (ASC; Postgres scans backward for latest).
   @@index([providerListingId, recordedAt])
+  // Lowest-price-ever queries and future verdict calculations.
+  @@index([providerListingId, priceAmount])
   @@map("price_history")
 }
 

@@ -49,7 +49,7 @@ export type ListingPersistOutcome =
   | { kind: 'listing-updated'; priceHistoryCreated: boolean };
 
 export type UnavailableOutcome =
-  | { kind: 'availability-updated' }
+  | { kind: 'availability-updated'; priceHistoryCreated: boolean }
   | { kind: 'skipped-new-no-price' };
 
 export type PersistOutcome = ListingPersistOutcome | UnavailableOutcome;
