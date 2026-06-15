@@ -1,0 +1,218 @@
+/* ================================================================
+   Knyhovo · PRICE HISTORY (W5) — calm chart styles.
+   Composes frozen DS v1.0 tokens ONLY — no new colors, type,
+   radii or shadows are introduced here.
+
+   Philosophy: history supports Knyhovyk's advice. Calm, advisory,
+   readable. NOT financial-trading visual language.
+   Green hierarchy: strongest green = «Чудовий момент» only;
+   neutral = ordinary prices; muted = high/up states (blue retired).
+   ================================================================ */
+
+/* ── Price-history section wrapper ────────────────────────────── */
+.ph-section { margin-top: var(--space-16); }
+.ph-frame .ph-section { margin-top: 0; }
+.ph-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-5); flex-wrap: nowrap; margin-bottom: var(--space-3);
+}
+/* W5 final freeze · chips stay on the title's row, optically centred */
+.ph-head .ph-h2 { min-width: 0; }
+.ph-head .ph-periods { flex: 0 0 auto; }
+.ph-h2 {
+  font-family: var(--font-display); font-weight: var(--fw-semibold);
+  font-size: var(--fs-h3); line-height: var(--lh-snug); color: var(--text); margin: 0;
+}
+.ph-h2--sm { font-size: var(--fs-title); }
+
+/* Period selector — DS chips, no new control language */
+.ph-periods { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.ph-period {
+  font-family: var(--font-body); font-size: var(--fs-sm); font-weight: var(--fw-medium);
+  color: var(--text-body); background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius-pill);
+  padding: 6px var(--space-4); cursor: pointer; white-space: nowrap;
+  transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.ph-period:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+.ph-period:disabled { opacity: 0.5; cursor: not-allowed; }
+.ph-period[data-on="true"] {
+  background: var(--accent); color: var(--text-on-accent); border-color: var(--accent);
+}
+
+/* Knyhovyk's advisory line — references historical context, never urgency */
+.ph-advisory {
+  font-size: var(--fs-body); color: var(--text-body);
+  margin: 0 0 var(--space-5); max-width: 68ch; text-wrap: pretty;
+}
+.ph-advisory b { font-weight: var(--fw-semibold); }
+.ph-advisory--good b { color: var(--brand-green); }   /* strongest green: good moment */
+.ph-advisory--high b { color: var(--text); }          /* v1.2.1: neutral — blue retired for high/up */
+.ph-advisory--calm b { color: var(--text); }          /* stable: neutral emphasis */
+
+/* ── Chart card ───────────────────────────────────────────────── */
+.ph-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-sm);
+  padding: var(--space-6);
+}
+.ph-chartwrap { position: relative; }
+.ph-chart { width: 100%; height: auto; display: block; overflow: visible; }
+
+/* Desktop/mobile chart visibility — toggled by media query */
+.ph-chart--m { display: none; }
+.ph-chart--d { display: block; }
+
+/* SVG text + strokes (driven by tokens via currentColor where possible) */
+.ph-axislabel { fill: var(--text-faint); font-size: 11px; font-family: var(--font-body); }
+.ph-annot { fill: var(--text-muted); font-size: 11.5px; font-family: var(--font-body); font-weight: 500; }
+.ph-annot--low { fill: var(--brand-green); }
+.ph-annot--now { fill: var(--accent); }
+.ph-annot--now-good { fill: var(--brand-green); }
+.ph-band { fill: var(--surface-accent); opacity: 0.8; }
+.ph-band-edge { stroke: var(--border); stroke-width: 1; opacity: 0.7; }
+.ph-bandlabel {
+  fill: var(--text-faint); font-size: 10.5px; font-family: var(--font-body); letter-spacing: 0.01em;
+}
+
+/* ── Stat strip: Зараз · Найнижча · Типова ціна · Зміна ─────── */
+.ph-stats {
+  display: flex; flex-wrap: wrap; gap: var(--space-8);
+  margin-top: var(--space-5); padding-top: var(--space-5);
+  border-top: 1px solid var(--border);
+}
+.ph-stat { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ph-stat__label {
+  font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase; color: var(--text-muted);
+}
+.ph-stat__val {
+  font-family: var(--font-display); font-weight: var(--fw-semibold);
+  font-size: 1.5rem; line-height: 1.1; color: var(--text); white-space: nowrap;
+}
+.ph-stat__val--now { color: var(--accent); }
+.ph-stat__val--now-good { color: var(--brand-green); }
+.ph-stat__val--low { color: var(--brand-green); }
+.ph-stat__val--typical { color: var(--text-body); }
+.ph-stat__change { display: inline-flex; align-items: center; gap: 5px; }
+.ph-stat__change--down { color: var(--brand-green); }     /* cheaper = good = green */
+.ph-stat__change--up { color: var(--text-muted); }        /* v1.2.1: neutral/muted — blue retired */
+.ph-stat__change--flat { color: var(--text-muted); }
+
+/* ── Empty state — "no historical data yet" (calm, honest) ────── */
+.ph-empty {
+  background: var(--surface-sunk); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: var(--space-6);
+  display: flex; gap: var(--space-5); align-items: flex-start; min-height: 140px;
+}
+/* W5 final freeze · error is a compact card, not a full-width banner */
+.ph-empty--error { max-width: 520px; }
+.ph-empty > div { min-width: 0; }
+.ph-empty__icon {
+  width: 44px; height: 44px; flex: none; color: var(--icon-muted);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center;
+}
+.ph-empty__titlerow {
+  display: flex; align-items: center; gap: var(--space-2);
+  margin-bottom: var(--space-2); flex-wrap: wrap;
+}
+.ph-empty__titlerow .kn-badge { flex: 0 0 auto; white-space: nowrap; }
+.ph-empty__title {
+  flex: 0 1 auto; min-width: 0;
+  font-family: var(--font-display); font-weight: var(--fw-semibold);
+  font-size: var(--fs-title); color: var(--text);
+}
+.ph-empty p {
+  font-size: var(--fs-sm); color: var(--text-muted);
+  max-width: 58ch; margin: 0; text-wrap: pretty;
+}
+
+/* ── Loading skeleton (warm surfaces only — frozen rule) ───────── */
+.ph-sk-block {
+  display: inline-block; background: var(--surface-accent);
+  border-radius: var(--radius-xs); animation: ph-pulse 1.4s ease-in-out infinite;
+}
+.ph-sk-lines {
+  display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-5);
+}
+/* W5 final freeze · chart skeleton mirrors the real chart footprint so
+   loading → filled never shifts layout. */
+.ph-sk-chart {
+  position: relative; overflow: hidden;
+  width: 100%; height: 244px; border-radius: var(--radius-sm);
+  background: var(--surface-sunk); animation: ph-pulse 1.4s ease-in-out infinite;
+}
+.ph-sk-chart__band {
+  position: absolute; left: 0; right: 0; top: 30%; height: 28%;
+  background: var(--surface-accent); animation: ph-pulse 1.4s ease-in-out infinite;
+}
+.ph-sk-chart__axis {
+  position: absolute; left: var(--space-4); right: var(--space-6); bottom: 16px;
+  display: flex; justify-content: space-between; gap: var(--space-4);
+}
+.ph-sk-chart__axis span {
+  width: 30px; height: 9px; border-radius: var(--radius-xs);
+  background: var(--surface-accent); animation: ph-pulse 1.4s ease-in-out infinite;
+}
+@keyframes ph-pulse { 0%, 100% { opacity: .7; } 50% { opacity: .35; } }
+
+/* ── State / period swap hook (W5 final freeze) ────────────────── */
+.ph-swap { opacity: 1; }
+
+/* ── Responsive — @media (max-width: 767px) ────────────────────── */
+@media (max-width: 767px) {
+  .ph-section { margin-top: var(--space-10); }
+
+  .ph-h2 { font-size: var(--fs-title); margin-bottom: var(--space-4); }
+
+  /* On mobile, header becomes vertical: title (own row, left) then chips */
+  .ph-head { flex-direction: column; align-items: stretch; gap: var(--space-4); }
+
+  /* Mobile period chips — own row, centred (frozen mobile rule) */
+  .ph-periods {
+    width: 100%; align-items: center; justify-content: center; row-gap: var(--space-2);
+  }
+  .ph-period {
+    display: inline-flex; align-items: center; justify-content: center;
+    height: 44px; min-height: 44px; padding: 0 var(--space-4); line-height: 1;
+  }
+  /* W5 final freeze · fixed mobile chip footprints */
+  .ph-period:nth-child(1),
+  .ph-period:nth-child(2) { min-width: 72px; }   /* 30 днів · 90 днів */
+  .ph-period:nth-child(3) { min-width: 56px; }   /* Рік */
+  .ph-period:nth-child(4) { min-width: 80px; }   /* Весь час */
+
+  .ph-advisory {
+    font-size: var(--fs-sm); line-height: var(--lh-normal); max-width: none;
+    margin: 0 0 var(--space-5);
+  }
+
+  .ph-card { padding: var(--space-5); }
+
+  /* Mobile chart — show mobile SVG, hide desktop */
+  .ph-chart--d { display: none; }
+  .ph-chart--m { display: block; }
+
+  .ph-stats {
+    display: grid; grid-template-columns: 1fr 1fr;
+    gap: var(--space-5) var(--space-4);
+    margin-top: var(--space-4); padding-top: var(--space-4);
+  }
+  .ph-stat__val { font-size: 1.3125rem; }
+
+  .ph-empty { padding: var(--space-5); }
+
+  .ph-sk-chart { height: 168px; }
+  .ph-sk-chart__axis { left: var(--space-2); right: var(--space-5); bottom: 12px; }
+}
+
+/* Respect prefers-reduced-motion */
+@media (prefers-reduced-motion: reduce) {
+  .ph-sk-block,
+  .ph-sk-chart,
+  .ph-sk-chart__band,
+  .ph-sk-chart__axis span {
+    animation: none;
+  }
+}

@@ -114,3 +114,51 @@ export interface WishlistItemDto {
 export interface WishlistResponseDto {
   readonly items: readonly WishlistItemDto[];
 }
+
+/**
+ * Frontend mirror of the W5 price-history API contract
+ * (packages/api/src/books/price-history/dto.ts). The DTOs are not exported
+ * from `@knyhovo/shared`, and the architecture forbids web → api imports, so
+ * the shape is mirrored here. `Availability` is the single source-of-truth
+ * type imported from the shared package.
+ */
+
+export type PriceHistoryPeriod = '30d' | '90d' | '1y' | 'all';
+
+export interface PriceHistoryPointDto {
+  readonly amount: number;
+  readonly currency: string;
+  readonly availability: Availability;
+  readonly recordedAt: string;
+}
+
+export interface PriceHistoryExtremeDto {
+  readonly amount: number;
+  readonly currency: string;
+  readonly recordedAt: string;
+}
+
+export interface TypicalRangeDto {
+  readonly min: number;
+  readonly max: number;
+  readonly currency: string;
+}
+
+export interface PriceHistoryChangeDto {
+  /** Signed kopiyky: positive = price went up, negative = price went down. */
+  readonly amount: number;
+  /** Rounded percentage. 0 when first.amount <= 0. */
+  readonly percent: number;
+}
+
+export interface BookPriceHistoryDto {
+  readonly bookId: string;
+  readonly period: PriceHistoryPeriod;
+  readonly currency: string;
+  readonly current: PriceHistoryPointDto | null;
+  readonly lowest: PriceHistoryExtremeDto | null;
+  readonly highest: PriceHistoryExtremeDto | null;
+  readonly typicalRange: TypicalRangeDto | null;
+  readonly change: PriceHistoryChangeDto | null;
+  readonly points: readonly PriceHistoryPointDto[];
+}
