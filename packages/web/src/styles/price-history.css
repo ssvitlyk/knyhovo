@@ -59,6 +59,14 @@
 .ph-chartwrap { position: relative; }
 .ph-chart { width: 100%; height: auto; display: block; overflow: visible; }
 
+/* Deterministic box height per variant. Each ratio equals its own viewBox, so
+   the rendered size is identical to viewBox-intrinsic sizing on engines that
+   resolve it (desktop = pixel-identical) while fixing mobile Safari, which
+   mis-computes height for a viewBox-only inline SVG at narrow widths and — with
+   overflow:visible — bleeds the lower chart past its box. */
+.ph-chart--d { aspect-ratio: 760 / 244; }
+.ph-chart--m { aspect-ratio: 340 / 168; }
+
 /* Desktop/mobile chart visibility — toggled by media query */
 .ph-chart--m { display: none; }
 .ph-chart--d { display: block; }

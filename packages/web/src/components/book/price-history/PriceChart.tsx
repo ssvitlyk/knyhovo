@@ -98,6 +98,7 @@ function ChartSvg({
   className,
   dotR,
   strokeW,
+  mobile,
 }: {
   vm: PriceHistoryViewModel;
   W: number;
@@ -107,6 +108,11 @@ function ChartSvg({
   className: string;
   dotR: number;
   strokeW: number;
+  /** Compile-time variant flag (one per rendered SVG) — NOT a runtime viewport
+   *  check. The current-price annotation always sits at the right edge; on the
+   *  narrow mobile viewBox the right-anchored typical-price label would collide
+   *  with it, so the label is left-anchored on the mobile variant only. */
+  mobile: boolean;
 }): React.JSX.Element {
   const g = phGeom(vm, W, H, pad);
   const good = vm.current <= vm.usualLow;
@@ -151,9 +157,9 @@ function ChartSvg({
       />
       <text
         className="ph-bandlabel"
-        x={g.x1 - 6}
+        x={mobile ? g.x0 + 6 : g.x1 - 6}
         y={(g.bandTop + g.bandBot) / 2}
-        textAnchor="end"
+        textAnchor={mobile ? 'start' : 'end'}
         dominantBaseline="middle"
       >
         типова ціна · {formatRange(vm.usualLow * 100, vm.usualHigh * 100)}
@@ -253,6 +259,7 @@ export function PriceChart({ vm }: PriceChartProps): React.JSX.Element {
         className="ph-chart ph-chart--d"
         dotR={6}
         strokeW={2.5}
+        mobile={false}
       />
       {/* Mobile chart — hidden on desktop via CSS */}
       <ChartSvg
@@ -264,6 +271,7 @@ export function PriceChart({ vm }: PriceChartProps): React.JSX.Element {
         className="ph-chart ph-chart--m"
         dotR={5}
         strokeW={2.25}
+        mobile={true}
       />
     </div>
   );
