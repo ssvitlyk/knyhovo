@@ -4,6 +4,7 @@ import { getBookDetails, BookDetailsError } from '@/lib/api/book';
 import { getWishlistStatus } from '@/lib/api/wishlist';
 import type { BookDetailsDto } from '@/lib/api/types';
 import { BookDetails } from '@/components/book/BookDetails';
+import { PriceHistorySection } from '@/components/book/price-history/PriceHistorySection';
 
 interface BookPageProps {
   readonly params: Promise<{ id: string }>;
@@ -37,6 +38,7 @@ export default async function BookPage({ params }: BookPageProps): Promise<React
         <a href="/search">Пошук</a> / <span>{book.title}</span>
       </nav>
       <BookDetails book={book} initialInWishlist={initialInWishlist} />
+      <PriceHistorySection bookId={id} />
     </main>
   );
 }
