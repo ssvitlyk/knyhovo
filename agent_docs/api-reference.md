@@ -286,3 +286,108 @@ OUT_OF_STOCK listings are excluded from `providers`, `lowestPrice`, and `offersC
 **Errors:**
 - `VALIDATION_ERROR` 400 — `bookId` не є валідним UUID
 - `AUTH_REQUIRED` 401 — відсутня або невалідна сесія
+
+---
+
+## Wishlist Alerts (W4a)
+
+Усі endpoints вимагають валідної сесійної cookie `kn_session`. Ключ `:bookId` — це `canonicalBookId`; сервер сам знаходить відповідний `wishlist_item` і `alert`.
+
+Поле `alert` додається до кожного елемента у відповіді `GET /api/wishlist`.
+
+### `alert` object у WishlistItemDto
+
+```json
+{
+  "status": "active",          // derived: "active" | "paused" | "triggered" | "unavailable"
+  "intent": "below-current",   // "any-drop" | "below-current" | "favourable-price" | "custom-price"
+  "targetPrice": { "amount": 20000, "currency": "UAH" },
+  "pausedAt": null             // ISO 8601 string or null
+}
+```
+
+`alert` = `null` коли алерт не налаштований.
+
+**Статус-derivation (виконується при читанні):**
+1. persisted PAUSED → `paused`
+2. offersCount = 0 → `unavailable`
+3. lowestPrice.amount ≤ targetPriceAmount → `triggered`
+4. інакше → `active`
+
+---
+
+### `PUT /api/wishlist/:bookId/alert`
+
+Створити або замінити алерт для книги у wishlist. Завжди скидає статус до ACTIVE.
+
+**Auth:** Required (cookie `kn_session`)
+
+**Path params:** `bookId` — UUID canonical book
+
+**Body:**
+```json
+{
+  "intent": "below-current",
+  "targetPrice": { "amount": 20000, "currency": "UAH" }
+}
+```
+
+- `intent`: required; one of `"any-drop"`, `"below-current"`, `"favourable-price"`, `"custom-price"`
+- `targetPrice.amount`: required; positive integer (копійки)
+- `targetPrice.currency`: required; `"UAH"`
+
+**Response 200:** `{ "ok": true }`
+
+**Errors:**
+- `VALIDATION_ERROR` 400 — невалідне тіло (невідомий intent, amount ≤ 0, не ціле число)
+- `AUTH_REQUIRED` 401 — відсутня або невалідна сесія
+- `WISHLIST_ITEM_NOT_FOUND` 404 — книга не знайдена у wishlist користувача
+
+---
+
+### `PATCH /api/wishlist/:bookId/alert`
+
+Поставити алерт на паузу або відновити.
+
+**Auth:** Required (cookie `kn_session`)
+
+**Path params:** `bookId` — UUID canonical book
+
+**Body:**
+```json
+{ "paused": true }
+```
+
+- `paused`: required; boolean — `true` = пауза, `false` = відновити
+
+**Response 200:** `{ "ok": true }`
+
+**Errors:**
+- `VALIDATION_ERROR` 400 — `paused` відсутній або не boolean
+- `AUTH_REQUIRED` 401
+- `WISHLIST_ITEM_NOT_FOUND` 404 — книга не у wishlist
+
+---
+
+### `DELETE /api/wishlist/:bookId/alert`
+
+Видалити алерт. Ідемпотентний — якщо алерту немає, але книга є у wishlist, повертає `{ok: true}`.
+
+**Auth:** Required (cookie `kn_session`)
+
+**Path params:** `bookId` — UUID canonical book
+
+**Response 200:** `{ "ok": true }`
+
+**Errors:**
+- `VALIDATION_ERROR` 400 — `bookId` не є валідним UUID
+- `AUTH_REQUIRED` 401
+- `WISHLIST_ITEM_NOT_FOUND` 404 — книга не у wishlist
+
+---
+
+### Нові коди помилок (W4a)
+
+| Code | HTTP | Опис |
+|------|------|------|
+| `WISHLIST_ITEM_NOT_FOUND` | 404 | Книга не знайдена у wishlist поточного користувача |

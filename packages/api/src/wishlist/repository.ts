@@ -1,4 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
+import type { WishlistAlertRow } from './alert/repository.js';
+
+export type { WishlistAlertRow };
 
 /**
  * Internal row shapes returned by the wishlist repository.
@@ -28,6 +31,7 @@ export interface WishlistCanonicalBookRow {
 export interface WishlistRow {
   readonly createdAt: Date;
   readonly canonicalBook: WishlistCanonicalBookRow;
+  readonly alert: WishlistAlertRow | null;
 }
 
 /**
@@ -63,6 +67,15 @@ export async function findWishlistItemsByUserId(
               lastSeenAt: true,
             },
           },
+        },
+      },
+      alert: {
+        select: {
+          status: true,
+          intent: true,
+          targetPriceAmount: true,
+          targetPriceCurrency: true,
+          pausedAt: true,
         },
       },
     },

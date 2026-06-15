@@ -1,6 +1,7 @@
 import type { ProviderName, Availability } from '@knyhovo/shared';
 import type { WishlistRow, WishlistListingRow } from './repository.js';
-import type { WishlistProviderDto, WishlistBookDto, WishlistItemDto, WishlistResponseDto, MoneyDto } from './dto.js';
+import type { WishlistProviderDto, WishlistBookDto, WishlistItemDto, WishlistResponseDto, MoneyDto, AlertDto } from './dto.js';
+import { deriveAlertStatus, ALERT_INTENT_SLUG } from './alert/service.js';
 
 /** Reverse map from the persisted provider enum to its public slug. */
 const PROVIDER_SLUG: Record<WishlistListingRow['provider'], ProviderName> = {
@@ -49,6 +50,20 @@ export function toWishlistResponse(rows: WishlistRow[]): WishlistResponseDto {
     const lowestPrice: MoneyDto | null = providers[0]?.price ?? null;
     const offersCount = providers.length;
 
+    const alertRow = row.alert ?? null;
+    const alert: AlertDto | null = alertRow
+      ? {
+          status: deriveAlertStatus(
+            { status: alertRow.status, targetPriceAmount: alertRow.targetPriceAmount },
+            lowestPrice,
+            offersCount,
+          ),
+          intent: ALERT_INTENT_SLUG[alertRow.intent],
+          targetPrice: { amount: alertRow.targetPriceAmount, currency: alertRow.targetPriceCurrency },
+          pausedAt: alertRow.pausedAt ? alertRow.pausedAt.toISOString() : null,
+        }
+      : null;
+
     const book: WishlistBookDto = {
       id: row.canonicalBook.id,
       title: row.canonicalBook.title,
@@ -63,6 +78,7 @@ export function toWishlistResponse(rows: WishlistRow[]): WishlistResponseDto {
     return {
       book,
       createdAt: row.createdAt.toISOString(),
+      alert,
     };
   });
 

@@ -34,6 +34,24 @@ enum Availability {
   @@map("availability")
 }
 
+enum AlertStatus {
+  ACTIVE      @map("active")
+  PAUSED      @map("paused")
+  TRIGGERED   @map("triggered")    // reserved for a future trigger engine; not written in W4a
+  UNAVAILABLE @map("unavailable")  // reserved; derived at read time in W4a
+
+  @@map("alert_status")
+}
+
+enum AlertIntent {
+  ANY_DROP         @map("any-drop")
+  BELOW_CURRENT    @map("below-current")
+  FAVOURABLE_PRICE @map("favourable-price")
+  CUSTOM_PRICE     @map("custom-price")
+
+  @@map("alert_intent")
+}
+
 // ---------------------------------------------------------------------------
 // Models
 // ---------------------------------------------------------------------------
@@ -146,14 +164,33 @@ model WishlistItem {
   id                  String    @id @default(uuid())
   userId              String    @map("user_id")
   canonicalBookId     String    @map("canonical_book_id")
+  /// @deprecated — alerts own the threshold now (W4)
   /// null means no price alert is configured for this item
   targetPriceAmount   Int?      @map("target_price_amount")
+  /// @deprecated — alerts own the threshold now (W4)
   targetPriceCurrency Currency? @map("target_price_currency")
   createdAt           DateTime  @default(now()) @map("created_at")
 
   user          User          @relation(fields: [userId], references: [id])
   canonicalBook CanonicalBook @relation(fields: [canonicalBookId], references: [id])
+  alert         Alert?
 
   @@unique([userId, canonicalBookId])
   @@map("wishlist_items")
+}
+
+model Alert {
+  id                  String      @id @default(uuid())
+  wishlistItemId      String      @unique @map("wishlist_item_id")
+  status              AlertStatus @default(ACTIVE)
+  intent              AlertIntent
+  targetPriceAmount   Int         @map("target_price_amount")    // копійки
+  targetPriceCurrency Currency    @map("target_price_currency")
+  pausedAt            DateTime?   @map("paused_at")
+  createdAt           DateTime    @default(now()) @map("created_at")
+  updatedAt           DateTime    @updatedAt @map("updated_at")
+
+  wishlistItem WishlistItem @relation(fields: [wishlistItemId], references: [id], onDelete: Cascade)
+
+  @@map("alerts")
 }

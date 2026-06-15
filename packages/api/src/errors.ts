@@ -77,3 +77,16 @@ export class RateLimitedError extends Error {
     this.name = 'RateLimitedError';
   }
 }
+
+/**
+ * Domain-level error raised when a wishlist item cannot be found for the given
+ * user + book combination. The Fastify error handler maps this to HTTP 404.
+ */
+export class WishlistItemNotFoundError extends Error {
+  readonly code = 'WISHLIST_ITEM_NOT_FOUND';
+
+  constructor(message = 'Book is not in your wishlist.') {
+    super(message);
+    this.name = 'WishlistItemNotFoundError';
+  }
+}

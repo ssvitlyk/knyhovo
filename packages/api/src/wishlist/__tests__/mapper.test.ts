@@ -7,6 +7,8 @@ const FIXED_DATE = new Date('2026-01-01T00:00:00.000Z');
 const BOOK_UUID = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa';
 const ITEM_UUID = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
 
+import type { WishlistAlertRow } from '../repository.js';
+
 function makeRow(overrides: {
   id?: string;
   title?: string;
@@ -14,6 +16,7 @@ function makeRow(overrides: {
   isbn?: string | null;
   listings?: WishlistListingRow[];
   createdAt?: Date;
+  alert?: WishlistAlertRow | null;
 }): WishlistRow {
   return {
     createdAt: overrides.createdAt ?? FIXED_DATE,
@@ -24,6 +27,7 @@ function makeRow(overrides: {
       isbn: overrides.isbn ?? null,
       listings: overrides.listings ?? [],
     },
+    alert: overrides.alert ?? null,
   };
 }
 
@@ -196,5 +200,118 @@ describe('toWishlistResponse', () => {
     expect(dto.items).toHaveLength(2);
     expect(dto.items[0]!.book.id).toBe(BOOK_UUID);
     expect(dto.items[1]!.book.id).toBe(ITEM_UUID);
+  });
+});
+
+// ── Alert mapping ─────────────────────────────────────────────────────────────
+
+describe('toWishlistResponse — alert mapping', () => {
+  const BASE_ALERT: WishlistAlertRow = {
+    status: 'ACTIVE',
+    intent: 'ANY_DROP',
+    targetPriceAmount: 20000,
+    targetPriceCurrency: 'UAH',
+    pausedAt: null,
+  };
+
+  it('alert is null when no alert row', () => {
+    const rows = [makeRow({ alert: null })];
+    const dto = toWishlistResponse(rows);
+    expect(dto.items[0]!.alert).toBeNull();
+  });
+
+  it('alert is null when alert field is undefined (legacy row)', () => {
+    // Simulate a row that predates the alert column (no alert key at all)
+    const row = makeRow({});
+    delete (row as { alert?: WishlistAlertRow | null }).alert;
+    const dto = toWishlistResponse([row]);
+    expect(dto.items[0]!.alert).toBeNull();
+  });
+
+  it('derives status=triggered when lowestPrice ≤ targetPriceAmount', () => {
+    const rows = [
+      makeRow({
+        listings: [listing('YAKABOO', 15000)],   // lowestPrice = 15000 ≤ target 20000
+        alert: { ...BASE_ALERT, targetPriceAmount: 20000 },
+      }),
+    ];
+    const dto = toWishlistResponse(rows);
+    expect(dto.items[0]!.alert?.status).toBe('triggered');
+  });
+
+  it('derives status=unavailable when offersCount = 0', () => {
+    const rows = [
+      makeRow({
+        listings: [],   // no available offers → offersCount = 0
+        alert: BASE_ALERT,
+      }),
+    ];
+    const dto = toWishlistResponse(rows);
+    expect(dto.items[0]!.alert?.status).toBe('unavailable');
+  });
+
+  it('derives status=active when lowestPrice > targetPriceAmount', () => {
+    const rows = [
+      makeRow({
+        listings: [listing('YAKABOO', 30000)],   // lowestPrice = 30000 > target 20000
+        alert: BASE_ALERT,
+      }),
+    ];
+    const dto = toWishlistResponse(rows);
+    expect(dto.items[0]!.alert?.status).toBe('active');
+  });
+
+  it('derives status=paused regardless of price when persisted status is PAUSED', () => {
+    const rows = [
+      makeRow({
+        listings: [listing('YAKABOO', 5000)],   // would be triggered if not PAUSED
+        alert: { ...BASE_ALERT, status: 'PAUSED', targetPriceAmount: 20000 },
+      }),
+    ];
+    const dto = toWishlistResponse(rows);
+    expect(dto.items[0]!.alert?.status).toBe('paused');
+  });
+
+  it('maps intent enum to slug correctly — ANY_DROP → any-drop', () => {
+    const rows = [makeRow({ alert: { ...BASE_ALERT, intent: 'ANY_DROP' } })];
+    const dto = toWishlistResponse(rows);
+    expect(dto.items[0]!.alert?.intent).toBe('any-drop');
+  });
+
+  it('maps intent enum to slug correctly — BELOW_CURRENT → below-current', () => {
+    const rows = [makeRow({ alert: { ...BASE_ALERT, intent: 'BELOW_CURRENT' } })];
+    const dto = toWishlistResponse(rows);
+    expect(dto.items[0]!.alert?.intent).toBe('below-current');
+  });
+
+  it('maps intent enum to slug correctly — FAVOURABLE_PRICE → favourable-price', () => {
+    const rows = [makeRow({ alert: { ...BASE_ALERT, intent: 'FAVOURABLE_PRICE' } })];
+    const dto = toWishlistResponse(rows);
+    expect(dto.items[0]!.alert?.intent).toBe('favourable-price');
+  });
+
+  it('maps intent enum to slug correctly — CUSTOM_PRICE → custom-price', () => {
+    const rows = [makeRow({ alert: { ...BASE_ALERT, intent: 'CUSTOM_PRICE' } })];
+    const dto = toWishlistResponse(rows);
+    expect(dto.items[0]!.alert?.intent).toBe('custom-price');
+  });
+
+  it('maps targetPrice correctly', () => {
+    const rows = [makeRow({ alert: { ...BASE_ALERT, targetPriceAmount: 34900 } })];
+    const dto = toWishlistResponse(rows);
+    expect(dto.items[0]!.alert?.targetPrice).toEqual({ amount: 34900, currency: 'UAH' });
+  });
+
+  it('maps pausedAt as ISO string when set', () => {
+    const pausedAt = new Date('2026-05-01T12:00:00.000Z');
+    const rows = [makeRow({ alert: { ...BASE_ALERT, status: 'PAUSED', pausedAt } })];
+    const dto = toWishlistResponse(rows);
+    expect(dto.items[0]!.alert?.pausedAt).toBe('2026-05-01T12:00:00.000Z');
+  });
+
+  it('maps pausedAt as null when not set', () => {
+    const rows = [makeRow({ alert: { ...BASE_ALERT, pausedAt: null } })];
+    const dto = toWishlistResponse(rows);
+    expect(dto.items[0]!.alert?.pausedAt).toBeNull();
   });
 });

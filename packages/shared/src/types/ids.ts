@@ -28,3 +28,6 @@ export type UserId = Brand<string, 'UserId'>;
 
 /** Identifier for a WishlistItem. */
 export type WishlistItemId = Brand<string, 'WishlistItemId'>;
+
+/** Identifier for a price Alert associated with a WishlistItem. */
+export type AlertId = Brand<string, 'AlertId'>;

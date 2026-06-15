@@ -11,12 +11,14 @@ import {
   UnauthorizedError,
   InvalidCredentialsError,
   RateLimitedError,
+  WishlistItemNotFoundError,
 } from './errors.js';
 import { registerSearchRoute } from './search/route.js';
 import { registerBooksRoute } from './books/route.js';
 import { registerBookPriceHistoryRoute } from './books/price-history/route.js';
 import { registerAuthRoute } from './auth/route.js';
 import { registerWishlistRoute } from './wishlist/route.js';
+import { registerWishlistAlertRoute } from './wishlist/alert/route.js';
 import type { AuthDeps } from './auth/service.js';
 
 /** Shape of every error response emitted by the API. */
@@ -122,6 +124,11 @@ export function buildApp(prisma: PrismaClient, authDeps?: AuthDeps): FastifyInst
       void reply.code(429).send(body);
       return;
     }
+    if (error instanceof WishlistItemNotFoundError) {
+      const body: ErrorBody = { error: { code: error.code, message: error.message } };
+      void reply.code(404).send(body);
+      return;
+    }
     const body: ErrorBody = { error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } };
     void reply.code(500).send(body);
   });
@@ -136,6 +143,7 @@ export function buildApp(prisma: PrismaClient, authDeps?: AuthDeps): FastifyInst
   if (authDeps) {
     registerAuthRoute(app, authDeps);
     registerWishlistRoute(app, prisma, authDeps);
+    registerWishlistAlertRoute(app, prisma, authDeps);
   }
 
   return app;
