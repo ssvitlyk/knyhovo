@@ -1,4 +1,7 @@
 import type { ProviderName, Availability } from '@knyhovo/shared';
+import type { AlertDto } from './alert/dto.js';
+
+export type { AlertDto };
 
 /**
  * Wishlist API v1.0 response contract.
@@ -52,6 +55,8 @@ export interface WishlistItemDto {
   readonly book: WishlistBookDto;
   /** ISO 8601 timestamp of when this item was added to the wishlist. */
   readonly createdAt: string;
+  /** Price alert configuration for this item. null when no alert is set. */
+  readonly alert: AlertDto | null;
 }
 
 export interface WishlistResponseDto {

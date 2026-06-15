@@ -187,12 +187,45 @@ CREATE TABLE "wishlist_items" (
     "id"                    TEXT      PRIMARY KEY,
     "user_id"               TEXT      NOT NULL REFERENCES "users"("id"),
     "canonical_book_id"     TEXT      NOT NULL REFERENCES "canonical_books"("id"),
-    "target_price_amount"   INTEGER,          -- null = алерт не налаштований
-    "target_price_currency" "currency",
+    "target_price_amount"   INTEGER,          -- DEPRECATED (W4): поріг тепер зберігається в alerts
+    "target_price_currency" "currency",       -- DEPRECATED (W4): колонка збережена, але не використовується
     "created_at"            TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     UNIQUE("user_id", "canonical_book_id")
 );
 ```
+
+**Примітка:** `target_price_amount` / `target_price_currency` збережені для зворотної сумісності, але з W4 власником порогу ціни є таблиця `alerts`.
+
+---
+
+### alerts (W4)
+
+Один алерт per wishlist item. Зберігає лише user-controlled стан: `status` (ACTIVE/PAUSED) + `intent` + `targetPrice` + `pausedAt`. Статуси TRIGGERED та UNAVAILABLE **виводяться** (derive) на рівні API при читанні — не записуються в БД.
+
+```sql
+CREATE TYPE "alert_status" AS ENUM ('active', 'paused', 'triggered', 'unavailable');
+CREATE TYPE "alert_intent" AS ENUM ('any-drop', 'below-current', 'favourable-price', 'custom-price');
+
+CREATE TABLE "alerts" (
+    "id"                    TEXT           PRIMARY KEY,
+    "wishlist_item_id"      TEXT           NOT NULL UNIQUE REFERENCES "wishlist_items"("id") ON DELETE CASCADE,
+    "status"                "alert_status" NOT NULL DEFAULT 'active',
+    "intent"                "alert_intent" NOT NULL,
+    "target_price_amount"   INTEGER        NOT NULL,  -- копійки
+    "target_price_currency" "currency"     NOT NULL,
+    "paused_at"             TIMESTAMP,               -- null = не на паузі
+    "created_at"            TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at"            TIMESTAMP      NOT NULL
+);
+```
+
+**Статус-derivation (read-time, у `alert/service.ts`):**
+1. `persisted.status = 'PAUSED'` → `paused`
+2. `offersCount = 0` → `unavailable`
+3. `lowestPrice.amount ≤ targetPriceAmount` → `triggered`
+4. інакше → `active`
+
+**Prisma enum ідентифікатори:** `AlertStatus.ACTIVE`, `AlertStatus.PAUSED`, `AlertStatus.TRIGGERED`, `AlertStatus.UNAVAILABLE`. `AlertIntent.ANY_DROP`, `AlertIntent.BELOW_CURRENT`, `AlertIntent.FAVOURABLE_PRICE`, `AlertIntent.CUSTOM_PRICE`.
 
 ## Правила
 

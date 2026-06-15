@@ -1,4 +1,4 @@
-import { PrismaClient, Currency, Provider, Availability } from '@prisma/client';
+import { PrismaClient, Currency, Provider, Availability, AlertStatus, AlertIntent } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
@@ -147,8 +147,8 @@ async function main(): Promise<void> {
     },
   });
 
-  // WishlistItem: Кобзар у wishlist тестового користувача з targetPrice
-  await prisma.wishlistItem.upsert({
+  // WishlistItem: Кобзар у wishlist тестового користувача
+  const kobzarWishlistItem = await prisma.wishlistItem.upsert({
     where: {
       userId_canonicalBookId: {
         userId: user.id,
@@ -160,8 +160,28 @@ async function main(): Promise<void> {
       id: '00000000-0000-4000-8004-000000000001',
       userId: user.id,
       canonicalBookId: kobzar.id,
+    },
+  });
+
+  // Alert: Кобзар → BELOW_CURRENT, target 200 UAH (20000 копійок).
+  // Keyed by the resolved wishlist item id so the seed stays idempotent even
+  // when a pre-existing wishlist row uses a different id.
+  await prisma.alert.upsert({
+    where: { wishlistItemId: kobzarWishlistItem.id },
+    update: {
+      status: AlertStatus.ACTIVE,
+      intent: AlertIntent.BELOW_CURRENT,
       targetPriceAmount: 20000,
       targetPriceCurrency: Currency.UAH,
+      pausedAt: null,
+    },
+    create: {
+      wishlistItemId: kobzarWishlistItem.id,
+      status: AlertStatus.ACTIVE,
+      intent: AlertIntent.BELOW_CURRENT,
+      targetPriceAmount: 20000,
+      targetPriceCurrency: Currency.UAH,
+      pausedAt: null,
     },
   });
 
@@ -170,7 +190,7 @@ async function main(): Promise<void> {
   console.log(`  provider_listings: ${kobzarYakaboo.url}, ${kobzarBookclub.url}, ${tiniYakaboo.url}`);
   console.log(`  price_history: 4 points`);
   console.log(`  users: ${user.email}`);
-  console.log(`  wishlist_items: Кобзар → target 200 UAH`);
+  console.log(`  wishlist_items: Кобзар (alert: BELOW_CURRENT, target 200 UAH)`);
 }
 
 main()
