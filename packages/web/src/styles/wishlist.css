@@ -89,6 +89,13 @@
 }
 .v1-rows .v1-row:first-child { border-top: none; }
 .v1-row--out { opacity: 0.6; }
+/* Triggered / targetMet row — green intensity level 2 (green border + tinted bg). */
+.v1-row--hot {
+  background: color-mix(in oklab, var(--brand-green) 5%, var(--surface));
+  border-radius: var(--radius-sm);
+  outline: 1px solid color-mix(in oklab, var(--brand-green) 45%, var(--border));
+  outline-offset: -1px;
+}
 
 .v1-cover {
   width: 48px; height: 70px; flex: none;
@@ -174,6 +181,8 @@ a.v1-row-title:hover { color: var(--accent); }
   font-size: 1rem; color: var(--accent);
 }
 .hy-mcard-price--faint { color: var(--text-muted); font-weight: var(--fw-regular); }
+/* Green price in the collapsed card header for triggered items. */
+.hy-mcard-price--green { color: var(--brand-green); }
 .hy-mcard-store { font-size: var(--fs-xs); color: var(--text-muted); }
 
 /* Chevron rotate on expand */

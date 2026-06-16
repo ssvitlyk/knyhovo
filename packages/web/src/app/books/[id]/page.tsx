@@ -1,7 +1,7 @@
 import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getBookDetails, BookDetailsError } from '@/lib/api/book';
-import { getWishlistStatus } from '@/lib/api/wishlist';
+import { getBookAlertContext } from '@/lib/api/wishlist';
 import type { BookDetailsDto } from '@/lib/api/types';
 import { BookDetails } from '@/components/book/BookDetails';
 import { PriceHistorySection } from '@/components/book/price-history/PriceHistorySection';
@@ -29,7 +29,7 @@ export default async function BookPage({ params }: BookPageProps): Promise<React
   }
 
   const cookie = (await cookies()).toString();
-  const initialInWishlist = await getWishlistStatus({ bookId: id, cookie });
+  const ctx = await getBookAlertContext({ bookId: id, cookie });
 
   return (
     <main className="results">
@@ -37,7 +37,7 @@ export default async function BookPage({ params }: BookPageProps): Promise<React
       <nav className="bd-crumbs">
         <a href="/search">Пошук</a> / <span>{book.title}</span>
       </nav>
-      <BookDetails book={book} initialInWishlist={initialInWishlist} />
+      <BookDetails book={book} initialInWishlist={ctx.inWishlist} initialAlert={ctx.alert} />
       <PriceHistorySection bookId={id} />
     </main>
   );

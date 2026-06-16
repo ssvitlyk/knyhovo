@@ -3,6 +3,11 @@
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
 import { RemoveButton } from './RemoveButton';
+import { WishlistAlertControl } from './WishlistAlertControl';
+import { AlertChip } from '@/components/alerts/AlertChip';
+import { AlertTarget } from '@/components/alerts/AlertTarget';
+import { alertUiState } from '@/lib/alerts';
+import type { AlertChipState } from '@/components/alerts/AlertChip';
 import { formatMoney, providerDisplayName } from '@/lib/format';
 import type { WishlistItemDto } from '@/lib/api/types';
 
@@ -14,12 +19,21 @@ export interface WishlistCardProps {
  * WishlistCard — mobile accordion card for a single wishlist item (Variant C).
  * Collapsed by default; tap the header to expand details.
  * Visible on screens <768px; WishlistRow handles the desktop view.
+ *
+ * Collapsed header: status chip beside the price when an alert exists.
+ * Triggered price is rendered in green (hy-mcard-price--green).
+ *
+ * Expanded body: alert chip + target line + WishlistAlertControl for managing.
  */
 export function WishlistCard({ item }: WishlistCardProps): React.JSX.Element {
   const { book } = item;
   const [open, setOpen] = useState(false);
   const isOutOfStock = book.offersCount === 0;
   const bestProvider = book.providers[0];
+
+  const uiState = alertUiState(item.alert);
+  const isTriggered = uiState === 'triggered';
+  const hasAlert = item.alert !== null && uiState !== 'saved';
 
   const lastSeenAt = bestProvider
     ? new Date(bestProvider.lastSeenAt).toLocaleDateString('uk-UA', {
@@ -44,9 +58,17 @@ export function WishlistCard({ item }: WishlistCardProps): React.JSX.Element {
           <span className="v1-mob-row-author">{book.author}</span>
         </span>
         <span className="hy-mcard-right">
+          {/* Status chip beside the price when an alert exists */}
+          {hasAlert && (
+            <AlertChip state={uiState as AlertChipState} />
+          )}
           {book.lowestPrice ? (
             <>
-              <span className="hy-mcard-price">{formatMoney(book.lowestPrice)}</span>
+              <span
+                className={`hy-mcard-price${isTriggered ? ' hy-mcard-price--green' : ''}`}
+              >
+                {formatMoney(book.lowestPrice)}
+              </span>
               {bestProvider && (
                 <span className="hy-mcard-store">{providerDisplayName(bestProvider.provider)}</span>
               )}
@@ -63,6 +85,30 @@ export function WishlistCard({ item }: WishlistCardProps): React.JSX.Element {
       {/* Expanded body */}
       {open && (
         <div className="hy-mcard-body">
+          {/* Alert detail section — chip + target + manage bell */}
+          {hasAlert && item.alert !== null && (
+            <div className="hy-mcard-meta">
+              <AlertChip state={uiState as AlertChipState} />
+              <WishlistAlertControl
+                bookId={book.id}
+                alert={item.alert}
+                currentPrice={book.lowestPrice}
+                bookTitle={book.title}
+                store={bestProvider ? providerDisplayName(bestProvider.provider) : undefined}
+              />
+            </div>
+          )}
+          {hasAlert && item.alert !== null && (
+            <div style={{ paddingBottom: 'var(--space-1)' }}>
+              <AlertTarget
+                state={uiState}
+                intent={item.alert.intent}
+                targetPrice={item.alert.targetPrice}
+                currentPrice={book.lowestPrice}
+              />
+            </div>
+          )}
+
           {bestProvider && (
             <div className="hy-mcard-meta">
               <span>Книгарня</span>

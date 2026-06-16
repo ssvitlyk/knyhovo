@@ -1,0 +1,243 @@
+/* ================================================================
+   Knyhovo · Price Alerts (W4b) — production port of the frozen
+   alert styles. Source (read-only):
+   design-import/w4-price-alerts/design-import/alerts-v1/alerts.css
+   + alm-flow.css (375px sheet flow chrome). Composes DS v1.0 tokens
+   ONLY — no new colours, radii or shadows. Sits on top of the frozen
+   Wishlist (wishlist.css) and Book Details (book-details.css) chassis.
+   ================================================================ */
+
+/* ── Bell / alert control — extends the frozen .wl-iconbtn ─────────────────
+   Shape (the glyph) always distinguishes state — colour is secondary, so the
+   control stays legible for colourblind users & in print. */
+.wl-iconbtn--trig { color: var(--brand-green); }
+.wl-iconbtn--trig:hover { background: color-mix(in oklab, var(--brand-green) 12%, transparent); color: var(--brand-green); }
+.wl-iconbtn--paused { color: var(--text-muted); }
+.wl-iconbtn--unavail { color: var(--text-faint); cursor: not-allowed; }
+.wl-iconbtn--unavail:hover { background: transparent; color: var(--text-faint); }
+
+/* ── Alert status chip — the quiet in-row indicator ───────────────────────
+   Mirrors the frozen .phv-badge anatomy (icon + label pill). Lives in the
+   existing status column — no row-height change. */
+.al-chip {
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  font-family: var(--font-body); font-size: var(--fs-xs); font-weight: var(--fw-semibold);
+  line-height: 1.4; border-radius: var(--radius-pill); padding: 3px 10px 3px 8px;
+}
+.al-chip svg { flex: none; }
+.al-chip--watch  { background: var(--accent-weak); color: var(--accent); }
+.al-chip--trig   { background: color-mix(in oklab, var(--brand-green) 16%, transparent); color: var(--brand-green); }
+.al-chip--paused { background: var(--surface-accent); color: var(--text-muted); }
+.al-chip--unavail{ background: var(--surface-accent); color: var(--text-faint); }
+
+/* the target-price reason line (e.g. «нижче 240 ₴») — reuses verdict reason tone */
+.al-target { font-size: var(--fs-xs); color: var(--text-muted); text-wrap: pretty; }
+.al-target b { color: var(--text-body); font-weight: var(--fw-semibold); }
+.al-target--green { color: var(--brand-green); }
+.al-target--green b { color: var(--brand-green); }
+
+/* small muted helper line (e.g. paused notice next to the chip) */
+.al-muted { font-size: var(--fs-xs); color: var(--text-muted); text-wrap: pretty; }
+
+/* quiet ghost affordance — «Сповістити про ціну» / «Змінити» (text button) */
+.al-link {
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  background: none; border: none; padding: 2px 0; cursor: pointer;
+  font-family: var(--font-body); font-size: var(--fs-sm); font-weight: var(--fw-medium);
+  color: var(--text-muted); transition: color var(--dur-fast) var(--ease-out);
+}
+.al-link:hover { color: var(--accent); }
+.al-link svg { flex: none; }
+.al-link--sm { font-size: var(--fs-xs); }
+
+/* ── Alert configuration — lightweight popover (desktop) / sheet (mobile) ── */
+.al-config {
+  width: 332px; max-width: 100%;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+  padding: var(--space-5);
+  display: flex; flex-direction: column; gap: var(--space-4);
+}
+.al-config__head { display: flex; flex-direction: column; gap: 3px; }
+.al-config__title { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--fs-title); line-height: var(--lh-snug); color: var(--text); }
+.al-config__sub { font-size: var(--fs-xs); color: var(--text-muted); text-wrap: pretty; }
+
+.al-opts { display: flex; flex-direction: column; gap: var(--space-2); }
+.al-opt {
+  display: grid; grid-template-columns: 18px minmax(0,1fr) auto; gap: var(--space-3);
+  align-items: start; text-align: left; width: 100%;
+  background: var(--surface-sunk); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4);
+  cursor: pointer; font-family: inherit; color: var(--text-body);
+  transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+.al-opt:hover:not(.al-opt--disabled) { border-color: var(--border-strong); }
+.al-opt--on { border-color: var(--accent); background: var(--accent-weak); }
+.al-opt--disabled { opacity: 0.55; cursor: not-allowed; }
+.al-radio {
+  width: 18px; height: 18px; border-radius: var(--radius-pill); margin-top: 1px;
+  border: 2px solid var(--border-strong); flex: none; position: relative;
+  transition: border-color var(--dur-fast) var(--ease-out);
+}
+.al-opt--on .al-radio { border-color: var(--accent); }
+.al-opt--on .al-radio::after {
+  content: ""; position: absolute; inset: 3px; border-radius: var(--radius-pill);
+  background: var(--accent);
+}
+.al-opt__main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.al-opt__label { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--text); }
+.al-opt__desc { font-size: var(--fs-xs); color: var(--text-muted); text-wrap: pretty; }
+.al-opt__price { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--fs-sm); color: var(--accent); white-space: nowrap; }
+.al-opt--on .al-opt__price { color: var(--accent); }
+
+/* custom-price disclosure — quiet secondary path */
+.al-custom { display: flex; flex-direction: column; gap: var(--space-2); }
+.al-custom__row { display: flex; align-items: center; gap: var(--space-2); }
+.al-custom__row .kn-input { max-width: 140px; }
+.al-custom__unit { font-family: var(--font-display); font-weight: var(--fw-semibold); color: var(--text-muted); }
+
+.al-config__foot { display: flex; align-items: flex-start; gap: var(--space-2); font-size: var(--fs-xs); color: var(--text-muted); text-wrap: pretty; }
+.al-config__foot svg { flex: none; color: var(--icon-muted); margin-top: 1px; }
+.al-config__actions { display: flex; align-items: center; gap: var(--space-2); }
+.al-config__actions .al-grow { flex: 1; }
+.al-config__actions .kn-btn { width: 100%; }
+
+/* manage affordance inside the edit sheet — quiet «Призупинити» secondary path */
+.al-manage { display: flex; align-items: center; padding-top: var(--space-3); border-top: 1px solid var(--border); }
+.al-manage__btn {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  background: none; border: none; padding: 4px 0; cursor: pointer;
+  font-family: var(--font-body); font-size: var(--fs-sm); font-weight: var(--fw-medium);
+  color: var(--text-muted); transition: color var(--dur-fast) var(--ease-out);
+}
+.al-manage__btn:hover { color: var(--text-body); }
+.al-manage__btn svg { flex: none; color: var(--icon-muted); }
+
+/* paused state inside the sheet — muted notice, not an error */
+.al-paused-note {
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  background: var(--surface-accent); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: var(--space-4);
+  font-size: var(--fs-sm); color: var(--text-muted); text-wrap: pretty;
+}
+.al-paused-note svg { flex: none; color: var(--icon-muted); margin-top: 1px; }
+.al-paused-note b { color: var(--text-body); font-weight: var(--fw-semibold); }
+
+/* ── Desktop popover anchor — keeps the config positioned under its trigger ── */
+.al-anchor { position: relative; display: inline-flex; }
+.al-pop { position: absolute; top: calc(100% + var(--space-2)); right: 0; z-index: 30; }
+.al-pop--left { right: auto; left: 0; }
+
+/* ── Mobile bottom sheet (lightweight — not a full modal) ────────────────── */
+.al-sheet {
+  background: var(--surface); border-top: 1px solid var(--border);
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+  box-shadow: var(--shadow-lg);
+  padding: var(--space-3) var(--space-5) calc(var(--space-5) + env(safe-area-inset-bottom));
+  display: flex; flex-direction: column; gap: var(--space-4);
+}
+.al-sheet__grab { width: 36px; height: 4px; border-radius: var(--radius-pill); background: var(--border-strong); align-self: center; margin-bottom: var(--space-1); }
+.al-sheet .al-config { width: 100%; border: none; box-shadow: none; padding: 0; }
+
+/* ── Production overlay (fixed, full-viewport) for the mobile sheet ──────────
+   The frozen demo docked the sheet inside an artboard; in production it is a
+   real fixed overlay with a scrim. */
+.al-overlay {
+  position: fixed; inset: 0; z-index: 200;
+  display: flex; align-items: flex-end; justify-content: stretch;
+}
+.al-overlay__scrim {
+  position: absolute; inset: 0;
+  background: color-mix(in oklab, var(--kn-ink) 32%, transparent);
+  animation: al-scrim-in var(--dur-base) var(--ease-out) both;
+}
+.al-overlay .al-sheet {
+  position: relative; z-index: 1; width: 100%;
+  animation: al-sheet-rise 260ms var(--ease-out) both;
+}
+@keyframes al-scrim-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes al-sheet-rise { from { transform: translateY(16px); opacity: 0.4; } to { transform: translateY(0); opacity: 1; } }
+
+/* ════════════════════════════════════════════════════════════════════════
+   W4 MOBILE BUTTON SYSTEM — bottom-sheet actions. Scoped to .al-sheet so the
+   desktop popover is untouched.
+   • Every actionable sheet button is exactly 44px (touch target).
+   • Two-button row: [ Secondary (outlined) ] [ Primary (filled) ].
+   • Error recovery («Ще раз») is a real secondary button, not a chip.
+   ════════════════════════════════════════════════════════════════════════ */
+.al-sheet .al-config__actions {
+  display: flex; align-items: stretch; gap: var(--space-3);
+}
+.al-sheet .al-config__actions .kn-btn {
+  min-height: 44px; height: 44px; font-size: var(--fs-sm);
+}
+/* left = secondary escape: content-sized, but never narrower than 120px */
+.al-sheet .al-config__actions > .kn-btn {
+  flex: 0 0 auto; width: auto; min-width: 120px;
+}
+/* right = primary commit: fills the remaining width */
+.al-sheet .al-config__actions .al-grow {
+  flex: 1 1 auto; display: flex; min-width: 120px;
+}
+.al-sheet .al-config__actions .al-grow .kn-btn { width: 100%; }
+/* the left escape always renders as an outlined secondary inside a sheet */
+.al-sheet .al-config__actions .kn-btn--ghost {
+  border-color: var(--border-strong); color: var(--text); box-shadow: none;
+}
+.al-sheet .al-config__actions .kn-btn--ghost:hover:not(:disabled) {
+  border-color: var(--accent); color: var(--accent); background: transparent;
+}
+/* error-recovery action follows the same secondary rules */
+.al-sheet .al-note { flex-wrap: wrap; }
+.al-sheet .al-note__action { margin-left: auto; }
+.al-sheet .al-note__action .kn-btn {
+  min-height: 44px; height: 44px; min-width: 120px; font-size: var(--fs-sm);
+}
+.al-sheet .al-opt { min-height: 56px; }
+
+/* ── Inline confirmation / error notes — subtle, non-promotional ──────────
+   Knyhovo avoids celebration patterns and never uses red. Success = calm
+   green check; error = muted, with a local recovery action. */
+.al-note {
+  display: flex; align-items: center; gap: var(--space-3);
+  border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4);
+  font-size: var(--fs-sm); color: var(--text-body); text-wrap: pretty;
+}
+.al-note__icon { flex: none; display: flex; }
+.al-note__body { min-width: 0; flex: 1; }
+.al-note__body b { color: var(--text); font-weight: var(--fw-semibold); }
+.al-note--ok { background: color-mix(in oklab, var(--brand-green) 8%, var(--surface-sunk)); border: 1px solid color-mix(in oklab, var(--brand-green) 24%, var(--border)); }
+.al-note--ok .al-note__icon { color: var(--brand-green); }
+.al-note--quiet { background: var(--surface-sunk); border: 1px solid var(--border); }
+.al-note--quiet .al-note__icon { color: var(--icon-muted); }
+.al-note--err { background: var(--surface-sunk); border: 1px solid var(--border-strong); }
+.al-note--err .al-note__icon { color: var(--text-muted); }
+.al-note__action { margin-left: auto; flex: none; }
+
+/* toast-style confirmation (mobile / floating) — same calm language.
+   Fixed above the safe-area; auto-dismissed by the component. */
+.al-toast {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-pill); box-shadow: var(--shadow-md);
+  padding: var(--space-2) var(--space-4); font-size: var(--fs-sm); color: var(--text-body);
+}
+.al-toast svg { flex: none; color: var(--brand-green); }
+.al-toast-wrap {
+  position: fixed; left: 0; right: 0; z-index: 210;
+  bottom: calc(var(--space-6) + env(safe-area-inset-bottom));
+  display: flex; justify-content: center; pointer-events: none;
+  animation: al-sheet-rise 260ms var(--ease-out) both;
+}
+.al-toast-wrap .al-toast { pointer-events: auto; }
+
+/* warm skeleton block (matches the frozen «warm surfaces only» rule) */
+.bd-sk { display: inline-block; background: var(--surface-accent); border-radius: var(--radius-xs); animation: al-sk-pulse 1.4s ease-in-out infinite; }
+@keyframes al-sk-pulse { 0%,100%{opacity:.7} 50%{opacity:.35} }
+
+@media (prefers-reduced-motion: reduce) {
+  .bd-sk { animation: none; }
+  .al-overlay__scrim,
+  .al-overlay .al-sheet,
+  .al-toast-wrap { animation: none; }
+}

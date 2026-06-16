@@ -30,6 +30,7 @@ const WISHLIST_RESPONSE: WishlistResponseDto = {
         ],
       },
       createdAt: '2026-06-10T10:00:00.000Z',
+      alert: null,
     },
   ],
 };

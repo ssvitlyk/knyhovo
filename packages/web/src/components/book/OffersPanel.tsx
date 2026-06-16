@@ -2,7 +2,7 @@ import { Badge } from '@/components/ds/Badge';
 import { WishlistToggle } from './WishlistToggle';
 import { formatMoney, providerDisplayName } from '@/lib/format';
 import type { Availability } from '@knyhovo/shared';
-import type { BookProviderDto, MoneyDto } from '@/lib/api/types';
+import type { AlertDto, BookProviderDto, MoneyDto } from '@/lib/api/types';
 
 export interface OffersPanelProps {
   readonly providers: readonly BookProviderDto[];
@@ -10,6 +10,8 @@ export interface OffersPanelProps {
   readonly offersCount: number;
   readonly bookId: string;
   readonly initialInWishlist: boolean;
+  readonly initialAlert: AlertDto | null;
+  readonly bookTitle: string;
 }
 
 const UKRAINIAN_MONTHS = [
@@ -56,6 +58,8 @@ export function OffersPanel({
   offersCount,
   bookId,
   initialInWishlist,
+  initialAlert,
+  bookTitle,
 }: OffersPanelProps): React.JSX.Element {
   if (providers.length === 0) {
     return (
@@ -68,7 +72,13 @@ export function OffersPanel({
             Наразі жодна книгарня не має цієї книги в наявності. Загляньте пізніше — ми оновлюємо ціни щодня.
           </p>
         </div>
-        <WishlistToggle bookId={bookId} initialInWishlist={initialInWishlist} />
+        <WishlistToggle
+          bookId={bookId}
+          initialInWishlist={initialInWishlist}
+          initialAlert={initialAlert}
+          currentPrice={null}
+          bookTitle={bookTitle}
+        />
       </aside>
     );
   }
@@ -103,7 +113,14 @@ export function OffersPanel({
         >
           Перейти до книгарні
         </a>
-        <WishlistToggle bookId={bookId} initialInWishlist={initialInWishlist} />
+        <WishlistToggle
+          bookId={bookId}
+          initialInWishlist={initialInWishlist}
+          initialAlert={initialAlert}
+          currentPrice={best.price}
+          bookTitle={bookTitle}
+          store={providerDisplayName(best.provider)}
+        />
       </div>
       <div>
         {rest.map((o) => {

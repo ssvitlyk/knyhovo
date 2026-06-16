@@ -1,4 +1,4 @@
-import type { WishlistResponseDto } from './types';
+import type { AlertDto, WishlistResponseDto } from './types';
 
 const REQUEST_TIMEOUT_MS = 8000;
 
@@ -121,6 +121,40 @@ export async function removeFromWishlist(bookId: string): Promise<void> {
       response.status,
     );
   }
+}
+
+/**
+ * Fetch alert context for a single book from the wishlist without a new endpoint.
+ * Reuses `GET /api/wishlist` server-side (W4b decision: no new endpoint per plan),
+ * finds the item matching `bookId`, and returns its `inWishlist` flag and `alert`.
+ * Degrades gracefully — returns `{ inWishlist: false, alert: null }` on 401,
+ * any non-2xx, or transport error (never throws).
+ *
+ * @param bookId - The canonical book id to find in the wishlist.
+ * @param cookie - The forwarded session cookie string from `next/headers`.
+ */
+export async function getBookAlertContext({
+  bookId,
+  cookie,
+}: {
+  bookId: string;
+  cookie: string;
+}): Promise<{ inWishlist: boolean; alert: AlertDto | null }> {
+  const FALLBACK = { inWishlist: false, alert: null };
+
+  let result: WishlistResponseDto | { unauthorized: true };
+  try {
+    result = await getWishlist({ cookie });
+  } catch {
+    return FALLBACK;
+  }
+
+  if ('unauthorized' in result) return FALLBACK;
+
+  const item = result.items.find((i) => i.book.id === bookId);
+  if (item == null) return FALLBACK;
+
+  return { inWishlist: true, alert: item.alert };
 }
 
 /**
