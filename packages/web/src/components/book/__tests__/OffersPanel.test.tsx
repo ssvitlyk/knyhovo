@@ -78,7 +78,9 @@ describe('OffersPanel', () => {
       />,
     );
 
-    expect(screen.getByText('Наявність уточнюється')).toBeInTheDocument();
+    // W6a: availability now appears both in the store line and as a «why» reason
+    // for an unknown best offer — assert presence tolerant of both occurrences.
+    expect(screen.getAllByText('Наявність уточнюється').length).toBeGreaterThanOrEqual(1);
   });
 
   it('with no offers shows the unavailable state and no CTAs', () => {

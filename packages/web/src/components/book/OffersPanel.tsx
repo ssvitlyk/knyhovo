@@ -1,6 +1,7 @@
 import { Badge } from '@/components/ds/Badge';
 import { WishlistToggle } from './WishlistToggle';
 import { formatMoney, providerDisplayName } from '@/lib/format';
+import { getBestOffer, getCheapestOffer, getOfferState, sortOffers } from '@/lib/offers';
 import type { Availability } from '@knyhovo/shared';
 import type { AlertDto, BookProviderDto, MoneyDto } from '@/lib/api/types';
 
@@ -48,6 +49,39 @@ function formatUpdatedNote(providers: readonly BookProviderDto[]): string {
 }
 
 /**
+ * Build the «why this offer» list for the best block. W6a-safe only — every
+ * reason is derived from `price` + `availability` (no delivery, reliability,
+ * per-offer freshness or discount data). An out-of-stock best (all offers OOS)
+ * never claims availability.
+ */
+function buildBestReasons(best: BookProviderDto, providers: readonly BookProviderDto[]): string[] {
+  const reasons: string[] = [];
+  const bestAvailable = best.availability !== 'out-of-stock';
+  const availableCount = providers.filter((p) => p.availability !== 'out-of-stock').length;
+
+  if (bestAvailable && availableCount > 1) {
+    reasons.push('Найдешевша серед наявних');
+  }
+  if (best.availability === 'in-stock') {
+    reasons.push('В наявності зараз');
+  } else if (best.availability === 'unknown') {
+    reasons.push('Наявність уточнюється');
+  }
+  if (bestAvailable) {
+    const next = sortOffers(providers).find(
+      (p) => p.availability !== 'out-of-stock' && p.price.amount > best.price.amount,
+    );
+    if (next) {
+      const diff = next.price.amount - best.price.amount;
+      reasons.push(
+        `На ${formatMoney({ amount: diff, currency: best.price.currency })} дешевше за наступну книгарню`,
+      );
+    }
+  }
+  return reasons;
+}
+
+/**
  * OffersPanel — sticky right-column card with the best price block and
  * per-provider comparison rows. When no offers are available shows the
  * "unavailable" mascot state instead.
@@ -83,10 +117,20 @@ export function OffersPanel({
     );
   }
 
-  const best = providers[0]!;
-  const rest = providers.slice(1);
+  // W6a — derive best offer, ordering and panel state fully client-side.
+  const best = getBestOffer(providers)!;
+  const cheapest = getCheapestOffer(providers)!;
+  const state = getOfferState(providers);
+  const rest = sortOffers(providers).filter((o) => o !== best);
   const bestLabel = availLabel(best.availability);
   const updatedNote = formatUpdatedNote(providers);
+
+  const bestBadge = state === 'cheapest-but-oos' ? 'Найкращий вибір' : 'Найкраща ціна';
+  const bestNote =
+    state === 'cheapest-but-oos'
+      ? `Найдешевша ціна — ${formatMoney(cheapest.price)} у ${providerDisplayName(cheapest.provider)}, але книги зараз немає в наявності.`
+      : null;
+  const reasons = buildBestReasons(best, providers);
 
   return (
     <aside className="bdc-panel">
@@ -94,7 +138,7 @@ export function OffersPanel({
         {`ЦІНИ У ${offersCount} КНИГАРНЯХ`}
       </p>
       <div className="bdc-best">
-        <Badge tone="green">Найкраща ціна</Badge>
+        <Badge tone="green">{bestBadge}</Badge>
         <div className="bdc-best__pricerow">
           <span className="bdc-best__price">{formatMoney(best.price)}</span>
         </div>
@@ -104,6 +148,42 @@ export function OffersPanel({
           {' · '}
           <span className={`bd-offer__avail--${bestLabel.cls}`}>{bestLabel.label}</span>
         </p>
+        {reasons.length > 0 ? (
+          <ul
+            className="bdc-best__reasons"
+            style={{
+              listStyle: 'none',
+              margin: '0 0 var(--space-4)',
+              padding: 0,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: 'var(--space-1)',
+            }}
+          >
+            {reasons.map((reason) => (
+              <li
+                key={reason}
+                style={{
+                  display: 'flex',
+                  gap: 'var(--space-2)',
+                  alignItems: 'baseline',
+                  fontSize: 'var(--fs-sm)',
+                  color: 'var(--text-body)',
+                }}
+              >
+                <span aria-hidden="true" style={{ color: 'var(--brand-green)', fontWeight: 'var(--fw-semibold)' }}>
+                  ✓
+                </span>
+                {reason}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {bestNote ? (
+          <p className="bd-hint" style={{ marginBottom: 'var(--space-4)' }}>
+            {bestNote}
+          </p>
+        ) : null}
         <a
           className="kn-btn kn-btn--primary"
           style={{ width: '100%' }}
@@ -125,9 +205,19 @@ export function OffersPanel({
       <div>
         {rest.map((o) => {
           const oLabel = availLabel(o.availability);
+          const isOut = o.availability === 'out-of-stock';
+          let rowBadge: React.JSX.Element | null = null;
+          if (state === 'cheapest-but-oos' && o === cheapest) {
+            rowBadge = <Badge tone="neutral">Найдешевша</Badge>;
+          } else if (state === 'same-price' && !isOut && o.price.amount === best.price.amount) {
+            rowBadge = <Badge tone="neutral">Така сама ціна</Badge>;
+          }
           return (
-            <div className="bdc-row" key={o.provider + o.url}>
-              <span className="bdc-row__store">{providerDisplayName(o.provider)}</span>
+            <div className={`bdc-row${isOut ? ' bdc-row--out' : ''}`} key={o.provider + o.url}>
+              <span className="bdc-row__store">
+                {providerDisplayName(o.provider)}
+                {rowBadge ? <span style={{ marginLeft: 'var(--space-2)' }}>{rowBadge}</span> : null}
+              </span>
               <span className={`bdc-row__avail bd-offer__avail--${oLabel.cls}`}>{oLabel.label}</span>
               <span className="bdc-row__price">{formatMoney(o.price)}</span>
               <a
