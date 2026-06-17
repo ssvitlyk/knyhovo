@@ -1,7 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { OffersPanel } from '../OffersPanel';
 import type { BookProviderDto } from '@/lib/api/types';
+
+// OffersPanel renders WishlistToggle, which uses next/navigation's useRouter
+// (via useAlertController). Mock it so the App Router invariant is satisfied.
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
 
 const YAKABOO_OFFER: BookProviderDto = {
   provider: 'yakaboo',
@@ -36,6 +40,8 @@ describe('OffersPanel', () => {
         offersCount={2}
         bookId="book-1"
         initialInWishlist={false}
+        initialAlert={null}
+        bookTitle="Тест"
       />,
     );
 
@@ -67,6 +73,8 @@ describe('OffersPanel', () => {
         offersCount={1}
         bookId="book-1"
         initialInWishlist={false}
+        initialAlert={null}
+        bookTitle="Тест"
       />,
     );
 
@@ -81,6 +89,8 @@ describe('OffersPanel', () => {
         offersCount={0}
         bookId="book-1"
         initialInWishlist={false}
+        initialAlert={null}
+        bookTitle="Тест"
       />,
     );
 

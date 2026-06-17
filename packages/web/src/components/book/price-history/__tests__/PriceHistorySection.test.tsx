@@ -118,8 +118,10 @@ describe('PriceHistorySection', () => {
     // Wait for filled state — look for stat labels specifically
     await waitFor(() => screen.getByText('Найнижча'));
     expect(screen.getByText('Найнижча')).toBeTruthy();
-    expect(screen.getByText('Типова ціна')).toBeTruthy();
+    expect(screen.getByText('Найвища')).toBeTruthy();
     expect(screen.getByText('Зміна')).toBeTruthy();
+    // Typical-price range is no longer a KPI — must not appear as a stat label
+    expect(screen.queryByText('Типова ціна')).toBeNull();
     // "Зараз" appears in both advisory text and stat label; check the label class
     expect(document.querySelector('.ph-stat__label')).toBeTruthy();
   });
@@ -135,6 +137,8 @@ describe('PriceHistorySection', () => {
     // Multiple "240 ₴" could appear (current + lowest both = 240), use getAllByText
     const priceEls = screen.getAllByText('240 ₴');
     expect(priceEls.length).toBeGreaterThan(0);
+    // Highest KPI: highest 32000 kopiyky → 320 ₴
+    expect(screen.getByText('320 ₴')).toBeTruthy();
   });
 
   it('switches period: clicking «30 днів» calls getPriceHistory with "30d"', async () => {

@@ -89,6 +89,13 @@
 }
 .v1-rows .v1-row:first-child { border-top: none; }
 .v1-row--out { opacity: 0.6; }
+/* Triggered / targetMet row — green intensity level 2 (green border + tinted bg). */
+.v1-row--hot {
+  background: color-mix(in oklab, var(--brand-green) 5%, var(--surface));
+  border-radius: var(--radius-sm);
+  outline: 1px solid color-mix(in oklab, var(--brand-green) 45%, var(--border));
+  outline-offset: -1px;
+}
 
 .v1-cover {
   width: 48px; height: 70px; flex: none;
@@ -143,6 +150,16 @@ a.v1-row-title:hover { color: var(--accent); }
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-md); overflow: hidden;
 }
+/* Triggered = good-price moment: green tinted border + background (mirrors the
+   desktop hy-row--moment treatment). Green is the third cue after glyph + chip. */
+.hy-mcard--moment {
+  border-color: color-mix(in oklab, var(--brand-green) 45%, var(--border));
+  background: color-mix(in oklab, var(--brand-green) 6%, var(--surface));
+}
+.hy-mcard--moment .hy-mcard-cta,
+.hy-mcard--moment .hy-mcard-actions {
+  border-top-color: color-mix(in oklab, var(--brand-green) 22%, var(--border));
+}
 .hy-mcard-top {
   display: grid; grid-template-columns: 36px minmax(0,1fr) auto auto;
   align-items: center; gap: var(--space-3);
@@ -174,6 +191,8 @@ a.v1-row-title:hover { color: var(--accent); }
   font-size: 1rem; color: var(--accent);
 }
 .hy-mcard-price--faint { color: var(--text-muted); font-weight: var(--fw-regular); }
+/* Green price in the collapsed card header for triggered items. */
+.hy-mcard-price--green { color: var(--brand-green); }
 .hy-mcard-store { font-size: var(--fs-xs); color: var(--text-muted); }
 
 /* Chevron rotate on expand */
@@ -219,7 +238,8 @@ a.v1-row-title:hover { color: var(--accent); }
 [data-theme="dark"] .wl-empty__mascot--dark { display: block; }
 
 /* ---------- WishlistToggle (book details integration) ---------- */
-.wl-toggle { display: flex; flex-direction: column; gap: var(--space-2); margin-top: var(--space-4); }
+/* The .bd-wish row owns the top separator + spacing from the best-price CTA. */
+.wl-toggle { display: flex; flex-direction: column; gap: var(--space-2); }
 .wl-toggle__note { font-size: var(--fs-xs); color: var(--text-muted); }
 
 /* ---------- Skeleton rows (loading state) ---------- */

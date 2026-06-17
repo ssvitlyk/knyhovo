@@ -78,6 +78,28 @@ export interface AuthUserDto {
 }
 
 /**
+ * Frontend mirror of the W4a price-alert contract
+ * (`GET /api/wishlist` alert field, `PUT/PATCH/DELETE /api/wishlist/:bookId/alert`).
+ * The DTOs are not exported from `@knyhovo/shared`; the shape is mirrored here.
+ */
+
+/** Server-derived effective status of a price alert, returned at read time. */
+export type AlertStatus = 'active' | 'paused' | 'triggered' | 'unavailable';
+
+/** The intent the user selected when configuring the alert. */
+export type AlertIntent = 'any-drop' | 'below-current' | 'favourable-price' | 'custom-price';
+
+/** Price alert configuration nested in each {@link WishlistItemDto}. */
+export interface AlertDto {
+  /** Server-derived effective status at read time. */
+  readonly status: AlertStatus;
+  readonly intent: AlertIntent;
+  readonly targetPrice: MoneyDto;
+  /** ISO 8601 timestamp when the alert was paused, or null when not paused. */
+  readonly pausedAt: string | null;
+}
+
+/**
  * Frontend mirror of the S9 wishlist contract
  * (packages/api/src/wishlist/dto.ts). The DTOs are not exported from
  * `@knyhovo/shared`, and the architecture forbids web → api imports, so the
@@ -109,6 +131,8 @@ export interface WishlistBookDto {
 export interface WishlistItemDto {
   readonly book: WishlistBookDto;
   readonly createdAt: string;
+  /** Price alert config for this item; null when no alert is set (W4a). */
+  readonly alert: AlertDto | null;
 }
 
 export interface WishlistResponseDto {

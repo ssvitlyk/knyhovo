@@ -1,7 +1,11 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { BookDetails } from '../BookDetails';
 import type { BookDetailsDto } from '@/lib/api/types';
+
+// BookDetails renders WishlistToggle, which uses next/navigation's useRouter
+// (via useAlertController). Mock it so the App Router invariant is satisfied.
+vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
 
 const BOOK_NO_DESC: BookDetailsDto = {
   id: 'abc',
@@ -30,20 +34,20 @@ const BOOK_WITH_DESC: BookDetailsDto = {
 
 describe('BookDetails', () => {
   it('renders the book title as a heading and the author', () => {
-    render(<BookDetails book={BOOK_NO_DESC} initialInWishlist={false} />);
+    render(<BookDetails book={BOOK_NO_DESC} initialInWishlist={false} initialAlert={null} />);
 
     expect(screen.getByRole('heading', { name: 'Кобзар' })).toBeInTheDocument();
     expect(screen.getByText('Тарас Шевченко')).toBeInTheDocument();
   });
 
   it('renders the bd-hint copy when description is null', () => {
-    render(<BookDetails book={BOOK_NO_DESC} initialInWishlist={false} />);
+    render(<BookDetails book={BOOK_NO_DESC} initialInWishlist={false} initialAlert={null} />);
 
     expect(screen.getByText(/Опис ще не додано/)).toBeInTheDocument();
   });
 
   it('renders the description text and no hint when description is present', () => {
-    render(<BookDetails book={BOOK_WITH_DESC} initialInWishlist={false} />);
+    render(<BookDetails book={BOOK_WITH_DESC} initialInWishlist={false} initialAlert={null} />);
 
     expect(screen.getByText('Збірка поетичних творів Тараса Шевченка.')).toBeInTheDocument();
     expect(screen.queryByText(/Опис ще не додано/)).not.toBeInTheDocument();

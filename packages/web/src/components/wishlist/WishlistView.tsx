@@ -1,6 +1,7 @@
 import { WishlistEmpty } from './WishlistEmpty';
 import { WishlistRow } from './WishlistRow';
 import { WishlistCard } from './WishlistCard';
+import { alertUiState } from '@/lib/alerts';
 import type { WishlistItemDto } from '@/lib/api/types';
 
 export interface WishlistViewProps {
@@ -15,11 +16,15 @@ export interface WishlistViewProps {
  * toggles visibility at the breakpoint.
  *
  * Sections:
- *   1. «Книги зі знижками» — always a quiet banner (no discount data in S9).
- *   2. «Інші бажанки» — all items.
+ *   1. «Книги зі знижками» — triggered items (alert status=triggered) promoted here;
+ *      falls back to the quiet banner when none are triggered.
+ *   2. «Інші бажанки» — all remaining (non-triggered) items.
  */
 export function WishlistView({ items }: WishlistViewProps): React.JSX.Element {
   if (items.length === 0) return <WishlistEmpty />;
+
+  const triggered = items.filter((i) => alertUiState(i.alert) === 'triggered');
+  const rest = items.filter((i) => alertUiState(i.alert) !== 'triggered');
 
   return (
     <>
@@ -40,34 +45,53 @@ export function WishlistView({ items }: WishlistViewProps): React.JSX.Element {
       </div>
 
       <div className="v1-single">
-        {/* Section 1 — Книги зі знижками (quiet state — no discount data yet) */}
+        {/* Section 1 — Книги зі знижками */}
         <section className="hy-front" aria-label="Книги зі знижками">
           <div className="hy-group-head">
             <h2 className="hy-group-title">Книги зі знижками</h2>
-            <span className="hy-group-count">0</span>
+            <span className="hy-group-count">{triggered.length}</span>
           </div>
-          <p className="hy-front-empty">
-            Knyhovo перевіряє ціни щодня о 08:00, а Книговик підкаже, коли настане правильний момент купувати.
-          </p>
+
+          {triggered.length > 0 ? (
+            <>
+              {/* Desktop rows (hidden on mobile via CSS) */}
+              <div className="v1-rows wl-show-desktop">
+                {triggered.map((item) => (
+                  <WishlistRow key={item.book.id} item={item} />
+                ))}
+              </div>
+
+              {/* Mobile cards (hidden on desktop via CSS) */}
+              <div className="hy-mcards wl-show-mobile">
+                {triggered.map((item) => (
+                  <WishlistCard key={item.book.id} item={item} />
+                ))}
+              </div>
+            </>
+          ) : (
+            <p className="hy-front-empty">
+              Knyhovo перевіряє ціни щодня о 08:00, а Книговик підкаже, коли настане правильний момент купувати.
+            </p>
+          )}
         </section>
 
         {/* Section 2 — Інші бажанки */}
         <section className="hy-group" aria-label="Інші бажанки">
           <div className="hy-group-head">
             <h2 className="hy-group-title">Інші бажанки</h2>
-            <span className="hy-group-count">{items.length}</span>
+            <span className="hy-group-count">{rest.length}</span>
           </div>
 
           {/* Desktop rows (hidden on mobile via CSS) */}
           <div className="v1-rows wl-show-desktop">
-            {items.map((item) => (
+            {rest.map((item) => (
               <WishlistRow key={item.book.id} item={item} />
             ))}
           </div>
 
           {/* Mobile cards (hidden on desktop via CSS) */}
           <div className="hy-mcards wl-show-mobile">
-            {items.map((item) => (
+            {rest.map((item) => (
               <WishlistCard key={item.book.id} item={item} />
             ))}
           </div>

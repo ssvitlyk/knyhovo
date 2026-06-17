@@ -211,6 +211,8 @@ export interface PriceHistoryViewModel {
   readonly usualHigh: number;
   /** Historical lowest price (₴ integer). */
   readonly low: number;
+  /** Highest observed price for the selected period (₴ integer). */
+  readonly high: number;
   /** Current price (₴ integer). */
   readonly current: number;
   /** Change in percent (e.g. -25). */
@@ -253,6 +255,7 @@ export function toViewModel(dto: BookPriceHistoryDto): PriceHistoryViewModel | n
     usualLow: kopToUah(dto.typicalRange.min),
     usualHigh: kopToUah(dto.typicalRange.max),
     low: dto.lowest != null ? kopToUah(dto.lowest.amount) : kopToUah(dto.current.amount),
+    high: dto.highest != null ? kopToUah(dto.highest.amount) : kopToUah(dto.current.amount),
     current: kopToUah(dto.current.amount),
     change: dto.change?.percent ?? 0,
     changeAmountKop: dto.change?.amount ?? 0,

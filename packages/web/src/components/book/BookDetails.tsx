@@ -1,10 +1,11 @@
-import type { BookDetailsDto } from '@/lib/api/types';
+import type { AlertDto, BookDetailsDto } from '@/lib/api/types';
 import { BookMeta } from './BookMeta';
 import { OffersPanel } from './OffersPanel';
 
 export interface BookDetailsProps {
   readonly book: BookDetailsDto;
   readonly initialInWishlist: boolean;
+  readonly initialAlert: AlertDto | null;
 }
 
 /**
@@ -12,7 +13,7 @@ export interface BookDetailsProps {
  * Left column: cover, title/author, description (or hint), metadata.
  * Right column: offers panel with best price, per-provider rows, and wishlist toggle.
  */
-export function BookDetails({ book, initialInWishlist }: BookDetailsProps): React.JSX.Element {
+export function BookDetails({ book, initialInWishlist, initialAlert }: BookDetailsProps): React.JSX.Element {
   return (
     <div className="bdc-grid">
       <div className="bdc-left">
@@ -49,6 +50,8 @@ export function BookDetails({ book, initialInWishlist }: BookDetailsProps): Reac
         offersCount={book.offersCount}
         bookId={book.id}
         initialInWishlist={initialInWishlist}
+        initialAlert={initialAlert}
+        bookTitle={book.title}
       />
     </div>
   );
