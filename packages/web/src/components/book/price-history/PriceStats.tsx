@@ -1,5 +1,5 @@
 import { TrendingDown, TrendingUp, Minus } from 'lucide-react';
-import { formatUah, formatRange, formatPercent } from '@/lib/priceHistory';
+import { formatUah, formatPercent } from '@/lib/priceHistory';
 import type { PriceHistoryViewModel } from '@/lib/priceHistory';
 
 export interface PriceStatsProps {
@@ -7,8 +7,9 @@ export interface PriceStatsProps {
 }
 
 /**
- * Stat strip — 4 stats in frozen order: Зараз · Найнижча · Типова ціна · Зміна.
- * «Highest» is intentionally excluded per the v1.2.1 freeze.
+ * Stat strip — 4 stats in frozen order: Зараз · Найнижча · Найвища · Зміна.
+ * The KPI row holds only point values; the typical-price range stays in the
+ * advisory sentence above the chart and the shaded chart band (see buildAdvisory).
  */
 export function PriceStats({ vm }: PriceStatsProps): React.JSX.Element {
   const good = vm.current <= vm.usualLow;
@@ -42,9 +43,9 @@ export function PriceStats({ vm }: PriceStatsProps): React.JSX.Element {
         </span>
       </div>
       <div className="ph-stat">
-        <span className="ph-stat__label">Типова ціна</span>
-        <span className="ph-stat__val ph-stat__val--typical">
-          {formatRange(vm.usualLow * 100, vm.usualHigh * 100)}
+        <span className="ph-stat__label">Найвища</span>
+        <span className="ph-stat__val ph-stat__val--high">
+          {formatUah(vm.high * 100)}
         </span>
       </div>
       <div className="ph-stat">

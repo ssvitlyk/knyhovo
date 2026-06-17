@@ -166,6 +166,7 @@ describe('toViewModel', () => {
     expect(vm!.current).toBe(240);      // 24000 → 240
     expect(vm!.usualLow).toBe(285);     // 28500 → 285
     expect(vm!.usualHigh).toBe(318);    // 31800 → 318
+    expect(vm!.high).toBe(320);         // highest 32000 → 320
   });
 
   it('keeps out-of-stock point amount (never 0)', () => {
@@ -200,11 +201,17 @@ describe('toViewModel', () => {
     expect(oosPoint!.p).not.toBe(0);
   });
 
-  it('does not include high in the view model', () => {
+  it('maps highest observed price to high (32000 → 320)', () => {
     const vm = toViewModel(BASE_DTO);
     expect(vm).not.toBeNull();
-    // TypeScript will prevent `vm.high` but we check at runtime too
-    expect('high' in (vm as object)).toBe(false);
+    expect(vm!.high).toBe(320);
+  });
+
+  it('falls back high to current when highest is null', () => {
+    const dto: BookPriceHistoryDto = { ...BASE_DTO, highest: null };
+    const vm = toViewModel(dto);
+    expect(vm).not.toBeNull();
+    expect(vm!.high).toBe(240); // current 24000 → 240
   });
 
   it('maps change percent and kopiyky correctly', () => {
@@ -230,6 +237,7 @@ describe('buildAdvisory', () => {
     usualLow,
     usualHigh,
     low,
+    high: usualHigh,
     current,
     change,
     changeAmountKop: 0,

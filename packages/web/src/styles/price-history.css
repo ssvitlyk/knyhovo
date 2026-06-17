@@ -102,6 +102,7 @@
 .ph-stat__val--now-good { color: var(--brand-green); }
 .ph-stat__val--low { color: var(--brand-green); }
 .ph-stat__val--typical { color: var(--text-body); }
+.ph-stat__val--high { color: var(--text-body); }
 .ph-stat__change { display: inline-flex; align-items: center; gap: 5px; }
 .ph-stat__change--down { color: var(--brand-green); }     /* cheaper = good = green */
 .ph-stat__change--up { color: var(--text-muted); }        /* v1.2.1: neutral/muted — blue retired */
