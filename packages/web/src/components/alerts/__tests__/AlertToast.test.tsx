@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { AlertToast } from '../AlertToast';
 
 beforeEach(() => {
@@ -72,6 +72,29 @@ describe('AlertToast', () => {
     await act(async () => {
       vi.advanceTimersByTime(1);
     });
+    expect(onDismiss).toHaveBeenCalledOnce();
+  });
+
+  it('renders a manual dismiss button with an accessible name', async () => {
+    const onDismiss = vi.fn();
+    render(<AlertToast onDismiss={onDismiss}>Тест</AlertToast>);
+
+    await act(async () => {
+      vi.advanceTimersByTime(0);
+    });
+
+    expect(screen.getByRole('button', { name: 'Сховати сповіщення' })).toBeTruthy();
+  });
+
+  it('clicking the dismiss button calls onDismiss before auto-dismiss', async () => {
+    const onDismiss = vi.fn();
+    render(<AlertToast onDismiss={onDismiss}>Тест</AlertToast>);
+
+    await act(async () => {
+      vi.advanceTimersByTime(0);
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Сховати сповіщення' }));
     expect(onDismiss).toHaveBeenCalledOnce();
   });
 

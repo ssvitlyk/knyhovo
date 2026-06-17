@@ -2,13 +2,18 @@
 
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { Clock, BellOff, Info, Pencil } from 'lucide-react';
+import { Clock, BellOff, Info, Pencil, X } from 'lucide-react';
 import { Button } from '@/components/ds/Button';
 import { ALERT_INTENTS, resolveTargetAmount } from '@/lib/alerts';
 import type { AlertIntent, MoneyDto } from '@/lib/api/types';
 import { formatMoney } from '@/lib/format';
 
 export interface AlertConfigProps {
+  /**
+   * Id applied to the config title element, so the surrounding AlertSurface
+   * dialog can reference it via `aria-labelledby` for an accessible name.
+   */
+  titleId?: string;
   /** The book title shown in the sub-heading. */
   bookTitle: string;
   /** The store name shown in the sub-heading (e.g. 'Yakaboo'). */
@@ -58,6 +63,7 @@ export interface AlertConfigProps {
  * Placed inside AlertSurface (popover or bottom sheet).
  */
 export function AlertConfig({
+  titleId,
   bookTitle,
   store,
   currentPrice,
@@ -131,7 +137,7 @@ export function AlertConfig({
     <div className="al-config">
       {/* Head */}
       <div className="al-config__head">
-        <span className="al-config__title">{title}</span>
+        <span className="al-config__title" id={titleId}>{title}</span>
         <span className="al-config__sub">{subText}</span>
       </div>
 
@@ -234,6 +240,18 @@ export function AlertConfig({
                   placeholder="230"
                 />
                 <span className="al-custom__unit">₴</span>
+                <button
+                  type="button"
+                  className="al-link al-link--sm al-custom__cancel"
+                  aria-label="Скасувати власну ціну"
+                  onClick={() => {
+                    setCustomOpen(false);
+                    setCustomAmountStr('');
+                  }}
+                >
+                  <X size={13} aria-hidden />
+                  Скасувати
+                </button>
               </div>
               <span className="al-opt__desc">
                 Книговик напише, коли ціна стане нижчою за вашу.

@@ -1,5 +1,7 @@
 'use client';
 
+import { useId } from 'react';
+import { Bell, Pencil } from 'lucide-react';
 import { useAlertController } from '@/components/alerts/useAlertController';
 import { AlertBell } from '@/components/alerts/AlertBell';
 import { AlertConfig } from '@/components/alerts/AlertConfig';
@@ -19,6 +21,12 @@ export interface WishlistAlertControlProps {
   readonly bookTitle: string;
   /** Display name of the best-price store (e.g. 'Yakaboo'). */
   readonly store?: string;
+  /**
+   * When true, renders a visible labelled action beside the bell — required on
+   * mobile (WishlistCard) so the alert entry point is discoverable without a
+   * hover/aria-only affordance. Desktop (WishlistRow) leaves this off.
+   */
+  readonly showLabel?: boolean;
 }
 
 /**
@@ -39,6 +47,7 @@ export function WishlistAlertControl({
   currentPrice,
   bookTitle,
   store,
+  showLabel = false,
 }: WishlistAlertControlProps): React.JSX.Element {
   const ctrl = useAlertController({
     bookId,
@@ -47,15 +56,34 @@ export function WishlistAlertControl({
     typicalRangeMin: null,
   });
 
-  return (
-    <span className="al-anchor">
-      <AlertBell
-        state={ctrl.uiState}
-        onClick={ctrl.uiState === 'paused' ? () => void ctrl.resume() : ctrl.openConfig}
-      />
+  const titleId = useId();
 
-      <AlertSurface open={ctrl.open} onClose={ctrl.closeConfig}>
+  // The bell and the labelled action share one handler: paused resumes directly,
+  // every other state opens the config surface.
+  const action = ctrl.uiState === 'paused' ? () => void ctrl.resume() : ctrl.openConfig;
+  const labelText = ctrl.uiState === 'saved' ? 'Сповістити про ціну' : 'Змінити сповіщення';
+
+  return (
+    <span className={`al-anchor${showLabel ? ' al-anchor--labelled' : ''}`}>
+      {showLabel &&
+        (ctrl.uiState === 'unavailable' ? (
+          <span className="al-target">Сповіщення недоступні</span>
+        ) : (
+          <button type="button" className="al-link al-link--sm" onClick={action}>
+            {ctrl.uiState === 'saved' ? (
+              <Bell size={13} aria-hidden />
+            ) : (
+              <Pencil size={13} aria-hidden />
+            )}
+            {labelText}
+          </button>
+        ))}
+
+      <AlertBell state={ctrl.uiState} onClick={action} />
+
+      <AlertSurface open={ctrl.open} onClose={ctrl.closeConfig} titleId={titleId}>
         <AlertConfig
+          titleId={titleId}
           bookTitle={bookTitle}
           store={store}
           currentPrice={currentPrice}

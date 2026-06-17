@@ -124,6 +124,34 @@ describe('AlertSurface', () => {
     expect(onClose).toHaveBeenCalledOnce();
   });
 
+  it('desktop → titleId wires aria-labelledby on the dialog', async () => {
+    window.matchMedia = makeMatchMedia(false);
+    render(
+      <AlertSurface open onClose={vi.fn()} titleId="cfg-title-1">
+        <span id="cfg-title-1">Коли повідомити про ціну?</span>
+      </AlertSurface>,
+    );
+
+    await waitFor(() => {
+      const dialog = document.querySelector('.al-pop[role="dialog"]');
+      expect(dialog?.getAttribute('aria-labelledby')).toBe('cfg-title-1');
+    });
+  });
+
+  it('mobile → titleId wires aria-labelledby on the sheet dialog', async () => {
+    window.matchMedia = makeMatchMedia(true);
+    render(
+      <AlertSurface open onClose={vi.fn()} titleId="cfg-title-2">
+        <span id="cfg-title-2">Коли повідомити про ціну?</span>
+      </AlertSurface>,
+    );
+
+    await waitFor(() => {
+      const dialog = document.querySelector('.al-sheet[role="dialog"]');
+      expect(dialog?.getAttribute('aria-labelledby')).toBe('cfg-title-2');
+    });
+  });
+
   it('children are rendered inside the dialog', async () => {
     window.matchMedia = makeMatchMedia(false);
     render(

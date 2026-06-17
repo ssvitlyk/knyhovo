@@ -105,6 +105,11 @@ export function resolveTargetAmount(
   },
 ): number | null {
   switch (intent) {
+    // TODO(trigger-engine): W4a derives `triggered` from `lowestPrice <= targetPrice`.
+    // Because `any-drop` writes the *current* best price as the target, the alert
+    // may read back as `triggered` on the next price read even without a real drop.
+    // Refining any-drop semantics (e.g. "below the price at creation time") belongs
+    // to future trigger-engine work — not this UI fix. API/target resolution unchanged.
     case 'any-drop':
       return ctx.currentAmount;
     case 'below-current':

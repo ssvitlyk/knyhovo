@@ -136,6 +136,23 @@ describe('AlertConfig', () => {
     expect(submitBtn).toBeDisabled();
   });
 
+  it('titleId → applies the id to the config title element', () => {
+    render(<AlertConfig {...DEFAULT_PROPS} titleId="cfg-title" />);
+    const title = screen.getByText('Коли повідомити про ціну?');
+    expect(title.getAttribute('id')).toBe('cfg-title');
+  });
+
+  it('custom-price disclosure → shows «× Скасувати» that closes the input', () => {
+    render(<AlertConfig {...DEFAULT_PROPS} />);
+    fireEvent.click(screen.getByText('Вказати свою ціну'));
+    expect(screen.getByRole('textbox', { name: 'Власна ціна' })).toBeTruthy();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Скасувати власну ціну' }));
+    // Disclosure collapses back to the «Вказати свою ціну» link.
+    expect(screen.queryByRole('textbox', { name: 'Власна ціна' })).toBeNull();
+    expect(screen.getByText('Вказати свою ціну')).toBeTruthy();
+  });
+
   it('errorNote → renders the provided node', () => {
     render(
       <AlertConfig

@@ -1,4 +1,4 @@
-import { BellDot, BellRing, BellOff } from 'lucide-react';
+import { BellDot, CheckCircle2, BellOff } from 'lucide-react';
 import type { AlertUiState } from '@/lib/alerts';
 
 /** AlertUiState variants that have a visible chip; 'saved' has no chip. */
@@ -40,7 +40,9 @@ export function AlertChip({ state }: AlertChipProps): React.JSX.Element {
       icon = <BellDot size={13} aria-hidden />;
       break;
     case 'triggered':
-      icon = <BellRing size={13} aria-hidden />;
+      // Frozen chip glyph for the triggered state is a check-circle (target met),
+      // distinct from the AlertBell's bell-ring control glyph.
+      icon = <CheckCircle2 size={13} aria-hidden />;
       break;
     case 'paused':
     case 'unavailable':

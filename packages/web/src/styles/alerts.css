@@ -95,6 +95,7 @@
 .al-custom__row { display: flex; align-items: center; gap: var(--space-2); }
 .al-custom__row .kn-input { max-width: 140px; }
 .al-custom__unit { font-family: var(--font-display); font-weight: var(--fw-semibold); color: var(--text-muted); }
+.al-custom__cancel { margin-left: auto; }
 
 .al-config__foot { display: flex; align-items: flex-start; gap: var(--space-2); font-size: var(--fs-xs); color: var(--text-muted); text-wrap: pretty; }
 .al-config__foot svg { flex: none; color: var(--icon-muted); margin-top: 1px; }
@@ -125,6 +126,8 @@
 
 /* ── Desktop popover anchor — keeps the config positioned under its trigger ── */
 .al-anchor { position: relative; display: inline-flex; }
+/* Labelled variant (mobile WishlistCard): action text + bell share a row. */
+.al-anchor--labelled { align-items: center; gap: var(--space-3); }
 .al-pop { position: absolute; top: calc(100% + var(--space-2)); right: 0; z-index: 30; }
 .al-pop--left { right: auto; left: 0; }
 
@@ -223,6 +226,15 @@
   padding: var(--space-2) var(--space-4); font-size: var(--fs-sm); color: var(--text-body);
 }
 .al-toast svg { flex: none; color: var(--brand-green); }
+/* Quiet manual-dismiss affordance — calm, non-aggressive (no red, no fill). */
+.al-toast__dismiss {
+  flex: none; display: inline-flex; align-items: center; justify-content: center;
+  margin-left: var(--space-1); padding: 2px; border: none; background: none;
+  border-radius: var(--radius-pill); cursor: pointer;
+  color: var(--icon-muted); transition: color var(--dur-fast) var(--ease-out);
+}
+.al-toast__dismiss:hover { color: var(--text-body); }
+.al-toast__dismiss svg { color: inherit; }
 .al-toast-wrap {
   position: fixed; left: 0; right: 0; z-index: 210;
   bottom: calc(var(--space-6) + env(safe-area-inset-bottom));

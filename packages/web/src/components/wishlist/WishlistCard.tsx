@@ -44,7 +44,11 @@ export function WishlistCard({ item }: WishlistCardProps): React.JSX.Element {
     : null;
 
   return (
-    <div className={`hy-mcard${isOutOfStock ? ' v1-row--out' : ''}`}>
+    <div
+      className={`hy-mcard${isTriggered ? ' hy-mcard--moment' : ''}${
+        isOutOfStock ? ' v1-row--out' : ''
+      }`}
+    >
       {/* Collapsed header — always visible */}
       <button
         type="button"
@@ -85,28 +89,22 @@ export function WishlistCard({ item }: WishlistCardProps): React.JSX.Element {
       {/* Expanded body */}
       {open && (
         <div className="hy-mcard-body">
-          {/* Alert detail section — chip + target + manage bell */}
+          {/* Alert detail section — status chip + target line when an alert exists */}
           {hasAlert && item.alert !== null && (
-            <div className="hy-mcard-meta">
-              <AlertChip state={uiState as AlertChipState} />
-              <WishlistAlertControl
-                bookId={book.id}
-                alert={item.alert}
-                currentPrice={book.lowestPrice}
-                bookTitle={book.title}
-                store={bestProvider ? providerDisplayName(bestProvider.provider) : undefined}
-              />
-            </div>
-          )}
-          {hasAlert && item.alert !== null && (
-            <div style={{ paddingBottom: 'var(--space-1)' }}>
-              <AlertTarget
-                state={uiState}
-                intent={item.alert.intent}
-                targetPrice={item.alert.targetPrice}
-                currentPrice={book.lowestPrice}
-              />
-            </div>
+            <>
+              <div className="hy-mcard-meta">
+                <span>Сповіщення</span>
+                <AlertChip state={uiState as AlertChipState} />
+              </div>
+              <div style={{ paddingBottom: 'var(--space-1)' }}>
+                <AlertTarget
+                  state={uiState}
+                  intent={item.alert.intent}
+                  targetPrice={item.alert.targetPrice}
+                  currentPrice={book.lowestPrice}
+                />
+              </div>
+            </>
           )}
 
           {bestProvider && (
@@ -147,7 +145,16 @@ export function WishlistCard({ item }: WishlistCardProps): React.JSX.Element {
             )}
           </div>
 
-          <div className="hy-mcard-actions">
+          {/* Alert entry (labelled) + remove — mobile users create/modify here */}
+          <div className="hy-mcard-actions" style={{ justifyContent: 'space-between' }}>
+            <WishlistAlertControl
+              bookId={book.id}
+              alert={item.alert}
+              currentPrice={book.lowestPrice}
+              bookTitle={book.title}
+              store={bestProvider ? providerDisplayName(bestProvider.provider) : undefined}
+              showLabel
+            />
             <RemoveButton bookId={book.id} />
           </div>
         </div>

@@ -175,6 +175,63 @@ describe('WishlistAlertControl', () => {
     });
   });
 
+  it('showLabel + saved → renders a labelled «Сповістити про ціну» action', () => {
+    render(
+      <WishlistAlertControl
+        bookId="book-1"
+        alert={null}
+        currentPrice={{ amount: 24000, currency: 'UAH' }}
+        bookTitle="Кобзар"
+        showLabel
+      />,
+    );
+    // The visible label text (the bell exposes the same string only via aria-label).
+    expect(screen.getByText('Сповістити про ціну')).toBeTruthy();
+  });
+
+  it('showLabel + watch → renders a labelled «Змінити сповіщення» action', () => {
+    const watchAlert: AlertDto = {
+      status: 'active',
+      intent: 'below-current',
+      targetPrice: { amount: 24000, currency: 'UAH' },
+      pausedAt: null,
+    };
+    render(
+      <WishlistAlertControl
+        bookId="book-1"
+        alert={watchAlert}
+        currentPrice={{ amount: 24000, currency: 'UAH' }}
+        bookTitle="Кобзар"
+        showLabel
+      />,
+    );
+    expect(screen.getByText('Змінити сповіщення')).toBeTruthy();
+  });
+
+  it('showLabel + clicking the label opens an AlertConfig dialog with an accessible name', async () => {
+    render(
+      <WishlistAlertControl
+        bookId="book-1"
+        alert={null}
+        currentPrice={{ amount: 24000, currency: 'UAH' }}
+        bookTitle="Кобзар"
+        showLabel
+      />,
+    );
+
+    fireEvent.click(screen.getByText('Сповістити про ціну'));
+    await act(async () => { vi.advanceTimersByTime(0); });
+
+    await waitFor(() => {
+      const dialog = document.querySelector('[role="dialog"]');
+      expect(dialog).toBeTruthy();
+      const labelledBy = dialog?.getAttribute('aria-labelledby');
+      expect(labelledBy).toBeTruthy();
+      // The referenced element is the config title — gives the dialog its name.
+      expect(document.getElementById(labelledBy!)?.textContent).toBe('Коли повідомити про ціну?');
+    });
+  });
+
   it('watch → clicking bell opens AlertConfig in edit mode', async () => {
     const watchAlert: AlertDto = {
       status: 'active',

@@ -1,8 +1,9 @@
 'use client';
 
-import { useState, useRef } from 'react';
-import { Bookmark, BookmarkCheck, Bell, Pencil } from 'lucide-react';
+import { useId, useState, useRef } from 'react';
+import { Bookmark, BookmarkCheck, Bell, BellDot, Pencil } from 'lucide-react';
 import { Button } from '@/components/ds/Button';
+import { Badge } from '@/components/ds/Badge';
 import { addToWishlist, removeFromWishlist, WishlistError } from '@/lib/api/wishlist';
 import { getPriceHistory } from '@/lib/api/priceHistory';
 import { useAlertController } from '@/components/alerts/useAlertController';
@@ -42,6 +43,7 @@ export function WishlistToggle({
   const [saved, setSaved] = useState(initialInWishlist);
   const [pending, setPending] = useState(false);
   const [authNote, setAuthNote] = useState(false);
+  const titleId = useId();
 
   // typicalRangeMin for the favourable-price intent — lazily fetched on first open.
   const [typicalRangeMin, setTypicalRangeMin] = useState<number | null>(null);
@@ -95,15 +97,29 @@ export function WishlistToggle({
 
   return (
     <div className="wl-toggle">
-      <Button
-        variant="secondary"
-        disabled={pending}
-        iconLeft={saved ? <BookmarkCheck size={16} aria-hidden /> : <Bookmark size={16} aria-hidden />}
-        onClick={() => void handleToggle()}
-        style={{ width: '100%' }}
-      >
-        {saved ? 'У вішлисті' : 'До вішлиста'}
-      </Button>
+      {/* Frozen .bd-wish reserved slot: toggle button + alert state badge in a
+          row, separated from the best-price CTA by a top border. */}
+      <div className="bd-wish">
+        <Button
+          variant="secondary"
+          disabled={pending}
+          iconLeft={saved ? <BookmarkCheck size={16} aria-hidden /> : <Bookmark size={16} aria-hidden />}
+          onClick={() => void handleToggle()}
+        >
+          {saved ? 'У вішлисті' : 'До вішлиста'}
+        </Button>
+
+        {/* Watch uses the DS accent Badge (frozen v1.1 «Стежимо за ціною» slot);
+            triggered/paused/unavailable keep the richer AlertChip. */}
+        {saved && ctrl.uiState === 'watch' && (
+          <Badge tone="accent">
+            <BellDot size={11} aria-hidden /> Стежимо за ціною
+          </Badge>
+        )}
+        {saved && ctrl.uiState === 'triggered' && <AlertChip state="triggered" />}
+        {saved && ctrl.uiState === 'paused' && <AlertChip state="paused" />}
+        {saved && ctrl.uiState === 'unavailable' && <AlertChip state="unavailable" />}
+      </div>
 
       {authNote && (
         <p className="wl-toggle__note">Увійдіть, щоб зберігати книги</p>
@@ -119,61 +135,56 @@ export function WishlistToggle({
           )}
 
           {ctrl.uiState === 'watch' && ctrl.alert !== null && (
-            <>
-              <AlertChip state="watch" />
+            <span className="bd-wish__detail">
               <AlertTarget
                 state="watch"
                 intent={ctrl.alert.intent}
                 targetPrice={ctrl.alert.targetPrice}
                 currentPrice={currentPrice}
               />
-              <button type="button" className="al-link" onClick={handleOpenConfig}>
+              <button type="button" className="al-link al-link--sm" onClick={handleOpenConfig}>
                 <Pencil size={13} aria-hidden />
                 Змінити
               </button>
-            </>
+            </span>
           )}
 
           {ctrl.uiState === 'triggered' && ctrl.alert !== null && (
-            <>
-              <AlertChip state="triggered" />
+            <span className="bd-wish__detail">
               <AlertTarget
                 state="triggered"
                 intent={ctrl.alert.intent}
                 targetPrice={ctrl.alert.targetPrice}
                 currentPrice={currentPrice}
               />
-              <button type="button" className="al-link" onClick={handleOpenConfig}>
+              <button type="button" className="al-link al-link--sm" onClick={handleOpenConfig}>
                 <Pencil size={13} aria-hidden />
                 Змінити
               </button>
-            </>
+            </span>
           )}
 
           {ctrl.uiState === 'paused' && (
-            <>
-              <AlertChip state="paused" />
+            <span className="bd-wish__detail">
               <span className="al-muted">Стеження призупинене.</span>
-              <button type="button" className="al-link" onClick={() => void ctrl.resume()}>
+              <button type="button" className="al-link al-link--sm" onClick={() => void ctrl.resume()}>
                 Поновити сповіщення
               </button>
-            </>
+            </span>
           )}
 
           {ctrl.uiState === 'unavailable' && ctrl.alert !== null && (
-            <>
-              <AlertChip state="unavailable" />
-              <AlertTarget
-                state="unavailable"
-                intent={ctrl.alert.intent}
-                targetPrice={ctrl.alert.targetPrice}
-                currentPrice={currentPrice}
-              />
-            </>
+            <AlertTarget
+              state="unavailable"
+              intent={ctrl.alert.intent}
+              targetPrice={ctrl.alert.targetPrice}
+              currentPrice={currentPrice}
+            />
           )}
 
-          <AlertSurface open={ctrl.open} onClose={ctrl.closeConfig}>
+          <AlertSurface open={ctrl.open} onClose={ctrl.closeConfig} titleId={titleId}>
             <AlertConfig
+              titleId={titleId}
               bookTitle={bookTitle}
               store={store}
               currentPrice={currentPrice}
