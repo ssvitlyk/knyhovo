@@ -16,16 +16,20 @@
 
 ## Що робимо (W7a)
 
-W7a містить **рівно 8 спроможностей** — нічого більше:
+W7a містить **рівно 7 спроможностей** — нічого більше:
 
 1. **Auto-correction** — авто-виправлення за курованим словником топ-помилок відомих назв; результати показуються за виправленим запитом, з оборотним «натомість шукати оригінал»
 2. **Typeahead** — нещодавні запити (localStorage) + debounced підказки через **наявний** search flow, з клавіатурною навігацією та доступністю
-3. **ISBN detection** — розпізнавання ISBN у полі (клієнтська регулярка), рядок «Розпізнано ISBN»
-4. **ISBN exact match** — точний ISBN → одне видання → перехід на сторінку книги
-5. **Author jump** — картка-перехід над результатами **лише** коли запит точно збігається з відомим автором, виявленим наявною пошуковою інфраструктурою
-6. **Empty state** — інформаційний порожній стан (мускот + повідомлення), **без залежності від `canonicalBookId`** та alert-інфраструктури
-7. **Search error state** — локальна відновлювана помилка пошуку + «спробувати ще раз»; запит збережено, ніколи не глобальна сторінка
-8. **Partial index warning** — **опційний (progressive enhancement)**: показується лише якщо API вже повертає metadata про те, які книгарні відповіли
+3. **ISBN detection** — розпізнавання ISBN у полі (клієнтська регулярка), рядок «Розпізнано ISBN»; коли точного збігу немає — graceful-обробка без глухого кута. **Без** гарантованого exact-match переходу до книги (це W7b — див. нижче)
+4. **Author jump** — картка-перехід над результатами **лише** коли запит точно збігається з відомим автором, виявленим наявною пошуковою інфраструктурою
+5. **Empty state** — інформаційний порожній стан (мускот + повідомлення), **без залежності від `canonicalBookId`** та alert-інфраструктури
+6. **Search error state** — локальна відновлювана помилка пошуку + «спробувати ще раз»; запит збережено, ніколи не глобальна сторінка
+7. **Partial index warning** — **опційний (progressive enhancement)**: показується лише якщо API вже повертає metadata про те, які книгарні відповіли
+
+> **ISBN exact match → W7b.** Технічне discovery показало: наявний `GET /api/search` шукає **лише** за
+> `title`/`author`, а `SearchItemDto` **не містить** поля `isbn`. Тому надійний exact-match перехід «ISBN →
+> одне видання → сторінка книги» **неможливий без зміни бекенду** і винесений у W7b. W7a розпізнає ISBN-ввід
+> (детект), але не гарантує прямий перехід.
 
 ## Що НЕ робимо (в W7a) / Scope boundaries
 
@@ -33,6 +37,7 @@ W7a містить **рівно 8 спроможностей** — нічого 
 
 - Series Jump *(W7b)*
 - Did-you-mean *(W7b)*
+- **ISBN exact match / прямий перехід до книги за ISBN** *(W7b — потребує бекенд-пошуку за ISBN)*
 - Multiple editions selector *(W7b)*
 - Canonical work page *(W7b)*
 - Author collection pages *(W7b)*
@@ -58,6 +63,8 @@ W7a містить **рівно 8 спроможностей** — нічого 
 - Author Jump **graceful degradation:** якщо наявні пошукові дані не дають точного збігу автора — Author Jump **прихований**; це не блокує пошук, не показує fallback-UI і не додає бекенд-роботи (критерій — у «Acceptance Criteria»)
 - Empty state **не** включає жодних дій, що залежать від `canonicalBookId`, wishlist-логіки, request-book-логіки чи alerts (усі — W7b)
 - Typeahead **не** включає: окремий suggest-ендпоінт, ranking engine, fuzzy/ML/semantic/AI підказки
+- **ISBN exact match** (точний ISBN → одне видання → перехід до книги) — **поза W7a**. W7a лише розпізнає
+  ISBN-ввід (детект); гарантований перехід потребує бекенд-пошуку за ISBN та `isbn` у відповіді — це W7b
 - AI-chat, рекомендаційний фід, checkout/оплата, відгуки/рейтинги книгарень
 
 > **Правило вирішення конфліктів:** коли цей PRD суперечить вихідному feasibility-документу — перемагає PRD.
@@ -79,7 +86,7 @@ W7a містить **рівно 8 спроможностей** — нічого 
 | 5 | Typeahead · idle | Фокус на порожньому полі | Нещодавні запити (localStorage) | **W7a** | Немає |
 | 6 | Typeahead · ввід | ≥1 символ | Згруповані debounced підказки через наявний search | **W7a** | Наявний search API + дебаунс |
 | 7 | Typeahead · ISBN | Ввід схожий на ISBN | Рядок «Розпізнано ISBN» + Enter | **W7a** | Немає (клієнтська регулярка) |
-| 8 | ISBN · точний збіг | ISBN → одне видання | Перехід до книги | **W7a** | Наявний search (ISBN indexed) |
+| 8 | ISBN · точний збіг | ISBN → одне видання | Перехід до книги | **W7b** | Потрібен бекенд: пошук за нормалізованим ISBN + `isbn` у відповіді (наявний search шукає лише title/author) |
 | 9 | ISBN · кілька видань | ISBN → твір з кількома виданнями | Вибір видання | W7b | ISBN→workId індекс + модель work |
 | 10 | ISBN · не знайдено | Невідомий ISBN | Інформаційний порожній стан | **W7a** | Немає |
 | 11 | Канонічний твір | Популярна назва з багатьма виданнями | Один твір + згруповані видання | W7b | Модель work→editions |
@@ -103,18 +110,21 @@ W7a містить **рівно 8 спроможностей** — нічого 
 
 ## API needs
 
-- **W7a будується поверх наявного `GET /api/search`. Жодних обов'язкових змін API.**
-- **Typeahead:** дебаунс наявного `/api/search` (150–250мс) для підказок книг/авторів; нещодавні запити — у localStorage. **Без** окремого suggest-ендпоінта.
+- **W7a будується поверх наявного `GET /api/search`. Жодних обов'язкових змін API/бекенду.**
+- **Typeahead:** дебаунс наявного `/api/search` (150–250мс) для підказок книг/авторів; нещодавні запити — у localStorage. **Без** окремого suggest-ендпоінта. Оскільки наявний клієнт викликає `/api/search` лише на сервері, для browser-side typeahead допускається **тонкий web-layer proxy** (Next.js route handler у `packages/web`, той самий `API_BASE_URL`) — це **не** зміна Fastify/бекенду.
 - **ISBN detection:** суто клієнтська регулярка (10–13 цифр, префікси 978–979). **Без** API.
-- **ISBN exact match / Author jump:** наявний `/api/search` (ISBN indexed; author matchable). **Без** нових ендпоінтів.
+- **Author jump:** наявний `/api/search` (`author` присутній у `SearchItemDto`; точний збіг визначається клієнтом). **Без** нових ендпоінтів.
+- **ISBN exact match — поза W7a (W7b).** Наявний `/api/search` шукає лише за `title`/`author` і **не** повертає `isbn`, тож точний ISBN дає 0 результатів. Надійний exact-match потребує бекенд-зміни (див. «Backend changes» / W7b).
 - **Partial index (опційно, progressive enhancement):** якщо `/api/search` **уже** повертає metadata про те, які книгарні відповіли — показуємо «X з N». Якщо metadata немає — стан **прихований повністю**, без fallback-UI, без деградації. Це поле **не** є вимогою W7a і не блокує реліз.
-- W7b+ (не входить у W7a): suggest/fuzzy-ендпоінт, work→editions (стабільний `workId`), ISBN→workId індекс, author-агрегації, request-queue.
+- W7b+ (не входить у W7a): suggest/fuzzy-ендпоінт, **пошук за ISBN + `isbn` у відповіді**, work→editions (стабільний `workId`), ISBN→workId індекс, author-агрегації, request-queue.
 
 ## Backend changes
 
-- **W7a: нуль обов'язкового бекенду.** Уся 8-пунктова функціональність реалізовна на фронтенді поверх наявного `/api/search`. W7a має лишатися реалізовним з мінімальними або нульовими змінами бекенду.
+- **W7a: нуль обов'язкового бекенду.** Уся 7-пунктова функціональність реалізовна на фронтенді поверх наявного `/api/search`. W7a має лишатися реалізовним з мінімальними або нульовими змінами Fastify/API/схеми/БД.
+- **Web-layer proxy ≠ бекенд.** Тонкий Next.js route handler у `packages/web` для browser-side typeahead — це деталь веб-шару (той самий `API_BASE_URL`), а **не** зміна Fastify/API. Жодних нових Fastify-ендпоінтів, змін схеми чи БД у W7a.
 - Якщо в майбутньому з'явиться responded-stores metadata у відповіді search — Partial index підхопить її автоматично; до того часу стан прихований. Додавання цього поля — **опційне**, не блокер W7a.
 - **W7a явно НЕ вводить** (усе нижче — W7b/W7c, не вимога W7a):
+  - **пошук за ISBN (`isbn` у WHERE) + `isbn` у `SearchItemDto`** — потрібно для ISBN exact match (W7b)
   - author tables
   - author indexes
   - author aggregation
@@ -129,8 +139,8 @@ W7a містить **рівно 8 спроможностей** — нічого 
 
 Усе W7a — **нові композиції** з наявних DS-компонентів. Frozen Search Results / SearchBar visual / BookCard internals / пагінація / сортування — **не змінюються**.
 
-- **Typeahead** — combobox-поле + listbox-меню: нещодавні (localStorage) + debounced результати наявного search; групи «книги · автори»; `↑ ↓ ↵ Esc`, `aria-activedescendant`; десктоп — popover під полем, мобільний — повноекранний аркуш.
-- **ISBN-детект рядок** — UI-гілка typeahead при ISBN-подібному вводі.
+- **Typeahead** — combobox-поле + listbox-меню: нещодавні (localStorage) + debounced результати наявного search; групи «книги · автори»; `↑ ↓ ↵ Esc`, `aria-activedescendant`; десктоп — popover під полем, мобільний — повноекранний аркуш. Browser-side виклики йдуть через тонкий web-layer proxy (Next.js route handler), а не напряму до Fastify.
+- **ISBN-детект рядок** — UI-гілка typeahead при ISBN-подібному вводі: показує «Розпізнано ISBN». **Без** гарантованого exact-match переходу (W7b); за відсутності збігу — звичайний пошук / порожній стан, без глухого кута.
 - **AuthorJump (лише author)** — картка-перехід над результатами **тільки** на точний збіг автора → author-scoped пошук. W7a підтримує **лише Author Jump**; Series Jump — W7b. Узагальнений jump-фреймворк для W7a **не потрібен**. Якщо точний збіг автора не визначається з наявних пошукових даних — компонент **не рендериться** (graceful degradation, без fallback-UI).
 - **SIEmpty** — мускот (magnifier/lantern за темою) + інформаційне повідомлення; **без** alert/wishlist-кнопок і `canonicalBookId`.
 - **SISysError** — локальний відновлюваний блок помилки + «спробувати ще раз» (повторює останній запит).
@@ -145,7 +155,7 @@ W7a містить **рівно 8 спроможностей** — нічого 
 
 - **A · Друкарська помилка → результати (W7a).** «гари потер» → авто-виправлено на «Гаррі Поттер» (висока впевненість) → результати + оборотне «натомість шукати оригінал».
 - **B · Автор → книга (W7a лише jump).** «Стівен Кінг» точно збігається з відомим автором → картка-перехід → author-scoped пошук → книга. *Багата добірка/лендинг автора з табами — W7b.*
-- **C · ISBN → книга (W7a лише exact).** Вставлено ISBN → розпізнано в полі → точний збіг → перехід до книги. *Вибір серед кількох видань — W7b.*
+- **C · ISBN → детект (W7a лише розпізнавання).** Вставлено ISBN → розпізнано в полі («Розпізнано ISBN») → звичайний пошук за введеним рядком. *Гарантований exact-match перехід до книги та вибір серед кількох видань — W7b (потребує бекенд-пошуку за ISBN).*
 - **D · Не знайдено → інформація (W7a).** Нуль результатів → мускот + інформаційне повідомлення (чесно про прогалину). *Дії «стежити за появою» / «попросити додати» — W7b.*
 - **Series-flow — W7b.** Запит-серія / навігація томами виключені з W7a.
 
@@ -161,9 +171,10 @@ W7a містить **рівно 8 спроможностей** — нічого 
 - Клавіатура `↑ ↓ ↵ Esc`; `role=combobox`/`role=listbox`; `aria-activedescendant`; рядки ≥44px; мобільний — повноекранний аркуш
 - **Без** окремого suggest-ендпоінта, ranking, fuzzy/ML/semantic/AI підказок
 
-**ISBN detection + exact match**
+**ISBN detection (W7a)**
 - Клієнтська регулярка розпізнає 10–13 цифр / префікси 978–979 → рядок «Розпізнано ISBN»
-- Точний ISBN з одним виданням → перехід до сторінки книги; кілька видань — поза W7a (W7b)
+- За відсутності exact-match — звичайний пошук / порожній стан, без глухого кута (graceful degradation)
+- **ISBN exact match — поза W7a (W7b):** наявний `/api/search` шукає лише за `title`/`author` і не повертає `isbn`, тож точний перехід «ISBN → одне видання → книга» **не гарантується** у W7a; кілька видань — також W7b
 
 **Author jump**
 - Показується **лише** на точний збіг запиту з відомим автором, визначений за наявними пошуковими даними
@@ -186,13 +197,13 @@ W7a містить **рівно 8 спроможностей** — нічого 
 
 | Реліз | Опис | Залежності |
 |-------|------|------------|
-| **Реліз 1 (W7a)** | 8 спроможностей: auto-correction · typeahead (recent) · ISBN detection · ISBN exact match · author jump · empty state · search error · partial index (optional) | Наявний `/api/search`; нуль обов'язкового бекенду |
-| **Реліз 2 (W7b)** | Series jump · did-you-mean (fuzzy) · multiple editions selector · canonical work page · author collection pages · request book flow · empty-state actions | Suggest-ендпоінт, модель серій, work→editions, author-агрегації, request-queue, W4 alerts |
+| **Реліз 1 (W7a)** | 7 спроможностей: auto-correction · typeahead (recent) · ISBN detection · author jump · empty state · search error · partial index (optional) | Наявний `/api/search`; нуль обов'язкового бекенду (typeahead — через web-layer proxy) |
+| **Реліз 2 (W7b)** | **ISBN exact match / прямий перехід** · Series jump · did-you-mean (fuzzy) · multiple editions selector · canonical work page · author collection pages · request book flow · empty-state actions | **Пошук за ISBN + `isbn` у відповіді**, suggest-ендпоінт, модель серій, work→editions, author-агрегації, request-queue, W4 alerts |
 | **Реліз 3 (W7c)** | Author/title decomposition (NLP) · full series navigation · cross-language recovery · semantic similarity | NLP/ML, збагачені метадані серій, embeddings |
 
 ## Майбутній розвиток (поза W7a)
 
-- **W7b** — потребує бекенду: fuzzy did-you-mean, групування видань (work→editions, стабільний `workId`), ISBN → кілька видань, **Series jump** (потребує моделі серій), добірка/лендинг автора, request book flow, дії порожнього стану («стежити» через W4 alerts, «попросити додати» через request-queue).
+- **W7b** — потребує бекенду: **ISBN exact match** (пошук за нормалізованим ISBN + `isbn` у `SearchItemDto`, або окремий ISBN-lookup ендпоінт/route → прямий перехід до книги), fuzzy did-you-mean, групування видань (work→editions, стабільний `workId`), ISBN → кілька видань, **Series jump** (потребує моделі серій), добірка/лендинг автора, request book flow, дії порожнього стану («стежити» через W4 alerts, «попросити додати» через request-queue).
 - **W7c** — майбутній інтелект: NLP-розбір «назва+автор», повна навігація серією у порядку читання, кросмовне відновлення (рос./англ. → українське видання), семантична близькість (embeddings). Не блокує W7a/W7b.
 
 ## Risks / open questions
@@ -208,3 +219,4 @@ W7a містить **рівно 8 спроможностей** — нічого 
 - **Partial index** — опційний (progressive enhancement): «X з N» лише за наявності responded-stores metadata, інакше прихований. Не блокує реліз. Прийнято.
 - **Typeahead source** — дебаунс наявного `/api/search` прийнятний для MVP-обсягу; легший suggest-ендпоінт відкладено у W7b. Прийнято.
 - **Empty state без `canonicalBookId`** — W7a empty лише інформаційний; усі дії, що потребують ідентифікатора книги чи alerts (W4), винесені у W7b. Прийнято.
+- **ISBN Exact Match Data Gap** — наявний search API не шукає за ISBN, а результати не містять `isbn`. Тому W7a **розпізнає** ISBN-ввід, але **не гарантує** прямий exact-match перехід до книги. Повний ISBN exact match — у W7b, доки не схвалено невелику бекенд/API-зміну (пошук за нормалізованим ISBN + `isbn` у відповіді, або окремий ISBN-lookup route). Для W7a — не блокер (graceful degradation). Прийнято.

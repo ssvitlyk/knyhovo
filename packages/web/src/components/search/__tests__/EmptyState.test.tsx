@@ -27,4 +27,14 @@ describe('EmptyState', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Sapiens' }));
     expect(push).toHaveBeenCalledWith('/search?q=Sapiens');
   });
+
+  it('stays informational only — no W7b wishlist / alert / request-book actions', () => {
+    render(<EmptyState />);
+    // The only interactive elements are the popular-query chips (buttons).
+    expect(screen.queryByText(/стежити за появою/i)).not.toBeInTheDocument();
+    expect(screen.queryByText(/попросити додати/i)).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /стежити|попросити|додати|сповістити/i })).not.toBeInTheDocument();
+    // No links (no canonicalBookId-dependent navigation).
+    expect(screen.queryByRole('link')).not.toBeInTheDocument();
+  });
 });
