@@ -1,0 +1,173 @@
+/* W7a Search Intelligence layer — composed only from DS tokens.
+   No frozen pattern (SearchBar / BookCard / results grid) is restyled here. */
+
+/* ---------------------------------------------------------------------------
+   Typeahead combobox + listbox
+   --------------------------------------------------------------------------- */
+
+.si-typeahead { position: relative; }
+
+.si-ta__menu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  left: 0;
+  right: 0;
+  z-index: 50;
+  margin: 0;
+  padding: var(--space-2);
+  list-style: none;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-md);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.si-ta__group {
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+.si-ta__hint {
+  padding: var(--space-3);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+.si-ta__row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  min-height: 44px; /* a11y touch target */
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  color: var(--text-body);
+  cursor: pointer;
+}
+
+.si-ta__row:hover { background: var(--surface-accent); }
+
+/* Active row — highlighted by background AND a left accent marker + weight,
+   never colour alone (a11y). */
+.si-ta__row[data-active='true'] {
+  background: var(--accent-weak);
+  font-weight: var(--fw-medium);
+  box-shadow: inset 3px 0 0 0 var(--accent);
+}
+
+.si-ta__row-primary { color: var(--text); font-weight: var(--fw-medium); }
+.si-ta__row-sub { color: var(--text-muted); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.si-ta__row-price { margin-left: auto; color: var(--accent); font-weight: var(--fw-semibold); white-space: nowrap; }
+.si-ta__row-hint { margin-left: auto; color: var(--text-faint); font-size: var(--fs-xs); white-space: nowrap; }
+
+.si-ta__row--isbn .si-ta__row-sub { font-variant-numeric: tabular-nums; }
+
+.si-ta__row--action {
+  min-height: auto;
+  padding: var(--space-2) var(--space-3) 0;
+  cursor: default;
+}
+.si-ta__row--action:hover { background: transparent; }
+
+.si-ta__clear,
+.si-ta__retry {
+  background: none;
+  border: none;
+  padding: var(--space-1) 0;
+  font-size: var(--fs-xs);
+  color: var(--accent);
+  cursor: pointer;
+}
+.si-ta__clear:hover,
+.si-ta__retry:hover { color: var(--accent-hover); }
+
+.si-ta__status {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-height: 44px;
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+.si-ta__status--error { color: var(--text-body); }
+.si-ta__retry { margin-left: auto; }
+
+/* ---------------------------------------------------------------------------
+   Correction notice (SICorrectNotice)
+   --------------------------------------------------------------------------- */
+
+.si-notice {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--space-2) var(--space-4);
+  margin-bottom: var(--space-5);
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-accent);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  color: var(--text-body);
+}
+.si-notice__action { color: var(--accent); font-weight: var(--fw-medium); text-decoration: none; }
+.si-notice__action:hover { color: var(--accent-hover); text-decoration: underline; }
+
+/* ---------------------------------------------------------------------------
+   Author jump card (SIJump — author only)
+   --------------------------------------------------------------------------- */
+
+.si-jump {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  text-decoration: none;
+  color: inherit;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.si-jump:hover { border-color: var(--accent); box-shadow: var(--shadow-sm); }
+.si-jump__name { font-size: var(--fs-title); font-weight: var(--fw-semibold); color: var(--text); }
+.si-jump__hint { font-size: var(--fs-sm); color: var(--text-muted); }
+.si-jump__chevron { margin-left: auto; color: var(--icon-muted); flex: none; }
+
+/* ---------------------------------------------------------------------------
+   Partial index notice (SIPartial — optional progressive enhancement)
+   --------------------------------------------------------------------------- */
+
+.si-partial {
+  margin-bottom: var(--space-5);
+  padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
+
+/* ---------------------------------------------------------------------------
+   Mobile: typeahead becomes a full-screen sheet (<768px)
+   --------------------------------------------------------------------------- */
+
+@media (max-width: 767px) {
+  .si-ta__menu {
+    position: fixed;
+    inset: auto 0 0 0;
+    top: auto;
+    z-index: 200;
+    max-height: 70vh;
+    border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    box-shadow: var(--shadow-lg);
+  }
+  .si-ta__row { min-height: 48px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .si-jump { transition: none; }
+}
