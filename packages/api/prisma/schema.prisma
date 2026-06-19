@@ -17,6 +17,7 @@ enum Provider {
   YAKABOO   @map("yakaboo")
   BOOK_CLUB @map("book-club")
   VIVAT     @map("vivat")
+  BOOK_YE   @map("book-ye")
 
   @@map("provider")
 }
