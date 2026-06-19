@@ -6,6 +6,7 @@ const CURRENCY_SYMBOL: Readonly<Record<string, string>> = { UAH: '₴' };
 const PROVIDER_DISPLAY_NAME: Readonly<Record<ProviderName, string>> = {
   yakaboo: 'Yakaboo',
   'book-club': 'BookClub',
+  vivat: 'Vivat',
 };
 
 /** Group integer digits into 3s with a regular space (Ukrainian style). */

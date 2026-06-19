@@ -1,10 +1,11 @@
 import { prisma } from '../db.js';
-import { YakabooScraper, browserManager } from '@knyhovo/scrapers';
+import { YakabooScraper, VivatScraper, browserManager } from '@knyhovo/scrapers';
 import { runScrapePipeline, formatSummary } from '../pipeline/index.js';
 import type { ScraperProvider } from '@knyhovo/shared';
 
 // Register new providers here — the pipeline is provider-agnostic and needs no changes.
-const providers: ScraperProvider[] = [new YakabooScraper()];
+// Vivat is server-rendered Next.js, so the default FetchHtmlFetcher works (no Cloudflare).
+const providers: ScraperProvider[] = [new YakabooScraper(), new VivatScraper()];
 
 async function main(): Promise<void> {
   const { results } = await runScrapePipeline({ prisma, providers });

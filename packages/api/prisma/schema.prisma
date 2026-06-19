@@ -16,6 +16,7 @@ datasource db {
 enum Provider {
   YAKABOO   @map("yakaboo")
   BOOK_CLUB @map("book-club")
+  VIVAT     @map("vivat")
 
   @@map("provider")
 }

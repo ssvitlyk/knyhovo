@@ -5,12 +5,13 @@ import { Prisma } from '@prisma/client';
 import type { ListingPersistOutcome, UnavailableOutcome } from './types.js';
 import { recordPriceChange } from '../price-history/service.js';
 
-const PROVIDER_NAME_MAP: Record<ProviderName, 'YAKABOO' | 'BOOK_CLUB'> = {
+const PROVIDER_NAME_MAP: Record<ProviderName, 'YAKABOO' | 'BOOK_CLUB' | 'VIVAT'> = {
   yakaboo: 'YAKABOO',
   'book-club': 'BOOK_CLUB',
+  vivat: 'VIVAT',
 };
 
-export function mapProviderName(name: ProviderName): 'YAKABOO' | 'BOOK_CLUB' {
+export function mapProviderName(name: ProviderName): 'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' {
   return PROVIDER_NAME_MAP[name];
 }
 

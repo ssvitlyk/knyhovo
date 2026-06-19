@@ -6,7 +6,7 @@ import type { Money } from './money.js';
  * Known provider slugs. Extend this union when a new scraper is added.
  * The slug is used as a stable identifier across ProviderListing, ScraperProvider, and ScraperResult.
  */
-export type ProviderName = 'yakaboo' | 'book-club';
+export type ProviderName = 'yakaboo' | 'book-club' | 'vivat';
 
 /**
  * Stock availability as reported by a provider at scrape time.

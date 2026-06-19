@@ -6,6 +6,7 @@ import type { BookProviderDto, BookDetailsDto, MoneyDto } from './dto.js';
 const PROVIDER_SLUG: Record<BookListingRow['provider'], ProviderName> = {
   YAKABOO: 'yakaboo',
   BOOK_CLUB: 'book-club',
+  VIVAT: 'vivat',
 };
 
 /** Reverse map from the persisted availability enum to its public slug. */

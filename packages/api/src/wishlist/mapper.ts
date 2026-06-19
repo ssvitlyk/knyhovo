@@ -7,6 +7,7 @@ import { deriveAlertStatus, ALERT_INTENT_SLUG } from './alert/service.js';
 const PROVIDER_SLUG: Record<WishlistListingRow['provider'], ProviderName> = {
   YAKABOO: 'yakaboo',
   BOOK_CLUB: 'book-club',
+  VIVAT: 'vivat',
 };
 
 /** Reverse map from the persisted availability enum to its public slug. */
