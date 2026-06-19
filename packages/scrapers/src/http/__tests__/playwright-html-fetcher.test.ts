@@ -11,6 +11,7 @@ const mocks = vi.hoisted(() => {
     content: vi.fn().mockResolvedValue('<html><body>page content</body></html>'),
     close: vi.fn().mockResolvedValue(undefined),
     route: vi.fn().mockResolvedValue(undefined),
+    waitForSelector: vi.fn().mockResolvedValue(undefined),
   };
   const mockContext = {
     newPage: vi.fn().mockResolvedValue(mockPage),
@@ -37,6 +38,7 @@ function applyDefaultMocks() {
   mocks.mockPage.content.mockResolvedValue('<html><body>page content</body></html>');
   mocks.mockPage.close.mockResolvedValue(undefined);
   mocks.mockPage.route.mockResolvedValue(undefined);
+  mocks.mockPage.waitForSelector.mockResolvedValue(undefined);
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   mocks.mockContext.newPage.mockResolvedValue(mocks.mockPage as any);
   mocks.mockContext.close.mockResolvedValue(undefined);
@@ -182,6 +184,30 @@ describe('PlaywrightHtmlFetcher', () => {
     await expect(fetcher.fetch('https://example.com', 10_000)).resolves.toBe(
       '<html><body>page content</body></html>',
     );
+  });
+
+  it('waits for the content selector instead of networkidle when configured', async () => {
+    const fetcher = new PlaywrightHtmlFetcher(manager, { waitForSelector: 'a.product-item-link' });
+    await fetcher.fetch('https://example.com', 30_000);
+    expect(mocks.mockPage.waitForSelector).toHaveBeenCalledWith(
+      'a.product-item-link',
+      expect.objectContaining({ timeout: expect.any(Number) }),
+    );
+    expect(mocks.mockPage.waitForLoadState).not.toHaveBeenCalled();
+  });
+
+  it('still returns content when the content selector never appears', async () => {
+    mocks.mockPage.waitForSelector.mockRejectedValue(new Error('selector timeout'));
+    const fetcher = new PlaywrightHtmlFetcher(manager, { waitForSelector: 'a.product-item-link' });
+    await expect(fetcher.fetch('https://example.com', 30_000)).resolves.toBe(
+      '<html><body>page content</body></html>',
+    );
+  });
+
+  it('does not call waitForSelector when no selector is configured', async () => {
+    const fetcher = new PlaywrightHtmlFetcher(manager);
+    await fetcher.fetch('https://example.com', 10_000);
+    expect(mocks.mockPage.waitForSelector).not.toHaveBeenCalled();
   });
 
   it('closeContext() closes the browser context', async () => {

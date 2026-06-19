@@ -9,7 +9,7 @@ import type { PrismaClient } from '@prisma/client';
  * leaking into the mapper/service layers.
  */
 export interface BookListingRow {
-  readonly provider: 'YAKABOO' | 'BOOK_CLUB';
+  readonly provider: 'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE';
   readonly priceAmount: number;
   readonly priceCurrency: 'UAH';
   readonly availability: 'IN_STOCK' | 'OUT_OF_STOCK' | 'UNKNOWN';

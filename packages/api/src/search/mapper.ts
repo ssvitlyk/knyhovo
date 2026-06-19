@@ -6,6 +6,8 @@ import type { ProviderOfferDto, SearchItemDto } from './dto.js';
 const PROVIDER_SLUG: Record<ListingRow['provider'], ProviderName> = {
   YAKABOO: 'yakaboo',
   BOOK_CLUB: 'book-club',
+  VIVAT: 'vivat',
+  BOOK_YE: 'book-ye',
 };
 
 /** A listing counts as priced only when it carries a usable numeric amount. */
