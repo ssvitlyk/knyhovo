@@ -13,6 +13,7 @@ export interface ListingRow {
   readonly priceAmount: number;
   readonly priceCurrency: 'UAH';
   readonly availability: 'IN_STOCK' | 'OUT_OF_STOCK' | 'UNKNOWN';
+  readonly coverUrl?: string | null;
 }
 
 export interface CanonicalBookRow {

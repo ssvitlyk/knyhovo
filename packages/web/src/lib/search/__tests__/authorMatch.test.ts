@@ -10,6 +10,7 @@ function makeItem(id: string, author: string, title = 'Книга'): SearchItemD
     lowestPrice: { amount: 29900, currency: 'UAH' },
     offersCount: 1,
     providers: [],
+    coverUrl: null,
   };
 }
 

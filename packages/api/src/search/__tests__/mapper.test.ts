@@ -12,8 +12,13 @@ function row(overrides: Partial<CanonicalBookRow> = {}): CanonicalBookRow {
   };
 }
 
-function listing(provider: ListingRow['provider'], priceAmount: number, availability: ListingRow['availability'] = 'IN_STOCK'): ListingRow {
-  return { provider, priceAmount, priceCurrency: 'UAH', availability };
+function listing(
+  provider: ListingRow['provider'],
+  priceAmount: number,
+  availability: ListingRow['availability'] = 'IN_STOCK',
+  coverUrl: string | null = null,
+): ListingRow {
+  return { provider, priceAmount, priceCurrency: 'UAH', availability, coverUrl };
 }
 
 describe('toSearchItem', () => {
@@ -71,5 +76,44 @@ describe('toSearchItem', () => {
     expect(item).not.toBeNull();
     expect(item!.offersCount).toBe(1);
     expect(item!.providers[0]!.provider).toBe('yakaboo');
+  });
+
+  it('returns coverUrl from an eligible listing that carries one', () => {
+    const item = toSearchItem(
+      row({ listings: [listing('YAKABOO', 34900, 'IN_STOCK', 'https://img/yakaboo.jpg')] }),
+    );
+    expect(item!.coverUrl).toBe('https://img/yakaboo.jpg');
+  });
+
+  it('selects the cover by provider priority, not by lowest price (F1 selector)', () => {
+    // book-club is cheaper but absent from the priority list; yakaboo wins.
+    const item = toSearchItem(
+      row({
+        listings: [
+          listing('BOOK_CLUB', 29900, 'IN_STOCK', 'https://img/book-club.jpg'),
+          listing('YAKABOO', 34900, 'IN_STOCK', 'https://img/yakaboo.jpg'),
+        ],
+      }),
+    );
+    expect(item!.coverUrl).toBe('https://img/yakaboo.jpg');
+  });
+
+  it('returns null coverUrl when no eligible listing has a cover', () => {
+    const item = toSearchItem(
+      row({ listings: [listing('YAKABOO', 34900), listing('BOOK_CLUB', 29900)] }),
+    );
+    expect(item!.coverUrl).toBeNull();
+  });
+
+  it('ignores covers from OUT_OF_STOCK listings (only eligible listings feed the selector)', () => {
+    const item = toSearchItem(
+      row({
+        listings: [
+          listing('YAKABOO', 34900, 'OUT_OF_STOCK', 'https://img/yakaboo.jpg'),
+          listing('BOOK_CLUB', 29900, 'IN_STOCK', 'https://img/book-club.jpg'),
+        ],
+      }),
+    );
+    expect(item!.coverUrl).toBe('https://img/book-club.jpg');
   });
 });

@@ -31,6 +31,7 @@ export function ResultsGrid({ items }: { readonly items: readonly SearchItemDto[
               author={item.author}
               price={formatMoney(item.lowestPrice)}
               store={lowestProvider ? providerDisplayName(lowestProvider.provider) : null}
+              cover={item.coverUrl}
               offersCount={item.offersCount}
               badge={isCheapest ? <Badge tone="green">Найкраща ціна</Badge> : null}
             />

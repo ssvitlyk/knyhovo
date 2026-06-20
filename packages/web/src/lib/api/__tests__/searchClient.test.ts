@@ -12,6 +12,7 @@ const RESPONSE: SearchResponseDto = {
       lowestPrice: { amount: 29900, currency: 'UAH' },
       offersCount: 1,
       providers: [{ provider: 'yakaboo', price: { amount: 29900, currency: 'UAH' } }],
+      coverUrl: null,
     },
   ],
   page: 1,

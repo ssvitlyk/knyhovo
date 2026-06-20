@@ -14,6 +14,7 @@ const RESPONSE: SearchResponseDto = {
         { provider: 'book-club', price: { amount: 29900, currency: 'UAH' } },
         { provider: 'yakaboo', price: { amount: 34900, currency: 'UAH' } },
       ],
+      coverUrl: null,
     },
   ],
   page: 1,

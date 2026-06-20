@@ -22,6 +22,7 @@ interface FakeListing {
   priceAmount: number;
   priceCurrency: 'UAH';
   availability: 'IN_STOCK' | 'OUT_OF_STOCK' | 'UNKNOWN';
+  coverUrl: string | null;
 }
 
 interface FindManyArgs {
@@ -62,8 +63,9 @@ function listing(
   provider: FakeListing['provider'],
   priceAmount: number,
   availability: FakeListing['availability'] = 'IN_STOCK',
+  coverUrl: string | null = null,
 ): FakeListing {
-  return { id, canonicalBookId, provider, priceAmount, priceCurrency: 'UAH', availability };
+  return { id, canonicalBookId, provider, priceAmount, priceCurrency: 'UAH', availability, coverUrl };
 }
 
 // Shared dataset:
@@ -76,7 +78,7 @@ const BOOKS = [
   book('c', 'Тіні забутих предків', 'Михайло Коцюбинський'),
 ];
 const LISTINGS = [
-  listing('l1', 'a', 'YAKABOO', 34900),
+  listing('l1', 'a', 'YAKABOO', 34900, 'IN_STOCK', 'https://img/kobzar-yakaboo.jpg'),
   listing('l2', 'a', 'BOOK_CLUB', 29900),
   listing('l3', 'b', 'YAKABOO', 15000),
 ];
@@ -104,6 +106,7 @@ describe('GET /api/search', () => {
             { provider: 'book-club', price: { amount: 29900, currency: 'UAH' } },
             { provider: 'yakaboo', price: { amount: 34900, currency: 'UAH' } },
           ],
+          coverUrl: 'https://img/kobzar-yakaboo.jpg',
         },
       ],
       page: 1,
