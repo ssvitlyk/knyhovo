@@ -36,6 +36,7 @@ function makeResults(overrides: Partial<SearchResponseDto> = {}): SearchResponse
         lowestPrice: { amount: 24500, currency: 'UAH' },
         offersCount: 2,
         providers: [],
+        coverUrl: null,
       },
       {
         id: 'book-2',
@@ -44,6 +45,7 @@ function makeResults(overrides: Partial<SearchResponseDto> = {}): SearchResponse
         lowestPrice: { amount: 19900, currency: 'UAH' },
         offersCount: 1,
         providers: [],
+        coverUrl: null,
       },
     ],
     page: 1,

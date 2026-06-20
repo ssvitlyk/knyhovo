@@ -29,6 +29,8 @@ export interface SearchItemDto {
   readonly offersCount: number;
   /** Provider offers, sorted by ascending price. */
   readonly providers: readonly ProviderOfferDto[];
+  /** Display cover URL selected across providers, or null when none is available. */
+  readonly coverUrl: string | null;
 }
 
 export interface SearchResponseDto {
