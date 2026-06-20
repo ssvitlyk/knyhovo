@@ -47,6 +47,12 @@ export interface RawProviderListing {
   /** Direct URL to the book's page on the provider's site. */
   readonly url: string;
   readonly availability: Availability;
+  /**
+   * Cover image URL extracted from the provider's catalog card.
+   * Optional and nullable: omitted/null when the card exposed no usable image.
+   * Sourced from the listing card only — no product-page fetch (W9a F1).
+   */
+  readonly coverUrl?: string | null;
 }
 
 /**

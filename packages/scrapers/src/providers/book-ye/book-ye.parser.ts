@@ -8,6 +8,20 @@ import {
   resolveUrl,
 } from './constants.js';
 
+/**
+ * Resolve a cover image URL from a catalog card's <img>.
+ *
+ * Reads `src`, falling back to the common Magento lazy-load `data-src`, then
+ * normalises to an absolute URL. Returns null when the card has no usable
+ * image — a missing cover must never break the listing (W9a F1).
+ */
+function extractCoverUrl(src: string | undefined): string | null {
+  const raw = src?.trim();
+  if (!raw) return null;
+  if (raw.startsWith('//')) return `https:${raw}`;
+  return resolveUrl(raw);
+}
+
 export interface ParseResult {
   readonly listings: RawProviderListing[];
   readonly errors: string[];
@@ -95,6 +109,9 @@ export function parseBookYePage(html: string): ParseResult {
       const hasPreorder = card.find(SELECTORS.preorder).length > 0;
       const availability = resolveAvailability(card.text(), hasPreorder, price !== null);
 
+      const coverImg = card.find(SELECTORS.cover).first();
+      const coverUrl = extractCoverUrl(coverImg.attr('src') ?? coverImg.attr('data-src'));
+
       listings.push({
         provider: 'book-ye',
         title,
@@ -103,6 +120,7 @@ export function parseBookYePage(html: string): ParseResult {
         price,
         url: resolveUrl(href),
         availability,
+        coverUrl,
       });
     } catch (err) {
       errors.push(

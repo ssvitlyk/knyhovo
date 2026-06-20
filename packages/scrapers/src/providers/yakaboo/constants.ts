@@ -11,6 +11,7 @@ export const SELECTORS = {
   price: '.product-price',
   statusText: '.ui-shipment-status__text',
   formatLabel: '.ui-display-book-type__text, .ui-display-book-type, .card-label, .product-type-label, .book-format-label',
+  cover: 'a.category-card__image img',
 } as const;
 
 export const OUT_OF_STOCK_KEYWORDS = ['нет в наличии', 'немає в наявності'];

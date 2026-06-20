@@ -55,6 +55,20 @@ function resolveUrl(href: string): string {
 }
 
 /**
+ * Resolve a cover image URL from a catalog card's <img>.
+ *
+ * Reads `src`, falling back to the common lazy-load `data-src` attribute, then
+ * normalises it to an absolute URL. Returns null when the card has no usable
+ * image — a missing cover must never break the listing (W9a F1).
+ */
+function extractCoverUrl(src: string | undefined): string | null {
+  const raw = src?.trim();
+  if (!raw) return null;
+  if (raw.startsWith('//')) return `https:${raw}`;
+  return resolveUrl(raw);
+}
+
+/**
  * Parse a Yakaboo catalog HTML page into a list of raw provider listings.
  * Pure function — no IO, no side effects.
  *
@@ -108,6 +122,9 @@ export function parseYakabooPage(html: string): ParseResult {
       const statusText = card.find(SELECTORS.statusText).first().text().trim();
       const availability = resolveAvailability(statusText, price !== null);
 
+      const coverImg = card.find(SELECTORS.cover).first();
+      const coverUrl = extractCoverUrl(coverImg.attr('src') ?? coverImg.attr('data-src'));
+
       listings.push({
         provider: 'yakaboo',
         title,
@@ -116,6 +133,7 @@ export function parseYakabooPage(html: string): ParseResult {
         price,
         url: resolveUrl(href),
         availability,
+        coverUrl,
       });
     } catch (err) {
       errors.push(

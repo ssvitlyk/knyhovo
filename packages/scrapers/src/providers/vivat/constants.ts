@@ -26,3 +26,20 @@ export function isPaperBookType(bookType: unknown): boolean {
 export function buildProductUrl(code: string): string {
   return `${VIVAT_BASE_URL}/product/${code}/`;
 }
+
+/**
+ * Resolve a Vivat catalog `image` value to an absolute cover URL.
+ *
+ * The catalog JSON exposes images as site-relative paths (e.g. `/storage/a.jpg`);
+ * absolute URLs and protocol-relative `//host/...` forms are passed through.
+ * Returns null for missing/blank values — a missing cover must never break the
+ * listing (W9a F1).
+ */
+export function buildCoverUrl(image: unknown): string | null {
+  if (typeof image !== 'string') return null;
+  const raw = image.trim();
+  if (!raw) return null;
+  if (raw.startsWith('http')) return raw;
+  if (raw.startsWith('//')) return `https:${raw}`;
+  return `${VIVAT_BASE_URL}${raw.startsWith('/') ? '' : '/'}${raw}`;
+}

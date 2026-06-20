@@ -194,3 +194,50 @@ describe('parseYakabooPage — minimal inline HTML', () => {
     expect(listings).toHaveLength(0);
   });
 });
+
+// ──────────────────────────────────────────────────────────────
+// parseYakabooPage — cover extraction (W9a F1)
+// ──────────────────────────────────────────────────────────────
+
+describe('parseYakabooPage — cover extraction', () => {
+  function cardHtml(inner: string): string {
+    return `<div class="category-card category-layout">
+      <a href="/some-book-1.html" class="category-card__image">${inner}</a>
+      <a class="ui-card-title category-card__name">Якась цікава книга</a>
+      <div class="product-price">100 грн</div>
+    </div>`;
+  }
+
+  it('extracts the absolute cover URL from the catalog card image', () => {
+    const { listings } = parseYakabooPage(loadFixture('catalog-page.html'));
+    expect(listings[0]!.coverUrl).toBe(
+      'https://static.yakaboo.ua/media/cloudflare/product/webp/352x340/kobzar.jpg',
+    );
+  });
+
+  it('every listing on the standard page has a cover URL', () => {
+    const { listings } = parseYakabooPage(loadFixture('catalog-page.html'));
+    for (const l of listings) expect(l.coverUrl).not.toBeNull();
+  });
+
+  it('resolves a relative cover src to an absolute Yakaboo URL', () => {
+    const { listings } = parseYakabooPage(cardHtml('<img src="/media/rel.jpg">'));
+    expect(listings[0]!.coverUrl).toBe('https://www.yakaboo.ua/media/rel.jpg');
+  });
+
+  it('resolves a protocol-relative cover src to https', () => {
+    const { listings } = parseYakabooPage(cardHtml('<img src="//static.yakaboo.ua/x.jpg">'));
+    expect(listings[0]!.coverUrl).toBe('https://static.yakaboo.ua/x.jpg');
+  });
+
+  it('falls back to data-src when src is absent (lazy-loaded image)', () => {
+    const { listings } = parseYakabooPage(cardHtml('<img data-src="https://cdn.example/lazy.jpg">'));
+    expect(listings[0]!.coverUrl).toBe('https://cdn.example/lazy.jpg');
+  });
+
+  it('returns null cover when the card has no image (missing cover never breaks the listing)', () => {
+    const { listings } = parseYakabooPage(cardHtml(''));
+    expect(listings).toHaveLength(1);
+    expect(listings[0]!.coverUrl).toBeNull();
+  });
+});

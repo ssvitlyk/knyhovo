@@ -26,6 +26,8 @@ export const SELECTORS = {
   finalPrice: '[data-price-type="finalPrice"]',
   /** Preorder indicator present on the card. */
   preorder: '.pre-order',
+  /** Magento renders the cover thumbnail as `img.product-image-photo`. */
+  cover: 'img.product-image-photo',
 } as const;
 
 export const OUT_OF_STOCK_KEYWORDS = [
