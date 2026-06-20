@@ -90,6 +90,9 @@ model ProviderListing {
   url             String
   lastSeenAt      DateTime @map("last_seen_at")
   availability    Availability @default(UNKNOWN) @map("availability")
+  /// Cover image URL extracted from the provider's catalog card (W9a F1).
+  /// null when the card exposed no usable image; enrichment never overwrites a known cover with null.
+  coverUrl        String?  @map("cover_url")
 
   canonicalBook CanonicalBook       @relation(fields: [canonicalBookId], references: [id])
   priceHistory  PriceHistoryPoint[]

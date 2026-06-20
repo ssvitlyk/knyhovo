@@ -210,3 +210,47 @@ describe('parseVivatPage — malformed input', () => {
     expect(errors.some((e) => e.includes('missing title'))).toBe(true);
   });
 });
+
+// ──────────────────────────────────────────────────────────────
+// parseVivatPage — cover extraction (W9a F1)
+// ──────────────────────────────────────────────────────────────
+
+describe('parseVivatPage — cover extraction', () => {
+  function productHtml(product: Record<string, unknown>): string {
+    const payload = { props: { pageProps: { products: [product] } } };
+    return `<script id="__NEXT_DATA__" type="application/json">${JSON.stringify(payload)}</script>`;
+  }
+
+  it('resolves the site-relative image path to an absolute Vivat URL', () => {
+    const { listings } = parseVivatPage(loadFixture('catalog-page.html'));
+    expect(listings[0]!.coverUrl).toBe('https://vivat.com.ua/storage/a.jpg');
+    expect(listings[1]!.coverUrl).toBe('https://vivat.com.ua/storage/b.png');
+  });
+
+  it('every paper listing on the standard page has a cover URL', () => {
+    const { listings } = parseVivatPage(loadFixture('catalog-page.html'));
+    for (const l of listings) expect(l.coverUrl).not.toBeNull();
+  });
+
+  it('passes an absolute image URL through unchanged', () => {
+    const { listings } = parseVivatPage(
+      productHtml({ code: 'x', title: 'T', bookType: 'paper', price: { retail: 100 }, image: 'https://cdn.example/x.jpg' }),
+    );
+    expect(listings[0]!.coverUrl).toBe('https://cdn.example/x.jpg');
+  });
+
+  it('returns null cover when the product has no image (missing cover never breaks the listing)', () => {
+    const { listings } = parseVivatPage(
+      productHtml({ code: 'x', title: 'T', bookType: 'paper', price: { retail: 100 } }),
+    );
+    expect(listings).toHaveLength(1);
+    expect(listings[0]!.coverUrl).toBeNull();
+  });
+
+  it('returns null cover when the image value is not a string', () => {
+    const { listings } = parseVivatPage(
+      productHtml({ code: 'x', title: 'T', bookType: 'paper', price: { retail: 100 }, image: 123 }),
+    );
+    expect(listings[0]!.coverUrl).toBeNull();
+  });
+});

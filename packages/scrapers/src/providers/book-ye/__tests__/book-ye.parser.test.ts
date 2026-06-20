@@ -207,3 +207,51 @@ describe('parseBookYePage — malformed input', () => {
     expect(listings[0]!.availability).toBe('out-of-stock');
   });
 });
+
+// ──────────────────────────────────────────────────────────────
+// parseBookYePage — cover extraction (W9a F1)
+// ──────────────────────────────────────────────────────────────
+
+describe('parseBookYePage — cover extraction', () => {
+  function cardHtml(imgTag: string): string {
+    return `<li class="product-item"><div class="product-item-info">
+      <a class="product-item-photo" href="/x/">${imgTag}</a>
+      <strong class="product-item-name"><a class="product-item-link" href="/x/" title="Книга">Книга</a></strong>
+      <span data-price-amount="100" data-price-type="finalPrice"></span>
+    </div></li>`;
+  }
+
+  it('extracts the absolute cover URL from the card image', () => {
+    const { listings } = parseBookYePage(loadFixture('catalog-page.html'));
+    expect(listings[0]!.coverUrl).toBe(
+      'https://book-ye.com.ua/media/catalog/product/korol-shramiv.jpg',
+    );
+  });
+
+  it('falls back to data-src and resolves a relative path to an absolute URL', () => {
+    const { listings } = parseBookYePage(loadFixture('catalog-page.html'));
+    // Антологія сучасної поезії uses a relative data-src in the fixture.
+    expect(listings[2]!.coverUrl).toBe(
+      'https://book-ye.com.ua/media/catalog/product/antologiia-poezii.jpg',
+    );
+  });
+
+  it('returns null cover when the card has no image (in-fixture: Імперія штормів)', () => {
+    const { listings } = parseBookYePage(loadFixture('catalog-page.html'));
+    expect(listings[1]!.title).toBe('Імперія штормів');
+    expect(listings[1]!.coverUrl).toBeNull();
+  });
+
+  it('resolves a protocol-relative cover src to https', () => {
+    const { listings } = parseBookYePage(
+      cardHtml('<img class="product-image-photo" src="//cdn.example/x.jpg">'),
+    );
+    expect(listings[0]!.coverUrl).toBe('https://cdn.example/x.jpg');
+  });
+
+  it('returns null cover when the card has no image element (missing cover never breaks the listing)', () => {
+    const { listings } = parseBookYePage(cardHtml(''));
+    expect(listings).toHaveLength(1);
+    expect(listings[0]!.coverUrl).toBeNull();
+  });
+});

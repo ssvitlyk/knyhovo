@@ -4,6 +4,7 @@ import {
   NEXT_DATA_SELECTOR,
   isPaperBookType,
   buildProductUrl,
+  buildCoverUrl,
 } from './constants.js';
 
 export interface ParseResult {
@@ -22,6 +23,7 @@ interface VivatProduct {
   readonly stockLevel?: unknown;
   readonly preOrder?: unknown;
   readonly bookType?: unknown;
+  readonly image?: unknown;
   readonly price?: {
     readonly retail?: unknown;
     readonly promotion?: unknown;
@@ -153,6 +155,7 @@ export function parseVivatPage(html: string): ParseResult {
         price,
         url: buildProductUrl(code),
         availability,
+        coverUrl: buildCoverUrl(product.image),
       });
     } catch (err) {
       errors.push(
