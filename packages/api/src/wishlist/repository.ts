@@ -18,6 +18,7 @@ export interface WishlistListingRow {
   readonly availability: 'IN_STOCK' | 'OUT_OF_STOCK' | 'UNKNOWN';
   readonly url: string;
   readonly lastSeenAt: Date;
+  readonly coverUrl?: string | null;
 }
 
 export interface WishlistCanonicalBookRow {
@@ -65,6 +66,7 @@ export async function findWishlistItemsByUserId(
               availability: true,
               url: true,
               lastSeenAt: true,
+              coverUrl: true,
             },
           },
         },

@@ -39,8 +39,11 @@ export function WishlistRow({ item }: WishlistRowProps): React.JSX.Element {
 
   return (
     <div className={rowClass}>
-      {/* Cover placeholder — coverUrl is always null from S9 API */}
-      <span className="v1-cover" aria-hidden="true" />
+      {book.coverUrl ? (
+        <img className="v1-cover" src={book.coverUrl} alt="" />
+      ) : (
+        <span className="v1-cover" aria-hidden="true" />
+      )}
 
       {/* Book info */}
       <span className="v1-row-main">

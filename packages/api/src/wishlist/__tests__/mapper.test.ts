@@ -37,8 +37,9 @@ function listing(
   availability: WishlistListingRow['availability'] = 'IN_STOCK',
   url = 'https://example.com',
   lastSeenAt = FIXED_DATE,
+  coverUrl: string | null = null,
 ): WishlistListingRow {
-  return { provider, priceAmount, priceCurrency: 'UAH', availability, url, lastSeenAt };
+  return { provider, priceAmount, priceCurrency: 'UAH', availability, url, lastSeenAt, coverUrl };
 }
 
 describe('toWishlistResponse', () => {
@@ -160,11 +161,58 @@ describe('toWishlistResponse', () => {
     expect(dto.items[0]!.book.isbn).toBe('978-0-00-000000-0');
   });
 
-  it('maps coverUrl as null always', () => {
+  it('returns null coverUrl when no listing has a cover', () => {
     const rows = [makeRow({ listings: [listing('YAKABOO', 10000)] })];
     const dto = toWishlistResponse(rows);
 
     expect(dto.items[0]!.book.coverUrl).toBeNull();
+  });
+
+  it('returns coverUrl when a listing has one', () => {
+    const rows = [
+      makeRow({
+        listings: [
+          listing('YAKABOO', 10000, 'IN_STOCK', 'https://example.com', FIXED_DATE, 'https://cdn.yakaboo.ua/cover.jpg'),
+        ],
+      }),
+    ];
+    const dto = toWishlistResponse(rows);
+
+    expect(dto.items[0]!.book.coverUrl).toBe('https://cdn.yakaboo.ua/cover.jpg');
+  });
+
+  it('provider priority — yakaboo cover wins over vivat cover regardless of price', () => {
+    const rows = [
+      makeRow({
+        listings: [
+          // YAKABOO is more expensive but has higher priority
+          listing('YAKABOO', 50000, 'IN_STOCK', 'https://example.com', FIXED_DATE, 'https://cdn.yakaboo.ua/cover.jpg'),
+          // VIVAT is cheaper but lower priority
+          listing('VIVAT', 10000, 'IN_STOCK', 'https://vivat.com', FIXED_DATE, 'https://cdn.vivat.com/cover.jpg'),
+        ],
+      }),
+    ];
+    const dto = toWishlistResponse(rows);
+
+    expect(dto.items[0]!.book.coverUrl).toBe('https://cdn.yakaboo.ua/cover.jpg');
+  });
+
+  it('out-of-stock-only book still yields its cover', () => {
+    const rows = [
+      makeRow({
+        listings: [
+          listing('YAKABOO', 34900, 'OUT_OF_STOCK', 'https://example.com', FIXED_DATE, 'https://cdn.yakaboo.ua/cover.jpg'),
+        ],
+      }),
+    ];
+    const dto = toWishlistResponse(rows);
+    const item = dto.items[0]!;
+
+    // Providers empty and lowestPrice null because all listings are OUT_OF_STOCK
+    expect(item.book.providers).toEqual([]);
+    expect(item.book.lowestPrice).toBeNull();
+    // But the cover is still selected from all listings
+    expect(item.book.coverUrl).toBe('https://cdn.yakaboo.ua/cover.jpg');
   });
 
   it('maps provider enums to slugs correctly', () => {

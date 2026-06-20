@@ -122,7 +122,7 @@ export interface WishlistBookDto {
   readonly title: string;
   readonly author: string;
   readonly isbn: string | null;
-  /** Always null from the S9 API — cover scraping not yet implemented. */
+  /** Selected display cover URL (W9a provider-priority selection across all listings); null when no provider has a usable cover. */
   readonly coverUrl: string | null;
   readonly lowestPrice: MoneyDto | null;
   readonly offersCount: number;
