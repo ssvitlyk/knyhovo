@@ -56,7 +56,11 @@ export function WishlistCard({ item }: WishlistCardProps): React.JSX.Element {
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
       >
-        <span className="v1-mob-cover" aria-hidden="true" />
+        {book.coverUrl ? (
+          <img className="v1-mob-cover" src={book.coverUrl} alt="" />
+        ) : (
+          <span className="v1-mob-cover" aria-hidden="true" />
+        )}
         <span className="hy-mcard-main">
           <span className="v1-mob-row-title">{book.title}</span>
           <span className="v1-mob-row-author">{book.author}</span>

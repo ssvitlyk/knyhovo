@@ -1,4 +1,5 @@
 import type { ProviderName, Availability } from '@knyhovo/shared';
+import { selectCoverUrl } from '../discovery/cover-selection.js';
 import type { WishlistRow, WishlistListingRow } from './repository.js';
 import type { WishlistProviderDto, WishlistBookDto, WishlistItemDto, WishlistResponseDto, MoneyDto, AlertDto } from './dto.js';
 import { deriveAlertStatus, ALERT_INTENT_SLUG } from './alert/service.js';
@@ -66,12 +67,20 @@ export function toWishlistResponse(rows: WishlistRow[]): WishlistResponseDto {
         }
       : null;
 
+    const coverUrl = selectCoverUrl(
+      row.canonicalBook.listings.map((l) => ({
+        provider: PROVIDER_SLUG[l.provider],
+        coverUrl: l.coverUrl,
+        priceAmount: l.priceAmount,
+      })),
+    );
+
     const book: WishlistBookDto = {
       id: row.canonicalBook.id,
       title: row.canonicalBook.title,
       author: row.canonicalBook.author,
       isbn: row.canonicalBook.isbn ?? null,
-      coverUrl: null,
+      coverUrl,
       lowestPrice,
       offersCount,
       providers,

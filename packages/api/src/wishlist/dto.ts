@@ -41,7 +41,7 @@ export interface WishlistBookDto {
   readonly title: string;
   readonly author: string;
   readonly isbn: string | null;
-  /** Always null — column does not exist in DB. Reserved for future use. */
+  /** Selected display cover URL (W9a provider-priority selection across all listings); null when no provider has a usable cover. */
   readonly coverUrl: string | null;
   /** Minimum available provider price. null when there are no available offers. */
   readonly lowestPrice: MoneyDto | null;

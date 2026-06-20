@@ -103,6 +103,7 @@
   background: linear-gradient(135deg, var(--surface-accent), var(--surface-sunk));
   border: 1px solid var(--border);
   display: block;
+  object-fit: cover;
 }
 .v1-row-main { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
 .v1-row-title {
@@ -175,6 +176,7 @@ a.v1-row-title:hover { color: var(--accent); }
   background: linear-gradient(135deg, var(--surface-accent), var(--surface-sunk));
   border: 1px solid var(--border);
   display: block;
+  object-fit: cover;
 }
 
 .hy-mcard-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }

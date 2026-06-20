@@ -201,4 +201,27 @@ describe('WishlistRow', () => {
     render(<WishlistRow item={triggeredItem} />);
     expect(screen.getByText('Ціль досягнута')).toBeTruthy();
   });
+
+  /* ── Cover rendering tests ───────────────────────────────────────────────── */
+
+  it('non-null coverUrl → renders img.v1-cover with correct src', () => {
+    const itemWithCover: WishlistItemDto = {
+      ...BASE_ITEM,
+      book: {
+        ...BASE_ITEM.book,
+        coverUrl: 'https://cdn.yakaboo.ua/cover.jpg',
+      },
+    };
+    const { container } = render(<WishlistRow item={itemWithCover} />);
+    const img = container.querySelector('img.v1-cover');
+    expect(img).toBeTruthy();
+    expect(img?.getAttribute('src')).toBe('https://cdn.yakaboo.ua/cover.jpg');
+  });
+
+  it('null coverUrl → no img, placeholder span.v1-cover present', () => {
+    // BASE_ITEM already has coverUrl: null
+    const { container } = render(<WishlistRow item={BASE_ITEM} />);
+    expect(container.querySelector('img')).toBeNull();
+    expect(container.querySelector('span.v1-cover')).toBeTruthy();
+  });
 });
