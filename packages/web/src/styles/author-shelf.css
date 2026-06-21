@@ -1,0 +1,140 @@
+/* ============================================================
+   KNYHOVO · W9a — Author Shelf · «Інші книги автора»
+   Book Details v1.1 (Variant C) extension. Composes DS v1.0
+   tokens ONLY — no new colours, type, radii or shadows. Reuses
+   the frozen BookCard (.kn-book) and the frozen Book Details
+   related-shelf chassis. The ONLY page-level overrides are the
+   same approved precedents already used by the Series shelf
+   (vertical card direction, cover sizing) plus the W9a author-
+   line suppression. The BookCard component itself is untouched.
+   ============================================================ */
+
+/* ----------------------------------------------------------------
+   §2 — AUTHOR SHELF · SECTION HEADER
+   Title + optional «усі книги автора →» action, baseline-aligned.
+   ---------------------------------------------------------------- */
+.as-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-5); }
+.as-head .bd-h2 { margin-bottom: 0; }
+.as-all {
+  flex: none; white-space: nowrap; font-size: var(--fs-sm); font-weight: var(--fw-medium);
+  color: var(--accent); display: inline-flex; align-items: center; gap: var(--space-1);
+  border-radius: var(--radius-xs); transition: color var(--dur-fast) var(--ease-out);
+}
+.as-all:hover { color: var(--accent-hover); }
+.as-all svg { width: 15px; height: 15px; }
+
+/* ----------------------------------------------------------------
+   §3 — DESKTOP GRID  (≥1024px → 4-up · tablet 768–1023 → 3-up)
+   Reuses the frozen Series-shelf precedent: vertical .kn-book,
+   cover 104×150. W9a adds: author-line suppression (redundant
+   with the section heading). Single-row grid stretch keeps the
+   row even — no min-height needed.
+   ---------------------------------------------------------------- */
+/* COLUMN MODEL — ONE mechanism, any N or cap:
+   columns = min(visibleCardCount, rowCap). JSX sets --as-cols inline to that
+   number; CSS expands it to an EXPLICIT track list. `auto-fit`/`auto-fill` are
+   FORBIDDEN (they create empty tracks / stretch under-cap cards). Every track is
+   minmax(0, var(--as-card-max)) so cards never stretch past 272px even in a full
+   4-up row — width is identical for 2, 3 or 4 cards. justify-content:start keeps
+   the row left-aligned; the shelf BOX still spans full content width, trailing
+   space is empty container (not cells). 2→2 cards, 3→3, 4→4. */
+.as-shelf {
+  display: grid;
+  --as-cols: 4;            /* JSX overrides inline: min(cards, rowCap) */
+  --as-card-max: 272px;    /* hard width cap so cards never over-stretch */
+  grid-template-columns: repeat(var(--as-cols), minmax(0, var(--as-card-max)));
+  justify-content: start;
+  gap: var(--space-5);
+}
+.as-shelf .kn-book { flex-direction: column; min-width: 0; } /* min-width:0 → card never forced wider than its track */
+.as-shelf .kn-book__cover { width: 104px; height: 150px; }
+
+/* W9a: the page already states the author in the heading + hero, so the
+   per-card author line is redundant AND would surface noisy author-string
+   variants. Suppressed on the AUTHOR shelf only — Series shelf keeps it.
+   Component untouched; this is a page-level override (approved precedent). */
+.as-shelf .kn-book__author { display: none; }
+
+/* ----------------------------------------------------------------
+   §4 — MOBILE RAIL  (<768px → horizontal swipe)
+   Reuses the frozen Book Details mobile-shelf precedent: edge-bleed,
+   168px cards, cover 96×138, hidden scrollbar. W9a adds scroll-snap
+   for a calmer swipe and a trailing «see-all» rail card.
+   ---------------------------------------------------------------- */
+.as-shelf--mob {
+  display: flex; gap: var(--space-4); overflow-x: auto;
+  margin: 0 calc(-1 * var(--space-4)); padding: var(--space-1) var(--space-4) var(--space-4);
+  scrollbar-width: none; scroll-snap-type: x proximity; scroll-padding-left: var(--space-4);
+  -webkit-overflow-scrolling: touch;
+}
+/* Edge-bleed intent: first card sits flush at the content's left gutter and is
+   FULLY visible; cards flow rightward; the viewport's right edge CUTS the
+   trailing card to a partial peek — that peek is the only scroll affordance.
+   scroll-padding-left snaps each swiped card back to the left gutter. */
+.as-shelf--mob::-webkit-scrollbar { display: none; }
+.as-shelf--mob .kn-book { flex: none; width: 168px; flex-direction: column; scroll-snap-align: start; }
+.as-shelf--mob .kn-book__cover { width: 96px; height: 138px; }
+.as-shelf--mob .kn-book__author { display: none; }
+
+/* trailing rail card → author page (only when there are more than the cap) */
+.as-railmore {
+  flex: none; width: 168px; min-height: 44px; align-self: stretch;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2);
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm); color: var(--accent); text-align: center; padding: var(--space-4);
+  scroll-snap-align: end; transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-base) var(--ease-out);
+}
+.as-railmore:hover { border-color: var(--accent); box-shadow: var(--shadow-md); }
+.as-railmore svg { width: 22px; height: 22px; }
+.as-railmore span { font-size: var(--fs-sm); font-weight: var(--fw-medium); line-height: var(--lh-snug); }
+.as-railmore small { font-size: var(--fs-xs); color: var(--text-muted); }
+
+/* ----------------------------------------------------------------
+   §5 — KEYBOARD / FOCUS  (cards are links → 3px soft accent ring)
+   ---------------------------------------------------------------- */
+.as-link { display: block; border-radius: var(--radius-md); text-decoration: none; color: inherit; }
+.as-link:focus-visible, .as-all:focus-visible, .as-railmore:focus-visible {
+  outline: none; box-shadow: var(--focus-ring);
+}
+
+/* ----------------------------------------------------------------
+   §6 — ENTRANCE  (one-shot, gated on reduced-motion; inherits the
+   frozen shelf stagger — never an infinite loop)
+   ---------------------------------------------------------------- */
+@media (prefers-reduced-motion: no-preference) {
+  .as-stagger > * { animation: as-fade-in 280ms var(--ease-out) both; }
+  .as-stagger > *:nth-child(2) { animation-delay: 50ms; }
+  .as-stagger > *:nth-child(3) { animation-delay: 100ms; }
+  .as-stagger > *:nth-child(4) { animation-delay: 150ms; }
+  .as-stagger > *:nth-child(5) { animation-delay: 200ms; }
+  @keyframes as-fade-in { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+}
+
+/* ----------------------------------------------------------------
+   §7 — RESPONSIVE SWITCH  (integration contract — see spec §8/§18)
+   The page renders ALL THREE wrappers — the desktop grid (.as-desktop, cap 4),
+   the tablet grid (.as-tablet, cap 3) and the rail (.as-mobile, cap 8); CSS
+   shows exactly one per breakpoint. They use DIFFERENT data (different caps),
+   so each wrapper gets its OWN selectAuthorShelf() result — column count ==
+   card count in every range. This is the ONLY supported switch; do not collapse
+   to one grid that "becomes" a rail, and never re-derive columns per breakpoint.
+   ---------------------------------------------------------------- */
+.as-tablet, .as-mobile { display: none; }
+@media (max-width: 1023px) and (min-width: 768px) {
+  .as-desktop { display: none; }
+  .as-tablet  { display: block; }
+}
+@media (max-width: 767px) {
+  .as-desktop { display: none; }
+  .as-mobile  { display: block; }
+}
+
+/* ----------------------------------------------------------------
+   §8 — RESPONSIVE NOTE  (rowCap is per-breakpoint, and each breakpoint is its
+   OWN selector instance, so --as-cols already equals min(cards, rowCap) for
+   that instance — no per-breakpoint column override is needed OR allowed.
+   Desktop ≥1024 → .as-desktop, cap 4 · Tablet 768–1023 → .as-tablet, cap 3 ·
+   Mobile <768 → .as-mobile rail. Because the tablet instance caps at 3, a 4th+
+   matched book is surfaced via «усі книги автора →», never orphaned onto a
+   second row — column count == card count in every range.
+   ---------------------------------------------------------------- */
