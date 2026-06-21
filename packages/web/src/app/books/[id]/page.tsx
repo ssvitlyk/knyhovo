@@ -2,9 +2,11 @@ import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { getBookDetails, BookDetailsError } from '@/lib/api/book';
 import { getBookAlertContext } from '@/lib/api/wishlist';
+import { getAuthorShelfRoster } from '@/lib/author-shelf/roster';
 import type { BookDetailsDto } from '@/lib/api/types';
 import { BookDetails } from '@/components/book/BookDetails';
 import { PriceHistorySection } from '@/components/book/price-history/PriceHistorySection';
+import { AuthorShelf } from '@/components/book/author-shelf/AuthorShelf';
 
 interface BookPageProps {
   readonly params: Promise<{ id: string }>;
@@ -29,7 +31,10 @@ export default async function BookPage({ params }: BookPageProps): Promise<React
   }
 
   const cookie = (await cookies()).toString();
-  const ctx = await getBookAlertContext({ bookId: id, cookie });
+  const [ctx, authorRoster] = await Promise.all([
+    getBookAlertContext({ bookId: id, cookie }),
+    getAuthorShelfRoster(book.author),
+  ]);
 
   return (
     <main className="results">
@@ -39,6 +44,7 @@ export default async function BookPage({ params }: BookPageProps): Promise<React
       </nav>
       <BookDetails book={book} initialInWishlist={ctx.inWishlist} initialAlert={ctx.alert} />
       <PriceHistorySection bookId={id} />
+      <AuthorShelf currentId={book.id} author={book.author} roster={authorRoster} />
     </main>
   );
 }
