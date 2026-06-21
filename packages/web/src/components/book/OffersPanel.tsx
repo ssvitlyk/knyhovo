@@ -105,6 +105,9 @@ export function OffersPanel({
           <p className="bd-unavail__text">
             Наразі жодна книгарня не має цієї книги в наявності. Загляньте пізніше — ми оновлюємо ціни щодня.
           </p>
+          <p className="bd-unavail__hint">
+            {'Додайте у вішлист — ми повідомимо, щойно книга з\'явиться.'}
+          </p>
         </div>
         <WishlistToggle
           bookId={bookId}

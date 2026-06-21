@@ -1,4 +1,5 @@
 import { Badge } from '@/components/ds/Badge';
+import { Cover } from '@/components/ds/Cover';
 import { RemoveButton } from './RemoveButton';
 import { WishlistAlertControl } from './WishlistAlertControl';
 import { AlertChip } from '@/components/alerts/AlertChip';
@@ -39,11 +40,7 @@ export function WishlistRow({ item }: WishlistRowProps): React.JSX.Element {
 
   return (
     <div className={rowClass}>
-      {book.coverUrl ? (
-        <img className="v1-cover" src={book.coverUrl} alt="" />
-      ) : (
-        <span className="v1-cover" aria-hidden="true" />
-      )}
+      <Cover src={book.coverUrl} className="v1-cover" placeholderAs="span" />
 
       {/* Book info */}
       <span className="v1-row-main">

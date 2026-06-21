@@ -99,6 +99,30 @@
 .si-ta__status--error { color: var(--text-body); }
 .si-ta__retry { margin-left: auto; }
 
+/* Suppress the native WebKit/Chromium search clear control on type="search"
+   inputs so only our custom .kn-field__clear button shows (W9a F4 follow-up). */
+.kn-field input[type='search']::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+
+/* Inline clear button inside the search field */
+.kn-field__clear {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--text-muted);
+  cursor: pointer;
+  flex: none;
+  min-width: 44px;
+  min-height: 44px;
+}
+.kn-field__clear:hover { color: var(--text); }
+
 /* ---------------------------------------------------------------------------
    Correction notice (SICorrectNotice)
    --------------------------------------------------------------------------- */

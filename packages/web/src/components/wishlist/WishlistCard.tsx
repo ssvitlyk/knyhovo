@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronDown } from 'lucide-react';
+import { Cover } from '@/components/ds/Cover';
 import { RemoveButton } from './RemoveButton';
 import { WishlistAlertControl } from './WishlistAlertControl';
 import { AlertChip } from '@/components/alerts/AlertChip';
@@ -56,11 +57,7 @@ export function WishlistCard({ item }: WishlistCardProps): React.JSX.Element {
         aria-expanded={open}
         onClick={() => setOpen((prev) => !prev)}
       >
-        {book.coverUrl ? (
-          <img className="v1-mob-cover" src={book.coverUrl} alt="" />
-        ) : (
-          <span className="v1-mob-cover" aria-hidden="true" />
-        )}
+        <Cover src={book.coverUrl} className="v1-mob-cover" placeholderAs="span" />
         <span className="hy-mcard-main">
           <span className="v1-mob-row-title">{book.title}</span>
           <span className="v1-mob-row-author">{book.author}</span>

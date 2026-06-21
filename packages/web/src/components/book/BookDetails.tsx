@@ -1,4 +1,6 @@
 import type { AlertDto, BookDetailsDto } from '@/lib/api/types';
+import { Cover } from '@/components/ds/Cover';
+import { Description } from './Description';
 import { BookMeta } from './BookMeta';
 import { OffersPanel } from './OffersPanel';
 
@@ -18,22 +20,14 @@ export function BookDetails({ book, initialInWishlist, initialAlert }: BookDetai
     <div className="bdc-grid">
       <div className="bdc-left">
         <div className="bdc-idrow">
-          {book.coverUrl ? (
-            <img className="bd-cover bd-cover--md" src={book.coverUrl} alt="" />
-          ) : (
-            <div className="bd-cover bd-cover--md" aria-hidden="true">
-              <span>Обкладинка</span>
-            </div>
-          )}
+          <Cover src={book.coverUrl} className="bd-cover bd-cover--md" placeholderLabel="Обкладинка" loading="eager" />
           <div>
             <h1 className="bd-h1">{book.title}</h1>
             <p className="bd-author">{book.author}</p>
           </div>
         </div>
         {book.description ? (
-          <div className="bd-desc">
-            <p>{book.description}</p>
-          </div>
+          <Description text={book.description} />
         ) : (
           <div className="bd-hint">
             Опис ще не додано — ми збираємо інформацію про це видання. Зазвичай це триває до одного дня.

@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search } from 'lucide-react';
+import { Search, X } from 'lucide-react';
 
 import { clientSearch } from '@/lib/api/searchClient';
 import type { SearchItemDto } from '@/lib/api/types';
@@ -55,6 +55,7 @@ export function Typeahead({ initialQuery }: TypeaheadProps): React.JSX.Element {
 
   // Blur timeout ref so click on option can cancel the blur.
   const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   // -----------------------------------------------------------------------
   // Helpers
@@ -220,6 +221,7 @@ export function Typeahead({ initialQuery }: TypeaheadProps): React.JSX.Element {
     setValue('');
     router.push('/search');
     setOpen(false);
+    inputRef.current?.focus();
   };
 
   // -----------------------------------------------------------------------
@@ -405,6 +407,7 @@ export function Typeahead({ initialQuery }: TypeaheadProps): React.JSX.Element {
           <Search aria-hidden="true" />
         </span>
         <input
+          ref={inputRef}
           type="search"
           role="combobox"
           aria-label="Назва книги, автора або ISBN…"
@@ -419,6 +422,16 @@ export function Typeahead({ initialQuery }: TypeaheadProps): React.JSX.Element {
           onFocus={handleFocus}
           onBlur={handleBlur}
         />
+        {value.length > 0 && (
+          <button
+            type="button"
+            className="kn-field__clear"
+            aria-label="Очистити запит"
+            onClick={handleClear}
+          >
+            <X size={16} aria-hidden="true" />
+          </button>
+        )}
         <button
           type="button"
           className="kn-btn kn-btn--primary"
@@ -427,12 +440,6 @@ export function Typeahead({ initialQuery }: TypeaheadProps): React.JSX.Element {
           Знайти
         </button>
       </div>
-
-      {value.length > 0 && (
-        <button type="button" className="results__search-clear" onClick={handleClear}>
-          × Очистити запит
-        </button>
-      )}
 
       {renderDropdown()}
     </div>
