@@ -3,6 +3,7 @@ import type { RawProviderListing, Availability, Money } from '@knyhovo/shared';
 import {
   YAKABOO_BASE_URL,
   SELECTORS,
+  PRODUCT_DESCRIPTION_SELECTORS,
   OUT_OF_STOCK_KEYWORDS,
   IN_STOCK_KEYWORDS,
   PREORDER_KEYWORDS,
@@ -143,4 +144,19 @@ export function parseYakabooPage(html: string): ParseResult {
   });
 
   return { listings, errors, hasNextPage: rawCardCount > 0 };
+}
+
+/**
+ * Extract the raw description HTML from a Yakaboo *product* page (W9a F2).
+ * Pure function — no IO. Tries each candidate container in order and returns the
+ * first non-empty inner HTML, or null when none is present. Sanitization to
+ * plain text happens at the enrichment boundary (sanitizeDescription).
+ */
+export function extractYakabooProductDescription(html: string): string | null {
+  const $ = cheerio.load(html);
+  for (const selector of PRODUCT_DESCRIPTION_SELECTORS) {
+    const inner = $(selector).first().html();
+    if (inner != null && inner.trim() !== '') return inner;
+  }
+  return null;
 }

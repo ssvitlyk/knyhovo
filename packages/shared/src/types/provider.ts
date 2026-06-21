@@ -26,6 +26,16 @@ export interface ScraperOptions {
   timeoutMs?: number;
   /** Delay between consecutive page requests in milliseconds. Provider default applies when omitted. */
   delayMs?: number;
+  /**
+   * Opt-in: run a per-book product-page fetch pass to enrich listings with descriptions (W9a F2).
+   * Defaults to false — a normal catalog scrape performs no product-page requests.
+   */
+  enrichDescriptions?: boolean;
+  /**
+   * Delay between consecutive product-page requests during the description enrichment pass, in ms.
+   * Falls back to delayMs when omitted. Product pages warrant a more aggressive throttle than catalog pages.
+   */
+  descriptionDelayMs?: number;
 }
 
 /**
@@ -53,6 +63,11 @@ export interface RawProviderListing {
    * Sourced from the listing card only — no product-page fetch (W9a F1).
    */
   readonly coverUrl?: string | null;
+  /**
+   * Sanitized plain-text description from the provider's product page (W9a F2).
+   * Optional and nullable: omitted/null unless the opt-in enrichment pass ran and found one.
+   */
+  readonly description?: string | null;
 }
 
 /**
@@ -81,6 +96,11 @@ export interface ProviderListing {
   readonly lastSeenAt: string;
   /** Stock availability persisted from the last scrape that saw this listing. */
   readonly availability: Availability;
+  /**
+   * Sanitized plain-text description scraped from the provider's product page (W9a F2).
+   * null when no usable description has been enriched yet.
+   */
+  readonly description: string | null;
 }
 
 /**

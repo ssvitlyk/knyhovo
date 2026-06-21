@@ -81,6 +81,7 @@ const _listing: ProviderListing = {
   url: 'https://yakaboo.ua/kobzar.html',
   lastSeenAt: '2026-06-09T00:00:00.000Z',
   availability: 'in-stock',
+  description: null,
 };
 
 // ProviderListing rejects unknown provider
@@ -96,6 +97,7 @@ const _badListing: ProviderListing = {
   url: 'https://rozetka.ua/kobzar.html',
   lastSeenAt: '2026-06-09T00:00:00.000Z',
   availability: 'in-stock',
+  description: null,
 };
 
 // ScraperProvider shape — scrape accepts optional ScraperOptions

@@ -92,6 +92,7 @@ export async function persistListing(
         lastSeenAt: scrapedAt,
         availability: mapAvailability(listing.availability),
         coverUrl: listing.coverUrl ?? null,
+        description: listing.description ?? null,
       },
     });
 
@@ -114,6 +115,7 @@ export async function persistListing(
       availability: 'IN_STOCK' | 'OUT_OF_STOCK' | 'UNKNOWN';
       isbn?: string;
       coverUrl?: string;
+      description?: string;
     } = {
       priceAmount,
       priceCurrency,
@@ -131,6 +133,12 @@ export async function persistListing(
     // previously-known cover with null (graceful enrichment; W9a F1).
     if (listing.coverUrl != null && listing.coverUrl !== '') {
       updateData.coverUrl = listing.coverUrl;
+    }
+
+    // Refresh the description only when this scrape produced one — never overwrite
+    // a previously-known description with null/empty (graceful enrichment; W9a F2).
+    if (listing.description != null && listing.description !== '') {
+      updateData.description = listing.description;
     }
 
     await tx.providerListing.update({

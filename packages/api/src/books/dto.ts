@@ -34,7 +34,10 @@ export interface BookDetailsDto {
   readonly title: string;
   readonly author: string;
   readonly isbn: string | null;
-  /** Always null — column does not exist in DB. Reserved for future use. */
+  /**
+   * Sanitized plain-text description selected across the book's provider
+   * listings (W9a F2). null when no provider has an enriched description.
+   */
   readonly description: string | null;
   /** Always null — column does not exist in DB. Reserved for future use. */
   readonly coverUrl: string | null;

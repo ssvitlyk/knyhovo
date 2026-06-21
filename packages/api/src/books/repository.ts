@@ -15,6 +15,8 @@ export interface BookListingRow {
   readonly availability: 'IN_STOCK' | 'OUT_OF_STOCK' | 'UNKNOWN';
   readonly url: string;
   readonly lastSeenAt: Date;
+  /** Sanitized plain-text product-page description, or null when none enriched (W9a F2). */
+  readonly description: string | null;
 }
 
 export interface BookDetailsRow {
@@ -53,6 +55,7 @@ export async function findCanonicalBookById(
           availability: true,
           url: true,
           lastSeenAt: true,
+          description: true,
         },
       },
     },

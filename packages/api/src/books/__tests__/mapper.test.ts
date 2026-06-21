@@ -21,8 +21,9 @@ function listing(
   availability: BookListingRow['availability'] = 'IN_STOCK',
   url = 'https://example.com',
   lastSeenAt = FIXED_DATE,
+  description: string | null = null,
 ): BookListingRow {
-  return { provider, priceAmount, priceCurrency: 'UAH', availability, url, lastSeenAt };
+  return { provider, priceAmount, priceCurrency: 'UAH', availability, url, lastSeenAt, description };
 }
 
 describe('toBookDetails', () => {
@@ -113,10 +114,38 @@ describe('toBookDetails', () => {
     expect(dto.offersCount).toBe(0);
   });
 
-  it('description and coverUrl are always null', () => {
+  it('coverUrl is always null (not wired in F2)', () => {
     const dto = toBookDetails(row());
-    expect(dto.description).toBeNull();
     expect(dto.coverUrl).toBeNull();
+  });
+
+  it('description is null when no listing carries one', () => {
+    const dto = toBookDetails(
+      row({ listings: [listing('YAKABOO', 34900), listing('BOOK_CLUB', 29900)] }),
+    );
+    expect(dto.description).toBeNull();
+  });
+
+  it('selects description by provider priority (yakaboo over vivat)', () => {
+    const dto = toBookDetails(
+      row({
+        listings: [
+          listing('VIVAT', 10000, 'IN_STOCK', 'https://vivat', FIXED_DATE, 'Vivat опис'),
+          listing('YAKABOO', 50000, 'IN_STOCK', 'https://yakaboo', FIXED_DATE, 'Yakaboo опис'),
+        ],
+      }),
+    );
+    expect(dto.description).toBe('Yakaboo опис');
+  });
+
+  it('selects description from OUT_OF_STOCK listings too (uses ALL listings)', () => {
+    const dto = toBookDetails(
+      row({
+        listings: [listing('YAKABOO', 34900, 'OUT_OF_STOCK', 'https://yakaboo', FIXED_DATE, 'Опис попри out-of-stock')],
+      }),
+    );
+    expect(dto.providers).toEqual([]);
+    expect(dto.description).toBe('Опис попри out-of-stock');
   });
 
   it('passes through a string isbn', () => {

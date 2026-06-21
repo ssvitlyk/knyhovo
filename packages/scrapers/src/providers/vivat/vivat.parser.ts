@@ -166,3 +166,39 @@ export function parseVivatPage(html: string): ParseResult {
 
   return { listings, errors, hasNextPage: products.length > 0 };
 }
+
+/**
+ * Extract the raw description from a Vivat *product* page (W9a F2).
+ * Pure function — no IO. Reads the `__NEXT_DATA__` JSON (same technique as the
+ * catalog parser) and returns the first non-empty description-like field on
+ * `props.pageProps.product`, or null when none is present.
+ *
+ * Field names are representative — must be re-verified against a live product
+ * page before description enrichment is enabled (opt-in, off by default).
+ * The value may contain HTML; sanitization happens at the enrichment boundary.
+ */
+export function extractVivatProductDescription(html: string): string | null {
+  const $ = cheerio.load(html);
+  const raw = $(NEXT_DATA_SELECTOR).first().contents().text();
+  if (!raw.trim()) return null;
+
+  let product: Record<string, unknown> | undefined;
+  try {
+    const data = JSON.parse(raw) as {
+      props?: { pageProps?: { product?: unknown } };
+    };
+    const candidate = data.props?.pageProps?.product;
+    product = typeof candidate === 'object' && candidate !== null
+      ? (candidate as Record<string, unknown>)
+      : undefined;
+  } catch {
+    return null;
+  }
+  if (!product) return null;
+
+  for (const key of ['description', 'descriptionFull', 'annotation', 'text']) {
+    const value = product[key];
+    if (typeof value === 'string' && value.trim() !== '') return value;
+  }
+  return null;
+}
