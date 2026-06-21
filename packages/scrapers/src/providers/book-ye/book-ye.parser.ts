@@ -2,6 +2,7 @@ import * as cheerio from 'cheerio';
 import type { RawProviderListing, Availability, Money } from '@knyhovo/shared';
 import {
   SELECTORS,
+  PRODUCT_DESCRIPTION_SELECTORS,
   OUT_OF_STOCK_KEYWORDS,
   PREORDER_KEYWORDS,
   isNonPhysicalTitle,
@@ -130,4 +131,19 @@ export function parseBookYePage(html: string): ParseResult {
   });
 
   return { listings, errors, hasNextPage: rawCardCount > 0 };
+}
+
+/**
+ * Extract the raw description HTML from a Книгарня «Є» *product* page (W9a F2).
+ * Pure function — no IO. Tries each candidate Magento container in order and
+ * returns the first non-empty inner HTML, or null when none is present.
+ * Sanitization to plain text happens at the enrichment boundary.
+ */
+export function extractBookYeProductDescription(html: string): string | null {
+  const $ = cheerio.load(html);
+  for (const selector of PRODUCT_DESCRIPTION_SELECTORS) {
+    const inner = $(selector).first().html();
+    if (inner != null && inner.trim() !== '') return inner;
+  }
+  return null;
 }

@@ -40,6 +40,7 @@ type FakeProviderListingRow = {
   url: string;
   lastSeenAt: Date;
   availability: string;
+  description?: string | null;
 };
 
 type FakePriceHistoryRow = {
@@ -550,6 +551,87 @@ describe('runScrapePipeline', () => {
     await runScrapePipeline({ prisma: db as unknown as PrismaClient, providers: [scraper] });
 
     expect(providerListings[0]!.availability).toBe('IN_STOCK');
+  });
+
+  // Description enrichment (W9a F2): insert writes the scraped description.
+  it('persists the scraped description on a new listing', async () => {
+    const { db, providerListings } = makeFakePrisma();
+
+    const listing = makeListing({ description: 'Санітизований опис книги.' });
+    const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+    await runScrapePipeline({ prisma: db as unknown as PrismaClient, providers: [scraper] });
+
+    expect(providerListings).toHaveLength(1);
+    expect(providerListings[0]!.description).toBe('Санітизований опис книги.');
+  });
+
+  // Description enrichment: a re-scrape with a non-empty description refreshes it.
+  it('refreshes an existing description when the re-scrape provides a non-empty one', async () => {
+    const existingCanonical: FakeCanonicalRow = {
+      id: 'book-desc-1',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: null,
+      createdAt: FIXED_DATE,
+    };
+    const existingListing: FakeProviderListingRow = {
+      id: 'pl-desc-1',
+      canonicalBookId: 'book-desc-1',
+      provider: 'YAKABOO',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: null,
+      priceAmount: 34900,
+      priceCurrency: 'UAH',
+      url: 'https://yakaboo.ua/kobzar',
+      lastSeenAt: FIXED_DATE,
+      availability: 'IN_STOCK',
+      description: 'Старий опис.',
+    };
+    const { db, providerListings } = makeFakePrisma([existingCanonical], [existingListing]);
+
+    const listing = makeListing({ description: 'Новий опис.' });
+    const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+    await runScrapePipeline({ prisma: db as unknown as PrismaClient, providers: [scraper] });
+
+    expect(providerListings[0]!.description).toBe('Новий опис.');
+  });
+
+  // Description enrichment: a re-scrape WITHOUT a description never nulls an existing one.
+  it('keeps an existing description when the re-scrape carries none (no null-overwrite)', async () => {
+    const existingCanonical: FakeCanonicalRow = {
+      id: 'book-desc-2',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: null,
+      createdAt: FIXED_DATE,
+    };
+    const existingListing: FakeProviderListingRow = {
+      id: 'pl-desc-2',
+      canonicalBookId: 'book-desc-2',
+      provider: 'YAKABOO',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: null,
+      priceAmount: 34900,
+      priceCurrency: 'UAH',
+      url: 'https://yakaboo.ua/kobzar',
+      lastSeenAt: FIXED_DATE,
+      availability: 'IN_STOCK',
+      description: 'Збережений опис.',
+    };
+    const { db, providerListings } = makeFakePrisma([existingCanonical], [existingListing]);
+
+    // Catalog-only re-scrape: no description field (enrichment did not run).
+    const listing = makeListing({ price: { amount: 39900, currency: 'UAH' } });
+    const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+    await runScrapePipeline({ prisma: db as unknown as PrismaClient, providers: [scraper] });
+
+    expect(providerListings[0]!.description).toBe('Збережений опис.');
+    expect(providerListings[0]!.priceAmount).toBe(39900); // other fields still update
   });
 
   // Test 9: one listing failure does not stop the run

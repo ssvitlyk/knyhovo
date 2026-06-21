@@ -1,6 +1,7 @@
 import type { ProviderName, Availability } from '@knyhovo/shared';
 import type { BookListingRow, BookDetailsRow } from './repository.js';
 import type { BookProviderDto, BookDetailsDto, MoneyDto } from './dto.js';
+import { selectDescription } from '../discovery/description-selection.js';
 
 /** Reverse map from the persisted provider enum to its public slug. */
 const PROVIDER_SLUG: Record<BookListingRow['provider'], ProviderName> = {
@@ -52,12 +53,23 @@ export function toBookDetails(row: BookDetailsRow): BookDetailsDto {
   const lowestPrice: MoneyDto | null = providers[0]?.price ?? null;
   const offersCount = providers.length;
 
+  // Description is selected across ALL listings (in-stock and out-of-stock alike,
+  // W9a §8) by provider priority with an ascending-price tiebreak — independent
+  // of the in-stock `providers` filtering above.
+  const description = selectDescription(
+    row.listings.map((l) => ({
+      provider: PROVIDER_SLUG[l.provider],
+      description: l.description,
+      priceAmount: l.priceAmount,
+    })),
+  );
+
   return {
     id: row.id,
     title: row.title,
     author: row.author,
     isbn: row.isbn ?? null,
-    description: null,
+    description,
     coverUrl: null,
     lowestPrice,
     offersCount,

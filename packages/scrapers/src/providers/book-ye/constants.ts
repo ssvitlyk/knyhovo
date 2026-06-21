@@ -30,6 +30,18 @@ export const SELECTORS = {
   cover: 'img.product-image-photo',
 } as const;
 
+/**
+ * Candidate containers for the description on a Книгарня «Є» *product* page
+ * (W9a F2), tried in order; the first non-empty match wins. Standard Magento
+ * description blocks. Representative selectors — must be re-verified against live
+ * product HTML before description enrichment is enabled (opt-in, off by default).
+ */
+export const PRODUCT_DESCRIPTION_SELECTORS = [
+  '.product.attribute.description .value',
+  '#description .value',
+  '[itemprop="description"]',
+] as const;
+
 export const OUT_OF_STOCK_KEYWORDS = [
   'немає в наявності',
   'нет в наличии',

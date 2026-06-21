@@ -1,7 +1,8 @@
 import type { ScraperProvider, ScraperResult, ScraperOptions } from '@knyhovo/shared';
 import { FetchHtmlFetcher, type HtmlFetcher } from '../../http/html-fetcher.js';
 import { YAKABOO_CATALOG_URL } from './constants.js';
-import { parseYakabooPage } from './yakaboo.parser.js';
+import { parseYakabooPage, extractYakabooProductDescription } from './yakaboo.parser.js';
+import { enrichDescriptions } from '../../lib/enrich-descriptions.js';
 import type { RawProviderListing } from '@knyhovo/shared';
 
 const DEFAULT_MAX_PAGES = 50;
@@ -54,6 +55,16 @@ export class YakabooScraper implements ScraperProvider {
       if (page < maxPages && delayMs > 0) {
         await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
       }
+    }
+
+    // Opt-in per-book product-page description enrichment (W9a F2). Off by
+    // default — a normal catalog scrape performs no product-page requests.
+    if (options?.enrichDescriptions) {
+      await enrichDescriptions(allListings, this.fetcher, extractYakabooProductDescription, {
+        timeoutMs,
+        delayMs: options.descriptionDelayMs ?? delayMs,
+        errors,
+      });
     }
 
     return { provider: 'yakaboo', listings: allListings, scrapedAt, errors };

@@ -4,7 +4,8 @@ import { type HtmlFetcher } from '../../http/html-fetcher.js';
 import { PlaywrightHtmlFetcher } from '../../http/playwright-html-fetcher.js';
 import { browserManager } from '../../http/browser-manager.js';
 import { BOOK_YE_CATALOG_URL, PRODUCT_CARD_SELECTOR } from './constants.js';
-import { parseBookYePage } from './book-ye.parser.js';
+import { parseBookYePage, extractBookYeProductDescription } from './book-ye.parser.js';
+import { enrichDescriptions } from '../../lib/enrich-descriptions.js';
 
 const DEFAULT_MAX_PAGES = 50;
 // Playwright + a content-aware wait (the Cloudflare challenge takes a few seconds
@@ -67,6 +68,17 @@ export class BookYeScraper implements ScraperProvider {
       if (page < maxPages && delayMs > 0) {
         await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
       }
+    }
+
+    // Opt-in per-book product-page description enrichment (W9a F2). Off by
+    // default. Книгарня «Є» needs Playwright per page (Cloudflare), so callers
+    // should pass a larger descriptionDelayMs than the catalog delay.
+    if (options?.enrichDescriptions) {
+      await enrichDescriptions(allListings, this.fetcher, extractBookYeProductDescription, {
+        timeoutMs,
+        delayMs: options.descriptionDelayMs ?? delayMs,
+        errors,
+      });
     }
 
     return { provider: 'book-ye', listings: allListings, scrapedAt, errors };

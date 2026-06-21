@@ -93,6 +93,9 @@ model ProviderListing {
   /// Cover image URL extracted from the provider's catalog card (W9a F1).
   /// null when the card exposed no usable image; enrichment never overwrites a known cover with null.
   coverUrl        String?  @map("cover_url")
+  /// Sanitized plain-text description scraped from the provider's product page (W9a F2).
+  /// null when the product page exposed no usable description; enrichment never overwrites a known description with null.
+  description     String?  @map("description")
 
   canonicalBook CanonicalBook       @relation(fields: [canonicalBookId], references: [id])
   priceHistory  PriceHistoryPoint[]

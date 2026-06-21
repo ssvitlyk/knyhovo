@@ -14,6 +14,19 @@ export const SELECTORS = {
   cover: 'a.category-card__image img',
 } as const;
 
+/**
+ * Candidate containers for the description on a Yakaboo *product* page (W9a F2),
+ * tried in order; the first non-empty match wins. Representative selectors —
+ * must be re-verified against live product HTML before description enrichment is
+ * enabled in production (the pass is opt-in and off by default).
+ */
+export const PRODUCT_DESCRIPTION_SELECTORS = [
+  '[itemprop="description"]',
+  '#tab-description',
+  '.product-description',
+  '.book-page-description',
+] as const;
+
 export const OUT_OF_STOCK_KEYWORDS = ['нет в наличии', 'немає в наявності'];
 export const IN_STOCK_KEYWORDS = ['в наличии', 'в наявності'];
 export const PREORDER_KEYWORDS = ['передзамовити', 'передзамовлення', 'preorder', 'pre-order'];
