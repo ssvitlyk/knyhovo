@@ -54,6 +54,32 @@ enum AlertIntent {
   @@map("alert_intent")
 }
 
+enum ScrapeRunKind {
+  FULL_CATALOG           @map("full-catalog")
+  WISHLIST_REFRESH       @map("wishlist-refresh")
+  MANUAL                 @map("manual")
+  DESCRIPTION_ENRICHMENT @map("description-enrichment")
+
+  @@map("scrape_run_kind")
+}
+
+enum ScrapeRunStatus {
+  RUNNING @map("running")
+  SUCCESS @map("success")
+  PARTIAL @map("partial")
+  FAILED  @map("failed")
+
+  @@map("scrape_run_status")
+}
+
+enum ScrapeRunTrigger {
+  CRON   @map("cron")
+  MANUAL @map("manual")
+  SYSTEM @map("system")
+
+  @@map("scrape_run_trigger")
+}
+
 // ---------------------------------------------------------------------------
 // Models
 // ---------------------------------------------------------------------------
@@ -185,6 +211,30 @@ model WishlistItem {
 
   @@unique([userId, canonicalBookId])
   @@map("wishlist_items")
+}
+
+model ScrapeRun {
+  id                  String           @id @default(uuid())
+  provider            Provider
+  kind                ScrapeRunKind
+  status              ScrapeRunStatus  @default(RUNNING)
+  /// What initiated this run: scheduled cron, an explicit manual trigger, or an internal system process.
+  triggeredBy         ScrapeRunTrigger @map("triggered_by")
+  startedAt           DateTime         @map("started_at")
+  finishedAt          DateTime?        @map("finished_at")
+  durationMs          Int?             @map("duration_ms")
+  itemsFound          Int              @default(0) @map("items_found")
+  itemsUpdated        Int              @default(0) @map("items_updated")
+  priceChanges        Int              @default(0) @map("price_changes")
+  availabilityChanges Int              @default(0) @map("availability_changes")
+  errorsCount         Int              @default(0) @map("errors_count")
+  /// Truncated summary of the first few errors (null when none).
+  errorSummary        String?          @map("error_summary")
+  /// Free-form run context (scraper options used, target counts, etc.). Null when not applicable.
+  metadata            Json?
+
+  @@index([provider, kind, startedAt])
+  @@map("scrape_runs")
 }
 
 model Alert {
