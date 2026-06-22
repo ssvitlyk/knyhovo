@@ -1,9 +1,8 @@
 import { prisma } from '../db.js';
 import { YakabooScraper, VivatScraper, BookYeScraper, browserManager } from '@knyhovo/scrapers';
-import { runScrapePipeline, formatSummary, mapProviderName } from '../pipeline/index.js';
 import type { ScraperProvider } from '@knyhovo/shared';
-import { ScrapeRunKind, ScrapeRunTrigger } from '@prisma/client';
-import { startScrapeRun, finishScrapeRun, deriveRunStatus } from '../refresh/scrape-run.repository.js';
+import { ScrapeRunTrigger } from '@prisma/client';
+import { runFullCatalogRefresh } from '../refresh/full-catalog.refresh.js';
 
 // Register new providers here — the pipeline is provider-agnostic and needs no changes.
 // Vivat is server-rendered Next.js, so the default FetchHtmlFetcher works (no Cloudflare).
@@ -33,30 +32,22 @@ function parseTriggeredBy(val: string | undefined): ScrapeRunTrigger {
 async function main(): Promise<void> {
   const triggeredBy = parseTriggeredBy(process.env['SCRAPE_TRIGGERED_BY']);
 
-  for (const provider of providers) {
-    const { id, startedAt } = await startScrapeRun(prisma, {
-      provider: mapProviderName(provider.name),
-      kind: ScrapeRunKind.FULL_CATALOG,
-      triggeredBy,
-    });
+  const { outcomes, anySucceeded } = await runFullCatalogRefresh({
+    prisma,
+    providers,
+    triggeredBy,
+  });
 
-    const { results } = await runScrapePipeline({ prisma, providers: [provider] });
-    const r = results[0]!;
-    const status = deriveRunStatus(r.metrics, r.scrapeErrors);
-    await finishScrapeRun(prisma, id, {
-      startedAt,
-      status,
-      metrics: r.metrics,
-      scrapeErrors: r.scrapeErrors,
-    });
-
-    console.log(formatSummary(r.provider, r.metrics, r.scrapeErrors));
-    console.log('');
+  if (!anySucceeded) {
+    // Every provider failed — surface a non-zero exit for the scheduler.
+    console.error(`Full catalog refresh failed: all ${outcomes.length} provider(s) failed.`);
+    process.exitCode = 1;
   }
 }
 
 void main()
   .catch((err: unknown) => {
+    // Fatal error before/around orchestration — non-zero exit.
     console.error(err);
     process.exitCode = 1;
   })
