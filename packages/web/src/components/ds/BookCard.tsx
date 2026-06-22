@@ -1,4 +1,5 @@
 import type { HTMLAttributes, ReactNode } from 'react';
+import { Cover } from './Cover';
 
 export interface BookCardProps extends HTMLAttributes<HTMLElement> {
   readonly title: string;
@@ -38,11 +39,7 @@ export function BookCard({
   const extraOffers = typeof offersCount === 'number' && offersCount > 1 ? offersCount - 1 : 0;
   return (
     <article className={classes} {...rest}>
-      {cover ? (
-        <img className="kn-book__cover" src={cover} alt="" />
-      ) : (
-        <div className="kn-book__cover" aria-hidden="true" />
-      )}
+      <Cover src={cover} className="kn-book__cover" />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0, flex: 1 }}>
         {badge ? <div>{badge}</div> : null}
         <h3 className="kn-book__title">{title}</h3>

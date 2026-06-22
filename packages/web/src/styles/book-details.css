@@ -17,8 +17,29 @@
 .bd-cover span { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-faint); }
 .bd-cover--md { width: 220px; height: 320px; }
 
-.bd-desc p { margin: 0 0 var(--space-4); max-width: 66ch; text-wrap: pretty; }
-.bd-desc p:last-child { margin-bottom: 0; }
+.bd-desc__text { margin: 0 0 var(--space-4); max-width: 66ch; text-wrap: pretty; }
+@media (max-width: 767px) {
+  .bd-desc__text--clamped {
+    display: -webkit-box;
+    -webkit-line-clamp: 6;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+.bd-desc__toggle {
+  display: inline-flex;
+  margin-top: var(--space-2);
+  padding: 0;
+  background: none;
+  border: none;
+  color: var(--accent);
+  font: inherit;
+  cursor: pointer;
+  min-height: 44px;
+  align-items: center;
+}
+@media (min-width: 768px) { .bd-desc__toggle { display: none; } }
+.bd-unavail__hint { font-size: var(--fs-sm); color: var(--text-muted); margin-bottom: var(--space-4); text-wrap: pretty; max-width: 36ch; }
 
 .bd-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5) var(--space-10); max-width: 720px; margin: 0; }
 .bd-meta dt { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); margin-bottom: 2px; }

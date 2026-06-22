@@ -347,13 +347,21 @@ describe('Typeahead — submit & recents', () => {
     expect(getRecentSearches()).toContain('нові книги');
   });
 
-  it('"× Очистити запит" is visible while there is input', () => {
+  it('inline clear button is visible while there is input', () => {
     render(<Typeahead initialQuery="щось" />);
-    expect(screen.getByRole('button', { name: '× Очистити запит' })).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Очистити запит' })).toBeInTheDocument();
   });
 
-  it('"× Очистити запит" is hidden when the value is empty', () => {
+  it('inline clear button is hidden when the value is empty', () => {
     render(<Typeahead initialQuery="" />);
-    expect(screen.queryByRole('button', { name: '× Очистити запит' })).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: 'Очистити запит' })).not.toBeInTheDocument();
+  });
+
+  it('clicking the clear button empties the input and navigates to /search', () => {
+    render(<Typeahead initialQuery="щось" />);
+    const clearBtn = screen.getByRole('button', { name: 'Очистити запит' });
+    fireEvent.click(clearBtn);
+    expect(screen.getByRole('combobox')).toHaveValue('');
+    expect(push).toHaveBeenCalledWith('/search');
   });
 });

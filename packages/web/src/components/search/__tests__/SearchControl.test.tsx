@@ -34,9 +34,9 @@ describe('SearchControl', () => {
     expect(push).toHaveBeenCalledWith('/search');
   });
 
-  it('clears via the "× Очистити запит" control', () => {
+  it('clears via the inline clear button', () => {
     render(<SearchControl initialQuery="zzz" />);
-    fireEvent.click(screen.getByRole('button', { name: '× Очистити запит' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Очистити запит' }));
     expect(push).toHaveBeenCalledWith('/search');
   });
 });
