@@ -17,6 +17,7 @@
     "test": "vitest run",
     "start": "tsx src/server.ts",
     "scrape": "tsx src/scripts/run-scrape.ts",
+    "scrape:wishlist": "tsx src/scripts/run-wishlist-refresh.ts",
     "build": "tsc",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
