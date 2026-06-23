@@ -1,9 +1,8 @@
 /**
- * W10.3 detection-only skeleton. Detects price/availability transitions and
- * writes scrape_runs rows. It does NOT yet persist to provider_listings/price_history
- * and does NOT send notifications — real single-page fetch + persistence is a
- * TODO for W10.3.x/W10.4. Provider isolation, throttle and stop-on-429/503
- * mirror full-catalog.refresh.ts (W10.2).
+ * W10.4 detection + persistence + alert-dedup orchestration. Detects
+ * price/availability transitions, persists to provider_listings/price_history,
+ * runs cross-provider alert dedup, and writes scrape_runs rows. Provider
+ * isolation, throttle, and stop-on-429/503 mirror full-catalog.refresh.ts (W10.2).
  */
 import type { PrismaClient, ScrapeRunTrigger, Provider } from '@prisma/client';
 import { ScrapeRunKind, ScrapeRunStatus } from '@prisma/client';
@@ -15,6 +14,10 @@ import { collectRefreshTargets } from './refresh-targets.js';
 import type { RefreshTarget } from './refresh-targets.js';
 import { detectAlertEvents } from './events.js';
 import type { AlertEvent, RefreshedListingState, TargetPreviousState } from './events.js';
+import { persistRefreshedListing } from './persist-refresh.js';
+import type { PersistRefreshOutcome } from './persist-refresh.js';
+import { runAlertNotificationsForBooks } from './alert-notify.js';
+import type { NotificationEvent } from './alert-notify.js';
 
 // ---------------------------------------------------------------------------
 // Port (mockable fetcher)
@@ -48,6 +51,23 @@ export interface WishlistRefreshOptions {
   readonly loadTargets?: (prisma: PrismaClient) => Promise<RefreshTarget[]>;
   /** Injectable sleep for deterministic tests (default: real setTimeout). */
   readonly sleep?: (ms: number) => Promise<void>;
+  /**
+   * Injectable persist port (defaults to persistRefreshedListing).
+   * Inject a no-op in tests to avoid real DB writes.
+   */
+  readonly persistRefresh?: (
+    prisma: PrismaClient,
+    input: { target: RefreshTarget; refreshed: RefreshedListingState; now: Date },
+  ) => Promise<PersistRefreshOutcome>;
+  /**
+   * Injectable alert-dedup port (defaults to runAlertNotificationsForBooks).
+   * Inject a no-op in tests to avoid real DB writes.
+   */
+  readonly runAlertNotifications?: (
+    prisma: PrismaClient,
+    canonicalBookIds: readonly string[],
+    now: Date,
+  ) => Promise<NotificationEvent[]>;
 }
 
 export interface WishlistProviderRefreshOutcome {
@@ -65,6 +85,7 @@ export interface WishlistRefreshResult {
   readonly outcomes: readonly WishlistProviderRefreshOutcome[];
   readonly events: readonly AlertEvent[]; // flattened across providers
   readonly anySucceeded: boolean;
+  readonly notifications: readonly NotificationEvent[];
 }
 
 // ---------------------------------------------------------------------------
@@ -83,12 +104,17 @@ export async function runWishlistRefresh(
   const timeoutMs = opts.timeoutMs ?? 30000;
   const delayMs = opts.delayMs ?? 1000;
   const loadTargets = opts.loadTargets ?? collectRefreshTargets;
+  const _persistRefresh = opts.persistRefresh ?? persistRefreshedListing;
+  const _runAlertNotifications =
+    opts.runAlertNotifications ??
+    ((prisma: PrismaClient, ids: readonly string[], now: Date) =>
+      runAlertNotificationsForBooks(prisma, ids, now));
 
   const allTargets = await loadTargets(opts.prisma);
 
   if (allTargets.length === 0) {
     logger.info('Wishlist refresh: no targets');
-    return { outcomes: [], events: [], anySucceeded: true };
+    return { outcomes: [], events: [], anySucceeded: true, notifications: [] };
   }
 
   // Group by provider, iterate in sorted provider order for determinism.
@@ -103,12 +129,29 @@ export async function runWishlistRefresh(
   }
   const sortedProviders = Array.from(byProvider.keys()).sort();
 
+  // Collect all affected canonicalBookIds across all providers for cross-provider dedup.
+  const affectedBookIds = new Set<string>();
+
   const outcomes: WishlistProviderRefreshOutcome[] = [];
   for (const provider of sortedProviders) {
     const targets = byProvider.get(provider)!;
-    outcomes.push(
-      await refreshProviderTargets(provider, targets, opts, logger, clock, sleep, timeoutMs, delayMs),
+    const outcome = await refreshProviderTargets(
+      provider,
+      targets,
+      opts,
+      logger,
+      clock,
+      sleep,
+      timeoutMs,
+      delayMs,
+      _persistRefresh,
     );
+    outcomes.push(outcome);
+    // Collect every processed target's canonicalBookId — a 'gone' still warrants
+    // re-evaluating the alert against remaining in-stock listings.
+    for (const t of targets) {
+      affectedBookIds.add(t.canonicalBookId);
+    }
     logger.info('');
   }
 
@@ -118,7 +161,22 @@ export async function runWishlistRefresh(
 
   const events = outcomes.flatMap((o) => Array.from(o.events));
 
-  return { outcomes, events, anySucceeded };
+  // ---------------------------------------------------------------------------
+  // Cross-provider alert dedup phase (W10.4)
+  // ---------------------------------------------------------------------------
+  let notifications: NotificationEvent[] = [];
+  try {
+    notifications = await _runAlertNotifications(opts.prisma, [...affectedBookIds], clock());
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.error(`Alert dedup phase failed (non-fatal): ${msg}`);
+  }
+
+  logger.info(
+    `Wishlist refresh done: providers=${outcomes.length} events=${events.length} notifications=${notifications.length} anySucceeded=${anySucceeded}`,
+  );
+
+  return { outcomes, events, anySucceeded, notifications };
 }
 
 // ---------------------------------------------------------------------------
@@ -134,6 +192,10 @@ async function refreshProviderTargets(
   sleep: (ms: number) => Promise<void>,
   timeoutMs: number,
   delayMs: number,
+  persistRefresh: (
+    prisma: PrismaClient,
+    input: { target: RefreshTarget; refreshed: RefreshedListingState; now: Date },
+  ) => Promise<PersistRefreshOutcome>,
 ): Promise<WishlistProviderRefreshOutcome> {
   let runId: string | null = null;
   let startedAt: Date | null = null;
@@ -183,16 +245,24 @@ async function refreshProviderTargets(
       const targetEvents = detectAlertEvents(prev, refreshed, clock());
       events.push(...targetEvents);
 
-      // Update metrics from detected events.
-      // NOTE: These columns reflect DETECTED changes; no DB writes happen in W10.3.
-      // Persistence to provider_listings/price_history is deferred to W10.3.x/W10.4.
-      for (const event of targetEvents) {
-        if (event.type === 'PRICE_DROP') {
-          metrics.priceHistoryCreated++;
-        }
-        if (event.type === 'BACK_IN_STOCK' || event.type === 'OUT_OF_STOCK') {
+      // Persist refreshed state to provider_listings / price_history (W10.4).
+      // Graceful: a persist failure must not break the provider loop.
+      try {
+        const outcome = await persistRefresh(opts.prisma, { target, refreshed, now: clock() });
+        // Update metrics from persist outcome (replaces event-based metric increments).
+        if (outcome.kind === 'price-updated') {
+          metrics.providerListingsUpdated++;
+          if (outcome.priceHistoryCreated) metrics.priceHistoryCreated++;
+          if (outcome.availabilityChanged) metrics.availabilityUpdated++;
+        } else if (outcome.kind === 'availability-updated') {
+          metrics.providerListingsUpdated++;
           metrics.availabilityUpdated++;
+          if (outcome.priceHistoryCreated) metrics.priceHistoryCreated++;
         }
+        // 'gone-skipped' | 'missing-listing' => no metric increment
+      } catch (persistErr) {
+        const persistMsg = persistErr instanceof Error ? persistErr.message : String(persistErr);
+        scrapeErrors.push(`persist ${target.providerListingId}: ${persistMsg}`);
       }
 
       // Throttle between consecutive fetches within a provider.
