@@ -10,6 +10,7 @@ import {
 } from '../pipeline/index.js';
 import type { ScrapeMetrics, Logger } from '../pipeline/index.js';
 import { startScrapeRun, finishScrapeRun, deriveRunStatus } from './scrape-run.repository.js';
+import { acquireRefreshLock, releaseRefreshLock } from './concurrency-guard.js';
 
 export interface FullCatalogRefreshOptions {
   readonly prisma: PrismaClient;
@@ -62,22 +63,28 @@ export async function runFullCatalogRefresh(
   };
   const clock = opts.now ?? ((): Date => new Date());
 
-  // TODO(W10.x): concurrency guard — skip a provider when a fresh RUNNING
-  // FULL_CATALOG run already exists (cron-overlap). Deferred from W10.2; no
-  // behavioral guard is introduced here.
+  // W10.6 concurrency guard: refuse to start when another FULL_CATALOG or
+  // WISHLIST_REFRESH run is already RUNNING (cron-overlap). Throws
+  // RefreshAlreadyRunningError, which the CLI treats as an idempotent skip.
+  const lock = await acquireRefreshLock(opts.prisma, ScrapeRunKind.FULL_CATALOG, { now: clock });
 
-  const outcomes: ProviderRefreshOutcome[] = [];
-  for (const provider of opts.providers) {
-    outcomes.push(await refreshProvider(provider, opts, logger, clock));
-    logger.info('');
+  try {
+    const outcomes: ProviderRefreshOutcome[] = [];
+    for (const provider of opts.providers) {
+      outcomes.push(await refreshProvider(provider, opts, logger, clock));
+      logger.info('');
+    }
+
+    const anySucceeded = outcomes.some(
+      (o) =>
+        o.status === ScrapeRunStatus.SUCCESS || o.status === ScrapeRunStatus.PARTIAL,
+    );
+
+    return { outcomes, anySucceeded };
+  } finally {
+    // Sweep any dangling RUNNING rows from this refresh, even on throw.
+    await releaseRefreshLock(opts.prisma, lock, { now: clock });
   }
-
-  const anySucceeded = outcomes.some(
-    (o) =>
-      o.status === ScrapeRunStatus.SUCCESS || o.status === ScrapeRunStatus.PARTIAL,
-  );
-
-  return { outcomes, anySucceeded };
 }
 
 /**

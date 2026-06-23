@@ -10,6 +10,7 @@ import { isRateLimited } from '@knyhovo/scrapers';
 import { createMetrics } from '../pipeline/index.js';
 import type { ScrapeMetrics, Logger } from '../pipeline/index.js';
 import { startScrapeRun, finishScrapeRun, deriveRunStatus } from './scrape-run.repository.js';
+import { acquireRefreshLock, releaseRefreshLock } from './concurrency-guard.js';
 import { collectRefreshTargets } from './refresh-targets.js';
 import type { RefreshTarget } from './refresh-targets.js';
 import { detectAlertEvents } from './events.js';
@@ -110,73 +111,83 @@ export async function runWishlistRefresh(
     ((prisma: PrismaClient, ids: readonly string[], now: Date) =>
       runAlertNotificationsForBooks(prisma, ids, now));
 
-  const allTargets = await loadTargets(opts.prisma);
+  // W10.6 concurrency guard: refuse to start when another FULL_CATALOG or
+  // WISHLIST_REFRESH run is already RUNNING (cron-overlap). Throws
+  // RefreshAlreadyRunningError, which the CLI treats as an idempotent skip.
+  const lock = await acquireRefreshLock(opts.prisma, ScrapeRunKind.WISHLIST_REFRESH, { now: clock });
 
-  if (allTargets.length === 0) {
-    logger.info('Wishlist refresh: no targets');
-    return { outcomes: [], events: [], anySucceeded: true, notifications: [] };
-  }
-
-  // Group by provider, iterate in sorted provider order for determinism.
-  const byProvider = new Map<Provider, RefreshTarget[]>();
-  for (const target of allTargets) {
-    const existing = byProvider.get(target.provider);
-    if (existing == null) {
-      byProvider.set(target.provider, [target]);
-    } else {
-      existing.push(target);
-    }
-  }
-  const sortedProviders = Array.from(byProvider.keys()).sort();
-
-  // Collect all affected canonicalBookIds across all providers for cross-provider dedup.
-  const affectedBookIds = new Set<string>();
-
-  const outcomes: WishlistProviderRefreshOutcome[] = [];
-  for (const provider of sortedProviders) {
-    const targets = byProvider.get(provider)!;
-    const outcome = await refreshProviderTargets(
-      provider,
-      targets,
-      opts,
-      logger,
-      clock,
-      sleep,
-      timeoutMs,
-      delayMs,
-      _persistRefresh,
-    );
-    outcomes.push(outcome);
-    // Collect every processed target's canonicalBookId — a 'gone' still warrants
-    // re-evaluating the alert against remaining in-stock listings.
-    for (const t of targets) {
-      affectedBookIds.add(t.canonicalBookId);
-    }
-    logger.info('');
-  }
-
-  const anySucceeded = outcomes.some(
-    (o) => o.status === ScrapeRunStatus.SUCCESS || o.status === ScrapeRunStatus.PARTIAL,
-  );
-
-  const events = outcomes.flatMap((o) => Array.from(o.events));
-
-  // ---------------------------------------------------------------------------
-  // Cross-provider alert dedup phase (W10.4)
-  // ---------------------------------------------------------------------------
-  let notifications: NotificationEvent[] = [];
   try {
-    notifications = await _runAlertNotifications(opts.prisma, [...affectedBookIds], clock());
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    logger.error(`Alert dedup phase failed (non-fatal): ${msg}`);
+    const allTargets = await loadTargets(opts.prisma);
+
+    if (allTargets.length === 0) {
+      logger.info('Wishlist refresh: no targets');
+      return { outcomes: [], events: [], anySucceeded: true, notifications: [] };
+    }
+
+    // Group by provider, iterate in sorted provider order for determinism.
+    const byProvider = new Map<Provider, RefreshTarget[]>();
+    for (const target of allTargets) {
+      const existing = byProvider.get(target.provider);
+      if (existing == null) {
+        byProvider.set(target.provider, [target]);
+      } else {
+        existing.push(target);
+      }
+    }
+    const sortedProviders = Array.from(byProvider.keys()).sort();
+
+    // Collect all affected canonicalBookIds across all providers for cross-provider dedup.
+    const affectedBookIds = new Set<string>();
+
+    const outcomes: WishlistProviderRefreshOutcome[] = [];
+    for (const provider of sortedProviders) {
+      const targets = byProvider.get(provider)!;
+      const outcome = await refreshProviderTargets(
+        provider,
+        targets,
+        opts,
+        logger,
+        clock,
+        sleep,
+        timeoutMs,
+        delayMs,
+        _persistRefresh,
+      );
+      outcomes.push(outcome);
+      // Collect every processed target's canonicalBookId — a 'gone' still warrants
+      // re-evaluating the alert against remaining in-stock listings.
+      for (const t of targets) {
+        affectedBookIds.add(t.canonicalBookId);
+      }
+      logger.info('');
+    }
+
+    const anySucceeded = outcomes.some(
+      (o) => o.status === ScrapeRunStatus.SUCCESS || o.status === ScrapeRunStatus.PARTIAL,
+    );
+
+    const events = outcomes.flatMap((o) => Array.from(o.events));
+
+    // -------------------------------------------------------------------------
+    // Cross-provider alert dedup phase (W10.4)
+    // -------------------------------------------------------------------------
+    let notifications: NotificationEvent[] = [];
+    try {
+      notifications = await _runAlertNotifications(opts.prisma, [...affectedBookIds], clock());
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      logger.error(`Alert dedup phase failed (non-fatal): ${msg}`);
+    }
+
+    logger.info(
+      `Wishlist refresh done: providers=${outcomes.length} events=${events.length} notifications=${notifications.length} anySucceeded=${anySucceeded}`,
+    );
+
+    return { outcomes, events, anySucceeded, notifications };
+  } finally {
+    // Sweep any dangling RUNNING rows from this refresh, even on throw.
+    await releaseRefreshLock(opts.prisma, lock, { now: clock });
   }
-
-  logger.info(
-    `Wishlist refresh done: providers=${outcomes.length} events=${events.length} notifications=${notifications.length} anySucceeded=${anySucceeded}`,
-  );
-
-  return { outcomes, events, anySucceeded, notifications };
 }
 
 // ---------------------------------------------------------------------------

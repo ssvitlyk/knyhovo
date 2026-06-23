@@ -2,6 +2,8 @@ import { prisma } from '../db.js';
 import { ScrapeRunTrigger } from '@prisma/client';
 import { runWishlistRefresh } from '../refresh/wishlist.refresh.js';
 import { HttpTargetFetcher } from '../refresh/http-target-fetcher.js';
+import { closeRegistryResources } from '../refresh/fetcher-registry.js';
+import { RefreshAlreadyRunningError } from '../refresh/concurrency-guard.js';
 
 /**
  * Parse the SCRAPE_TRIGGERED_BY environment variable into a ScrapeRunTrigger
@@ -18,27 +20,41 @@ function parseTriggeredBy(val: string | undefined): ScrapeRunTrigger {
   }
 }
 
-// NOTE(W10.4): HttpTargetFetcher uses plain HTTP (FetchHtmlFetcher) by default.
-// Cloudflare-protected providers (Yakaboo, Book-Ye) will be blocked on live URLs —
-// Playwright wiring for those providers is deferred to W10.4.x/W10.6.
+// W10.6: HttpTargetFetcher() with no argument routes per-provider through the
+// fetcher registry — Cloudflare-protected providers (Yakaboo, Book-Ye) use
+// PlaywrightHtmlFetcher, the rest use plain HTTP.
 const fetcher = new HttpTargetFetcher();
 
 async function main(): Promise<void> {
   const triggeredBy = parseTriggeredBy(process.env['SCRAPE_TRIGGERED_BY']);
+  const startedAt = Date.now();
+  console.log(`[run-wishlist-refresh] starting at ${new Date(startedAt).toISOString()} (triggeredBy=${triggeredBy})`);
 
-  const { outcomes, anySucceeded, events, notifications } = await runWishlistRefresh({
-    prisma,
-    fetcher,
-    triggeredBy,
-  });
+  try {
+    const { outcomes, anySucceeded, events, notifications } = await runWishlistRefresh({
+      prisma,
+      fetcher,
+      triggeredBy,
+    });
 
-  console.log(
-    `Wishlist refresh complete: providers=${outcomes.length} events=${events.length} notifications=${notifications.length} anySucceeded=${anySucceeded}`,
-  );
+    console.log(
+      `Wishlist refresh complete: providers=${outcomes.length} events=${events.length} notifications=${notifications.length} anySucceeded=${anySucceeded}`,
+    );
 
-  if (!anySucceeded && outcomes.length > 0) {
-    console.error(`Wishlist refresh failed: all ${outcomes.length} provider run(s) failed.`);
-    process.exitCode = 1;
+    if (!anySucceeded && outcomes.length > 0) {
+      console.error(`Wishlist refresh failed: all ${outcomes.length} provider run(s) failed.`);
+      process.exitCode = 1;
+    }
+  } catch (err) {
+    // Cron-overlap is not an error: another refresh holds the lock. Skip idempotently.
+    if (err instanceof RefreshAlreadyRunningError) {
+      console.log(`[run-wishlist-refresh] skip: ${err.message}`);
+      return;
+    }
+    throw err;
+  } finally {
+    const durationMs = Date.now() - startedAt;
+    console.log(`[run-wishlist-refresh] finished in ${durationMs}ms (exitCode=${process.exitCode ?? 0})`);
   }
 }
 
@@ -50,6 +66,6 @@ void main()
   })
   .finally(async () => {
     await prisma.$disconnect();
-    // NOTE: run-wishlist does NOT use browserManager — no Playwright is needed
-    // for single-page product fetches via HttpTargetFetcher (plain HTTP).
+    // Close the shared Playwright browser used by the registry (no-op if unused).
+    await closeRegistryResources();
   });

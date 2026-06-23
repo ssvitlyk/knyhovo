@@ -1,9 +1,17 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { Provider, Availability } from '@prisma/client';
 import { HttpTargetFetcher } from '../http-target-fetcher.js';
 import type { HtmlFetcher, SingleProductParser, ParsedProductState } from '@knyhovo/scrapers';
 import type { ProviderName } from '@knyhovo/shared';
 import type { RefreshTarget } from '../refresh-targets.js';
+
+// Mock the fetcher-registry module so tests that omit an explicit HtmlFetcher
+// don't spin up a real Playwright browser.
+vi.mock('../fetcher-registry.js', () => ({
+  resolveTargetFetcher: vi.fn(),
+}));
+
+import { resolveTargetFetcher } from '../fetcher-registry.js';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -125,5 +133,55 @@ describe('HttpTargetFetcher', () => {
     await expect(fetcher.fetchTarget(target, { timeoutMs: 5000 })).rejects.toThrow(
       /no single-product parser for provider UNKNOWN_PROVIDER/,
     );
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Registry routing — when no explicit HtmlFetcher is supplied
+// ---------------------------------------------------------------------------
+
+describe('HttpTargetFetcher — registry routing (no explicit htmlFetcher)', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it('routes through the registry when no htmlFetcher is passed, and calls resolveTargetFetcher with the provider name', async () => {
+    const fakeHtml = '<html>vivat product</html>';
+    const fakeFetcher: HtmlFetcher = { fetch: vi.fn(async () => fakeHtml) };
+    vi.mocked(resolveTargetFetcher).mockReturnValue(fakeFetcher);
+
+    const fakeParser: SingleProductParser = (): ParsedProductState => ({
+      price: { amount: 5000, currency: 'UAH' },
+      availability: 'in-stock',
+    });
+    const parsers: Partial<Record<ProviderName, SingleProductParser>> = { vivat: fakeParser };
+
+    // No explicit htmlFetcher passed → must consult registry
+    const fetcher = new HttpTargetFetcher(null, parsers);
+    const target = makeTarget({ provider: Provider.VIVAT });
+    const result = await fetcher.fetchTarget(target, { timeoutMs: 5000 });
+
+    // Registry must have been consulted with the correct provider name
+    expect(vi.mocked(resolveTargetFetcher)).toHaveBeenCalledWith('vivat');
+    expect(result.kind).toBe('fetched');
+    if (result.kind === 'fetched') {
+      expect(result.priceAmount).toBe(5000);
+    }
+  });
+
+  it('uses the explicit htmlFetcher and does NOT consult the registry when one is provided', async () => {
+    const explicitFetcher = new FakeHtmlFetcher('<html>explicit</html>');
+    const fakeParser: SingleProductParser = (): ParsedProductState => ({
+      price: { amount: 9000, currency: 'UAH' },
+      availability: 'in-stock',
+    });
+    const parsers: Partial<Record<ProviderName, SingleProductParser>> = { vivat: fakeParser };
+
+    const fetcher = new HttpTargetFetcher(explicitFetcher, parsers);
+    const target = makeTarget({ provider: Provider.VIVAT });
+    await fetcher.fetchTarget(target, { timeoutMs: 5000 });
+
+    // Registry must NOT have been called
+    expect(vi.mocked(resolveTargetFetcher)).not.toHaveBeenCalled();
   });
 });

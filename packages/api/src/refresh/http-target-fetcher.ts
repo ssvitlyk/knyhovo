@@ -1,16 +1,17 @@
 /**
- * W10.4 HTTP-based WishlistTargetFetcher.
+ * W10.4/W10.6 HTTP-based WishlistTargetFetcher.
  *
- * Uses plain HTTP (FetchHtmlFetcher) by default to fetch a single product page
- * and delegates parsing to the provider-specific single-product parser.
- *
- * NOTE: Cloudflare-protected providers (Yakaboo, Book-Ye) require a Playwright-based
- * fetcher in production. Playwright wiring is deferred to W10.4.x/W10.6 — plain
- * FetchHtmlFetcher will be blocked by Cloudflare on live URLs for those providers.
+ * Fetches a single product page and delegates parsing to the provider-specific
+ * single-product parser. When no explicit HtmlFetcher is supplied (production
+ * default), the fetcher is resolved per-provider through the centralized
+ * fetcher-registry: Cloudflare-protected providers (Yakaboo, Book-Ye) are
+ * routed through PlaywrightHtmlFetcher; server-rendered providers (Vivat,
+ * Book-Club) use the lighter FetchHtmlFetcher.
  */
 
-import { SINGLE_PRODUCT_PARSERS, FetchHtmlFetcher } from '@knyhovo/scrapers';
+import { SINGLE_PRODUCT_PARSERS } from '@knyhovo/scrapers';
 import type { HtmlFetcher, SingleProductParser } from '@knyhovo/scrapers';
+import { resolveTargetFetcher } from './fetcher-registry.js';
 import type { ProviderName } from '@knyhovo/shared';
 import type { WishlistTargetFetcher } from './wishlist.refresh.js';
 import type { RefreshTarget } from './refresh-targets.js';
@@ -36,8 +37,14 @@ const PROVIDER_ENUM_TO_NAME: Partial<Record<string, ProviderName>> = {
 // ---------------------------------------------------------------------------
 
 export class HttpTargetFetcher implements WishlistTargetFetcher {
+  /**
+   * @param htmlFetcher - Optional override for all providers. When omitted (production
+   *   default), each provider is routed to the appropriate fetcher via the registry.
+   *   Pass an explicit fetcher in tests to keep routing deterministic.
+   * @param parsers - Single-product parsers keyed by ProviderName (default: all known parsers).
+   */
   constructor(
-    private readonly htmlFetcher: HtmlFetcher = new FetchHtmlFetcher(),
+    private readonly htmlFetcher: HtmlFetcher | null = null,
     private readonly parsers: Partial<Record<ProviderName, SingleProductParser>> = SINGLE_PRODUCT_PARSERS,
   ) {}
 
@@ -57,7 +64,8 @@ export class HttpTargetFetcher implements WishlistTargetFetcher {
 
     // May throw (network error, HTTP 429/503 etc.) — propagates so the orchestrator's
     // isRateLimited stop-on-429/503 logic fires correctly.
-    const html = await this.htmlFetcher.fetch(target.url, opts.timeoutMs);
+    const fetcher = this.htmlFetcher ?? resolveTargetFetcher(providerName);
+    const html = await fetcher.fetch(target.url, opts.timeoutMs);
 
     const parsed = parser(html);
 

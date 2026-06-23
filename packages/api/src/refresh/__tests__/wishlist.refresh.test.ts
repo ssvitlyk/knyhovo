@@ -8,6 +8,21 @@ import type { RefreshedListingState } from '../events.js';
 import type { PersistRefreshOutcome } from '../persist-refresh.js';
 import type { NotificationEvent } from '../alert-notify.js';
 
+// Mock the concurrency-guard so wishlist tests can control lock behaviour without a real DB.
+vi.mock('../concurrency-guard.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../concurrency-guard.js')>();
+  return {
+    ...actual,
+    acquireRefreshLock: vi.fn(async () => ({ acquiredAt: new Date(), kind: ScrapeRunKind.WISHLIST_REFRESH })),
+    releaseRefreshLock: vi.fn(async () => undefined),
+  };
+});
+
+import { acquireRefreshLock, releaseRefreshLock, RefreshAlreadyRunningError } from '../concurrency-guard.js';
+
+const mockAcquire = vi.mocked(acquireRefreshLock);
+const mockRelease = vi.mocked(releaseRefreshLock);
+
 // ---------------------------------------------------------------------------
 // Fixed clock
 // ---------------------------------------------------------------------------
@@ -27,6 +42,8 @@ function makeFakePrisma() {
         startedAt: data.startedAt,
       })),
       update: vi.fn(async () => ({})),
+      findFirst: vi.fn(async () => null),
+      updateMany: vi.fn(async () => ({ count: 0 })),
     },
   } as unknown as PrismaClient;
 }
@@ -79,6 +96,9 @@ const noSleep = async (): Promise<void> => {};
 describe('runWishlistRefresh', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Default: guard allows — no running lock
+    mockAcquire.mockResolvedValue({ acquiredAt: FIXED_NOW, kind: ScrapeRunKind.WISHLIST_REFRESH });
+    mockRelease.mockResolvedValue(undefined);
   });
 
   it('empty targets => no scrapeRun.create calls, outcomes=[], anySucceeded=true', async () => {
@@ -570,6 +590,84 @@ describe('runWishlistRefresh', () => {
     expect(result.notifications).toHaveLength(0);
     expect(result.anySucceeded).toBe(true);
     expect(result.outcomes[0]?.status).toBe(ScrapeRunStatus.SUCCESS);
+  });
+
+  // ---------------------------------------------------------------------------
+  // W10.6: concurrency guard integration
+  // ---------------------------------------------------------------------------
+
+  it('guard: rejects with RefreshAlreadyRunningError when acquireRefreshLock throws', async () => {
+    const runningInfo = {
+      id: 'existing-run',
+      provider: Provider.YAKABOO,
+      kind: ScrapeRunKind.FULL_CATALOG,
+      startedAt: FIXED_NOW,
+    };
+    mockAcquire.mockRejectedValue(new RefreshAlreadyRunningError(runningInfo));
+    const prisma = makeFakePrisma();
+
+    await expect(
+      runWishlistRefresh({
+        prisma,
+        fetcher: { fetchTarget: vi.fn() },
+        triggeredBy: ScrapeRunTrigger.MANUAL,
+        loadTargets: async () => [yakabooTarget],
+        sleep: noSleep,
+        now,
+        logger: silentLogger,
+        persistRefresh: noopPersist,
+        runAlertNotifications: noopNotify,
+      }),
+    ).rejects.toThrow(RefreshAlreadyRunningError);
+
+    // No provider scrape_run rows should be created
+    expect(prisma.scrapeRun.create).not.toHaveBeenCalled();
+  });
+
+  it('guard: releaseRefreshLock is called in finally even when loadTargets throws', async () => {
+    const prisma = makeFakePrisma();
+
+    await expect(
+      runWishlistRefresh({
+        prisma,
+        fetcher: { fetchTarget: vi.fn() },
+        triggeredBy: ScrapeRunTrigger.MANUAL,
+        loadTargets: async () => { throw new Error('boom'); },
+        sleep: noSleep,
+        now,
+        logger: silentLogger,
+        persistRefresh: noopPersist,
+        runAlertNotifications: noopNotify,
+      }),
+    ).rejects.toThrow('boom');
+
+    // Release must still have been called in the finally block
+    expect(mockRelease).toHaveBeenCalledOnce();
+  });
+
+  it('guard: releaseRefreshLock is called in finally on happy path', async () => {
+    const prisma = makeFakePrisma();
+    const fetcher: WishlistTargetFetcher = {
+      fetchTarget: vi.fn(async (): Promise<RefreshedListingState> => ({
+        kind: 'fetched',
+        priceAmount: 10000,
+        availability: Availability.IN_STOCK,
+      })),
+    };
+
+    await runWishlistRefresh({
+      prisma,
+      fetcher,
+      triggeredBy: ScrapeRunTrigger.MANUAL,
+      loadTargets: async () => [yakabooTarget],
+      sleep: noSleep,
+      now,
+      logger: silentLogger,
+      persistRefresh: noopPersist,
+      runAlertNotifications: noopNotify,
+    });
+
+    expect(mockRelease).toHaveBeenCalledOnce();
   });
 
   // ---------------------------------------------------------------------------

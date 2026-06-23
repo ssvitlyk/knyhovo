@@ -5,6 +5,7 @@ import {
   fetchRecentRuns,
   fetchListingFreshness,
 } from './refresh-health.repository.js';
+import { GUARDED_KINDS } from './concurrency-guard.js';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -19,7 +20,9 @@ export type RefreshHealthIssueType =
   | 'suspicious-empty-success'
   | 'selector-drift'
   | 'high-error-count'
-  | 'stale-listings';
+  | 'stale-listings'
+  | 'running-too-long'
+  | 'refresh-lock-stuck';
 
 export interface RefreshHealthIssue {
   type: RefreshHealthIssueType;
@@ -74,6 +77,8 @@ export interface RefreshHealthConfig {
   staleListingHours: number;
   staleProviderRatio: number;
   fillRateDropRatio: number;
+  /** A RUNNING run older than this many hours is flagged as stuck (W10.6). */
+  runningTooLongHours: number;
 }
 
 export const DEFAULT_HEALTH_CONFIG: RefreshHealthConfig = {
@@ -83,6 +88,7 @@ export const DEFAULT_HEALTH_CONFIG: RefreshHealthConfig = {
   staleListingHours: 72,
   staleProviderRatio: 0.5,
   fillRateDropRatio: 0.5,
+  runningTooLongHours: 6,
 };
 
 /** Input shape for per-provider listing freshness (decoupled from the DB layer). */
@@ -264,6 +270,41 @@ export function deriveProviderHealth(input: {
       type: 'stale-listings',
       severity: 'warning',
       message: `${freshness.staleListings}/${freshness.totalListings} listings are stale (>${Math.round(config.staleProviderRatio * 100)}%).`,
+    });
+  }
+
+  // 7. running-too-long (warning) — the latest run is still RUNNING well past the
+  // expected window, indicating a hung/stuck scrape (W10.6).
+  const runningTooLongMs = config.runningTooLongHours * 3_600_000;
+  if (
+    latestRun !== null &&
+    latestRun.status === ScrapeRunStatus.RUNNING &&
+    now.getTime() - latestRun.startedAt.getTime() > runningTooLongMs
+  ) {
+    const hoursAgo = Math.floor(
+      (now.getTime() - latestRun.startedAt.getTime()) / 3_600_000,
+    );
+    issues.push({
+      type: 'running-too-long',
+      severity: 'warning',
+      message: `Latest run has been RUNNING for ${hoursAgo}h (>${config.runningTooLongHours}h) — likely stuck.`,
+    });
+  }
+
+  // 8. refresh-lock-stuck (warning) — a guarded-kind run is still RUNNING while a
+  // newer run already started after it. The older row was never closed and would
+  // confuse/hold the concurrency guard (W10.6).
+  const danglingRunning = runs.filter(
+    (r) =>
+      r !== latestRun &&
+      r.status === ScrapeRunStatus.RUNNING &&
+      GUARDED_KINDS.includes(r.kind),
+  );
+  if (danglingRunning.length > 0) {
+    issues.push({
+      type: 'refresh-lock-stuck',
+      severity: 'warning',
+      message: `${danglingRunning.length} stale RUNNING ${danglingRunning.length === 1 ? 'run' : 'runs'} left open behind a newer run — refresh lock may be stuck.`,
     });
   }
 
