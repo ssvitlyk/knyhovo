@@ -6,6 +6,8 @@ import {
   buildProductUrl,
   buildCoverUrl,
 } from './constants.js';
+import type { VivatSingleProduct } from './constants.js';
+import type { ParsedProductState } from '../single-product.js';
 
 export interface ParseResult {
   readonly listings: RawProviderListing[];
@@ -201,4 +203,43 @@ export function extractVivatProductDescription(html: string): string | null {
     if (typeof value === 'string' && value.trim() !== '') return value;
   }
   return null;
+}
+
+/**
+ * Parse price and availability from a Vivat *product* page (W10.4).
+ * Pure function — no IO, no throwing. Reads the `__NEXT_DATA__` JSON
+ * (same technique as extractVivatProductDescription).
+ *
+ * Field names in props.pageProps.product are representative — must be
+ * re-verified against live product HTML before production use (W10.4).
+ */
+export function parseVivatProduct(html: string): ParsedProductState {
+  const $ = cheerio.load(html);
+  const raw = $(NEXT_DATA_SELECTOR).first().contents().text();
+  if (!raw.trim()) return { price: null, availability: 'unknown' };
+
+  let product: VivatSingleProduct | undefined;
+  try {
+    const data = JSON.parse(raw) as { props?: { pageProps?: { product?: unknown } } };
+    const candidate = data.props?.pageProps?.product;
+    product = typeof candidate === 'object' && candidate !== null
+      ? (candidate as VivatSingleProduct)
+      : undefined;
+  } catch {
+    return { price: null, availability: 'unknown' };
+  }
+  if (!product) return { price: null, availability: 'unknown' };
+
+  const priceKopecks =
+    vivatPriceToKopecks(product.price?.promotion) ??
+    vivatPriceToKopecks(product.price?.retail) ??
+    vivatPriceToKopecks(product.price?.priceRebate);
+  const price: Money | null = priceKopecks !== null ? { amount: priceKopecks, currency: 'UAH' } : null;
+
+  if (!price) return { price: null, availability: 'out-of-stock' };
+
+  const statusCode = typeof product.statusCode === 'string' ? product.statusCode : '';
+  const stockLevel = typeof product.stockLevel === 'number' ? product.stockLevel : null;
+  const availability = resolveAvailability(statusCode, stockLevel, true);
+  return { price, availability };
 }

@@ -73,6 +73,31 @@ export function isNonPhysicalTitle(title: string): boolean {
   return NON_PHYSICAL_TITLE_MARKERS.some((kw) => lower.includes(kw));
 }
 
+/**
+ * Candidate CSS selectors for the PRICE on a Книгарня «Є» *product* page.
+ * Magento product pages render the final price similarly to catalog cards.
+ * Representative selectors — must be re-verified against live product HTML
+ * before production use (same caveat as PRODUCT_DESCRIPTION_SELECTORS; W10.4).
+ */
+export const PRODUCT_PRICE_SELECTORS = [
+  '.product-info-price [data-price-type="finalPrice"]',
+  '[data-price-type="finalPrice"]',
+  '[data-price-type="minPrice"]',
+] as const;
+
+/**
+ * Candidate CSS selectors for the AVAILABILITY STATUS on a Книгарня «Є» *product* page.
+ * Representative selectors — must be re-verified against live product HTML
+ * before production use (same caveat as PRODUCT_DESCRIPTION_SELECTORS; W10.4).
+ */
+export const PRODUCT_STATUS_SELECTORS = [
+  '.stock.available',
+  '.stock.unavailable',
+  '[title="Availability"]',
+  '.product-info-stock-sku .stock',
+  '.availability',
+] as const;
+
 /** Resolve a possibly-relative href to an absolute Книгарня «Є» URL. */
 export function resolveUrl(href: string): string {
   if (href.startsWith('http')) return href;

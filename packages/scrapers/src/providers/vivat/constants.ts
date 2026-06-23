@@ -22,6 +22,23 @@ export function isPaperBookType(bookType: unknown): boolean {
   return !NON_PAPER_BOOK_TYPE.test(bookType);
 }
 
+/**
+ * Shape of a Vivat *single-product* page `__NEXT_DATA__` payload
+ * (props.pageProps.product). Field names are representative — must be
+ * re-verified against live product HTML before production use (W10.4).
+ */
+export interface VivatSingleProduct {
+  readonly title?: unknown;
+  readonly statusCode?: unknown;
+  readonly stockLevel?: unknown;
+  readonly preOrder?: unknown;
+  readonly price?: {
+    readonly retail?: unknown;
+    readonly promotion?: unknown;
+    readonly priceRebate?: unknown;
+  };
+}
+
 /** Build an absolute product URL from a Vivat product `code` (slug). */
 export function buildProductUrl(code: string): string {
   return `${VIVAT_BASE_URL}/product/${code}/`;

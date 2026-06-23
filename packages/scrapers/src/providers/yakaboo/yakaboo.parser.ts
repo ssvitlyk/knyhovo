@@ -4,12 +4,15 @@ import {
   YAKABOO_BASE_URL,
   SELECTORS,
   PRODUCT_DESCRIPTION_SELECTORS,
+  PRODUCT_PRICE_SELECTORS,
+  PRODUCT_STATUS_SELECTORS,
   OUT_OF_STOCK_KEYWORDS,
   IN_STOCK_KEYWORDS,
   PREORDER_KEYWORDS,
   detectFormat,
   stripBookPrefix,
 } from './constants.js';
+import type { ParsedProductState } from '../single-product.js';
 
 export interface ParseResult {
   readonly listings: RawProviderListing[];
@@ -159,4 +162,35 @@ export function extractYakabooProductDescription(html: string): string | null {
     if (inner != null && inner.trim() !== '') return inner;
   }
   return null;
+}
+
+/**
+ * Parse price and availability from a Yakaboo *product* page (W10.4).
+ * Pure function — no IO, no throwing.
+ *
+ * Selectors are representative and must be re-verified against live product
+ * HTML before production use (same caveat as PRODUCT_DESCRIPTION_SELECTORS; W10.4).
+ */
+export function parseYakabooProduct(html: string): ParsedProductState {
+  const $ = cheerio.load(html);
+
+  let priceText = '';
+  for (const selector of PRODUCT_PRICE_SELECTORS) {
+    const text = $(selector).first().text().trim();
+    if (text) { priceText = text; break; }
+  }
+
+  const priceKopecks = priceText ? parsePriceAsKopecks(priceText) : null;
+  const price: Money | null = priceKopecks !== null ? { amount: priceKopecks, currency: 'UAH' } : null;
+
+  if (!price) return { price: null, availability: 'out-of-stock' };
+
+  let statusText = '';
+  for (const selector of PRODUCT_STATUS_SELECTORS) {
+    const text = $(selector).first().text().trim();
+    if (text) { statusText = text; break; }
+  }
+
+  const availability = resolveAvailability(statusText, true);
+  return { price, availability };
 }

@@ -245,6 +245,12 @@ model Alert {
   targetPriceAmount   Int         @map("target_price_amount")    // копійки
   targetPriceCurrency Currency    @map("target_price_currency")
   pausedAt            DateTime?   @map("paused_at")
+  /// Dedup marker (W10.4): when this alert last fired a notification. Null until first notification.
+  /// Reset to null when the price condition no longer holds, re-arming a future notification.
+  lastNotifiedAt          DateTime? @map("last_notified_at")
+  /// The lowest price (копійки) at the moment of the last notification. A subsequent
+  /// notification fires only when the lowest price drops strictly below this value.
+  lastNotifiedPriceAmount Int?      @map("last_notified_price_amount")
   createdAt           DateTime    @default(now()) @map("created_at")
   updatedAt           DateTime    @updatedAt @map("updated_at")
 

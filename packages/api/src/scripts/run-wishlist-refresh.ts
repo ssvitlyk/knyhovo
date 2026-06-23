@@ -1,9 +1,7 @@
 import { prisma } from '../db.js';
 import { ScrapeRunTrigger } from '@prisma/client';
 import { runWishlistRefresh } from '../refresh/wishlist.refresh.js';
-import type { WishlistTargetFetcher } from '../refresh/wishlist.refresh.js';
-import type { RefreshTarget } from '../refresh/refresh-targets.js';
-import type { RefreshedListingState } from '../refresh/events.js';
+import { HttpTargetFetcher } from '../refresh/http-target-fetcher.js';
 
 /**
  * Parse the SCRAPE_TRIGGERED_BY environment variable into a ScrapeRunTrigger
@@ -20,28 +18,22 @@ function parseTriggeredBy(val: string | undefined): ScrapeRunTrigger {
   }
 }
 
-// TODO(W10.3.x/W10.4): replace with a real per-provider single-product fetcher
-// (HtmlFetcher + product-page parse → RefreshedListingState). Until then this
-// placeholder makes the wiring explicit and visible in scrape_runs.errorSummary.
-const placeholderFetcher: WishlistTargetFetcher = {
-  fetchTarget(target: RefreshTarget): Promise<RefreshedListingState> {
-    return Promise.reject(
-      new Error(`single-page fetch not implemented for ${target.provider} (${target.url})`),
-    );
-  },
-};
+// NOTE(W10.4): HttpTargetFetcher uses plain HTTP (FetchHtmlFetcher) by default.
+// Cloudflare-protected providers (Yakaboo, Book-Ye) will be blocked on live URLs —
+// Playwright wiring for those providers is deferred to W10.4.x/W10.6.
+const fetcher = new HttpTargetFetcher();
 
 async function main(): Promise<void> {
   const triggeredBy = parseTriggeredBy(process.env['SCRAPE_TRIGGERED_BY']);
 
-  const { outcomes, anySucceeded, events } = await runWishlistRefresh({
+  const { outcomes, anySucceeded, events, notifications } = await runWishlistRefresh({
     prisma,
-    fetcher: placeholderFetcher,
+    fetcher,
     triggeredBy,
   });
 
   console.log(
-    `Wishlist refresh complete: providers=${outcomes.length} events=${events.length} anySucceeded=${anySucceeded}`,
+    `Wishlist refresh complete: providers=${outcomes.length} events=${events.length} notifications=${notifications.length} anySucceeded=${anySucceeded}`,
   );
 
   if (!anySucceeded && outcomes.length > 0) {
@@ -59,5 +51,5 @@ void main()
   .finally(async () => {
     await prisma.$disconnect();
     // NOTE: run-wishlist does NOT use browserManager — no Playwright is needed
-    // for single-page product fetches via the placeholder or future HTTP fetcher.
+    // for single-page product fetches via HttpTargetFetcher (plain HTTP).
   });

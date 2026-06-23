@@ -5,6 +5,8 @@ import { runWishlistRefresh } from '../wishlist.refresh.js';
 import type { WishlistTargetFetcher } from '../wishlist.refresh.js';
 import type { RefreshTarget } from '../refresh-targets.js';
 import type { RefreshedListingState } from '../events.js';
+import type { PersistRefreshOutcome } from '../persist-refresh.js';
+import type { NotificationEvent } from '../alert-notify.js';
 
 // ---------------------------------------------------------------------------
 // Fixed clock
@@ -28,6 +30,13 @@ function makeFakePrisma() {
     },
   } as unknown as PrismaClient;
 }
+
+// ---------------------------------------------------------------------------
+// Injectable port no-ops for tests (avoids real DB writes)
+// ---------------------------------------------------------------------------
+
+const noopPersist = async (): Promise<PersistRefreshOutcome> => ({ kind: 'gone-skipped' });
+const noopNotify = async (): Promise<NotificationEvent[]> => [];
 
 // ---------------------------------------------------------------------------
 // Target fixtures
@@ -84,11 +93,14 @@ describe('runWishlistRefresh', () => {
       sleep: noSleep,
       now,
       logger: silentLogger,
+      persistRefresh: noopPersist,
+      runAlertNotifications: noopNotify,
     });
 
     expect(result.outcomes).toHaveLength(0);
     expect(result.anySucceeded).toBe(true);
     expect(result.events).toHaveLength(0);
+    expect(result.notifications).toHaveLength(0);
     expect(prisma.scrapeRun.create).not.toHaveBeenCalled();
   });
 
@@ -117,6 +129,8 @@ describe('runWishlistRefresh', () => {
       sleep: noSleep,
       now,
       logger: silentLogger,
+      persistRefresh: noopPersist,
+      runAlertNotifications: noopNotify,
     });
 
     // One scrapeRun per provider (YAKABOO + VIVAT).
@@ -169,6 +183,8 @@ describe('runWishlistRefresh', () => {
       sleep: noSleep,
       now,
       logger: silentLogger,
+      persistRefresh: noopPersist,
+      runAlertNotifications: noopNotify,
     });
 
     // YAKABOO ran but got rate-limited on first target → loop breaks.
@@ -213,6 +229,8 @@ describe('runWishlistRefresh', () => {
       sleep: noSleep,
       now,
       logger: silentLogger,
+      persistRefresh: noopPersist,
+      runAlertNotifications: noopNotify,
     });
 
     // Second target was still processed.
@@ -248,6 +266,8 @@ describe('runWishlistRefresh', () => {
       sleep: noSleep,
       now,
       logger: silentLogger,
+      persistRefresh: noopPersist,
+      runAlertNotifications: noopNotify,
     });
 
     const createCall = vi.mocked(prisma.scrapeRun.create).mock.calls[0]!;
@@ -273,6 +293,8 @@ describe('runWishlistRefresh', () => {
       sleep: noSleep,
       now,
       logger: silentLogger,
+      persistRefresh: noopPersist,
+      runAlertNotifications: noopNotify,
     });
 
     const providerOrder = result.outcomes.map((o) => o.provider);
@@ -297,6 +319,8 @@ describe('runWishlistRefresh', () => {
       sleep: noSleep,
       now,
       logger: silentLogger,
+      persistRefresh: noopPersist,
+      runAlertNotifications: noopNotify,
     });
 
     expect(result.anySucceeded).toBe(false);
@@ -321,6 +345,8 @@ describe('runWishlistRefresh', () => {
       sleep: noSleep,
       now,
       logger: silentLogger,
+      persistRefresh: noopPersist,
+      runAlertNotifications: noopNotify,
     });
 
     // startedAt passed to create must match injected clock.
@@ -353,10 +379,270 @@ describe('runWishlistRefresh', () => {
       delayMs: 500,
       now,
       logger: silentLogger,
+      persistRefresh: noopPersist,
+      runAlertNotifications: noopNotify,
     });
 
     // Two targets → sleep once between them.
     expect(sleepMock).toHaveBeenCalledTimes(1);
     expect(sleepMock).toHaveBeenCalledWith(500);
+  });
+
+  // ---------------------------------------------------------------------------
+  // W10.4: persistence metrics from persist outcome
+  // ---------------------------------------------------------------------------
+
+  it('persist outcome=price-updated increments providerListingsUpdated + priceHistoryCreated', async () => {
+    const prisma = makeFakePrisma();
+    const fetcher: WishlistTargetFetcher = {
+      fetchTarget: vi.fn(async (): Promise<RefreshedListingState> => ({
+        kind: 'fetched',
+        priceAmount: 7000,
+        availability: Availability.IN_STOCK,
+      })),
+    };
+
+    const result = await runWishlistRefresh({
+      prisma,
+      fetcher,
+      triggeredBy: ScrapeRunTrigger.MANUAL,
+      loadTargets: async () => [yakabooTarget],
+      sleep: noSleep,
+      now,
+      logger: silentLogger,
+      persistRefresh: async (): Promise<PersistRefreshOutcome> => ({
+        kind: 'price-updated',
+        priceHistoryCreated: true,
+        availabilityChanged: false,
+      }),
+      runAlertNotifications: noopNotify,
+    });
+
+    const metrics = result.outcomes[0]!.metrics;
+    expect(metrics.providerListingsUpdated).toBe(1);
+    expect(metrics.priceHistoryCreated).toBe(1);
+    expect(metrics.availabilityUpdated).toBe(0);
+  });
+
+  it('persist outcome=availability-updated increments providerListingsUpdated + availabilityUpdated', async () => {
+    const prisma = makeFakePrisma();
+    const fetcher: WishlistTargetFetcher = {
+      fetchTarget: vi.fn(async (): Promise<RefreshedListingState> => ({
+        kind: 'fetched',
+        priceAmount: null,
+        availability: Availability.OUT_OF_STOCK,
+      })),
+    };
+
+    const result = await runWishlistRefresh({
+      prisma,
+      fetcher,
+      triggeredBy: ScrapeRunTrigger.MANUAL,
+      loadTargets: async () => [yakabooTarget],
+      sleep: noSleep,
+      now,
+      logger: silentLogger,
+      persistRefresh: async (): Promise<PersistRefreshOutcome> => ({
+        kind: 'availability-updated',
+        priceHistoryCreated: false,
+      }),
+      runAlertNotifications: noopNotify,
+    });
+
+    const metrics = result.outcomes[0]!.metrics;
+    expect(metrics.providerListingsUpdated).toBe(1);
+    expect(metrics.availabilityUpdated).toBe(1);
+    expect(metrics.priceHistoryCreated).toBe(0);
+  });
+
+  it('persist failure is non-fatal: scrapeErrors gets entry, loop continues', async () => {
+    const prisma = makeFakePrisma();
+    let secondFetchCalled = false;
+    const twoTargets = [
+      makeTarget({ provider: Provider.YAKABOO, providerListingId: 'yak-a' }),
+      makeTarget({ provider: Provider.YAKABOO, providerListingId: 'yak-b' }),
+    ];
+
+    const fetcher: WishlistTargetFetcher = {
+      fetchTarget: vi.fn(async (target: RefreshTarget): Promise<RefreshedListingState> => {
+        if (target.providerListingId === 'yak-b') secondFetchCalled = true;
+        return { kind: 'fetched', priceAmount: 10000, availability: Availability.IN_STOCK };
+      }),
+    };
+
+    const result = await runWishlistRefresh({
+      prisma,
+      fetcher,
+      triggeredBy: ScrapeRunTrigger.MANUAL,
+      loadTargets: async () => twoTargets,
+      sleep: noSleep,
+      now,
+      logger: silentLogger,
+      persistRefresh: async (): Promise<PersistRefreshOutcome> => {
+        throw new Error('DB write failed');
+      },
+      runAlertNotifications: noopNotify,
+    });
+
+    // Second target was still processed despite first persist failing.
+    expect(secondFetchCalled).toBe(true);
+    // Persist errors are captured in scrapeErrors.
+    expect(result.outcomes[0]!.scrapeErrors.some((e) => e.includes('DB write failed'))).toBe(true);
+  });
+
+  // ---------------------------------------------------------------------------
+  // W10.4: alert dedup / notifications wiring
+  // ---------------------------------------------------------------------------
+
+  it('runAlertNotifications is called with affected canonicalBookIds, result exposed on result.notifications', async () => {
+    const prisma = makeFakePrisma();
+    const capturedIds: string[] = [];
+
+    const targetA = makeTarget({ provider: Provider.YAKABOO, providerListingId: 'yak-a', canonicalBookId: 'book-A' });
+    const targetB = makeTarget({ provider: Provider.VIVAT, providerListingId: 'vivat-b', canonicalBookId: 'book-B' });
+
+    const fetcher: WishlistTargetFetcher = {
+      fetchTarget: vi.fn(async (): Promise<RefreshedListingState> => ({
+        kind: 'fetched',
+        priceAmount: 7000,
+        availability: Availability.IN_STOCK,
+      })),
+    };
+
+    const fakeNotification: NotificationEvent = {
+      alertId: 'alert-1',
+      canonicalBookId: 'book-A',
+      lowestPriceAmount: 7000,
+      targetPriceAmount: 8000,
+      notifiedAt: FIXED_NOW,
+    };
+
+    const result = await runWishlistRefresh({
+      prisma,
+      fetcher,
+      triggeredBy: ScrapeRunTrigger.MANUAL,
+      loadTargets: async () => [targetA, targetB],
+      sleep: noSleep,
+      now,
+      logger: silentLogger,
+      persistRefresh: noopPersist,
+      runAlertNotifications: async (_p, ids): Promise<NotificationEvent[]> => {
+        capturedIds.push(...ids);
+        return [fakeNotification];
+      },
+    });
+
+    // Both book IDs must be included in the dedup call.
+    expect(capturedIds).toContain('book-A');
+    expect(capturedIds).toContain('book-B');
+    expect(capturedIds).toHaveLength(2);
+
+    // Notification returned by port is surfaced in result.
+    expect(result.notifications).toHaveLength(1);
+    expect(result.notifications[0]).toEqual(fakeNotification);
+  });
+
+  it('alert dedup failure is non-fatal: notifications=[], rest of result is valid', async () => {
+    const prisma = makeFakePrisma();
+    const fetcher: WishlistTargetFetcher = {
+      fetchTarget: vi.fn(async (): Promise<RefreshedListingState> => ({
+        kind: 'fetched',
+        priceAmount: 10000,
+        availability: Availability.IN_STOCK,
+      })),
+    };
+
+    const result = await runWishlistRefresh({
+      prisma,
+      fetcher,
+      triggeredBy: ScrapeRunTrigger.MANUAL,
+      loadTargets: async () => [yakabooTarget],
+      sleep: noSleep,
+      now,
+      logger: silentLogger,
+      persistRefresh: noopPersist,
+      runAlertNotifications: async (): Promise<NotificationEvent[]> => {
+        throw new Error('dedup DB exploded');
+      },
+    });
+
+    // Dedup failure must not crash the refresh or set anySucceeded=false.
+    expect(result.notifications).toHaveLength(0);
+    expect(result.anySucceeded).toBe(true);
+    expect(result.outcomes[0]?.status).toBe(ScrapeRunStatus.SUCCESS);
+  });
+
+  // ---------------------------------------------------------------------------
+  // W10.4 headline: dedup across two consecutive runs (no duplicate notification)
+  // ---------------------------------------------------------------------------
+
+  it('dedup across runs: same low price on run2 does not fire a second notification', async () => {
+    // Simulate the real runAlertNotificationsForBooks behaviour using injected deps
+    // so this test is fully in-memory with no DB.
+    const { runAlertNotificationsForBooks } = await import('../alert-notify.js');
+
+    const prisma = makeFakePrisma();
+
+    const BOOK_ID = 'book-dedup';
+    const ALERT_ID = 'alert-dedup';
+    const TARGET_PRICE = 8000;
+    const LOWEST_PRICE = 7000; // below target → should notify
+
+    // In-memory marker store (simulates alertNotificationMarker table).
+    let markerLastNotifiedAt: Date | null = null;
+    let markerLastNotifiedPrice: number | null = null;
+
+    const fakeActiveAlerts = async () => [
+      {
+        alertId: ALERT_ID,
+        canonicalBookId: BOOK_ID,
+        targetPriceAmount: TARGET_PRICE,
+        lastNotifiedAt: markerLastNotifiedAt,
+        lastNotifiedPriceAmount: markerLastNotifiedPrice,
+      },
+    ];
+
+    const fakeLowestPrices = async () => {
+      const map = new Map<string, number>();
+      map.set(BOOK_ID, LOWEST_PRICE);
+      return map;
+    };
+
+    const fakeUpdateMarker = async (
+      _prisma: PrismaClient,
+      _alertId: string,
+      update: { lastNotifiedAt: Date | null; lastNotifiedPriceAmount: number | null },
+    ) => {
+      markerLastNotifiedAt = update.lastNotifiedAt;
+      markerLastNotifiedPrice = update.lastNotifiedPriceAmount;
+    };
+
+    const deps = {
+      findActiveAlerts: fakeActiveAlerts,
+      findLowestPrices: fakeLowestPrices,
+      updateMarker: fakeUpdateMarker,
+    };
+
+    // Run 1: price is below target, no prior marker → should notify.
+    const run1 = await runAlertNotificationsForBooks(
+      prisma,
+      [BOOK_ID],
+      FIXED_NOW,
+      deps,
+    );
+    expect(run1).toHaveLength(1);
+    expect(run1[0]?.alertId).toBe(ALERT_ID);
+    // Marker must now be set.
+    expect(markerLastNotifiedAt).toEqual(FIXED_NOW);
+    expect(markerLastNotifiedPrice).toBe(LOWEST_PRICE);
+
+    // Run 2: same price, marker already set to same price → dedup fires, no notification.
+    const run2 = await runAlertNotificationsForBooks(
+      prisma,
+      [BOOK_ID],
+      FIXED_NOW,
+      deps,
+    );
+    expect(run2).toHaveLength(0);
   });
 });

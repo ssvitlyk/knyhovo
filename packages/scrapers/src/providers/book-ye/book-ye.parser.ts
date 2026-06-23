@@ -3,11 +3,14 @@ import type { RawProviderListing, Availability, Money } from '@knyhovo/shared';
 import {
   SELECTORS,
   PRODUCT_DESCRIPTION_SELECTORS,
+  PRODUCT_PRICE_SELECTORS,
+  PRODUCT_STATUS_SELECTORS,
   OUT_OF_STOCK_KEYWORDS,
   PREORDER_KEYWORDS,
   isNonPhysicalTitle,
   resolveUrl,
 } from './constants.js';
+import type { ParsedProductState } from '../single-product.js';
 
 /**
  * Resolve a cover image URL from a catalog card's <img>.
@@ -146,4 +149,44 @@ export function extractBookYeProductDescription(html: string): string | null {
     if (inner != null && inner.trim() !== '') return inner;
   }
   return null;
+}
+
+/**
+ * Parse price and availability from a Книгарня «Є» *product* page (W10.4).
+ * Pure function — no IO, no throwing.
+ *
+ * Selectors are representative and must be re-verified against live product
+ * HTML before production use (same caveat as PRODUCT_DESCRIPTION_SELECTORS; W10.4).
+ */
+export function parseBookYeProduct(html: string): ParsedProductState {
+  const $ = cheerio.load(html);
+
+  let priceAttr: string | undefined;
+  for (const selector of PRODUCT_PRICE_SELECTORS) {
+    priceAttr = $(selector).first().attr('data-price-amount');
+    if (priceAttr !== undefined) break;
+  }
+
+  const priceKopecks = bookYePriceToKopecks(priceAttr);
+  const price: Money | null = priceKopecks !== null ? { amount: priceKopecks, currency: 'UAH' } : null;
+
+  if (!price) {
+    let statusText = '';
+    for (const selector of PRODUCT_STATUS_SELECTORS) {
+      const text = $(selector).first().text().trim();
+      if (text) { statusText = text; break; }
+    }
+    if (!statusText) return { price: null, availability: 'unknown' };
+    return { price: null, availability: 'out-of-stock' };
+  }
+
+  let statusText = '';
+  for (const selector of PRODUCT_STATUS_SELECTORS) {
+    const text = $(selector).first().text().trim();
+    if (text) { statusText = text; break; }
+  }
+
+  const hasPreorder = $(SELECTORS.preorder).length > 0;
+  const availability = resolveAvailability(statusText, hasPreorder, true);
+  return { price, availability };
 }

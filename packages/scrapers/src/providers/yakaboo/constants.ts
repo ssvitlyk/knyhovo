@@ -86,6 +86,30 @@ export function detectFormat(title: string, formatLabel: string): 'paper' | 'ebo
 }
 
 /**
+ * Candidate CSS selectors for the PRICE on a Yakaboo *product* page.
+ * Representative selectors — must be re-verified against live product HTML
+ * before production use (same caveat as PRODUCT_DESCRIPTION_SELECTORS; W10.4).
+ */
+export const PRODUCT_PRICE_SELECTORS = [
+  '.product-price-value',
+  '.product-price .price',
+  '.product-price',
+  '[itemprop="price"]',
+] as const;
+
+/**
+ * Candidate CSS selectors for the STATUS/AVAILABILITY text on a Yakaboo *product* page.
+ * Representative selectors — must be re-verified against live product HTML
+ * before production use (same caveat as PRODUCT_DESCRIPTION_SELECTORS; W10.4).
+ */
+export const PRODUCT_STATUS_SELECTORS = [
+  '.ui-shipment-status__text',
+  '.product-availability',
+  '.product-status',
+  '.availability-message',
+] as const;
+
+/**
  * Yakaboo sometimes prepends "Книга " to product titles as a category label.
  * Strip it when redundant (multi-word remainder, not starting with digit or Roman numeral).
  */
