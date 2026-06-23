@@ -16,6 +16,7 @@ import {
 import { registerSearchRoute } from './search/route.js';
 import { registerBooksRoute } from './books/route.js';
 import { registerBookPriceHistoryRoute } from './books/price-history/route.js';
+import { registerRefreshHealthRoute } from './refresh/route.js';
 import { registerAuthRoute } from './auth/route.js';
 import { registerWishlistRoute } from './wishlist/route.js';
 import { registerWishlistAlertRoute } from './wishlist/alert/route.js';
@@ -136,6 +137,7 @@ export function buildApp(prisma: PrismaClient, authDeps?: AuthDeps): FastifyInst
   registerSearchRoute(app, prisma);
   registerBooksRoute(app, prisma);
   registerBookPriceHistoryRoute(app, prisma);
+  registerRefreshHealthRoute(app, prisma);
 
   // Auth routes are only registered when deps are provided.
   // Tests that don't exercise auth can call buildApp(prisma) without
