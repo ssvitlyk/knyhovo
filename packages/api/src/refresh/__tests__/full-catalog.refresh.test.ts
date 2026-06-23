@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { PrismaClient } from '@prisma/client';
-import { ScrapeRunStatus, ScrapeRunTrigger } from '@prisma/client';
+import { ScrapeRunStatus, ScrapeRunTrigger, ScrapeRunKind, Provider } from '@prisma/client';
 import type { ScraperProvider, ScraperResult } from '@knyhovo/shared';
 import type { ScrapeMetrics } from '../../pipeline/types.js';
 
@@ -23,13 +23,26 @@ vi.mock('../../pipeline/index.js', async (importOriginal) => {
   };
 });
 
+// Mock the concurrency-guard so tests can control lock behaviour without a real DB.
+vi.mock('../concurrency-guard.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../concurrency-guard.js')>();
+  return {
+    ...actual,
+    acquireRefreshLock: vi.fn(async () => ({ acquiredAt: new Date(), kind: ScrapeRunKind.FULL_CATALOG })),
+    releaseRefreshLock: vi.fn(async () => undefined),
+  };
+});
+
 import { runFullCatalogRefresh } from '../full-catalog.refresh.js';
 import { startScrapeRun, finishScrapeRun } from '../scrape-run.repository.js';
 import { runScrapePipeline } from '../../pipeline/index.js';
+import { acquireRefreshLock, releaseRefreshLock, RefreshAlreadyRunningError } from '../concurrency-guard.js';
 
 const mockStart = vi.mocked(startScrapeRun);
 const mockFinish = vi.mocked(finishScrapeRun);
 const mockPipeline = vi.mocked(runScrapePipeline);
+const mockAcquire = vi.mocked(acquireRefreshLock);
+const mockRelease = vi.mocked(releaseRefreshLock);
 
 const FIXED_NOW = new Date('2026-06-22T08:00:00.000Z');
 const SCRAPED_AT = '2026-06-22T08:00:00.000Z';
@@ -86,6 +99,9 @@ beforeEach(() => {
     startedAt: FIXED_NOW,
   }));
   mockFinish.mockResolvedValue(undefined);
+  // Default: guard allows — no running lock
+  mockAcquire.mockResolvedValue({ acquiredAt: FIXED_NOW, kind: ScrapeRunKind.FULL_CATALOG });
+  mockRelease.mockResolvedValue(undefined);
 });
 
 describe('runFullCatalogRefresh', () => {
@@ -293,5 +309,44 @@ describe('runFullCatalogRefresh', () => {
     expect(result.outcomes[0]!.status).toBe(ScrapeRunStatus.PARTIAL);
     expect(result.outcomes[0]!.rateLimited).toBe(true);
     expect(result.anySucceeded).toBe(true);
+  });
+
+  // ── W10.6 concurrency guard integration ─────────────────────────────────────
+
+  it('guard: rejects with RefreshAlreadyRunningError when acquireRefreshLock throws', async () => {
+    const runningInfo = {
+      id: 'existing-run',
+      provider: Provider.YAKABOO,
+      kind: ScrapeRunKind.WISHLIST_REFRESH,
+      startedAt: FIXED_NOW,
+    };
+    mockAcquire.mockRejectedValue(new RefreshAlreadyRunningError(runningInfo));
+
+    await expect(
+      runFullCatalogRefresh({
+        prisma,
+        providers: [new FakeScraper('yakaboo')],
+        triggeredBy: ScrapeRunTrigger.MANUAL,
+        logger: silentLogger,
+        now,
+      }),
+    ).rejects.toThrow(RefreshAlreadyRunningError);
+
+    // No provider scrape_runs should be started
+    expect(mockStart).not.toHaveBeenCalled();
+  });
+
+  it('guard: releaseRefreshLock is called in the finally block on happy path', async () => {
+    mockPipeline.mockImplementation(async ({ providers }) => successResult(providers[0]!.name));
+
+    await runFullCatalogRefresh({
+      prisma,
+      providers: [new FakeScraper('yakaboo')],
+      triggeredBy: ScrapeRunTrigger.MANUAL,
+      logger: silentLogger,
+      now,
+    });
+
+    expect(mockRelease).toHaveBeenCalledOnce();
   });
 });

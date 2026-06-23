@@ -3,6 +3,7 @@ import { YakabooScraper, VivatScraper, BookYeScraper, browserManager } from '@kn
 import type { ScraperProvider } from '@knyhovo/shared';
 import { ScrapeRunTrigger } from '@prisma/client';
 import { runFullCatalogRefresh } from '../refresh/full-catalog.refresh.js';
+import { RefreshAlreadyRunningError } from '../refresh/concurrency-guard.js';
 
 // Register new providers here — the pipeline is provider-agnostic and needs no changes.
 // Vivat is server-rendered Next.js, so the default FetchHtmlFetcher works (no Cloudflare).
@@ -31,17 +32,31 @@ function parseTriggeredBy(val: string | undefined): ScrapeRunTrigger {
 
 async function main(): Promise<void> {
   const triggeredBy = parseTriggeredBy(process.env['SCRAPE_TRIGGERED_BY']);
+  const startedAt = Date.now();
+  console.log(`[run-scrape] starting at ${new Date(startedAt).toISOString()} (triggeredBy=${triggeredBy})`);
 
-  const { outcomes, anySucceeded } = await runFullCatalogRefresh({
-    prisma,
-    providers,
-    triggeredBy,
-  });
+  try {
+    const { outcomes, anySucceeded } = await runFullCatalogRefresh({
+      prisma,
+      providers,
+      triggeredBy,
+    });
 
-  if (!anySucceeded) {
-    // Every provider failed — surface a non-zero exit for the scheduler.
-    console.error(`Full catalog refresh failed: all ${outcomes.length} provider(s) failed.`);
-    process.exitCode = 1;
+    if (!anySucceeded) {
+      // Every provider failed — surface a non-zero exit for the scheduler.
+      console.error(`Full catalog refresh failed: all ${outcomes.length} provider(s) failed.`);
+      process.exitCode = 1;
+    }
+  } catch (err) {
+    // Cron-overlap is not an error: another refresh holds the lock. Skip idempotently.
+    if (err instanceof RefreshAlreadyRunningError) {
+      console.log(`[run-scrape] skip: ${err.message}`);
+      return;
+    }
+    throw err;
+  } finally {
+    const durationMs = Date.now() - startedAt;
+    console.log(`[run-scrape] finished in ${durationMs}ms (exitCode=${process.exitCode ?? 0})`);
   }
 }
 

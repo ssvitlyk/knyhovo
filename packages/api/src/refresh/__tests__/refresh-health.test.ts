@@ -351,6 +351,102 @@ describe('deriveProviderHealth — RUNNING run is ignored for streak/success', (
   });
 });
 
+// ── W10.6: running-too-long ───────────────────────────────────────────────────
+
+describe('deriveProviderHealth — running-too-long (W10.6)', () => {
+  it('RUNNING run started 7h before now → issues contains running-too-long warning, status degraded', () => {
+    // runningTooLongHours=6; 7h > 6h → should flag.
+    // Pair with a recent SUCCESS so no-successful-run (critical) is not also raised,
+    // which would elevate the status from degraded to down.
+    const sevenHoursBefore = new Date(NOW.getTime() - 7 * 3_600_000);
+    const recentSuccess = fakeRun({
+      status: ScrapeRunStatus.SUCCESS,
+      startedAt: RECENT, // 24h ago — within 48h threshold
+    });
+    const running = fakeRun({
+      status: ScrapeRunStatus.RUNNING,
+      startedAt: sevenHoursBefore,
+      finishedAt: null,
+      durationMs: null,
+    });
+
+    // running is newer than recentSuccess, so it becomes latestRun
+    const result = healthFor([running, recentSuccess]);
+    const types = result.issues.map((i) => i.type);
+    expect(types).toContain('running-too-long');
+    expect(result.issues.find((i) => i.type === 'running-too-long')!.severity).toBe('warning');
+    expect(result.status).toBe('degraded');
+  });
+
+  it('RUNNING run started exactly 6h before now → NO running-too-long issue (strictly greater-than)', () => {
+    const exactlySixHoursBefore = new Date(NOW.getTime() - 6 * 3_600_000);
+    const run = fakeRun({
+      status: ScrapeRunStatus.RUNNING,
+      startedAt: exactlySixHoursBefore,
+      finishedAt: null,
+      durationMs: null,
+    });
+
+    const result = healthFor([run]);
+    const types = result.issues.map((i) => i.type);
+    expect(types).not.toContain('running-too-long');
+  });
+
+  it('RUNNING run started 3h before now (within threshold) → no running-too-long issue', () => {
+    const threeHoursBefore = new Date(NOW.getTime() - 3 * 3_600_000);
+    const run = fakeRun({
+      status: ScrapeRunStatus.RUNNING,
+      startedAt: threeHoursBefore,
+      finishedAt: null,
+      durationMs: null,
+    });
+
+    const result = healthFor([run]);
+    const types = result.issues.map((i) => i.type);
+    expect(types).not.toContain('running-too-long');
+  });
+});
+
+// ── W10.6: refresh-lock-stuck ─────────────────────────────────────────────────
+
+describe('deriveProviderHealth — refresh-lock-stuck (W10.6)', () => {
+  it('older RUNNING FULL_CATALOG + newer terminal SUCCESS → reports refresh-lock-stuck warning', () => {
+    // Older RUNNING run (not the latest — it has a newer run after it)
+    const olderRunning = fakeRun({
+      status: ScrapeRunStatus.RUNNING,
+      kind: ScrapeRunKind.FULL_CATALOG,
+      startedAt: new Date(NOW.getTime() - 4 * 3_600_000), // 4h ago
+      finishedAt: null,
+      durationMs: null,
+    });
+    // Newer terminal SUCCESS run (this is the "latest" run)
+    const newerSuccess = fakeRun({
+      status: ScrapeRunStatus.SUCCESS,
+      kind: ScrapeRunKind.FULL_CATALOG,
+      startedAt: new Date(NOW.getTime() - 1 * 3_600_000), // 1h ago
+    });
+
+    // Pass newer first so sorting can determine which is latest
+    const result = healthFor([newerSuccess, olderRunning]);
+    const types = result.issues.map((i) => i.type);
+    expect(types).toContain('refresh-lock-stuck');
+    expect(result.issues.find((i) => i.type === 'refresh-lock-stuck')!.severity).toBe('warning');
+  });
+
+  it('single RUNNING run (no newer run after it) → no refresh-lock-stuck issue', () => {
+    const running = fakeRun({
+      status: ScrapeRunStatus.RUNNING,
+      startedAt: new Date(NOW.getTime() - 1 * 3_600_000),
+      finishedAt: null,
+      durationMs: null,
+    });
+
+    const result = healthFor([running]);
+    const types = result.issues.map((i) => i.type);
+    expect(types).not.toContain('refresh-lock-stuck');
+  });
+});
+
 // ── deriveSummary ─────────────────────────────────────────────────────────────
 
 describe('deriveSummary', () => {
