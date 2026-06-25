@@ -51,6 +51,9 @@ export function formatSummary(
 
   if (scrapeErrors.length > 0) {
     lines.push(`Scrape errors: ${scrapeErrors.length}`);
+    for (const error of scrapeErrors.slice(0, 5)) {
+      lines.push(`  - ${error}`);
+    }
   }
 
   return lines.join('\n');
