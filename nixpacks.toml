@@ -1,0 +1,48 @@
+# Nixpacks build configuration for Railway.
+#
+# Goal: bake the Chromium runtime shared libraries into the image so the
+# BookYe scraper's Playwright browser launches without any manual
+# `apt-get install` inside the running container.
+#
+# Node/pnpm versions are auto-detected (Node from .nvmrc, pnpm from the
+# `packageManager` field in package.json) — no need to pin them here.
+
+[variables]
+# Install the Chromium binary inside node_modules instead of the per-user
+# ~/.cache/ms-playwright. This guarantees the browser is co-located with the
+# scrapers package in both the build and runtime layers, so Playwright always
+# resolves it regardless of the runtime user/home.
+PLAYWRIGHT_BROWSERS_PATH = "0"
+
+[phases.setup]
+# apt packages are merged on top of the Nixpacks-detected toolchain
+# (nodejs + pnpm). Each library below is a runtime dependency of
+# headless Chromium that is NOT present in the default Railway base image.
+aptPkgs = [
+  "libglib2.0-0",        # GLib core — base object/event loop used everywhere in Chromium
+  "libnss3",             # Network Security Services — TLS/crypto, required to launch at all
+  "libnspr4",            # Netscape Portable Runtime — hard dependency of libnss3
+  "libatk1.0-0",         # ATK accessibility toolkit — linked by the Chromium render process
+  "libatk-bridge2.0-0",  # AT-SPI bridge for ATK — required alongside libatk
+  "libcups2",            # CUPS client lib — Chromium links it for the print subsystem
+  "libdrm2",             # Direct Rendering Manager — GPU/buffer handling, needed even headless
+  "libxkbcommon0",       # Keyboard keymap handling for the (headless) input layer
+  "libxcomposite1",      # X Composite extension — compositing window contents
+  "libxdamage1",         # X Damage extension — tracks changed screen regions
+  "libxfixes3",          # X Fixes extension — cursor/region helpers used by the renderer
+  "libxrandr2",          # X RandR extension — screen resolution/DPI queries
+  "libgbm1",             # Generic Buffer Management — Mesa/EGL backend for headless rendering
+  "libasound2",          # ALSA sound library — Chromium links audio even when muted
+  "fontconfig",          # Font discovery/configuration — without it text rendering fails
+  "fonts-liberation",    # Liberation fonts — baseline glyphs so pages render real text
+]
+
+[phases.build]
+# Install deps, fetch the Chromium binary into the image cache, then compile.
+# Running these in the build phase guarantees the browser ships inside the
+# final image rather than being downloaded (or missing) at runtime.
+cmds = [
+  "pnpm install --frozen-lockfile",
+  "pnpm --filter @knyhovo/scrapers exec playwright install chromium",
+  "pnpm build",
+]
