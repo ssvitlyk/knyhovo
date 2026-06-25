@@ -8,8 +8,12 @@ import {
 } from '@prisma/client';
 import { buildApp } from '../../app.js';
 
-// ── Fixed dates ───────────────────────────────────────────────────────────────
-const RECENT = new Date('2026-06-22T12:00:00.000Z');
+// ── Dates ───────────────────────────────────────────────────────────────────
+// Relative to "now" so the SUCCESS fixtures always sit inside the health
+// freshness window (noSuccessHours=48). The route calls getRefreshHealth with a
+// real `new Date()`, so an absolute hardcoded date would turn this suite into a
+// time-bomb that fails once wall-clock passes the 48h mark.
+const RECENT = new Date(Date.now() - 24 * 60 * 60 * 1000); // 24h ago
 
 // ── Fixture factories ─────────────────────────────────────────────────────────
 function fakeRun(overrides: Partial<ScrapeRun> = {}): ScrapeRun {
