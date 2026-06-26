@@ -9,6 +9,10 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
+    },
+    "./blocked-status": {
+      "types": "./dist/lib/blocked-status.d.ts",
+      "import": "./dist/lib/blocked-status.js"
     }
   },
   "scripts": {

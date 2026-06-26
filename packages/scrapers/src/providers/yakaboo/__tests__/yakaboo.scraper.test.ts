@@ -144,3 +144,37 @@ describe('YakabooScraper.scrape — ScraperResult shape', () => {
     });
   });
 });
+
+// ──────────────────────────────────────────────────────────────
+// Blocked-page handling
+// ──────────────────────────────────────────────────────────────
+
+describe('YakabooScraper.scrape — blocked pages', () => {
+  it('reports an explicit 403 anti-bot block', async () => {
+    const fetcher: HtmlFetcher = {
+      fetch: vi.fn(async () => {
+        throw new Error('HTTP 403 Forbidden');
+      }),
+    };
+
+    const scraper = new YakabooScraper(fetcher);
+    const result = await scraper.scrape({ delayMs: 0 });
+
+    expect(result.listings).toHaveLength(0);
+    expect(result.errors).toContain('Yakaboo blocked by HTTP 403, likely anti-bot protection');
+  });
+
+  it('does not flag a generic network error as a 403 block', async () => {
+    const fetcher: HtmlFetcher = {
+      fetch: vi.fn(async () => {
+        throw new Error('ECONNREFUSED');
+      }),
+    };
+
+    const scraper = new YakabooScraper(fetcher);
+    const result = await scraper.scrape({ delayMs: 0 });
+
+    expect(result.errors.some((e) => e.includes('ECONNREFUSED'))).toBe(true);
+    expect(result.errors).not.toContain('Yakaboo blocked by HTTP 403, likely anti-bot protection');
+  });
+});

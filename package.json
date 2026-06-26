@@ -10,7 +10,9 @@
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
     "test": "turbo run test",
-    "build": "turbo run build"
+    "build": "turbo run build",
+    "scrape": "pnpm --filter @knyhovo/api scrape",
+    "scrape:wishlist": "pnpm --filter @knyhovo/api scrape:wishlist"
   },
   "devDependencies": {
     "eslint": "catalog:",

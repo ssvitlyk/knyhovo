@@ -29,6 +29,15 @@ export interface PlaywrightFetchOptions {
    * the fetcher waits for networkidle only.
    */
   readonly waitForSelector?: string;
+  /**
+   * CSS selector that marks an anti-bot challenge interstitial (e.g. a Cloudflare
+   * Turnstile iframe). When set alongside {@link waitForSelector}, the fetcher
+   * waits for *either* the real content OR a challenge marker — whichever renders
+   * first — so a persistent challenge is detected promptly instead of burning the
+   * full content-wait budget. Detection only: the challenge is never solved or
+   * bypassed; downstream code classifies the returned HTML and reports the block.
+   */
+  readonly challengeSelector?: string;
 }
 
 export class PlaywrightHtmlFetcher implements HtmlFetcher {
@@ -67,6 +76,10 @@ export class PlaywrightHtmlFetcher implements HtmlFetcher {
 
     const page = await this.context.newPage();
     try {
+      // Block only heavy static assets. Scripts, XHR/fetch, documents and frames
+      // are always allowed through — a Cloudflare challenge needs its own
+      // scripts/frames to run, so aborting them would stall the challenge rather
+      // than let it solve.
       await page.route('**/*', async (route) => {
         if (BLOCKED_RESOURCE_TYPES.includes(route.request().resourceType())) {
           await route.abort();
@@ -77,13 +90,20 @@ export class PlaywrightHtmlFetcher implements HtmlFetcher {
 
       await page.goto(url, { waitUntil: 'domcontentloaded', timeout: timeoutMs });
 
-      const { waitForSelector } = this.options;
+      const { waitForSelector, challengeSelector } = this.options;
       if (waitForSelector) {
         // Content-aware wait: hold until the real page element renders so a JS
-        // challenge has time to solve and redirect. Ignore the timeout — return
-        // whatever loaded (degrades to "no listings", never throws here).
+        // challenge has time to solve and redirect. When a challengeSelector is
+        // configured, resolve as soon as EITHER the content or a challenge marker
+        // appears. Ignore the timeout — return whatever loaded (degrades to "no
+        // listings"/an explicit blocked-page error downstream, never throws here).
         const waitMs = Math.min(CONTENT_WAIT_MS, timeoutMs);
-        await page.waitForSelector(waitForSelector, { timeout: waitMs }).catch(() => undefined);
+        const selectors = challengeSelector
+          ? [waitForSelector, challengeSelector]
+          : [waitForSelector];
+        await Promise.race(
+          selectors.map((selector) => page.waitForSelector(selector, { timeout: waitMs })),
+        ).catch(() => undefined);
       } else {
         // Allow Cloudflare challenge to complete; ignore if networkidle times out
         await page

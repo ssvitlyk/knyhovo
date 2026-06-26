@@ -210,6 +210,23 @@ describe('PlaywrightHtmlFetcher', () => {
     expect(mocks.mockPage.waitForSelector).not.toHaveBeenCalled();
   });
 
+  it('waits for either the content or the challenge selector when both are configured', async () => {
+    const fetcher = new PlaywrightHtmlFetcher(manager, {
+      waitForSelector: 'a.product-item-link',
+      challengeSelector: 'iframe[src*="challenges.cloudflare.com"]',
+    });
+    await fetcher.fetch('https://example.com', 30_000);
+    expect(mocks.mockPage.waitForSelector).toHaveBeenCalledWith(
+      'a.product-item-link',
+      expect.objectContaining({ timeout: expect.any(Number) }),
+    );
+    expect(mocks.mockPage.waitForSelector).toHaveBeenCalledWith(
+      'iframe[src*="challenges.cloudflare.com"]',
+      expect.objectContaining({ timeout: expect.any(Number) }),
+    );
+    expect(mocks.mockPage.waitForLoadState).not.toHaveBeenCalled();
+  });
+
   it('closeContext() closes the browser context', async () => {
     const fetcher = new PlaywrightHtmlFetcher(manager);
     await fetcher.fetch('https://example.com', 10_000);
