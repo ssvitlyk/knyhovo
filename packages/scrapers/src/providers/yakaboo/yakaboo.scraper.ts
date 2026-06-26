@@ -1,5 +1,6 @@
 import type { ScraperProvider, ScraperResult, ScraperOptions } from '@knyhovo/shared';
 import { FetchHtmlFetcher, type HtmlFetcher } from '../../http/html-fetcher.js';
+import { classifyBlockedPage, isForbiddenError } from '../../http/blocked-page.js';
 import { YAKABOO_CATALOG_URL } from './constants.js';
 import { parseYakabooPage, extractYakabooProductDescription } from './yakaboo.parser.js';
 import { enrichDescriptions } from '../../lib/enrich-descriptions.js';
@@ -26,6 +27,7 @@ export class YakabooScraper implements ScraperProvider {
     const allListings: RawProviderListing[] = [];
     const errors: string[] = [];
     const seenUrls = new Set<string>();
+    let firstPageHtml: string | null = null;
 
     for (let page = 1; page <= maxPages; page++) {
       const url = `${this.catalogUrl}?page=${page}`;
@@ -33,10 +35,15 @@ export class YakabooScraper implements ScraperProvider {
       let html: string;
       try {
         html = await this.fetcher.fetch(url, timeoutMs);
+        if (firstPageHtml === null) firstPageHtml = html;
       } catch (err) {
-        errors.push(
-          `Page ${page}: network error — ${err instanceof Error ? err.message : String(err)}`,
-        );
+        if (isForbiddenError(err)) {
+          errors.push('Yakaboo blocked by HTTP 403, likely anti-bot protection');
+        } else {
+          errors.push(
+            `Page ${page}: network error — ${err instanceof Error ? err.message : String(err)}`,
+          );
+        }
         break;
       }
 
@@ -54,6 +61,18 @@ export class YakabooScraper implements ScraperProvider {
 
       if (page < maxPages && delayMs > 0) {
         await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+
+    // When nothing was scraped, classify the first page so an empty result is
+    // explained (anti-bot block vs. a legitimately empty catalog). A fetch that
+    // threw a 403 is already reported above and leaves firstPageHtml null.
+    if (allListings.length === 0 && firstPageHtml !== null) {
+      const reason = classifyBlockedPage(firstPageHtml);
+      if (reason === 'cloudflare-challenge') {
+        errors.push('Yakaboo blocked by Cloudflare challenge, likely anti-bot protection');
+      } else if (reason === 'forbidden') {
+        errors.push('Yakaboo blocked by HTTP 403, likely anti-bot protection');
       }
     }
 

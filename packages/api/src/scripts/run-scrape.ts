@@ -1,3 +1,8 @@
+// NOTE: `@knyhovo/scrapers` is consumed as its compiled `dist/`, but Vitest runs
+// the TypeScript source. To stop a stale `dist` from silently running old scraper
+// code here, the `scrape` npm script runs `turbo run build --filter=@knyhovo/scrapers`
+// first (Turbo caches, so it is a near-no-op when nothing changed). Never run this
+// file with raw `tsx` and expect fresh scraper code — go through `pnpm scrape`.
 import { prisma } from '../db.js';
 import { YakabooScraper, VivatScraper, BookYeScraper, browserManager } from '@knyhovo/scrapers';
 import type { ScraperProvider } from '@knyhovo/shared';

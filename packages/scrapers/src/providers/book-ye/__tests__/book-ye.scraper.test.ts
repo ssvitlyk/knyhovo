@@ -151,3 +151,27 @@ describe('BookYeScraper.scrape — ScraperResult shape', () => {
     });
   });
 });
+
+// ──────────────────────────────────────────────────────────────
+// Blocked-page handling
+// ──────────────────────────────────────────────────────────────
+
+describe('BookYeScraper.scrape — blocked pages', () => {
+  it('reports an explicit Cloudflare block when the page is a challenge', async () => {
+    const fetcher = makeFetcher([loadFixture('catalog-cloudflare.html')]);
+    const scraper = new BookYeScraper(fetcher);
+    const result = await scraper.scrape({ delayMs: 0 });
+
+    expect(result.listings).toHaveLength(0);
+    expect(result.errors).toContain('BookYe blocked by Cloudflare Turnstile/challenge');
+  });
+
+  it('does not flag a legitimately empty catalog as blocked', async () => {
+    const fetcher = makeFetcher([loadFixture('catalog-empty.html')]);
+    const scraper = new BookYeScraper(fetcher);
+    const result = await scraper.scrape({ delayMs: 0 });
+
+    expect(result.listings).toHaveLength(0);
+    expect(result.errors).not.toContain('BookYe blocked by Cloudflare Turnstile/challenge');
+  });
+});

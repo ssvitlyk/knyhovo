@@ -3,9 +3,10 @@ import type { RawProviderListing } from '@knyhovo/shared';
 import { type HtmlFetcher } from '../../http/html-fetcher.js';
 import { PlaywrightHtmlFetcher } from '../../http/playwright-html-fetcher.js';
 import { browserManager } from '../../http/browser-manager.js';
-import { BOOK_YE_CATALOG_URL, PRODUCT_CARD_SELECTOR } from './constants.js';
+import { BOOK_YE_CATALOG_URL, PRODUCT_CARD_SELECTOR, CLOUDFLARE_CHALLENGE_SELECTOR } from './constants.js';
 import { parseBookYePage, extractBookYeProductDescription } from './book-ye.parser.js';
 import { enrichDescriptions } from '../../lib/enrich-descriptions.js';
+import { classifyBlockedPage } from '../../http/blocked-page.js';
 
 const DEFAULT_MAX_PAGES = 50;
 // Playwright + a content-aware wait (the Cloudflare challenge takes a few seconds
@@ -26,6 +27,7 @@ export class BookYeScraper implements ScraperProvider {
   constructor(
     private readonly fetcher: HtmlFetcher = new PlaywrightHtmlFetcher(browserManager, {
       waitForSelector: PRODUCT_CARD_SELECTOR,
+      challengeSelector: CLOUDFLARE_CHALLENGE_SELECTOR,
     }),
     private readonly catalogUrl: string = BOOK_YE_CATALOG_URL,
   ) {}
@@ -39,6 +41,7 @@ export class BookYeScraper implements ScraperProvider {
     const allListings: RawProviderListing[] = [];
     const errors: string[] = [];
     const seenUrls = new Set<string>();
+    let firstPageHtml: string | null = null;
 
     for (let page = 1; page <= maxPages; page++) {
       const url = `${this.catalogUrl}?p=${page}`;
@@ -46,6 +49,7 @@ export class BookYeScraper implements ScraperProvider {
       let html: string;
       try {
         html = await this.fetcher.fetch(url, timeoutMs);
+        if (firstPageHtml === null) firstPageHtml = html;
       } catch (err) {
         errors.push(
           `Page ${page}: network error — ${err instanceof Error ? err.message : String(err)}`,
@@ -67,6 +71,19 @@ export class BookYeScraper implements ScraperProvider {
 
       if (page < maxPages && delayMs > 0) {
         await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+      }
+    }
+
+    // When nothing was scraped, classify the first page so an empty result is
+    // explained (anti-bot block vs. a legitimately empty catalog) instead of
+    // silently returning 0 listings. A fetch that threw leaves firstPageHtml null
+    // and is already reported as a network/403 error above.
+    if (allListings.length === 0 && firstPageHtml !== null) {
+      const reason = classifyBlockedPage(firstPageHtml);
+      if (reason === 'cloudflare-challenge') {
+        errors.push('BookYe blocked by Cloudflare Turnstile/challenge');
+      } else if (reason === 'forbidden') {
+        errors.push('BookYe blocked by HTTP 403, likely anti-bot protection');
       }
     }
 

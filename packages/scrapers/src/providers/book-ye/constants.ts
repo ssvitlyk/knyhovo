@@ -12,6 +12,15 @@ export const BOOK_YE_CATALOG_URL = `${BOOK_YE_BASE_URL}/catalog/`;
 export const PRODUCT_CARD_SELECTOR = 'a.product-item-link';
 
 /**
+ * Marks a Cloudflare challenge interstitial in the DOM (a Turnstile iframe or the
+ * managed-challenge form/script). The fetcher waits for this OR the product card,
+ * so a persistent challenge is detected without burning the full content budget.
+ * Detection only — the challenge is never solved or bypassed.
+ */
+export const CLOUDFLARE_CHALLENGE_SELECTOR =
+  'iframe[src*="challenges.cloudflare.com"], #challenge-form, #cf-challenge-running, script[src*="/cdn-cgi/challenge-platform/"]';
+
+/**
  * CSS selectors for the Magento catalog listing page.
  * Verified against live Книгарня «Є» HTML (catalog grid cards).
  */

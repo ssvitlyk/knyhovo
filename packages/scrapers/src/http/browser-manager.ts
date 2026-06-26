@@ -1,4 +1,4 @@
-import { chromium, type Browser } from 'playwright';
+import type { Browser } from 'playwright';
 
 const LAUNCH_ARGS = [
   '--no-sandbox',
@@ -11,6 +11,11 @@ export class BrowserManager {
 
   async getBrowser(): Promise<Browser> {
     if (!this.browser || !this.browser.isConnected()) {
+      // Lazy-load Playwright. Importing it eagerly drags the ~350ms browser-engine
+      // module graph into every consumer of the scrapers barrel — including API
+      // route tests that never launch a browser — saturating Vitest workers and
+      // stalling unrelated tests. Load it only when a browser is actually needed.
+      const { chromium } = await import('playwright');
       this.browser = await chromium.launch({ headless: true, args: LAUNCH_ARGS });
     }
     return this.browser;
