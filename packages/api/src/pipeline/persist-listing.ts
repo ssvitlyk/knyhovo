@@ -7,7 +7,7 @@ import { recordPriceChange } from '../price-history/service.js';
 
 const PROVIDER_NAME_MAP: Record<
   ProviderName,
-  'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY'
+  'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY' | 'KNIGOLAND'
 > = {
   yakaboo: 'YAKABOO',
   'book-club': 'BOOK_CLUB',
@@ -15,11 +15,12 @@ const PROVIDER_NAME_MAP: Record<
   'book-ye': 'BOOK_YE',
   bookchef: 'BOOKCHEF',
   laboratory: 'LABORATORY',
+  knigoland: 'KNIGOLAND',
 };
 
 export function mapProviderName(
   name: ProviderName,
-): 'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY' {
+): 'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY' | 'KNIGOLAND' {
   return PROVIDER_NAME_MAP[name];
 }
 

@@ -110,6 +110,7 @@ const PROVIDER_SLUG: Record<Provider, ProviderName> = {
   BOOK_YE: 'book-ye',
   BOOKCHEF: 'bookchef',
   LABORATORY: 'laboratory',
+  KNIGOLAND: 'knigoland',
 };
 
 const ALL_PROVIDERS: Provider[] = [
