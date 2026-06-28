@@ -108,6 +108,7 @@ const PROVIDER_SLUG: Record<Provider, ProviderName> = {
   BOOK_CLUB: 'book-club',
   VIVAT: 'vivat',
   BOOK_YE: 'book-ye',
+  BOOKCHEF: 'bookchef',
 };
 
 const ALL_PROVIDERS: Provider[] = [
