@@ -9,6 +9,7 @@ const PROVIDER_DISPLAY_NAME: Readonly<Record<ProviderName, string>> = {
   vivat: 'Vivat',
   'book-ye': 'Книгарня Є',
   bookchef: 'BookChef',
+  laboratory: 'Лабораторія',
 };
 
 /** Group integer digits into 3s with a regular space (Ukrainian style). */
