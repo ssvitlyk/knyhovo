@@ -2,6 +2,7 @@ import type { Money, Availability, ProviderName } from '@knyhovo/shared';
 import { parseYakabooProduct } from './yakaboo/yakaboo.parser.js';
 import { parseVivatProduct } from './vivat/vivat.parser.js';
 import { parseBookYeProduct } from './book-ye/book-ye.parser.js';
+import { parseBookChefProduct } from './bookchef/bookchef.parser.js';
 
 export interface ParsedProductState {
   readonly price: Money | null;
@@ -16,4 +17,5 @@ export const SINGLE_PRODUCT_PARSERS: Partial<Record<ProviderName, SingleProductP
   yakaboo: parseYakabooProduct,
   vivat: parseVivatProduct,
   'book-ye': parseBookYeProduct,
+  bookchef: parseBookChefProduct,
 };

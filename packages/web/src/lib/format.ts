@@ -8,6 +8,7 @@ const PROVIDER_DISPLAY_NAME: Readonly<Record<ProviderName, string>> = {
   'book-club': 'BookClub',
   vivat: 'Vivat',
   'book-ye': 'Книгарня Є',
+  bookchef: 'BookChef',
 };
 
 /** Group integer digits into 3s with a regular space (Ukrainian style). */

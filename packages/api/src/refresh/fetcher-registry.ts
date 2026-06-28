@@ -3,7 +3,7 @@
  *
  * Routes each ProviderName to the appropriate HtmlFetcher implementation:
  * - Cloudflare-protected providers (yakaboo, book-ye) use PlaywrightHtmlFetcher.
- * - Server-rendered / unprotected providers (vivat, book-club) use FetchHtmlFetcher.
+ * - Server-rendered / unprotected providers (vivat, bookchef, book-club) use FetchHtmlFetcher.
  *
  * Fetchers are lazy singletons: created on first use and reused across all refresh
  * cycles to avoid spinning up a new browser for each request. HTTP fetchers are
@@ -53,6 +53,8 @@ const FETCHER_FACTORY: Record<ProviderName, () => HtmlFetcher> = {
   yakaboo: getYakabooFetcher,
   'book-ye': getBookYeFetcher,
   vivat: getFetchFetcher,
+  // bookchef: product pages are server-rendered (JSON-LD), no Cloudflare challenge.
+  bookchef: getFetchFetcher,
   // book-club: no single-product parser yet; FetchHtmlFetcher kept for completeness
   'book-club': getFetchFetcher,
 };
