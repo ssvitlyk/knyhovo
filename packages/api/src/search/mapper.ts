@@ -11,6 +11,7 @@ const PROVIDER_SLUG: Record<ListingRow['provider'], ProviderName> = {
   BOOK_YE: 'book-ye',
   BOOKCHEF: 'bookchef',
   LABORATORY: 'laboratory',
+  KNIGOLAND: 'knigoland',
 };
 
 /** A listing counts as priced only when it carries a usable numeric amount. */
