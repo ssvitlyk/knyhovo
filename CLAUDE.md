@@ -29,6 +29,7 @@ Web: `pnpm --filter @knyhovo/web dev` (потребує API на :3000 для р
 | створюєш або змінюєш скрапер | [agent_docs/scraper-development.md](agent_docs/scraper-development.md) |
 | зміни у price alert або email | [agent_docs/alert-engine.md](agent_docs/alert-engine.md) |
 | пишеш тести або налаштовуєш CI | [agent_docs/testing-guide.md](agent_docs/testing-guide.md) |
+| досліджуєш/реалізуєш КСД (book-club) через GraphQL API | [docs/research/ksd-graphql-api.md](docs/research/ksd-graphql-api.md) |
 
 ## PRD
 
