@@ -57,6 +57,8 @@ const FETCHER_FACTORY: Record<ProviderName, () => HtmlFetcher> = {
   bookchef: getFetchFetcher,
   // book-club: no single-product parser yet; FetchHtmlFetcher kept for completeness
   'book-club': getFetchFetcher,
+  // laboratory: product pages are server-rendered (JSON-LD Product+Book), Cloudflare is CDN-only.
+  laboratory: getFetchFetcher,
 };
 
 // ---------------------------------------------------------------------------

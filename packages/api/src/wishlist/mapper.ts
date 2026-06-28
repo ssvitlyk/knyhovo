@@ -11,6 +11,7 @@ const PROVIDER_SLUG: Record<WishlistListingRow['provider'], ProviderName> = {
   VIVAT: 'vivat',
   BOOK_YE: 'book-ye',
   BOOKCHEF: 'bookchef',
+  LABORATORY: 'laboratory',
 };
 
 /** Reverse map from the persisted availability enum to its public slug. */

@@ -19,6 +19,7 @@ enum Provider {
   VIVAT     @map("vivat")
   BOOK_YE   @map("book-ye")
   BOOKCHEF  @map("bookchef")
+  LABORATORY @map("laboratory")
 
   @@map("provider")
 }
