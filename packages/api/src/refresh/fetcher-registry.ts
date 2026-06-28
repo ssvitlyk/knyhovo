@@ -59,6 +59,8 @@ const FETCHER_FACTORY: Record<ProviderName, () => HtmlFetcher> = {
   'book-club': getFetchFetcher,
   // laboratory: product pages are server-rendered (JSON-LD Product+Book), Cloudflare is CDN-only.
   laboratory: getFetchFetcher,
+  // knigoland: product pages are server-rendered (JSON-LD Product+Book), nginx + Next.js, no Cloudflare.
+  knigoland: getFetchFetcher,
 };
 
 // ---------------------------------------------------------------------------

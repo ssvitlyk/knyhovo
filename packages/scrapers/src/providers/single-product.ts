@@ -4,6 +4,7 @@ import { parseVivatProduct } from './vivat/vivat.parser.js';
 import { parseBookYeProduct } from './book-ye/book-ye.parser.js';
 import { parseBookChefProduct } from './bookchef/bookchef.parser.js';
 import { parseLaboratoryProduct } from './laboratory/laboratory.parser.js';
+import { parseKnigolandProduct } from './knigoland/knigoland.parser.js';
 
 export interface ParsedProductState {
   readonly price: Money | null;
@@ -20,4 +21,5 @@ export const SINGLE_PRODUCT_PARSERS: Partial<Record<ProviderName, SingleProductP
   'book-ye': parseBookYeProduct,
   bookchef: parseBookChefProduct,
   laboratory: parseLaboratoryProduct,
+  knigoland: parseKnigolandProduct,
 };
