@@ -9,6 +9,7 @@ const PROVIDER_SLUG: Record<BookListingRow['provider'], ProviderName> = {
   BOOK_CLUB: 'book-club',
   VIVAT: 'vivat',
   BOOK_YE: 'book-ye',
+  BOOKCHEF: 'bookchef',
 };
 
 /** Reverse map from the persisted availability enum to its public slug. */
