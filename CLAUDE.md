@@ -40,4 +40,5 @@ Web: `pnpm --filter @knyhovo/web dev` (потребує API на :3000 для р
 | [docs/prd/wishlist.md](docs/prd/wishlist.md) | Чорновик |
 | [docs/prd/canonical-matching.md](docs/prd/canonical-matching.md) | Чорновик |
 | [docs/prd/bookchef-provider.md](docs/prd/bookchef-provider.md) | Чорновик |
+| [docs/prd/laboratory-provider.md](docs/prd/laboratory-provider.md) | Чорновик |
 | [docs/prd/ai-discovery.md](docs/prd/ai-discovery.md) | Stub (future) |
