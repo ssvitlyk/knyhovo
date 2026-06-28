@@ -223,3 +223,37 @@ export function parseBookChefProduct(html: string): ParsedProductState {
     availability: resolveAvailability(offers.availability, true),
   };
 }
+
+/** Result of parsing a BookChef product sitemap into product-page URLs. */
+export interface SitemapResult {
+  /** Unique product-page URLs in document order. */
+  readonly urls: string[];
+  readonly errors: string[];
+}
+
+/**
+ * Parse a BookChef product sitemap (`<urlset>` of `<loc>` product URLs) into a
+ * deduplicated list of product-page URLs. Pure function — no IO, never throws.
+ * Empty/blank input or a sitemap with no `<loc>` entries yields `urls: []` and
+ * an error message.
+ */
+export function parseBookChefSitemap(xml: string): SitemapResult {
+  const trimmed = typeof xml === 'string' ? xml.trim() : '';
+  if (!trimmed) {
+    return { urls: [], errors: ['empty sitemap'] };
+  }
+
+  const $ = cheerio.load(trimmed, { xml: true });
+  const urls: string[] = [];
+  const seen = new Set<string>();
+  $('loc').each((_, el) => {
+    const loc = $(el).text().trim();
+    if (loc && !seen.has(loc)) {
+      seen.add(loc);
+      urls.push(loc);
+    }
+  });
+
+  const errors = urls.length === 0 ? ['no <loc> entries found in sitemap'] : [];
+  return { urls, errors };
+}

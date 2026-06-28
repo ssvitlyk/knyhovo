@@ -1,5 +1,23 @@
 export const BOOKCHEF_BASE_URL = 'https://bookchef.ua';
 
+/**
+ * Full public sitemap of BookChef product pages — a flat `<urlset>` of `<loc>`
+ * product URLs (allowed by robots.txt). Catalog/category pages are
+ * client-rendered (Livewire/Vue) and expose no products in SSR HTML, so
+ * discovery reads this sitemap instead of paginating the catalog.
+ *
+ * NOT part of the provider contract — BookChef may rename the sitemap without
+ * any architectural change; this constant is the single place to update.
+ */
+export const BOOKCHEF_PRODUCTS_SITEMAP_URL = `${BOOKCHEF_BASE_URL}/sitemap_products.xml`;
+
+/**
+ * Provider-local default cap on how many product pages a single scrape fetches,
+ * so manual/test runs do not pull the entire sitemap. `ScraperOptions.maxPages`
+ * overrides it (treated as a product cap) without changing the shared contract.
+ */
+export const DEFAULT_MAX_PRODUCTS = 50;
+
 /** Publisher/brand name as exposed in BookChef JSON-LD (`brand.name`). */
 export const BRAND = 'BookChef';
 
