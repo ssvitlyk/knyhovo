@@ -18,7 +18,7 @@ import type { AlertEvent, RefreshedListingState, TargetPreviousState } from './e
 import { persistRefreshedListing } from './persist-refresh.js';
 import type { PersistRefreshOutcome } from './persist-refresh.js';
 import { runAlertNotificationsForBooks } from './alert-notify.js';
-import type { NotificationEvent } from './alert-notify.js';
+import type { EnqueuedDelivery } from './alert-notify.js';
 
 // ---------------------------------------------------------------------------
 // Port (mockable fetcher)
@@ -68,7 +68,7 @@ export interface WishlistRefreshOptions {
     prisma: PrismaClient,
     canonicalBookIds: readonly string[],
     now: Date,
-  ) => Promise<NotificationEvent[]>;
+  ) => Promise<EnqueuedDelivery[]>;
 }
 
 export interface WishlistProviderRefreshOutcome {
@@ -86,7 +86,7 @@ export interface WishlistRefreshResult {
   readonly outcomes: readonly WishlistProviderRefreshOutcome[];
   readonly events: readonly AlertEvent[]; // flattened across providers
   readonly anySucceeded: boolean;
-  readonly notifications: readonly NotificationEvent[];
+  readonly notifications: readonly EnqueuedDelivery[];
 }
 
 // ---------------------------------------------------------------------------
@@ -171,7 +171,7 @@ export async function runWishlistRefresh(
     // -------------------------------------------------------------------------
     // Cross-provider alert dedup phase (W10.4)
     // -------------------------------------------------------------------------
-    let notifications: NotificationEvent[] = [];
+    let notifications: EnqueuedDelivery[] = [];
     try {
       notifications = await _runAlertNotifications(opts.prisma, [...affectedBookIds], clock());
     } catch (err) {

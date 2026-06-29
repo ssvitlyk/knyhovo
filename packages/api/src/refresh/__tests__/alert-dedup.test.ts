@@ -1,6 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import {
   evaluateAlertNotification,
+  evaluateBackInStockNotification,
+  priceDropDedupKey,
+  backInStockDedupKey,
   type AlertNotificationState,
   type AlertNotificationDecision,
 } from '../alert-dedup.js';
@@ -178,5 +181,75 @@ describe('evaluateAlertNotification', () => {
     expect(decision.action).toBe('notify');
     expect(decision.lastNotifiedAt).toBe(NOW);
     expect(decision.lastNotifiedPriceAmount).toBe(low);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Back-in-stock (W4b)
+// ---------------------------------------------------------------------------
+
+describe('evaluateBackInStockNotification', () => {
+  it('first observation while in stock records baseline, never notifies', () => {
+    expect(evaluateBackInStockNotification({ lastObservedAvailability: null }, true)).toEqual({
+      action: 'observe',
+      observed: 'IN_STOCK',
+    });
+  });
+
+  it('first observation while out of stock records baseline', () => {
+    expect(evaluateBackInStockNotification({ lastObservedAvailability: null }, false)).toEqual({
+      action: 'observe',
+      observed: 'OUT_OF_STOCK',
+    });
+  });
+
+  it('notifies on a genuine OUT→IN transition and advances marker to IN_STOCK', () => {
+    expect(
+      evaluateBackInStockNotification({ lastObservedAvailability: 'OUT_OF_STOCK' }, true),
+    ).toEqual({ action: 'notify', observed: 'IN_STOCK' });
+  });
+
+  it('does not re-notify while the book stays in stock', () => {
+    expect(
+      evaluateBackInStockNotification({ lastObservedAvailability: 'IN_STOCK' }, true),
+    ).toEqual({ action: 'none' });
+  });
+
+  it('records OUT_OF_STOCK (re-arm) when an in-stock book goes out of stock', () => {
+    expect(
+      evaluateBackInStockNotification({ lastObservedAvailability: 'IN_STOCK' }, false),
+    ).toEqual({ action: 'observe', observed: 'OUT_OF_STOCK' });
+  });
+
+  it('treats UNKNOWN baseline as not-in-stock → notifies on transition into stock', () => {
+    expect(
+      evaluateBackInStockNotification({ lastObservedAvailability: 'UNKNOWN' }, true),
+    ).toEqual({ action: 'notify', observed: 'IN_STOCK' });
+  });
+
+  it('no-op when out of stock and already observed out of stock', () => {
+    expect(
+      evaluateBackInStockNotification({ lastObservedAvailability: 'OUT_OF_STOCK' }, false),
+    ).toEqual({ action: 'none' });
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Dedup keys
+// ---------------------------------------------------------------------------
+
+describe('dedup keys', () => {
+  it('priceDropDedupKey embeds alertId and price; differs per price', () => {
+    expect(priceDropDedupKey('a1', 7000)).toBe('a1:price:7000');
+    expect(priceDropDedupKey('a1', 6500)).toBe('a1:price:6500');
+    expect(priceDropDedupKey('a1', 7000)).toBe(priceDropDedupKey('a1', 7000));
+  });
+
+  it('backInStockDedupKey embeds alertId and run timestamp; differs per run', () => {
+    const t1 = new Date('2026-06-29T14:00:00.000Z');
+    const t2 = new Date('2026-06-30T14:00:00.000Z');
+    expect(backInStockDedupKey('a1', t1)).toBe('a1:stock:2026-06-29T14:00:00.000Z');
+    expect(backInStockDedupKey('a1', t1)).toBe(backInStockDedupKey('a1', t1));
+    expect(backInStockDedupKey('a1', t2)).not.toBe(backInStockDedupKey('a1', t1));
   });
 });

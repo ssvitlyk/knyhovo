@@ -88,9 +88,12 @@ export async function deleteAlert(
 export interface ActiveAlertForBook {
   readonly alertId: string;
   readonly canonicalBookId: string;
+  readonly userId: string;
   readonly targetPriceAmount: number;
   readonly lastNotifiedAt: Date | null;
   readonly lastNotifiedPriceAmount: number | null;
+  /** Book availability observed at the previous evaluation (back-in-stock baseline). */
+  readonly lastObservedAvailability: 'IN_STOCK' | 'OUT_OF_STOCK' | 'UNKNOWN' | null;
 }
 
 /**
@@ -113,16 +116,19 @@ export async function findActiveAlertsForBooks(
       targetPriceAmount: true,
       lastNotifiedAt: true,
       lastNotifiedPriceAmount: true,
-      wishlistItem: { select: { canonicalBookId: true } },
+      lastNotifiedAvailability: true,
+      wishlistItem: { select: { canonicalBookId: true, userId: true } },
     },
   });
 
   return rows.map((row) => ({
     alertId: row.id,
     canonicalBookId: row.wishlistItem.canonicalBookId,
+    userId: row.wishlistItem.userId,
     targetPriceAmount: row.targetPriceAmount,
     lastNotifiedAt: row.lastNotifiedAt,
     lastNotifiedPriceAmount: row.lastNotifiedPriceAmount,
+    lastObservedAvailability: row.lastNotifiedAvailability,
   }));
 }
 
@@ -164,6 +170,25 @@ export async function updateAlertNotificationMarker(
   prisma: PrismaClient,
   alertId: string,
   marker: { lastNotifiedAt: Date | null; lastNotifiedPriceAmount: number | null },
+): Promise<void> {
+  await prisma.alert.update({
+    where: { id: alertId },
+    data: marker,
+  });
+}
+
+/**
+ * Persist the back-in-stock observation marker (W4b). `lastNotifiedAvailability`
+ * tracks the book availability observed at the previous evaluation; `lastStockNotifiedAt`
+ * (optional) records when a back-in-stock notification was actually sent.
+ */
+export async function updateAlertStockMarker(
+  prisma: PrismaClient,
+  alertId: string,
+  marker: {
+    lastNotifiedAvailability?: 'IN_STOCK' | 'OUT_OF_STOCK' | 'UNKNOWN';
+    lastStockNotifiedAt?: Date | null;
+  },
 ): Promise<void> {
   await prisma.alert.update({
     where: { id: alertId },

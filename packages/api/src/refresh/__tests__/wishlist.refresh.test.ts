@@ -6,7 +6,7 @@ import type { WishlistTargetFetcher } from '../wishlist.refresh.js';
 import type { RefreshTarget } from '../refresh-targets.js';
 import type { RefreshedListingState } from '../events.js';
 import type { PersistRefreshOutcome } from '../persist-refresh.js';
-import type { NotificationEvent } from '../alert-notify.js';
+import type { EnqueuedDelivery } from '../alert-notify.js';
 
 // Mock the concurrency-guard so wishlist tests can control lock behaviour without a real DB.
 vi.mock('../concurrency-guard.js', async (importOriginal) => {
@@ -53,7 +53,7 @@ function makeFakePrisma() {
 // ---------------------------------------------------------------------------
 
 const noopPersist = async (): Promise<PersistRefreshOutcome> => ({ kind: 'gone-skipped' });
-const noopNotify = async (): Promise<NotificationEvent[]> => [];
+const noopNotify = async (): Promise<EnqueuedDelivery[]> => [];
 
 // ---------------------------------------------------------------------------
 // Target fixtures
@@ -529,12 +529,12 @@ describe('runWishlistRefresh', () => {
       })),
     };
 
-    const fakeNotification: NotificationEvent = {
+    const fakeNotification: EnqueuedDelivery = {
       alertId: 'alert-1',
       canonicalBookId: 'book-A',
-      lowestPriceAmount: 7000,
-      targetPriceAmount: 8000,
-      notifiedAt: FIXED_NOW,
+      type: 'PRICE_DROP',
+      dedupKey: 'alert-1:price:7000',
+      created: true,
     };
 
     const result = await runWishlistRefresh({
@@ -546,7 +546,7 @@ describe('runWishlistRefresh', () => {
       now,
       logger: silentLogger,
       persistRefresh: noopPersist,
-      runAlertNotifications: async (_p, ids): Promise<NotificationEvent[]> => {
+      runAlertNotifications: async (_p, ids): Promise<EnqueuedDelivery[]> => {
         capturedIds.push(...ids);
         return [fakeNotification];
       },
@@ -581,7 +581,7 @@ describe('runWishlistRefresh', () => {
       now,
       logger: silentLogger,
       persistRefresh: noopPersist,
-      runAlertNotifications: async (): Promise<NotificationEvent[]> => {
+      runAlertNotifications: async (): Promise<EnqueuedDelivery[]> => {
         throw new Error('dedup DB exploded');
       },
     });
@@ -674,9 +674,10 @@ describe('runWishlistRefresh', () => {
   // W10.4 headline: dedup across two consecutive runs (no duplicate notification)
   // ---------------------------------------------------------------------------
 
-  it('dedup across runs: same low price on run2 does not fire a second notification', async () => {
+  it('dedup across runs: same low price on run2 enqueues the same key (created=false), no duplicate row', async () => {
     // Simulate the real runAlertNotificationsForBooks behaviour using injected deps
-    // so this test is fully in-memory with no DB.
+    // so this test is fully in-memory with no DB. In the W4b outbox model, dedup is
+    // enforced by the delivery dedupKey, not by the alert marker.
     const { runAlertNotificationsForBooks } = await import('../alert-notify.js');
 
     const prisma = makeFakePrisma();
@@ -686,61 +687,50 @@ describe('runWishlistRefresh', () => {
     const TARGET_PRICE = 8000;
     const LOWEST_PRICE = 7000; // below target → should notify
 
-    // In-memory marker store (simulates alertNotificationMarker table).
-    let markerLastNotifiedAt: Date | null = null;
-    let markerLastNotifiedPrice: number | null = null;
-
     const fakeActiveAlerts = async () => [
       {
         alertId: ALERT_ID,
         canonicalBookId: BOOK_ID,
+        userId: 'user-1',
         targetPriceAmount: TARGET_PRICE,
-        lastNotifiedAt: markerLastNotifiedAt,
-        lastNotifiedPriceAmount: markerLastNotifiedPrice,
+        lastNotifiedAt: null,
+        lastNotifiedPriceAmount: null,
+        // Already in stock at baseline so back-in-stock does not fire on first sight.
+        lastObservedAvailability: 'IN_STOCK' as const,
       },
     ];
 
-    const fakeLowestPrices = async () => {
-      const map = new Map<string, number>();
-      map.set(BOOK_ID, LOWEST_PRICE);
-      return map;
-    };
+    const fakeLowestPrices = async () => new Map<string, number>([[BOOK_ID, LOWEST_PRICE]]);
 
-    const fakeUpdateMarker = async (
+    // In-memory outbox keyed by dedupKey (emulates the unique constraint).
+    const outbox = new Set<string>();
+    const fakeEnqueue = async (
       _prisma: PrismaClient,
-      _alertId: string,
-      update: { lastNotifiedAt: Date | null; lastNotifiedPriceAmount: number | null },
+      input: { dedupKey: string },
     ) => {
-      markerLastNotifiedAt = update.lastNotifiedAt;
-      markerLastNotifiedPrice = update.lastNotifiedPriceAmount;
+      if (outbox.has(input.dedupKey)) return { created: false, id: input.dedupKey };
+      outbox.add(input.dedupKey);
+      return { created: true, id: input.dedupKey };
     };
 
     const deps = {
       findActiveAlerts: fakeActiveAlerts,
       findLowestPrices: fakeLowestPrices,
-      updateMarker: fakeUpdateMarker,
+      enqueue: fakeEnqueue,
     };
 
-    // Run 1: price is below target, no prior marker → should notify.
-    const run1 = await runAlertNotificationsForBooks(
-      prisma,
-      [BOOK_ID],
-      FIXED_NOW,
-      deps,
-    );
+    // Run 1: price below target, no prior delivery → enqueue created.
+    const run1 = await runAlertNotificationsForBooks(prisma, [BOOK_ID], FIXED_NOW, deps);
     expect(run1).toHaveLength(1);
     expect(run1[0]?.alertId).toBe(ALERT_ID);
-    // Marker must now be set.
-    expect(markerLastNotifiedAt).toEqual(FIXED_NOW);
-    expect(markerLastNotifiedPrice).toBe(LOWEST_PRICE);
+    expect(run1[0]?.type).toBe('PRICE_DROP');
+    expect(run1[0]?.created).toBe(true);
+    expect(outbox.size).toBe(1);
 
-    // Run 2: same price, marker already set to same price → dedup fires, no notification.
-    const run2 = await runAlertNotificationsForBooks(
-      prisma,
-      [BOOK_ID],
-      FIXED_NOW,
-      deps,
-    );
-    expect(run2).toHaveLength(0);
+    // Run 2: same price → same dedupKey → idempotent, no duplicate row.
+    const run2 = await runAlertNotificationsForBooks(prisma, [BOOK_ID], FIXED_NOW, deps);
+    expect(run2).toHaveLength(1);
+    expect(run2[0]?.created).toBe(false);
+    expect(outbox.size).toBe(1);
   });
 });
