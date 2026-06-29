@@ -18,7 +18,8 @@ import type { AlertEvent, RefreshedListingState, TargetPreviousState } from './e
 import { persistRefreshedListing } from './persist-refresh.js';
 import type { PersistRefreshOutcome } from './persist-refresh.js';
 import { runAlertNotificationsForBooks } from './alert-notify.js';
-import type { NotificationEvent } from './alert-notify.js';
+import type { EnqueuedDelivery } from './alert-notify.js';
+import type { DispatchSummary } from '../alerts/dispatch.js';
 
 // ---------------------------------------------------------------------------
 // Port (mockable fetcher)
@@ -68,7 +69,13 @@ export interface WishlistRefreshOptions {
     prisma: PrismaClient,
     canonicalBookIds: readonly string[],
     now: Date,
-  ) => Promise<NotificationEvent[]>;
+  ) => Promise<EnqueuedDelivery[]>;
+  /**
+   * Injectable email dispatch port (W4b). When provided, runs after the enqueue
+   * phase to send PENDING deliveries (instant per-refresh). Omitted in tests and
+   * when email delivery is disabled.
+   */
+  readonly dispatch?: (prisma: PrismaClient, now: Date) => Promise<DispatchSummary>;
 }
 
 export interface WishlistProviderRefreshOutcome {
@@ -86,7 +93,8 @@ export interface WishlistRefreshResult {
   readonly outcomes: readonly WishlistProviderRefreshOutcome[];
   readonly events: readonly AlertEvent[]; // flattened across providers
   readonly anySucceeded: boolean;
-  readonly notifications: readonly NotificationEvent[];
+  readonly notifications: readonly EnqueuedDelivery[];
+  readonly dispatchSummary: DispatchSummary | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -121,7 +129,7 @@ export async function runWishlistRefresh(
 
     if (allTargets.length === 0) {
       logger.info('Wishlist refresh: no targets');
-      return { outcomes: [], events: [], anySucceeded: true, notifications: [] };
+      return { outcomes: [], events: [], anySucceeded: true, notifications: [], dispatchSummary: null };
     }
 
     // Group by provider, iterate in sorted provider order for determinism.
@@ -171,7 +179,7 @@ export async function runWishlistRefresh(
     // -------------------------------------------------------------------------
     // Cross-provider alert dedup phase (W10.4)
     // -------------------------------------------------------------------------
-    let notifications: NotificationEvent[] = [];
+    let notifications: EnqueuedDelivery[] = [];
     try {
       notifications = await _runAlertNotifications(opts.prisma, [...affectedBookIds], clock());
     } catch (err) {
@@ -179,11 +187,25 @@ export async function runWishlistRefresh(
       logger.error(`Alert dedup phase failed (non-fatal): ${msg}`);
     }
 
+    // -------------------------------------------------------------------------
+    // Email dispatch phase (W4b) — instant per-refresh. Non-fatal on failure.
+    // -------------------------------------------------------------------------
+    let dispatchSummary: DispatchSummary | null = null;
+    if (opts.dispatch) {
+      try {
+        dispatchSummary = await opts.dispatch(opts.prisma, clock());
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : String(err);
+        logger.error(`Alert dispatch phase failed (non-fatal): ${msg}`);
+      }
+    }
+
     logger.info(
-      `Wishlist refresh done: providers=${outcomes.length} events=${events.length} notifications=${notifications.length} anySucceeded=${anySucceeded}`,
+      `Wishlist refresh done: providers=${outcomes.length} events=${events.length} notifications=${notifications.length} ` +
+        `dispatch=${dispatchSummary ? `sent=${dispatchSummary.sent} failed=${dispatchSummary.failed} skipped=${dispatchSummary.skipped} deferred=${dispatchSummary.deferred}` : 'off'} anySucceeded=${anySucceeded}`,
     );
 
-    return { outcomes, events, anySucceeded, notifications };
+    return { outcomes, events, anySucceeded, notifications, dispatchSummary };
   } finally {
     // Sweep any dangling RUNNING rows from this refresh, even on throw.
     await releaseRefreshLock(opts.prisma, lock, { now: clock });

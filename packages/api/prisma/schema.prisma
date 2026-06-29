@@ -57,6 +57,22 @@ enum AlertIntent {
   @@map("alert_intent")
 }
 
+enum NotificationType {
+  PRICE_DROP    @map("price-drop")
+  BACK_IN_STOCK @map("back-in-stock")
+
+  @@map("notification_type")
+}
+
+enum DeliveryStatus {
+  PENDING @map("pending")
+  SENT    @map("sent")
+  FAILED  @map("failed")
+  SKIPPED @map("skipped")
+
+  @@map("delivery_status")
+}
+
 enum ScrapeRunKind {
   FULL_CATALOG           @map("full-catalog")
   WISHLIST_REFRESH       @map("wishlist-refresh")
@@ -159,10 +175,18 @@ model User {
   id        String   @id @default(uuid())
   email     String   @unique
   createdAt DateTime @default(now()) @map("created_at")
+  /// W4b notification preferences.
+  priceDropEnabled   Boolean   @default(true) @map("price_drop_enabled")
+  backInStockEnabled Boolean   @default(true) @map("back_in_stock_enabled")
+  /// Stable token for one-click unsubscribe links. Null until first generated (lazy).
+  unsubscribeToken   String?   @unique @map("unsubscribe_token")
+  /// Global opt-out timestamp; when set, no alert emails are sent.
+  unsubscribedAt     DateTime? @map("unsubscribed_at")
 
   wishlistItems WishlistItem[]
   loginCodes    LoginCode[]
   sessions      Session[]
+  deliveries    NotificationDelivery[]
 
   @@map("users")
 }
@@ -254,10 +278,45 @@ model Alert {
   /// The lowest price (копійки) at the moment of the last notification. A subsequent
   /// notification fires only when the lowest price drops strictly below this value.
   lastNotifiedPriceAmount Int?      @map("last_notified_price_amount")
+  /// Back-in-stock dedup (W4b): when a back-in-stock notification last fired. Null until first one.
+  lastStockNotifiedAt      DateTime?     @map("last_stock_notified_at")
+  /// Availability observed at the last back-in-stock notification; used to detect a fresh OUT→IN transition.
+  lastNotifiedAvailability Availability? @map("last_notified_availability")
   createdAt           DateTime    @default(now()) @map("created_at")
   updatedAt           DateTime    @updatedAt @map("updated_at")
 
   wishlistItem WishlistItem @relation(fields: [wishlistItemId], references: [id], onDelete: Cascade)
+  deliveries   NotificationDelivery[]
 
   @@map("alerts")
+}
+
+model NotificationDelivery {
+  id                 String           @id @default(uuid())
+  alertId            String           @map("alert_id")
+  userId             String           @map("user_id")
+  canonicalBookId    String           @map("canonical_book_id")
+  type               NotificationType
+  status             DeliveryStatus   @default(PENDING)
+  /// Lowest in-stock price (копійки) at trigger time; null for back-in-stock.
+  triggerPriceAmount Int?             @map("trigger_price_amount")
+  /// Idempotency key (see agent_docs/alert-engine.md). Unique across all deliveries.
+  dedupKey           String           @unique @map("dedup_key")
+  attempts           Int              @default(0)
+  /// Earliest time this delivery may be retried (backoff). Null = eligible now.
+  nextAttemptAt      DateTime?        @map("next_attempt_at")
+  lastError          String?          @map("last_error")
+  /// Resend message id once accepted by the provider.
+  providerMessageId  String?          @map("provider_message_id")
+  createdAt          DateTime         @default(now()) @map("created_at")
+  sentAt             DateTime?        @map("sent_at")
+  updatedAt          DateTime         @updatedAt @map("updated_at")
+
+  alert Alert @relation(fields: [alertId], references: [id], onDelete: Cascade)
+  user  User  @relation(fields: [userId], references: [id])
+
+  @@index([status, nextAttemptAt])
+  @@index([userId, createdAt])
+  @@index([alertId])
+  @@map("notification_deliveries")
 }

@@ -13,15 +13,51 @@ W4a постачає:
 - **Статус виводиться (derive) при читанні** (`packages/api/src/wishlist/alert/service.ts#deriveAlertStatus`) — не записується у БД.
 - `TRIGGERED` та `UNAVAILABLE` у Prisma enum зарезервовані; у W4a вони ніколи не записуються.
 
-### W4b і далі (майбутнє) — Trigger engine + Email
+### W4b — Alerts Engine (затверджено, в реалізації)
 
-Наступні кроки (не реалізовані):
-- [ ] Trigger engine: після scrape-run перевіряти `alerts` з `status = ACTIVE` — якщо `lowestPrice ≤ targetPriceAmount`, записувати `status = TRIGGERED` та надсилати email.
-- [ ] Resend SDK інтеграція.
-- [ ] Email шаблони (HTML): назва книги, нова ціна, посилання.
-- [ ] Cooldown механізм (TBD: скільки разів надсилати якщо ціна залишається низькою).
-- [ ] Логування відправлених листів.
-- [ ] Retry при помилці відправки.
+> Повний дизайн: `docs/prd/wishlist.md` → секція «W4b: Alerts Engine».
+
+Уже реалізовано (W10.3/W10.4): детекція подій (`refresh/events.ts`), чистий dedup
+(`refresh/alert-dedup.ts`), оркестрація (`refresh/alert-notify.ts`, наразі оновлює
+маркери inline і **не** шле email).
+
+**Затверджений підхід — instant per-refresh + outbox** (інтеграція у наявний
+`WISHLIST_REFRESH` run, без окремого cron):
+
+1. **Enqueue** (рефактор `alert-notify.ts`): оцінка dedup для price-drop + back-in-stock
+   → `INSERT notification_deliveries (PENDING)`, idempotent через `dedupKey @unique`.
+   Маркери `Alert` тут **не** оновлюються.
+2. **Dispatch** (inline, новий): `PENDING` → render → Resend send. Успіх → `SENT` +
+   оновлення dedup-маркера `Alert` + `providerMessageId`; збій → `FAILED` + `attempts++`.
+
+Принцип: маркер = «успішно надіслано», не «вирішено надіслати».
+**Критично**: прибрати оновлення маркера з enqueue-фази ([alert-notify.ts:74](../packages/api/src/refresh/alert-notify.ts#L74)) — інакше збій email втрачає лист.
+
+**Scope v1**: price-drop (`lowestPrice ≤ targetPriceAmount`) + back-in-stock (окремий тип,
+один email на перехід OUT→IN, re-arm після повторного OUT). OUT: новий дешевший провайдер,
+digest, intent-и `any-drop`/`below-current` — v2.
+
+Чеклист реалізації:
+- [x] PR1: `notification_deliveries` + enums, маркери back-in-stock на `Alert`, prefs + `unsubscribeToken`, міграція, repository.
+- [x] PR2: рефактор `alert-notify.ts` → enqueue; back-in-stock dedup (окремий ключ); unit-тести.
+      Back-in-stock детекція — через rising-edge маркер `last_notified_availability` (перша поява книги не шле alert). dedupKey price-drop=`<alertId>:price:<lowest>`, back-in-stock=`<alertId>:stock:<run ISO>`. Маркер price оновлюється лише у dispatch (PR3).
+- [x] PR3: `AlertMailer` порт (`alerts/mailer.ts`: Console/Resend-адаптер/Fake), шаблони (`alerts/templates.ts`), dispatch (`alerts/dispatch.ts`) + retry/backoff + rate-limit + unsubscribe-гейт. ResendAlertMailer бере мінімальний ін'єктований клієнт (без імпорту `resend` у src — конструювання у PR4).
+- [x] PR4: dispatch wired у `wishlist.refresh.ts` (instant, ін'єктований порт `dispatch`), mailer-factory (`alerts/mailer-factory.ts` — єдиний імпорт `resend`), config (`alerts/config.ts`), CLI `run-wishlist-refresh.ts`. Summary у логах/результаті; Prometheus email-лічильники — follow-up (наразі /metrics scrape_runs-derived).
+- [x] PR5a: API — `GET /api/notifications/unsubscribe` (public, one-click), `GET/PATCH /api/notifications/preferences` (auth), модуль `notifications/` + тести.
+- [ ] PR5b: web-UI — сторінка налаштувань сповіщень + per-alert back-in-stock тогл.
+
+### Env (W4b)
+
+| Env | Опис | Default |
+|-----|------|---------|
+| `RESEND_API_KEY` | ключ Resend; без нього — ConsoleAlertMailer (нічого не шле) | — |
+| `ALERT_FROM_EMAIL` | From-адреса | `Knyhovo <alerts@knyhovo.com>` |
+| `ALERT_BASE_URL` | база для лінків (книга + unsubscribe) | `https://knyhovo.com` |
+| `ALERT_MAX_EMAILS_PER_DAY` | rate-limit на користувача (rolling 24h) | `20` |
+
+Safety: cooldown 24 год (однакова подія), rate limit 20/добу, retry cap 3 з backoff
+1m/5m/30m через `nextAttemptAt` (5xx/network — retry, 4xx — `SKIPPED`),
+unsubscribe через токен + `List-Unsubscribe`. Prefs — поля на `User`.
 
 ---
 

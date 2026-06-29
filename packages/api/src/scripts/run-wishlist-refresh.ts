@@ -4,6 +4,10 @@ import { runWishlistRefresh } from '../refresh/wishlist.refresh.js';
 import { HttpTargetFetcher } from '../refresh/http-target-fetcher.js';
 import { closeRegistryResources } from '../refresh/fetcher-registry.js';
 import { RefreshAlreadyRunningError } from '../refresh/concurrency-guard.js';
+import { loadAlertConfig } from '../alerts/config.js';
+import { createAlertMailer } from '../alerts/mailer-factory.js';
+import { dispatchPendingDeliveries } from '../alerts/dispatch.js';
+import { generateToken } from '../auth/crypto.js';
 
 /**
  * Parse the SCRAPE_TRIGGERED_BY environment variable into a ScrapeRunTrigger
@@ -25,20 +29,36 @@ function parseTriggeredBy(val: string | undefined): ScrapeRunTrigger {
 // PlaywrightHtmlFetcher, the rest use plain HTTP.
 const fetcher = new HttpTargetFetcher();
 
+// W4b: build the email dispatcher. With no RESEND_API_KEY this uses the console
+// mailer, so the refresh still runs end-to-end without sending real mail.
+const alertConfig = loadAlertConfig();
+const alertMailer = createAlertMailer(alertConfig);
+
 async function main(): Promise<void> {
   const triggeredBy = parseTriggeredBy(process.env['SCRAPE_TRIGGERED_BY']);
   const startedAt = Date.now();
   console.log(`[run-wishlist-refresh] starting at ${new Date(startedAt).toISOString()} (triggeredBy=${triggeredBy})`);
 
   try {
-    const { outcomes, anySucceeded, events, notifications } = await runWishlistRefresh({
+    const { outcomes, anySucceeded, events, notifications, dispatchSummary } = await runWishlistRefresh({
       prisma,
       fetcher,
       triggeredBy,
+      dispatch: (p, now) =>
+        dispatchPendingDeliveries(p, {
+          mailer: alertMailer,
+          config: alertConfig.dispatch,
+          now: () => now,
+          generateToken,
+          logger: { info: (m) => console.log(m), error: (m) => console.error(m) },
+        }),
     });
 
     console.log(
-      `Wishlist refresh complete: providers=${outcomes.length} events=${events.length} notifications=${notifications.length} anySucceeded=${anySucceeded}`,
+      `Wishlist refresh complete: providers=${outcomes.length} events=${events.length} ` +
+        `notifications=${notifications.length} ` +
+        `emails=${dispatchSummary ? `sent=${dispatchSummary.sent} failed=${dispatchSummary.failed} skipped=${dispatchSummary.skipped} deferred=${dispatchSummary.deferred}` : 'off'} ` +
+        `anySucceeded=${anySucceeded}`,
     );
 
     if (!anySucceeded && outcomes.length > 0) {
