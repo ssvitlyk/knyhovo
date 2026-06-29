@@ -30,6 +30,7 @@ Web: `pnpm --filter @knyhovo/web dev` (потребує API на :3000 для р
 | зміни у price alert або email | [agent_docs/alert-engine.md](agent_docs/alert-engine.md) |
 | пишеш тести або налаштовуєш CI | [agent_docs/testing-guide.md](agent_docs/testing-guide.md) |
 | досліджуєш/реалізуєш КСД (book-club) через GraphQL API | [docs/research/ksd-graphql-api.md](docs/research/ksd-graphql-api.md) |
+| розглядаєш Книгарню Є (book-ye) — заблокована Cloudflare, recon | [docs/research/ye-bookstore-provider.md](docs/research/ye-bookstore-provider.md) |
 
 ## PRD
 
