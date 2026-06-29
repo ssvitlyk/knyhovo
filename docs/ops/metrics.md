@@ -1,15 +1,16 @@
 # Production Metrics & Observability
 
-This PR ships the **production metrics layer** — a registry, a set of metric
-primitives, a Prometheus exporter, and pipeline instrumentation — but
-intentionally **no HTTP `/metrics` endpoint yet**. See
-[Why there is no HTTP endpoint yet](#why-there-is-no-http-endpoint-yet).
+The system exposes a **production-ready `GET /metrics`** endpoint in the
+Prometheus text exposition format (v0.0.4). It is backed by the persisted
+`scrape_runs` table rather than any in-memory registry, so it reports correct
+data on the long-running API server regardless of the process boundary. See
+[The `/metrics` endpoint](#the-metrics-endpoint).
 
-The layer sits **on top of** the existing per-run `ScrapeMetrics`: the pipeline
-keeps producing the same in-memory counters and persisting them to `scrape_runs`,
-and the metrics registry only *reads* finished provider outcomes and folds them
-into counters/histograms. It adds no scraping, persistence, retry, matcher, or
-health behavior.
+The metrics layer sits **on top of** the existing per-run `ScrapeMetrics`: the
+pipeline keeps producing the same in-memory counters and persisting them to
+`scrape_runs`, and the metrics primitives only *read* finished provider outcomes
+and fold them into counters/histograms. It adds no scraping, persistence, retry,
+matcher, or health behavior.
 
 ## What's included
 
@@ -19,83 +20,103 @@ health behavior.
 | `MetricsRegistry` / `InMemoryMetricsRegistry` | `metrics/metrics-registry.ts` | Generic get-or-create metric collection + snapshot. |
 | `ProductionMetricsRegistry` | `metrics/metrics-registry.ts` | Domain registry: `record(outcome)` folds one provider run into the production metrics. |
 | `PrometheusExporter` | `metrics/prometheus-exporter.ts` | Renders a `MetricsSnapshot` into Prometheus text exposition format. |
+| `ScrapeRunsMetricsSource` | `metrics/scrape-runs-source.ts` | DB-backed `MetricsSource`: aggregates `scrape_runs` rows into a `MetricsSnapshot`. |
+| `fetchScrapeRunMetricRows` | `metrics/scrape-runs.repository.ts` | Reads the `scrape_runs` columns the source needs and maps the provider enum → slug. |
+| `GET /metrics` route | `metrics/route.ts` | HTTP transport: fetch rows → build source → export → reply. |
 | Instrumentation | `refresh/full-catalog.refresh.ts` | Calls `record(...)` after each provider, when a registry is supplied (observation only). |
 
-The exporter and registry are decoupled by the `MetricsSource` interface
-(`snapshot(): MetricsSnapshot`), so the eventual transport can read from any
-source without touching the exporter.
+The exporter and any source are decoupled by the `MetricsSource` interface
+(`snapshot(): MetricsSnapshot`), so the HTTP transport reads from the
+`scrape_runs`-derived source without touching the exporter.
 
-## Why there is no HTTP endpoint yet
+## The `/metrics` endpoint
 
-Ingestion and the API are **separate processes**:
+Ingestion and the API run as **separate processes**:
 
 ```
 ┌─ cron CLI process ─────────────┐     ┌─ API server process ───────────┐
 │ pnpm scrape                    │     │ tsx src/server.ts (long-lived)  │
 │  → runProductionScrape(...)    │     │  → buildApp()                   │
-│  → record() into registry A    │     │                                 │
-│  → process exits ⟹ A discarded │     │  would serve registry B         │
-└────────────────────────────────┘     └─────────────────────────────────┘
-       registry A (instance #1)               registry B (instance #2)
+│  → writes rows to scrape_runs ─┼──┐  │  → GET /metrics                 │
+│  → process exits               │  │  │     reads scrape_runs ◄─────────┼─┐
+└────────────────────────────────┘  │  └─────────────────────────────────┘ │
+                                     └────────── scrape_runs (DB) ──────────┘
 ```
 
-A metrics registry is **in-memory and per-process**. The scrape runs in the
-short-lived cron CLI and its registry dies on exit; the API server is a different
-process with its own registry that nothing in that process ever writes to.
+A metrics **registry** is in-memory and per-process: the cron CLI's registry dies
+on exit, and the API server is a different process with its own (empty) registry.
+A `/metrics` served from a process-local registry would therefore return a
+valid-looking Prometheus exposition with **empty / stale data** — actively
+misleading for Ops.
 
-So a `GET /metrics` served from the API process would return a valid-looking
-Prometheus exposition with **empty / stale data** that does not reflect real
-production ingestion — actively misleading for Ops. Rather than ship a misleading
-endpoint, PR2 stops at the reusable layer.
-
-## Next step (follow-up PR): `scrape_runs`-derived exporter
-
-The metrics are **already persisted** to the `scrape_runs` table on every run.
-The recommended transport is therefore an HTTP endpoint backed by a
-`scrape_runs`-derived `MetricsSource`:
+The endpoint sidesteps this entirely by reading **persisted** data. Every run
+already writes its aggregated counts to `scrape_runs`, so the transport is:
 
 ```
-scrape_runs (DB)  →  MetricsSource (query + map)  →  PrometheusExporter  →  GET /metrics
+scrape_runs (DB)  →  ScrapeRunsMetricsSource (query + aggregate)  →  PrometheusExporter  →  GET /metrics
 ```
 
-This makes `/metrics` correct on the API server **regardless of the process
-boundary**, with no extra infrastructure, and reuses the exporter unchanged. Only
-the HTTP transport and the DB-backed source are new.
+On each request the route fetches the `scrape_runs` rows, folds them into a fresh
+in-memory registry inside `ScrapeRunsMetricsSource.snapshot()` (reusing the same
+metric primitives and exporter — nothing new in the rendering path), and returns
+the result. This makes `/metrics` correct on the API server **regardless of the
+process boundary**, with no extra infrastructure. The **process boundary is no
+longer a problem.**
+
+Counters aggregate over **all** persisted rows (rows are immutable), so the
+series are monotonic — the semantics Prometheus expects for a counter.
 
 > **Push Gateway** is a possible alternative (the cron CLI pushes its in-memory
-> registry to a gateway that Prometheus scrapes), but it is **not** the
-> recommended direction here: it adds a stateful component and risks stale series,
-> while the `scrape_runs`-derived exporter draws from data we already store.
+> registry to a gateway that Prometheus scrapes), but it is **not** used here: it
+> adds a stateful component and risks stale series, while the `scrape_runs`-derived
+> source draws from data we already store.
+
+### What the endpoint exports vs. the in-process registry
+
+`scrape_runs` persists **aggregated** per-run counts, not the full granular
+`ScrapeMetrics`. The endpoint therefore exports the faithful subset derivable from
+those columns and **intentionally omits** metrics that have no backing column —
+rather than emit misleading zeros. Omitted: `products_skipped_total`,
+`skipped_no_price_total`, `canonical_created_total`, `canonical_matched_total`,
+`canonical_conflicts_total`, `canonical_conflicts_by_reason`, `rate_limited_total`,
+and the separate `listing_created_total` / `listing_updated_total` split. These
+remain available in-process to anything that holds a `ProductionMetricsRegistry`.
 
 ## Available metrics
 
-All series carry a `provider` label (e.g. `provider="yakaboo"`).
+All series carry a `provider` label (e.g. `provider="yakaboo"`). The **`/metrics`?**
+column marks which metrics the `scrape_runs`-derived endpoint exports; the rest
+exist only in-process (held by a `ProductionMetricsRegistry`).
 
-| Metric | Type | Meaning |
-|--------|------|---------|
-| `scrape_runs_total` | counter | Provider scrape runs started. |
-| `scrape_duration_ms` | histogram | Run duration in milliseconds (buckets: 50ms → 5min). |
-| `provider_success_total` | counter | Runs finishing `SUCCESS`. |
-| `provider_partial_total` | counter | Runs finishing `PARTIAL`. |
-| `provider_failed_total` | counter | Runs finishing `FAILED`. |
-| `products_scraped_total` | counter | Listings returned by the scraper. |
-| `products_written_total` | counter | Listings persisted (created + updated). |
-| `products_skipped_total` | counter | Scraped listings not written (no-price skips + canonical conflicts). |
-| `skipped_no_price_total` | counter | New listings skipped because they had no price. |
-| `canonical_created_total` | counter | Canonical books created during matching. |
-| `canonical_matched_total` | counter | Listings matched to an existing canonical book. |
-| `canonical_conflicts_total` | counter | Listings dropped due to a canonical conflict. |
-| `canonical_conflicts_by_reason` | counter | Conflicts partitioned by `reason` label (`ISBN_CONFLICT` / `VOLUME_MISMATCH` / `BUNDLE_MISMATCH`). |
-| `price_history_inserted_total` | counter | Price-history rows inserted. |
-| `availability_updated_total` | counter | Existing listings whose availability was refreshed. |
-| `rate_limited_total` | counter | Runs that hit an HTTP 429/503 rate-limit signal. |
-| `listing_created_total` | counter | Provider listings created. |
-| `listing_updated_total` | counter | Provider listings updated. |
+| Metric | Type | `/metrics`? | Meaning |
+|--------|------|:-----------:|---------|
+| `scrape_runs_total` | counter | ✅ | Provider scrape runs (all rows, incl. running). |
+| `scrape_duration_ms` | histogram | ✅ | Run duration in milliseconds (buckets: 50ms → 5min). |
+| `provider_success_total` | counter | ✅ | Runs finishing `SUCCESS`. |
+| `provider_partial_total` | counter | ✅ | Runs finishing `PARTIAL`. |
+| `provider_failed_total` | counter | ✅ | Runs finishing `FAILED`. |
+| `products_scraped_total` | counter | ✅ | Listings returned by the scraper (`items_found`). |
+| `products_written_total` | counter | ✅ | Listings persisted (created + updated). |
+| `price_history_inserted_total` | counter | ✅ | Price-history rows inserted (`price_changes`). |
+| `availability_updated_total` | counter | ✅ | Existing listings whose availability was refreshed. |
+| `scrape_errors_total` | counter | ✅ | Total scrape errors recorded across runs (`errors_count`). |
+| `products_skipped_total` | counter | — | Scraped listings not written (no-price skips + canonical conflicts). |
+| `skipped_no_price_total` | counter | — | New listings skipped because they had no price. |
+| `canonical_created_total` | counter | — | Canonical books created during matching. |
+| `canonical_matched_total` | counter | — | Listings matched to an existing canonical book. |
+| `canonical_conflicts_total` | counter | — | Listings dropped due to a canonical conflict. |
+| `canonical_conflicts_by_reason` | counter | — | Conflicts partitioned by `reason` label (`ISBN_CONFLICT` / `VOLUME_MISMATCH` / `BUNDLE_MISMATCH`). |
+| `rate_limited_total` | counter | — | Runs that hit an HTTP 429/503 rate-limit signal. |
+| `listing_created_total` | counter | — | Provider listings created. |
+| `listing_updated_total` | counter | — | Provider listings updated. |
 
-`products_written_total` equals `listing_created_total + listing_updated_total`;
-both are exposed so you can break writes down by create-vs-update.
+On `/metrics`, `products_written_total` is derived as
+`items_updated − availability_changes` (i.e. created + updated), since
+`scrape_runs` stores only the combined `items_updated` count. The create-vs-update
+split (`listing_created_total` / `listing_updated_total`) is not persisted per-run
+and is therefore in-process only.
 
-## Grafana recommendations (once the endpoint lands)
+## Grafana recommendations
 
 Useful starting panels (PromQL). Counters are cumulative, so use
 `rate()`/`increase()` rather than the raw value:
@@ -110,5 +131,9 @@ Useful starting panels (PromQL). Counters are cumulative, so use
 - **Rate-limit alerts** — alert when `increase(rate_limited_total[1h]) > 0`.
 - **Skip rate** —
   `sum(increase(products_skipped_total[24h])) / sum(increase(products_scraped_total[24h]))`
+
+> The **Conflict pressure**, **Rate-limit** and **Skip rate** panels use metrics
+> not exported by `/metrics` (see the `/metrics`? column above); they apply only
+> if the in-process metrics are scraped through another transport.
 
 [expo]: https://prometheus.io/docs/instrumenting/exposition_formats/

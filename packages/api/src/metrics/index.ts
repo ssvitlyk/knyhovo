@@ -23,10 +23,10 @@ export type {
   HistogramSample,
 } from './types.js';
 
-// NOTE: PR2 ships the metrics layer (registry + exporter + instrumentation) but
-// intentionally NO HTTP transport. A `GET /metrics` served from the long-running
-// API process would only ever reflect that process's in-memory registry, while
-// ingestion runs in a separate, short-lived cron CLI process — so the endpoint
-// would report empty/stale data and mislead Ops. The HTTP transport lands in a
-// follow-up PR, backed by a `scrape_runs`-derived `MetricsSource`. See
-// docs/ops/metrics.md.
+export { ScrapeRunsMetricsSource } from './scrape-runs-source.js';
+export type { ScrapeRunMetricsRow } from './scrape-runs-source.js';
+
+// NOTE: PR3 added `GET /metrics` (see src/metrics/route.ts), backed by
+// ScrapeRunsMetricsSource which aggregates from the scrape_runs DB table on
+// each request. This approach is correct regardless of process boundary — the
+// API process reads persisted run data rather than any in-memory registry.
