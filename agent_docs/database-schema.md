@@ -126,9 +126,14 @@ grep -r "priceHistoryPoint\.\(update\|delete\)" packages/
 
 ```sql
 CREATE TABLE "users" (
-    "id"         TEXT      PRIMARY KEY,
-    "email"      TEXT      NOT NULL UNIQUE,
-    "created_at" TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    "id"                    TEXT      PRIMARY KEY,
+    "email"                 TEXT      NOT NULL UNIQUE,
+    "created_at"            TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    -- W4b notification preferences
+    "price_drop_enabled"    BOOLEAN   NOT NULL DEFAULT true,
+    "back_in_stock_enabled" BOOLEAN   NOT NULL DEFAULT true,
+    "unsubscribe_token"     TEXT      UNIQUE,   -- nullable; one-click unsubscribe, generated lazily
+    "unsubscribed_at"       TIMESTAMP            -- global opt-out; коли set — alert-листи не шлються
 );
 ```
 
@@ -214,6 +219,12 @@ CREATE TABLE "alerts" (
     "target_price_amount"   INTEGER        NOT NULL,  -- копійки
     "target_price_currency" "currency"     NOT NULL,
     "paused_at"             TIMESTAMP,               -- null = не на паузі
+    -- W10.4 price-drop dedup markers
+    "last_notified_at"            TIMESTAMP,
+    "last_notified_price_amount"  INTEGER,
+    -- W4b back-in-stock dedup markers
+    "last_stock_notified_at"      TIMESTAMP,         -- коли востаннє надіслано back-in-stock
+    "last_notified_availability"  "availability",    -- availability на момент останньої back-in-stock нотифікації
     "created_at"            TIMESTAMP      NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at"            TIMESTAMP      NOT NULL
 );
@@ -226,6 +237,46 @@ CREATE TABLE "alerts" (
 4. інакше → `active`
 
 **Prisma enum ідентифікатори:** `AlertStatus.ACTIVE`, `AlertStatus.PAUSED`, `AlertStatus.TRIGGERED`, `AlertStatus.UNAVAILABLE`. `AlertIntent.ANY_DROP`, `AlertIntent.BELOW_CURRENT`, `AlertIntent.FAVOURABLE_PRICE`, `AlertIntent.CUSTOM_PRICE`.
+
+---
+
+### notification_deliveries (W4b)
+
+Outbox для email-сповіщень. Детекція (`refresh/alert-notify.ts`) **enqueue** рядок зі `status='pending'`; dispatcher (email delivery) шле через Resend і ставить `sent`/`failed`/`skipped`. Idempotency через `dedup_key` (unique). Маркери dedup на `alerts` оновлюються лише після успішної відправки — інакше збій email не втрачає лист.
+
+```sql
+CREATE TYPE "notification_type" AS ENUM ('price-drop', 'back-in-stock');
+CREATE TYPE "delivery_status" AS ENUM ('pending', 'sent', 'failed', 'skipped');
+
+CREATE TABLE "notification_deliveries" (
+    "id"                   TEXT                PRIMARY KEY,
+    "alert_id"             TEXT                NOT NULL REFERENCES "alerts"("id") ON DELETE CASCADE,
+    "user_id"              TEXT                NOT NULL REFERENCES "users"("id"),
+    "canonical_book_id"    TEXT                NOT NULL,
+    "type"                 "notification_type" NOT NULL,
+    "status"               "delivery_status"   NOT NULL DEFAULT 'pending',
+    "trigger_price_amount" INTEGER,                       -- копійки; null для back-in-stock
+    "dedup_key"            TEXT                NOT NULL UNIQUE,  -- idempotency
+    "attempts"             INTEGER             NOT NULL DEFAULT 0,
+    "next_attempt_at"      TIMESTAMP,                      -- backoff; null = eligible now
+    "last_error"           TEXT,
+    "provider_message_id"  TEXT,                           -- Resend id після прийняття
+    "created_at"           TIMESTAMP           NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "sent_at"              TIMESTAMP,
+    "updated_at"           TIMESTAMP           NOT NULL
+);
+
+CREATE INDEX "notification_deliveries_status_next_attempt_at_idx"
+    ON "notification_deliveries"("status", "next_attempt_at");   -- dispatch-черга
+CREATE INDEX "notification_deliveries_user_id_created_at_idx"
+    ON "notification_deliveries"("user_id", "created_at");       -- rate-limit
+CREATE INDEX "notification_deliveries_alert_id_idx"
+    ON "notification_deliveries"("alert_id");
+```
+
+**dedup_key:** price-drop → `<alertId>:price:<lowestPriceAmount>`; back-in-stock → `<alertId>:stock:<stockCycleToken>`.
+**Prisma enum ідентифікатори:** `NotificationType.PRICE_DROP`, `NotificationType.BACK_IN_STOCK`; `DeliveryStatus.PENDING`, `DeliveryStatus.SENT`, `DeliveryStatus.FAILED`, `DeliveryStatus.SKIPPED`.
+Repository: `packages/api/src/refresh/notification-delivery.repository.ts`.
 
 ## Правила
 
