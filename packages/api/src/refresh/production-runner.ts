@@ -5,6 +5,7 @@ import type { Logger } from '../pipeline/index.js';
 import { runFullCatalogRefresh } from './full-catalog.refresh.js';
 import type { ProviderRefreshOutcome } from './full-catalog.refresh.js';
 import { RefreshAlreadyRunningError } from './concurrency-guard.js';
+import type { ProductionMetricsRegistry } from '../metrics/index.js';
 
 /**
  * Production runner: a thin, testable contract around `runFullCatalogRefresh`
@@ -46,6 +47,8 @@ export interface RunProductionScrapeDeps {
   readonly now?: () => Date;
   /** Injectable refresh implementation for deterministic exit-semantics tests. */
   readonly refresh?: typeof runFullCatalogRefresh;
+  /** Optional production metrics registry; passed through to the refresh layer. */
+  readonly metrics?: ProductionMetricsRegistry;
 }
 
 /** Default alert channel for PR1: emit a structured error line. Real email/Slack is PR3. */
@@ -72,6 +75,7 @@ export async function runProductionScrape(
       logger: deps.logger,
       ...(deps.scraperOptions !== undefined ? { scraperOptions: deps.scraperOptions } : {}),
       ...(deps.now !== undefined ? { now: deps.now } : {}),
+      ...(deps.metrics !== undefined ? { metrics: deps.metrics } : {}),
     });
 
     if (anySucceeded) {

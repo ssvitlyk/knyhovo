@@ -12,6 +12,7 @@ import {
 import type { ScrapeMetrics, Logger } from '../pipeline/index.js';
 import { startScrapeRun, finishScrapeRun, deriveRunStatus } from './scrape-run.repository.js';
 import { acquireRefreshLock, releaseRefreshLock } from './concurrency-guard.js';
+import type { ProductionMetricsRegistry } from '../metrics/index.js';
 
 export interface FullCatalogRefreshOptions {
   readonly prisma: PrismaClient;
@@ -21,6 +22,12 @@ export interface FullCatalogRefreshOptions {
   readonly logger?: Logger;
   /** Injectable clock for deterministic timestamps in tests. */
   readonly now?: () => Date;
+  /**
+   * Optional production metrics registry. When supplied, each finished provider
+   * run is folded into the metrics via `record(...)`. Recording is observation
+   * only — it never alters control flow or persistence.
+   */
+  readonly metrics?: ProductionMetricsRegistry;
 }
 
 export interface ProviderRefreshOutcome {
@@ -127,9 +134,10 @@ async function refreshProvider(
     // The scrapers already stop on 429/503 without retrying; surface the signal.
     const rateLimited = result.scrapeErrors.some(isRateLimited);
 
+    const finishedAt = clock();
     await finishScrapeRun(opts.prisma, runId, {
       startedAt,
-      finishedAt: clock(),
+      finishedAt,
       status,
       metrics: result.metrics,
       scrapeErrors: result.scrapeErrors,
@@ -139,6 +147,14 @@ async function refreshProvider(
     if (rateLimited) {
       providerLogger.error(`${provider.name}: rate-limited (HTTP 429/503) — stopped without retry`);
     }
+
+    opts.metrics?.record({
+      provider: result.provider,
+      status,
+      metrics: result.metrics,
+      rateLimited,
+      durationMs: finishedAt.getTime() - startedAt.getTime(),
+    });
 
     return {
       provider: result.provider,
@@ -154,12 +170,14 @@ async function refreshProvider(
     logger.error(`Provider ${provider.name} failed: ${message}`);
 
     const metrics = createMetrics();
+    const rateLimited = isRateLimited(err);
+    const finishedAt = clock();
     // Best-effort: close an already-opened run as FAILED so it never dangles RUNNING.
     if (runId !== null && startedAt !== null) {
       try {
         await finishScrapeRun(opts.prisma, runId, {
           startedAt,
-          finishedAt: clock(),
+          finishedAt,
           status: ScrapeRunStatus.FAILED,
           metrics,
           scrapeErrors: [message],
@@ -170,13 +188,21 @@ async function refreshProvider(
       }
     }
 
+    opts.metrics?.record({
+      provider: provider.name,
+      status: ScrapeRunStatus.FAILED,
+      metrics,
+      rateLimited,
+      ...(startedAt !== null ? { durationMs: finishedAt.getTime() - startedAt.getTime() } : {}),
+    });
+
     return {
       provider: provider.name,
       runId,
       status: ScrapeRunStatus.FAILED,
       metrics,
       scrapeErrors: [message],
-      rateLimited: isRateLimited(err),
+      rateLimited,
     };
   }
 }
