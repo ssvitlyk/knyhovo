@@ -21,6 +21,10 @@ import { registerMetricsRoute } from './metrics/route.js';
 import { registerAuthRoute } from './auth/route.js';
 import { registerWishlistRoute } from './wishlist/route.js';
 import { registerWishlistAlertRoute } from './wishlist/alert/route.js';
+import {
+  registerUnsubscribeRoute,
+  registerNotificationPreferencesRoute,
+} from './notifications/route.js';
 import type { AuthDeps } from './auth/service.js';
 
 /** Shape of every error response emitted by the API. */
@@ -140,6 +144,8 @@ export function buildApp(prisma: PrismaClient, authDeps?: AuthDeps): FastifyInst
   registerBookPriceHistoryRoute(app, prisma);
   registerRefreshHealthRoute(app, prisma);
   registerMetricsRoute(app, prisma);
+  // Public one-click unsubscribe (no auth) — backs the email List-Unsubscribe header.
+  registerUnsubscribeRoute(app, prisma);
 
   // Auth routes are only registered when deps are provided.
   // Tests that don't exercise auth can call buildApp(prisma) without
@@ -148,6 +154,7 @@ export function buildApp(prisma: PrismaClient, authDeps?: AuthDeps): FastifyInst
     registerAuthRoute(app, authDeps);
     registerWishlistRoute(app, prisma, authDeps);
     registerWishlistAlertRoute(app, prisma, authDeps);
+    registerNotificationPreferencesRoute(app, prisma, authDeps);
   }
 
   return app;

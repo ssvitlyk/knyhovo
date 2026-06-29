@@ -391,3 +391,27 @@ OUT_OF_STOCK listings are excluded from `providers`, `lowestPrice`, and `offersC
 | Code | HTTP | Опис |
 |------|------|------|
 | `WISHLIST_ITEM_NOT_FOUND` | 404 | Книга не знайдена у wishlist поточного користувача |
+
+## Notifications (W4b)
+
+### `GET /api/notifications/preferences`
+
+Auth: session cookie. Повертає поточні налаштування сповіщень користувача.
+
+```json
+{ "priceDropEnabled": true, "backInStockEnabled": true, "unsubscribed": false }
+```
+
+### `PATCH /api/notifications/preferences`
+
+Auth: session cookie. Body — хоча б одне поле:
+
+```json
+{ "priceDropEnabled": false, "backInStockEnabled": true, "resubscribe": true }
+```
+
+`resubscribe: true` знімає глобальний opt-out. Повертає оновлені налаштування (як GET).
+
+### `GET /api/notifications/unsubscribe?token=...`
+
+**Без auth** — one-click unsubscribe (бекенд для `List-Unsubscribe` заголовка email). Виставляє глобальний opt-out за `unsubscribe_token`. Ідемпотентний і non-enumerating: завжди повертає 200 + HTML-сторінку підтвердження, незалежно від того, чи токен існує.

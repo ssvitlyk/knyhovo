@@ -43,7 +43,8 @@ digest, intent-и `any-drop`/`below-current` — v2.
       Back-in-stock детекція — через rising-edge маркер `last_notified_availability` (перша поява книги не шле alert). dedupKey price-drop=`<alertId>:price:<lowest>`, back-in-stock=`<alertId>:stock:<run ISO>`. Маркер price оновлюється лише у dispatch (PR3).
 - [x] PR3: `AlertMailer` порт (`alerts/mailer.ts`: Console/Resend-адаптер/Fake), шаблони (`alerts/templates.ts`), dispatch (`alerts/dispatch.ts`) + retry/backoff + rate-limit + unsubscribe-гейт. ResendAlertMailer бере мінімальний ін'єктований клієнт (без імпорту `resend` у src — конструювання у PR4).
 - [x] PR4: dispatch wired у `wishlist.refresh.ts` (instant, ін'єктований порт `dispatch`), mailer-factory (`alerts/mailer-factory.ts` — єдиний імпорт `resend`), config (`alerts/config.ts`), CLI `run-wishlist-refresh.ts`. Summary у логах/результаті; Prometheus email-лічильники — follow-up (наразі /metrics scrape_runs-derived).
-- [ ] PR5: `GET /api/notifications/unsubscribe`, prefs endpoints + web-UI.
+- [x] PR5a: API — `GET /api/notifications/unsubscribe` (public, one-click), `GET/PATCH /api/notifications/preferences` (auth), модуль `notifications/` + тести.
+- [ ] PR5b: web-UI — сторінка налаштувань сповіщень + per-alert back-in-stock тогл.
 
 ### Env (W4b)
 
