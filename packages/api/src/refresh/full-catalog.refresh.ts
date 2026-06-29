@@ -7,6 +7,7 @@ import {
   formatSummary,
   mapProviderName,
   createMetrics,
+  bindContext,
 } from '../pipeline/index.js';
 import type { ScrapeMetrics, Logger } from '../pipeline/index.js';
 import { startScrapeRun, finishScrapeRun, deriveRunStatus } from './scrape-run.repository.js';
@@ -111,11 +112,14 @@ async function refreshProvider(
     runId = started.id;
     startedAt = started.startedAt;
 
+    // Structured-log context for everything this provider's run emits.
+    const providerLogger = bindContext(logger, { runId, provider: dbProvider });
+
     const { results } = await runScrapePipeline({
       prisma: opts.prisma,
       providers: [provider],
       ...(opts.scraperOptions !== undefined ? { scraperOptions: opts.scraperOptions } : {}),
-      logger,
+      logger: providerLogger,
     });
     const result = results[0]!;
 
@@ -131,9 +135,9 @@ async function refreshProvider(
       scrapeErrors: result.scrapeErrors,
     });
 
-    logger.info(formatSummary(result.provider, result.metrics, result.scrapeErrors));
+    providerLogger.info(formatSummary(result.provider, result.metrics, result.scrapeErrors));
     if (rateLimited) {
-      logger.error(`${provider.name}: rate-limited (HTTP 429/503) — stopped without retry`);
+      providerLogger.error(`${provider.name}: rate-limited (HTTP 429/503) — stopped without retry`);
     }
 
     return {
