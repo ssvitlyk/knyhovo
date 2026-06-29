@@ -1,0 +1,43 @@
+{
+  "data": {
+    "p0": {
+      "id": "11177",
+      "name": "Дракула",
+      "isbn": "978-617-15-2007-3",
+      "code": "4149312",
+      "type": "paper",
+      "cost": 540,
+      "crossed_out_cost": 590,
+      "available": true,
+      "in_stock": 622,
+      "authors": [
+        {
+          "name": "Брем",
+          "surname": "Стокер",
+          "slug": "stoker"
+        }
+      ],
+      "image": {
+        "small": [
+          {
+            "format": "png",
+            "url": "/storage/products/covers/small/D1A61ZPjyRtFdEZSOuoQvy5W29PipgSkzQB5fguR.png?v=1779187372"
+          },
+          {
+            "format": "webp",
+            "url": "/storage/products/covers/small/D1A61ZPjyRtFdEZSOuoQvy5W29PipgSkzQB5fguR.png.webp?v=1779187372"
+          }
+        ]
+      }
+    },
+    "p1": null
+  },
+  "errors": [
+    {
+      "message": "Internal server error",
+      "path": [
+        "p1"
+      ]
+    }
+  ]
+}

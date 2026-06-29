@@ -1,0 +1,125 @@
+{
+  "data": {
+    "p0": {
+      "id": "11177",
+      "name": "Дракула",
+      "isbn": "978-617-15-2007-3",
+      "code": "4149312",
+      "type": "paper",
+      "cost": 540,
+      "crossed_out_cost": 590,
+      "available": true,
+      "in_stock": 622,
+      "authors": [
+        {
+          "name": "Брем",
+          "surname": "Стокер",
+          "slug": "stoker"
+        }
+      ],
+      "image": {
+        "small": [
+          {
+            "format": "png",
+            "url": "/storage/products/covers/small/D1A61ZPjyRtFdEZSOuoQvy5W29PipgSkzQB5fguR.png?v=1779187372"
+          },
+          {
+            "format": "webp",
+            "url": "/storage/products/covers/small/D1A61ZPjyRtFdEZSOuoQvy5W29PipgSkzQB5fguR.png.webp?v=1779187372"
+          }
+        ]
+      }
+    },
+    "p1": {
+      "id": "11357",
+      "name": "Буквар",
+      "isbn": "978-966-935-896-7",
+      "code": "4149487",
+      "type": "paper",
+      "cost": 324,
+      "crossed_out_cost": 360,
+      "available": true,
+      "in_stock": 23,
+      "authors": [
+        {
+          "name": "Яковенко",
+          "surname": "Л.В.",
+          "slug": "l-v"
+        }
+      ],
+      "image": {
+        "small": [
+          {
+            "format": "jpeg",
+            "url": "/storage/products/covers/small/EdjaK92Dz3iaSHvgqnd4pYQtZl9pgbf3VHLOnYqh.jpeg?v=1781856075"
+          },
+          {
+            "format": "webp",
+            "url": "/storage/products/covers/small/EdjaK92Dz3iaSHvgqnd4pYQtZl9pgbf3VHLOnYqh.jpeg.webp?v=1781856075"
+          }
+        ]
+      }
+    },
+    "p2": {
+      "id": "11348",
+      "name": "Щасливиця",
+      "isbn": "9786171713253",
+      "code": "4149500",
+      "type": "paper",
+      "cost": 499,
+      "crossed_out_cost": null,
+      "available": true,
+      "in_stock": 34,
+      "authors": [
+        {
+          "name": "Марісса",
+          "surname": "Степлі",
+          "slug": "stepli"
+        }
+      ],
+      "image": {
+        "small": [
+          {
+            "format": "jpg",
+            "url": "/storage/products/covers/small/RL00t4VDQsK3TtDD8DNna1WN2w6O2FI5SWohx1mm.jpg?v=1781779009"
+          },
+          {
+            "format": "webp",
+            "url": "/storage/products/covers/small/RL00t4VDQsK3TtDD8DNna1WN2w6O2FI5SWohx1mm.jpg.webp?v=1781779009"
+          }
+        ]
+      }
+    },
+    "p3": {
+      "id": "11320",
+      "name": "Запрошення",
+      "isbn": "9786171519435",
+      "code": "3038156",
+      "type": "ebook",
+      "cost": 235,
+      "crossed_out_cost": 260,
+      "available": true,
+      "in_stock": null,
+      "authors": [
+        {
+          "name": "Ві",
+          "surname": "Кіланд",
+          "slug": "kiland"
+        }
+      ],
+      "image": {
+        "small": [
+          {
+            "format": "jpg",
+            "url": "/storage/products/covers/small/SuOwwSbOGlqpo7DFvWnhyC9WpFmLugmxQ1GaPB9a.jpg?v=1781762807"
+          },
+          {
+            "format": "webp",
+            "url": "/storage/products/covers/small/SuOwwSbOGlqpo7DFvWnhyC9WpFmLugmxQ1GaPB9a.jpg.webp?v=1781762807"
+          }
+        ]
+      }
+    },
+    "p4": null
+  }
+}
