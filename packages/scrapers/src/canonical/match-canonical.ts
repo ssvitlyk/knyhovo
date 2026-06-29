@@ -53,37 +53,44 @@ export function matchOrCreate(
   }
 
   // ── Steps 2–3: Exact key + Fuzzy ─────────────────────────────────────
-  // ISBN_CONFLICT is now scoped HERE: it is only raised against a candidate
-  // whose title is already similar enough to plausibly be the same book. A
-  // genuinely new book with a unique ISBN and no title-similar candidate must
-  // fall through to `created` rather than being dropped as a conflict.
+  // Every conflict (ISBN, volume, bundle) is now scoped HERE, *behind* the title
+  // similarity gate: a conflict is only raised against a candidate whose title is
+  // already similar enough to plausibly be the same book. A genuinely new book
+  // with no title-similar candidate must fall through to `created` rather than
+  // being dropped — differing volume/bundle markers on unrelated titles are not a
+  // conflict, just different books.
   let bestCandidate: CanonicalBookId | null = null;
   let bestScore = 0;
 
   for (const candidate of candidates) {
+    const candNormTitle = normalizeTitle(candidate.title);
+    const candNormAuthor = normalizeAuthor(candidate.author);
+
+    // Title similarity gate — FIRST. Only title-similar candidates are considered
+    // for a match, an ISBN/volume/bundle conflict, or a fuzzy candidate. Titles
+    // below the threshold are different books and are ignored entirely.
+    const exactKey = normTitle === candNormTitle && normAuthor === candNormAuthor;
+    const tSim = exactKey ? 1 : titleSimilarity(normTitle, candNormTitle);
+    if (tSim < TITLE_THRESHOLD) continue;
+
     const candVolume = extractVolumeNumber(candidate.title);
     const candBundle = isBundle(candidate.title);
 
-    // Hard conflict: differing explicit volumes
+    // Hard conflict: differing explicit volumes of an otherwise near-identical
+    // title (e.g. "…Книга 1" vs "…Книга 2"). normalizeTitle strips the volume
+    // marker, so same-series volumes land here with a high tSim; genuinely
+    // different books carrying volume markers were already dropped by the gate.
     if (listingVolume !== null && candVolume !== null && listingVolume !== candVolume) {
       recordConflict('VOLUME_MISMATCH');
       continue;
     }
 
-    // Hard conflict: bundle vs single
+    // Hard conflict: bundle/box-set vs single edition under a near-identical
+    // title (e.g. "…(комплект)" vs the single book).
     if (listingBundle !== candBundle) {
       recordConflict('BUNDLE_MISMATCH');
       continue;
     }
-
-    const candNormTitle = normalizeTitle(candidate.title);
-    const candNormAuthor = normalizeAuthor(candidate.author);
-
-    // Title similarity gate — only title-similar candidates are considered
-    // either a match, an ISBN conflict, or a fuzzy candidate.
-    const exactKey = normTitle === candNormTitle && normAuthor === candNormAuthor;
-    const tSim = exactKey ? 1 : titleSimilarity(normTitle, candNormTitle);
-    if (tSim < TITLE_THRESHOLD) continue;
 
     // ISBN conflict — scoped to *near-identical* titles only. When two books
     // share a virtually identical title (tSim ≥ TITLE_NO_AUTHOR_THRESHOLD) yet

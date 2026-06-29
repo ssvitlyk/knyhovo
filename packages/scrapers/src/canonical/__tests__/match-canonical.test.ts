@@ -181,7 +181,54 @@ describe('volume mismatch → VOLUME_MISMATCH conflict', () => {
     }
   });
 
-  it('does not match volume 1 to volume 2', () => {
+  it('does not match volume 1 to volume 2 of a near-identical title', () => {
+    // Same base title, differing only by volume number → normalizeTitle strips
+    // the marker, titles stay near-identical, so the volume mismatch is a real
+    // conflict (not two unrelated books).
+    const listing = makeListing({
+      title: 'Пісня льоду й полум\'я. Книга 1',
+      author: 'Джордж Мартін',
+      isbn: null,
+    });
+    const candidate = makeCanonical({
+      title: 'Пісня льоду й полум\'я. Книга 2',
+      author: 'Джордж Мартін',
+      isbn: null,
+    });
+    const result = matchOrCreate(listing, [candidate]);
+    expect(result.type).toBe('conflict');
+    if (result.type === 'conflict') {
+      expect(result.reason).toBe('VOLUME_MISMATCH');
+    }
+  });
+});
+
+// ── Volume markers on title-DISSIMILAR books → created, NOT a conflict ────
+// Regression for the sibling bug to ISBN_CONFLICT: VOLUME_MISMATCH used to fire
+// against ANY candidate with a differing volume number, before title gating.
+// Two unrelated series volumes (distinct subtitles → low title similarity) are
+// different books and must each create their own canonical. A volume mismatch is
+// only meaningful for NEAR-IDENTICAL titles (covered above).
+describe('volume markers on dissimilar titles → created (not VOLUME_MISMATCH)', () => {
+  it('creates separate canonicals for two different series with volume markers', () => {
+    const listing = makeListing({
+      title: 'Мемуари Ванітаса. Том 6',
+      author: 'Джюн Морі',
+      isbn: null,
+    });
+    const candidate = makeCanonical({
+      title: 'Зроблено в Безодні. Том 7',
+      author: 'Акіхіто Цукусі',
+      isbn: null,
+    });
+    const result = matchOrCreate(listing, [candidate]);
+    expect(result.type).toBe('created');
+  });
+
+  it('does not conflict different-subtitle volumes of the same series', () => {
+    // "Відьмак. Том 1. Останнє Бажання" vs "Том 2. Меч Призначення": distinct
+    // subtitles drop title similarity below the gate, so these are treated as
+    // separate books rather than a volume conflict.
     const listing = makeListing({
       title: 'Відьмак. Том 1. Останнє Бажання',
       author: 'Анджей Сапковський',
@@ -193,10 +240,7 @@ describe('volume mismatch → VOLUME_MISMATCH conflict', () => {
       isbn: null,
     });
     const result = matchOrCreate(listing, [candidate]);
-    expect(result.type).toBe('conflict');
-    if (result.type === 'conflict') {
-      expect(result.reason).toBe('VOLUME_MISMATCH');
-    }
+    expect(result.type).toBe('created');
   });
 });
 
@@ -245,11 +289,13 @@ describe('ISBN mismatch → ISBN_CONFLICT conflict', () => {
   });
 });
 
-// ── BUNDLE_MISMATCH conflict ───────────────────────────────────────────
+// ── BUNDLE_MISMATCH conflict (near-identical title only) ───────────────
 describe('bundle vs single → BUNDLE_MISMATCH conflict', () => {
-  it('returns conflict with reason BUNDLE_MISMATCH for bundle vs single book', () => {
+  it('returns BUNDLE_MISMATCH for a bundle edition of a near-identical title', () => {
+    // The bundle marker sits on an otherwise identical title, so the box-set and
+    // the single edition stay title-similar — a real bundle-vs-single conflict.
     const listing = makeListing({
-      title: 'Гаррі Поттер: комплект 3 книги',
+      title: 'Гаррі Поттер і Філософський Камінь (комплект)',
       author: 'Джоан Роулінг',
       isbn: null,
     });
@@ -264,8 +310,30 @@ describe('bundle vs single → BUNDLE_MISMATCH conflict', () => {
       expect(result.reason).toBe('BUNDLE_MISMATCH');
     }
   });
+});
 
-  it('returns conflict with reason BUNDLE_MISMATCH for набір', () => {
+// ── Bundle markers on title-DISSIMILAR books → created, NOT a conflict ────
+// Sibling regression: BUNDLE_MISMATCH used to fire against ANY candidate whose
+// bundle flag differed, before title gating. A box set whose title is not
+// near-identical to a single book is just a different product and must create
+// its own canonical.
+describe('bundle markers on dissimilar titles → created (not BUNDLE_MISMATCH)', () => {
+  it('creates a separate canonical for a "комплект" bundle vs a single book', () => {
+    const listing = makeListing({
+      title: 'Гаррі Поттер: комплект 3 книги',
+      author: 'Джоан Роулінг',
+      isbn: null,
+    });
+    const candidate = makeCanonical({
+      title: 'Гаррі Поттер і Філософський Камінь',
+      author: 'Джоан Роулінг',
+      isbn: null,
+    });
+    const result = matchOrCreate(listing, [candidate]);
+    expect(result.type).toBe('created');
+  });
+
+  it('creates a separate canonical for a "набір" bundle vs a single book', () => {
     const listing = makeListing({
       title: 'Відьмак: набір 3 книги',
       author: 'Анджей Сапковський',
@@ -277,10 +345,7 @@ describe('bundle vs single → BUNDLE_MISMATCH conflict', () => {
       isbn: null,
     });
     const result = matchOrCreate(listing, [candidate]);
-    expect(result.type).toBe('conflict');
-    if (result.type === 'conflict') {
-      expect(result.reason).toBe('BUNDLE_MISMATCH');
-    }
+    expect(result.type).toBe('created');
   });
 });
 
@@ -484,5 +549,65 @@ describe('regression: catalog growth across distinct books', () => {
     if (result.type === 'matched') {
       expect(result.canonicalBookId).toBe(candidate.id);
     }
+  });
+});
+
+// ── Regression: volume/bundle conflicts gated by title similarity ─────────
+// Guards the sibling bug to ISBN_CONFLICT: VOLUME_MISMATCH / BUNDLE_MISMATCH
+// fired against ANY candidate with a differing volume/bundle marker BEFORE title
+// gating, so unrelated series volumes and box sets were wrongly dropped as
+// conflicts instead of created. A volume/bundle mismatch is now only raised for
+// NEAR-IDENTICAL titles; an exact ISBN match still wins over either.
+describe('regression: volume/bundle conflicts gated by title similarity', () => {
+  it('matches by ISBN even when volume/bundle text differs (MATCH_BY_ISBN wins)', () => {
+    // Identical ISBN is authoritative (Step 1) and must short-circuit before any
+    // volume/bundle reasoning — differing "Том 1"/"набір" text is irrelevant.
+    const listing = makeListing({
+      title: 'Відьмак: набір. Том 1',
+      author: 'Анджей Сапковський',
+      isbn: '9786177933105',
+    });
+    const candidate = makeCanonical({
+      title: 'Відьмак. Том 2',
+      author: 'Анджей Сапковський',
+      isbn: '9786177933105',
+    });
+    const result = matchOrCreate(listing, [candidate]);
+    expect(result.type).toBe('matched');
+    if (result.type === 'matched') {
+      expect(result.canonicalBookId).toBe(candidate.id);
+    }
+  });
+
+  it('creates three canonicals for three different books carrying volume/bundle words', () => {
+    // Replays the pipeline: distinct titles, distinct ISBNs, each carrying a
+    // volume or bundle marker. None are title-similar, so none conflict.
+    const listings: RawProviderListing[] = [
+      makeListing({ title: 'Мемуари Ванітаса. Том 6', author: 'Джюн Морі', isbn: '9786177933105' }),
+      makeListing({ title: 'Зроблено в Безодні. Том 7', author: 'Акіхіто Цукусі', isbn: '9786177820267' }),
+      makeListing({ title: 'Гаррі Поттер: комплект 3 книги', author: 'Джоан Роулінг', isbn: '9789669821164' }),
+    ];
+
+    const canonicals: CanonicalBook[] = [];
+    let createdCount = 0;
+
+    for (const listing of listings) {
+      const result = matchOrCreate(listing, canonicals);
+      expect(result.type).toBe('created');
+      if (result.type === 'created') {
+        createdCount += 1;
+        canonicals.push(
+          makeCanonical({
+            id: makeId(`book-${createdCount}`),
+            title: listing.title,
+            author: listing.author ?? '',
+            isbn: listing.isbn,
+          }),
+        );
+      }
+    }
+
+    expect(createdCount).toBe(3);
+    expect(canonicals).toHaveLength(3);
   });
 });
