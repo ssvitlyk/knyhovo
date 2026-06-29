@@ -42,8 +42,17 @@ digest, intent-и `any-drop`/`below-current` — v2.
 - [x] PR2: рефактор `alert-notify.ts` → enqueue; back-in-stock dedup (окремий ключ); unit-тести.
       Back-in-stock детекція — через rising-edge маркер `last_notified_availability` (перша поява книги не шле alert). dedupKey price-drop=`<alertId>:price:<lowest>`, back-in-stock=`<alertId>:stock:<run ISO>`. Маркер price оновлюється лише у dispatch (PR3).
 - [x] PR3: `AlertMailer` порт (`alerts/mailer.ts`: Console/Resend-адаптер/Fake), шаблони (`alerts/templates.ts`), dispatch (`alerts/dispatch.ts`) + retry/backoff + rate-limit + unsubscribe-гейт. ResendAlertMailer бере мінімальний ін'єктований клієнт (без імпорту `resend` у src — конструювання у PR4).
-- [ ] PR4: wiring у `wishlist.refresh.ts`, метрики (`emails_sent_total` тощо), env (`RESEND_API_KEY`, `ALERT_FROM_EMAIL`).
+- [x] PR4: dispatch wired у `wishlist.refresh.ts` (instant, ін'єктований порт `dispatch`), mailer-factory (`alerts/mailer-factory.ts` — єдиний імпорт `resend`), config (`alerts/config.ts`), CLI `run-wishlist-refresh.ts`. Summary у логах/результаті; Prometheus email-лічильники — follow-up (наразі /metrics scrape_runs-derived).
 - [ ] PR5: `GET /api/notifications/unsubscribe`, prefs endpoints + web-UI.
+
+### Env (W4b)
+
+| Env | Опис | Default |
+|-----|------|---------|
+| `RESEND_API_KEY` | ключ Resend; без нього — ConsoleAlertMailer (нічого не шле) | — |
+| `ALERT_FROM_EMAIL` | From-адреса | `Knyhovo <alerts@knyhovo.com>` |
+| `ALERT_BASE_URL` | база для лінків (книга + unsubscribe) | `https://knyhovo.com` |
+| `ALERT_MAX_EMAILS_PER_DAY` | rate-limit на користувача (rolling 24h) | `20` |
 
 Safety: cooldown 24 год (однакова подія), rate limit 20/добу, retry cap 3 з backoff
 1m/5m/30m через `nextAttemptAt` (5xx/network — retry, 4xx — `SKIPPED`),

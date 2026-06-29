@@ -592,6 +592,63 @@ describe('runWishlistRefresh', () => {
     expect(result.outcomes[0]?.status).toBe(ScrapeRunStatus.SUCCESS);
   });
 
+  it('runs the dispatch port after enqueue and surfaces its summary; default is null', async () => {
+    const prisma = makeFakePrisma();
+    const fetcher: WishlistTargetFetcher = {
+      fetchTarget: vi.fn(async (): Promise<RefreshedListingState> => ({
+        kind: 'fetched',
+        priceAmount: 7000,
+        availability: Availability.IN_STOCK,
+      })),
+    };
+    const dispatch = vi.fn(async () => ({ sent: 2, failed: 0, skipped: 1, deferred: 0 }));
+
+    const result = await runWishlistRefresh({
+      prisma,
+      fetcher,
+      triggeredBy: ScrapeRunTrigger.MANUAL,
+      loadTargets: async () => [yakabooTarget],
+      sleep: noSleep,
+      now,
+      logger: silentLogger,
+      persistRefresh: noopPersist,
+      runAlertNotifications: noopNotify,
+      dispatch,
+    });
+
+    expect(dispatch).toHaveBeenCalledOnce();
+    expect(result.dispatchSummary).toEqual({ sent: 2, failed: 0, skipped: 1, deferred: 0 });
+  });
+
+  it('dispatch failure is non-fatal: dispatchSummary=null, refresh still succeeds', async () => {
+    const prisma = makeFakePrisma();
+    const fetcher: WishlistTargetFetcher = {
+      fetchTarget: vi.fn(async (): Promise<RefreshedListingState> => ({
+        kind: 'fetched',
+        priceAmount: 7000,
+        availability: Availability.IN_STOCK,
+      })),
+    };
+
+    const result = await runWishlistRefresh({
+      prisma,
+      fetcher,
+      triggeredBy: ScrapeRunTrigger.MANUAL,
+      loadTargets: async () => [yakabooTarget],
+      sleep: noSleep,
+      now,
+      logger: silentLogger,
+      persistRefresh: noopPersist,
+      runAlertNotifications: noopNotify,
+      dispatch: async () => {
+        throw new Error('dispatch exploded');
+      },
+    });
+
+    expect(result.dispatchSummary).toBeNull();
+    expect(result.anySucceeded).toBe(true);
+  });
+
   // ---------------------------------------------------------------------------
   // W10.6: concurrency guard integration
   // ---------------------------------------------------------------------------
