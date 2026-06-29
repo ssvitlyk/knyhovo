@@ -1,0 +1,46 @@
+{
+  "data": {
+    "catalogProducts": {
+      "meta": {
+        "total": 4606,
+        "per_page": 5,
+        "current_page": 922,
+        "from": 4606,
+        "to": 4606,
+        "last_page": 922,
+        "has_more_pages": false
+      },
+      "data": [
+        {
+          "id": "5403",
+          "slug": "kobzar-vpershe-zi-shchodennikom-avtora",
+          "name": "Кобзар. Вперше зі щоденником автора",
+          "type": "paper",
+          "available": false,
+          "has_page": true,
+          "cost": 320,
+          "crossed_out_cost": 350,
+          "authors": [
+            {
+              "name": "Тарас",
+              "surname": "Шевченко",
+              "slug": "shevchenko"
+            }
+          ],
+          "image": {
+            "small": [
+              {
+                "format": "jpg",
+                "url": "/storage/products/covers/small/NiflR7JIDrXjlDRLfUALxo5UeYEhOXp9HEtLgPhF.jpg?v=1733326010"
+              },
+              {
+                "format": "webp",
+                "url": "/storage/products/covers/small/NiflR7JIDrXjlDRLfUALxo5UeYEhOXp9HEtLgPhF.jpg.webp?v=1733326010"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}

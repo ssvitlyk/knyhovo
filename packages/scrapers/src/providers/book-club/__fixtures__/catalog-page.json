@@ -1,0 +1,162 @@
+{
+  "data": {
+    "catalogProducts": {
+      "meta": {
+        "total": 4606,
+        "per_page": 5,
+        "current_page": 1,
+        "from": 1,
+        "to": 5,
+        "last_page": 922,
+        "has_more_pages": true
+      },
+      "data": [
+        {
+          "id": "11357",
+          "slug": "bukvar",
+          "name": "Буквар",
+          "type": "paper",
+          "available": true,
+          "has_page": true,
+          "cost": 324,
+          "crossed_out_cost": 360,
+          "authors": [
+            {
+              "name": "Яковенко",
+              "surname": "Л.В.",
+              "slug": "l-v"
+            }
+          ],
+          "image": {
+            "small": [
+              {
+                "format": "jpeg",
+                "url": "/storage/products/covers/small/EdjaK92Dz3iaSHvgqnd4pYQtZl9pgbf3VHLOnYqh.jpeg?v=1781856075"
+              },
+              {
+                "format": "webp",
+                "url": "/storage/products/covers/small/EdjaK92Dz3iaSHvgqnd4pYQtZl9pgbf3VHLOnYqh.jpeg.webp?v=1781856075"
+              }
+            ]
+          }
+        },
+        {
+          "id": "11350",
+          "slug": "u-tsey-chas-nastupnoho-lita",
+          "name": "У цей час наступного літа",
+          "type": "paper",
+          "available": true,
+          "has_page": true,
+          "cost": 469,
+          "crossed_out_cost": null,
+          "authors": [
+            {
+              "name": "Аннабель",
+              "surname": "Монаган",
+              "slug": "monagan"
+            }
+          ],
+          "image": {
+            "small": [
+              {
+                "format": "jpeg",
+                "url": "/storage/products/covers/small/k5Xs0Tg9xpNN963wLQbRd520UCmfefrCaYkRibrG.jpeg?v=1781780602"
+              },
+              {
+                "format": "webp",
+                "url": "/storage/products/covers/small/k5Xs0Tg9xpNN963wLQbRd520UCmfefrCaYkRibrG.jpeg.webp?v=1781780602"
+              }
+            ]
+          }
+        },
+        {
+          "id": "11349",
+          "slug": "zbirka-yiyi-zaliv",
+          "name": "Збірка її жалів",
+          "type": "paper",
+          "available": true,
+          "has_page": true,
+          "cost": 549,
+          "crossed_out_cost": null,
+          "authors": [
+            {
+              "name": "Міккі",
+              "surname": "Браммер",
+              "slug": "brammer"
+            }
+          ],
+          "image": {
+            "small": [
+              {
+                "format": "jpeg",
+                "url": "/storage/products/covers/small/akWR6Z9aGOHrenEgW1pQrhLQUOY4yzsUerf8NSAp.jpeg?v=1781779679"
+              },
+              {
+                "format": "webp",
+                "url": "/storage/products/covers/small/akWR6Z9aGOHrenEgW1pQrhLQUOY4yzsUerf8NSAp.jpeg.webp?v=1781779679"
+              }
+            ]
+          }
+        },
+        {
+          "id": "11348",
+          "slug": "shchaslyvytsia",
+          "name": "Щасливиця",
+          "type": "paper",
+          "available": true,
+          "has_page": true,
+          "cost": 499,
+          "crossed_out_cost": null,
+          "authors": [
+            {
+              "name": "Марісса",
+              "surname": "Степлі",
+              "slug": "stepli"
+            }
+          ],
+          "image": {
+            "small": [
+              {
+                "format": "jpg",
+                "url": "/storage/products/covers/small/RL00t4VDQsK3TtDD8DNna1WN2w6O2FI5SWohx1mm.jpg?v=1781779009"
+              },
+              {
+                "format": "webp",
+                "url": "/storage/products/covers/small/RL00t4VDQsK3TtDD8DNna1WN2w6O2FI5SWohx1mm.jpg.webp?v=1781779009"
+              }
+            ]
+          }
+        },
+        {
+          "id": "11347",
+          "slug": "uliublena-divchyna-knyha-1",
+          "name": "Улюблена дівчина. Книга 1",
+          "type": "paper",
+          "available": true,
+          "has_page": true,
+          "cost": 459,
+          "crossed_out_cost": null,
+          "authors": [
+            {
+              "name": "Моніка",
+              "surname": "Ар’я",
+              "slug": "aria"
+            }
+          ],
+          "image": {
+            "small": [
+              {
+                "format": "jpg",
+                "url": "/storage/products/covers/small/xFVqH7wOTWjoQDAkgvarS3wM7isk9UKlQ0dJCZml.jpg?v=1781776925"
+              },
+              {
+                "format": "webp",
+                "url": "/storage/products/covers/small/xFVqH7wOTWjoQDAkgvarS3wM7isk9UKlQ0dJCZml.jpg.webp?v=1781776925"
+              }
+            ]
+          }
+        }
+      ]
+    }
+  }
+}
