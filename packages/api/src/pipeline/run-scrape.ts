@@ -5,6 +5,7 @@ import { Prisma } from '@prisma/client';
 import type { RunScrapeOptions, PipelineResult, ProviderRunResult, Logger } from './types.js';
 import { createMetrics } from './metrics.js';
 import { persistListing, markUnavailable } from './persist-listing.js';
+import { bindContext } from '../logging/logger.js';
 
 export async function runScrapePipeline(opts: RunScrapeOptions): Promise<PipelineResult> {
   const logger: Logger = opts.logger ?? {
@@ -15,7 +16,7 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
   const results: ProviderRunResult[] = [];
 
   for (const provider of opts.providers) {
-    logger.info(`Scraping ${provider.name}...`);
+    bindContext(logger, { phase: 'scrape' }).info(`Scraping ${provider.name}...`);
     const metrics = createMetrics();
 
     let scrapeResult: ScraperResult;
@@ -93,7 +94,7 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
         }
       } catch (err) {
         metrics.errors++;
-        logger.error(
+        bindContext(logger, { phase: 'persist' }).error(
           `Listing failed (${listing.url}): ${err instanceof Error ? err.message : String(err)}`,
         );
       }

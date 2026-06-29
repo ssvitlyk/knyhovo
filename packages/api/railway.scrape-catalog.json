@@ -1,0 +1,8 @@
+{
+  "$schema": "https://railway.com/railway.schema.json",
+  "deploy": {
+    "startCommand": "pnpm --filter @knyhovo/api scrape",
+    "cronSchedule": "0 2 * * *",
+    "restartPolicyType": "NEVER"
+  }
+}

@@ -22,9 +22,24 @@ export interface ScrapeMetrics {
   errors: number;
 }
 
+/**
+ * Structured-log binding context. Carried as JSON fields by the pino-backed
+ * logger so production logs can be correlated by run/provider/phase.
+ */
+export interface LogContext {
+  runId?: string;
+  provider?: string;
+  phase?: string;
+}
+
 export interface Logger {
   info(msg: string): void;
   error(msg: string): void;
+  /**
+   * Return a logger bound to additional context fields. Optional so plain
+   * `{ info, error }` test mocks remain valid; use `bindContext` to call it safely.
+   */
+  child?(bindings: LogContext): Logger;
 }
 
 export interface ProviderRunResult {
