@@ -30,7 +30,6 @@ export function matchOrCreate(
   const listingBundle = isBundle(listing.title);
 
   let seenConflict: ConflictReason | null = null;
-  const isbnBlockedIds = new Set<CanonicalBookId>();
 
   function recordConflict(reason: ConflictReason): void {
     if (
@@ -41,29 +40,27 @@ export function matchOrCreate(
     }
   }
 
-  // ── Step 1: ISBN exact match + ISBN conflict detection ───────────────
+  // ── Step 1: ISBN exact match (authoritative) ─────────────────────────
+  // A shared ISBN is the strongest signal of the same edition — it wins over
+  // everything else, including title/volume differences in formatting.
   if (normIsbn !== null) {
     for (const candidate of candidates) {
       const candIsbn = normalizeIsbn(candidate.isbn);
-      if (candIsbn === null) continue;
-
-      if (candIsbn === normIsbn) {
+      if (candIsbn !== null && candIsbn === normIsbn) {
         return { type: 'matched', canonicalBookId: candidate.id };
       }
-
-      // Both have ISBNs but they differ — possible bad data or different editions
-      recordConflict('ISBN_CONFLICT');
-      isbnBlockedIds.add(candidate.id);
     }
   }
 
-  // ── Steps 2–3: Exact key + Fuzzy (skip ISBN-conflicted candidates) ───
+  // ── Steps 2–3: Exact key + Fuzzy ─────────────────────────────────────
+  // ISBN_CONFLICT is now scoped HERE: it is only raised against a candidate
+  // whose title is already similar enough to plausibly be the same book. A
+  // genuinely new book with a unique ISBN and no title-similar candidate must
+  // fall through to `created` rather than being dropped as a conflict.
   let bestCandidate: CanonicalBookId | null = null;
   let bestScore = 0;
 
   for (const candidate of candidates) {
-    if (isbnBlockedIds.has(candidate.id)) continue;
-
     const candVolume = extractVolumeNumber(candidate.title);
     const candBundle = isBundle(candidate.title);
 
@@ -82,15 +79,31 @@ export function matchOrCreate(
     const candNormTitle = normalizeTitle(candidate.title);
     const candNormAuthor = normalizeAuthor(candidate.author);
 
-    // ── Step 2: Exact normalized key match ───────────────────────────
-    if (normTitle === candNormTitle && normAuthor === candNormAuthor) {
+    // Title similarity gate — only title-similar candidates are considered
+    // either a match, an ISBN conflict, or a fuzzy candidate.
+    const exactKey = normTitle === candNormTitle && normAuthor === candNormAuthor;
+    const tSim = exactKey ? 1 : titleSimilarity(normTitle, candNormTitle);
+    if (tSim < TITLE_THRESHOLD) continue;
+
+    // ISBN conflict — scoped to *near-identical* titles only. When two books
+    // share a virtually identical title (tSim ≥ TITLE_NO_AUTHOR_THRESHOLD) yet
+    // carry differing ISBNs, they are conflicting editions / bad data, not a new
+    // book. Step 1 already returned on an exact ISBN match, so any candidate
+    // ISBN seen here necessarily differs. Looser title overlap (0.85–0.92) is
+    // left to the fuzzy path so genuinely different books with similar-looking
+    // titles are still created rather than dropped.
+    const candIsbn = normalizeIsbn(candidate.isbn);
+    if (normIsbn !== null && candIsbn !== null && tSim >= TITLE_NO_AUTHOR_THRESHOLD) {
+      recordConflict('ISBN_CONFLICT');
+      continue;
+    }
+
+    // ── Step 2: Exact normalized key match (no ISBN conflict) ────────
+    if (exactKey) {
       return { type: 'matched', canonicalBookId: candidate.id };
     }
 
     // ── Step 3: Fuzzy ────────────────────────────────────────────────
-    const tSim = titleSimilarity(normTitle, candNormTitle);
-    if (tSim < TITLE_THRESHOLD) continue;
-
     let aSim: number;
     const hasListingAuthor = listing.author !== null && listing.author.trim().length > 0;
     const hasCandAuthor = candidate.author.trim().length > 0;

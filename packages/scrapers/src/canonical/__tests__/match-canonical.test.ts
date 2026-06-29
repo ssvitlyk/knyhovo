@@ -335,9 +335,9 @@ describe('missing author with high title similarity', () => {
   });
 });
 
-// ── Conflict beats create when no match ───────────────────────────────
-describe('conflict precedence over created', () => {
-  it('returns conflict (not created) when a hard conflict was detected even with no match', () => {
+// ── Unrelated book with a unique ISBN must be created ──────────────────
+describe('unique ISBN, no title-similar candidate → created', () => {
+  it('returns created when a different ISBN belongs to a completely different book', () => {
     const listing = makeListing({
       isbn: '9786177933105',
       title: 'Різна Книга',
@@ -349,10 +349,140 @@ describe('conflict precedence over created', () => {
       author: 'Інший Автор',
     });
     const result = matchOrCreate(listing, [candidate]);
-    // ISBN conflict is detected even though titles/authors differ completely
+    // ISBN_CONFLICT must NOT fire for unrelated titles — this is a new book.
+    expect(result.type).toBe('created');
+  });
+
+  it('still raises ISBN_CONFLICT (over VOLUME_MISMATCH) when a title-similar candidate exists', () => {
+    // Conflict precedence is preserved when there genuinely IS a conflict:
+    // a title-similar candidate with a differing ISBN outranks a volume mismatch.
+    const listing = makeListing({
+      isbn: '9786177933105',
+      title: 'Серія. Книга 1',
+      author: 'Автор',
+    });
+    const isbnCandidate = makeCanonical({
+      id: makeId('book-isbn'),
+      isbn: '9780596008925',
+      title: 'Серія. Книга 1',
+      author: 'Автор',
+    });
+    const volCandidate = makeCanonical({
+      id: makeId('book-vol'),
+      isbn: null,
+      title: 'Серія. Книга 2',
+      author: 'Автор',
+    });
+    const result = matchOrCreate(listing, [isbnCandidate, volCandidate]);
     expect(result.type).toBe('conflict');
     if (result.type === 'conflict') {
       expect(result.reason).toBe('ISBN_CONFLICT');
+    }
+  });
+});
+
+// ── Regression: ISBN_CONFLICT must not block catalog growth ────────────
+// These guard the bug where ISBN_CONFLICT fired against ANY differing-ISBN
+// candidate before title gating, dropping every genuinely new book after the
+// first one (283 priced listings → 1 canonical in real scrapes).
+describe('regression: catalog growth across distinct books', () => {
+  it('creates three canonicals for three completely different books with unique ISBNs', () => {
+    // Replays the pipeline: each `created` result appends a new canonical to
+    // the in-memory candidate set, exactly like runScrapePipeline does.
+    const listings: RawProviderListing[] = [
+      makeListing({ title: 'Кобзар', author: 'Тарас Шевченко', isbn: '9786177933105' }),
+      makeListing({ title: '1984', author: 'Джордж Орвелл', isbn: '9786177820267' }),
+      makeListing({ title: 'Тигролови', author: 'Іван Багряний', isbn: '9789669821164' }),
+    ];
+
+    const canonicals: CanonicalBook[] = [];
+    let createdCount = 0;
+
+    for (const listing of listings) {
+      const result = matchOrCreate(listing, canonicals);
+      expect(result.type).toBe('created');
+      if (result.type === 'created') {
+        createdCount += 1;
+        canonicals.push(
+          makeCanonical({
+            id: makeId(`book-${createdCount}`),
+            title: listing.title,
+            author: listing.author ?? '',
+            isbn: listing.isbn,
+          }),
+        );
+      }
+    }
+
+    expect(createdCount).toBe(3);
+    expect(canonicals).toHaveLength(3);
+  });
+
+  it('matches the same book across two providers into a single canonical (by ISBN)', () => {
+    // Provider A scrapes first → creates canonical.
+    const fromYakaboo = makeListing({
+      provider: 'yakaboo',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: '9786177933105',
+    });
+    const first = matchOrCreate(fromYakaboo, []);
+    expect(first.type).toBe('created');
+
+    const canonical = makeCanonical({
+      id: makeId('book-kobzar'),
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: '9786177933105',
+    });
+
+    // Provider B scrapes the same ISBN later → must match, not create.
+    const fromBookClub = makeListing({
+      provider: 'book-club',
+      title: 'Кобзар (Тарас Шевченко)',
+      author: 'Шевченко Тарас',
+      isbn: '9786177933105',
+    });
+    const second = matchOrCreate(fromBookClub, [canonical]);
+    expect(second.type).toBe('matched');
+    if (second.type === 'matched') {
+      expect(second.canonicalBookId).toBe(canonical.id);
+    }
+  });
+
+  it('raises ISBN_CONFLICT for the same title with a different ISBN (different edition)', () => {
+    const listing = makeListing({
+      title: 'Гаррі Поттер і Філософський Камінь',
+      author: 'Джоан Роулінг',
+      isbn: '9786177933105',
+    });
+    const candidate = makeCanonical({
+      title: 'Гаррі Поттер і Філософський Камінь',
+      author: 'Джоан Роулінг',
+      isbn: '9780596008925',
+    });
+    const result = matchOrCreate(listing, [candidate]);
+    expect(result.type).toBe('conflict');
+    if (result.type === 'conflict') {
+      expect(result.reason).toBe('ISBN_CONFLICT');
+    }
+  });
+
+  it('matches on identical ISBN despite different title formatting (MATCH_BY_ISBN wins)', () => {
+    const listing = makeListing({
+      title: 'Гаррі Поттер і Філософський Камінь (суперобкладинка)',
+      author: 'Дж. К. Роулінг',
+      isbn: '9786177933105',
+    });
+    const candidate = makeCanonical({
+      title: 'Гаррі Поттер і Філософський Камінь',
+      author: 'Джоан Роулінг',
+      isbn: '9786177933105',
+    });
+    const result = matchOrCreate(listing, [candidate]);
+    expect(result.type).toBe('matched');
+    if (result.type === 'matched') {
+      expect(result.canonicalBookId).toBe(candidate.id);
     }
   });
 });
