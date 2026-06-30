@@ -188,3 +188,13 @@ export interface BookPriceHistoryDto {
   readonly change: PriceHistoryChangeDto | null;
   readonly points: readonly PriceHistoryPointDto[];
 }
+
+/**
+ * Frontend mirror of the PR5b notification preferences contract
+ * (`GET /api/notifications/preferences`, `PATCH /api/notifications/preferences`).
+ */
+export interface NotificationPreferencesDto {
+  readonly priceDropEnabled: boolean;
+  readonly backInStockEnabled: boolean;
+  readonly unsubscribed: boolean;
+}
