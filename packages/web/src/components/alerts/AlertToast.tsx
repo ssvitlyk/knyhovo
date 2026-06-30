@@ -16,6 +16,8 @@ export interface AlertToastProps {
   onDismiss: () => void;
   /** Duration in milliseconds before auto-dismiss. Default: 4000. */
   durationMs?: number;
+  /** Optional extra class applied to the inner `.al-toast` div. */
+  className?: string;
 }
 
 /**
@@ -27,6 +29,7 @@ export function AlertToast({
   children,
   onDismiss,
   durationMs = 4000,
+  className = '',
 }: AlertToastProps): React.JSX.Element | null {
   // false during SSR, true on the client (no setState-in-effect mount flag).
   const mounted = useMounted();
@@ -64,7 +67,7 @@ export function AlertToast({
   return createPortal(
     <div className="al-toast-wrap" role="status">
       <div
-        className="al-toast"
+        className={['al-toast', className].filter(Boolean).join(' ')}
         onTouchStart={handleTouchStart}
         onTouchEnd={handleTouchEnd}
       >
