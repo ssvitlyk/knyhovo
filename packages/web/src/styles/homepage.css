@@ -1,0 +1,539 @@
+/* Knyhovo web — Homepage v1.0 (Concept A · Oracle Search).
+   Ported 1:1 from the frozen `design-import/incoming/Homepage v1.0.html` — the
+   homepage-owned selectors only. Site chrome (.site-header/.site-footer/.page)
+   and the review-only .kn-usage-note are intentionally NOT ported: the app owns
+   that frozen chrome (search-results.css). New styles use DS tokens only. */
+
+/* ---------- Hero — approved 50/50 layout ----------
+   Hero fills ~one viewport (header + hero above the fold; shelves below). The
+   --header-h / --hero-h fallbacks below keep it correct with no JS measurement. */
+.hero {
+  display: grid;
+  grid-template-columns: 70% 30%;
+  align-items: center;
+  gap: var(--space-10);
+  min-height: calc(100svh - var(--header-h, 72px));
+  padding: var(--space-8) 0 var(--space-10);
+}
+.hero__text {
+  display: flex;
+  flex-direction: column;
+  max-width: 100%;
+  /* Allow the grid/flex column to shrink below its content's intrinsic min
+     width; without this the search field's min-content blows the stacked hero
+     wider than the viewport at ≤375px and clips the «Знайти» button. */
+  min-width: 0;
+}
+.hero .kn-eyebrow {
+  font-size: 14px;
+  letter-spacing: 2px;
+  font-weight: 700;
+  text-transform: uppercase;
+  margin: 0 0 28px;
+}
+.hero__title {
+  font-size: 88px;
+  line-height: 1.05;
+  font-weight: 700;
+  letter-spacing: var(--ls-tight);
+  margin: 0 0 32px;
+}
+.hero__title em {
+  font-size: 84px;
+  font-style: italic;
+}
+.hero__lead {
+  font-size: 26px;
+  line-height: 1.6;
+  font-weight: 400;
+  color: var(--text-body);
+  max-width: 760px;
+  margin: 0 0 40px;
+}
+
+/* Search bar — the primary CTA. */
+.hero__text .kn-field {
+  width: 880px;
+  max-width: 100%;
+  min-height: 80px;
+  border-radius: 18px;
+  box-shadow: var(--shadow-sm);
+  padding-left: 28px;
+  margin: 0 0 32px;
+}
+.hero__text .kn-field input {
+  font-size: 20px;
+}
+.hero__text .kn-field .kn-btn {
+  width: 164px;
+  min-width: 164px;
+  height: 64px;
+  border-radius: 14px;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+/* Stats row — directly below search. */
+.hero__stats {
+  display: flex;
+  gap: 48px;
+  margin: 0 0 28px;
+}
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.stat__num {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: 32px;
+  color: var(--text);
+}
+.stat__label {
+  font-size: 16px;
+  opacity: 0.7;
+  color: var(--text-muted);
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+/* Popular tags — the last element above the fold. */
+.hero__popular {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  flex-wrap: wrap;
+  margin: 0;
+}
+.hero__popular-label {
+  font-size: var(--fs-body);
+  color: var(--text-muted);
+  margin-right: var(--space-1);
+}
+.hero__popular .kn-chip {
+  height: 48px;
+  font-size: 17px;
+  font-weight: 500;
+  padding: 0 22px;
+}
+
+/* Mascot — bigger and looming over the search: anchored right, bleeding off the
+   right edge so Книговик leans over the search bar without covering the headline. */
+.hero__art {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  align-self: stretch;
+  overflow: visible;
+}
+.hero__mascot {
+  /* Tied to the hero height fallback (760px ≈ 900px screen − header) so the full
+     mascot→translate→margin-right trio stays in ratio. −20 %: max 384/520 px. */
+  --msc-h: clamp(160px, calc(var(--hero-h, 760px) * 0.47), 520px);
+  display: block;
+  height: var(--msc-h);
+  max-width: none;
+  width: auto;
+  object-fit: contain;
+  transform: translate(0, calc(var(--msc-h) * -0.323));
+  margin-right: calc(var(--msc-h) * -0.1875);
+  -webkit-mask-image: radial-gradient(ellipse 72% 60% at 50% 46%, black 52%, transparent 82%);
+  mask-image: radial-gradient(ellipse 72% 60% at 50% 46%, black 52%, transparent 82%);
+}
+/* Theme-swap (mirrors the .site-logo--light/--dark recipe). */
+.hero__mascot--dark {
+  display: none;
+}
+[data-theme='dark'] .hero__mascot--light {
+  display: none;
+}
+[data-theme='dark'] .hero__mascot--dark {
+  display: block;
+}
+
+/* ============================================================
+   Homepage discovery shelves — composes DS tokens only; reuses the frozen
+   BookCard (.kn-book). DS component untouched — page-level overrides only.
+   ============================================================ */
+.hp-shelf {
+  padding: var(--space-12) 0 0;
+}
+/* Tighten the hero → Популярне зараз gap so books peek above the fold. */
+.hp-shelf:first-of-type {
+  padding-top: var(--space-4);
+}
+.hp-shelf__head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+.hp-shelf__heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.hp-shelf__heading .kn-eyebrow {
+  margin: 0;
+}
+.hp-shelf__title {
+  font-size: 48px;
+  font-weight: 700;
+  margin: 0;
+}
+.hp-shelf__lead {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  margin: 0;
+  max-width: 52ch;
+}
+.hp-shelf__titlerow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.hp-shelf__chev,
+.hp-recommends__chev {
+  display: none;
+}
+
+/* Subtle full-bleed zone tint separating adjacent shelves without hard lines. */
+.hp-shelf--tint {
+  position: relative;
+  margin-top: var(--space-10);
+  padding: var(--space-10) 0;
+  background: var(--surface-accent);
+  box-shadow: 0 0 0 100vmax var(--surface-accent);
+  clip-path: inset(0 -100vmax);
+}
+
+/* ---------- Horizontal scroll rail — all shelves ----------
+   Cover-first vertical cards in a row that scrolls right to reveal more (no cap).
+   Page-level override on the frozen BookCard (.kn-book) only. */
+.hp-rail {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  gap: var(--space-5);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scroll-snap-type: x proximity;
+  padding-bottom: var(--space-3);
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in oklab, var(--accent) 40%, transparent) transparent;
+}
+.hp-rail::-webkit-scrollbar {
+  height: 8px;
+}
+.hp-rail::-webkit-scrollbar-track {
+  background: transparent;
+}
+.hp-rail::-webkit-scrollbar-thumb {
+  background: color-mix(in oklab, var(--accent) 35%, transparent);
+  border-radius: 999px;
+}
+.hp-rail::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklab, var(--accent) 55%, transparent);
+}
+.hp-rail .kn-book {
+  position: relative;
+  flex: 0 0 210px;
+  scroll-snap-align: start;
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--space-3);
+  padding: var(--space-3);
+}
+/* Cover dominates the card — real 2:3 book proportion; sized 93% (−7%). */
+.hp-rail .kn-book__cover {
+  width: 93%;
+  height: auto;
+  aspect-ratio: 2 / 3;
+  align-self: center;
+}
+.hp-rail .kn-book__title {
+  font-size: var(--fs-title);
+}
+.hp-rail .kn-badge {
+  white-space: nowrap;
+}
+/* Badge lifted onto the cover's top-left corner (targets the badge wrapper —
+   the first div inside the BookCard text column). */
+.hp-rail .kn-book > div > div:first-child {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  z-index: 2;
+  margin: 0;
+  background: var(--surface);
+  padding: var(--space-1);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+}
+
+/* ---------- Книговик радить — editorial recommendation shelf ----------
+   Set apart by the approved Wishlist visual language: a quiet premium panel with
+   a subtle green hairline. Cards reuse the SAME .hp-rail .kn-book footprint. */
+.hp-recommends {
+  position: relative;
+  margin-top: var(--space-6);
+  margin-bottom: var(--space-12);
+}
+.hp-recommends--framed {
+  --rec-border: color-mix(in oklab, var(--brand-green) 22%, var(--border));
+  padding: var(--space-6);
+  background: linear-gradient(90deg, #eaf6d8 0%, #f3f8ea 35%, #f8f8f2 100%);
+  border: 1px solid var(--rec-border);
+  border-radius: var(--radius-lg);
+}
+[data-theme='dark'] .hp-recommends--framed {
+  --rec-border: color-mix(in oklab, var(--brand-green) 32%, var(--border));
+  background:
+    radial-gradient(circle at left center, rgba(96, 138, 55, 0.25), transparent 45%),
+    color-mix(in oklab, var(--brand-green) 15%, var(--surface));
+}
+.hp-recommends__head {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: var(--space-6);
+  margin-bottom: var(--space-6);
+}
+.hp-recommends__heading {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  min-width: 0;
+}
+.hp-recommends__titlerow {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.hp-recommends__title {
+  font-size: var(--fs-h2);
+  margin: 0;
+}
+.hp-recommends__all {
+  flex: none;
+  margin-top: var(--space-1);
+}
+/* Knyhovyk sits inline next to the section title (avatarAtention "advice" pose). */
+.hp-recommends__mascot {
+  flex: none;
+  height: 71px;
+  width: auto;
+  object-fit: contain;
+  margin: calc(-1 * var(--space-2)) 0;
+  transform: translateY(-5px);
+}
+
+/* ---------- Responsive ----------
+   ≤900px: hero stacks (mascot above); <768px: single-column vertical rails,
+   full-width search, 44px touch targets. Site chrome responsive rules live in
+   the app's search-results.css and are not duplicated here. */
+@media (max-width: 900px) {
+  .hero {
+    grid-template-columns: 1fr;
+    min-height: 0;
+    max-height: none;
+    gap: var(--space-4);
+    padding: var(--space-6) 0 var(--space-8);
+    overflow: hidden;
+  }
+  .hero__art {
+    order: -1;
+    justify-content: center;
+  }
+  .hero__mascot {
+    height: 240px;
+    transform: none;
+    margin-right: 0;
+    max-width: 100%;
+  }
+  .hero__title {
+    font-size: clamp(2.5rem, 7vw, 56px);
+  }
+  .hero__title em {
+    font-size: clamp(2.25rem, 6.5vw, 52px);
+  }
+  .hero__text .kn-field {
+    width: 100%;
+  }
+}
+@media (max-width: 767px) {
+  /* ---- Hero ---- */
+  .hero {
+    gap: var(--space-3);
+    padding: var(--space-4) 0 var(--space-6);
+  }
+  .hero__mascot {
+    height: clamp(100px, 40vw, 180px);
+    max-width: 100%;
+  }
+  .hero__title {
+    font-size: clamp(2rem, 8.5vw, 2.5rem);
+    line-height: 1.08;
+  }
+  .hero__title em {
+    font-size: clamp(1.85rem, 7.8vw, 2.25rem);
+  }
+  .hero__lead {
+    font-size: 16px;
+    margin: 0 0 20px;
+  }
+  .hero .kn-eyebrow {
+    font-size: 10px;
+    letter-spacing: 0.9px;
+    margin: 0 0 16px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 100%;
+  }
+  .hero__stats {
+    gap: var(--space-8);
+    margin: 0 0 20px;
+  }
+  .stat__num {
+    font-size: 24px;
+  }
+  .stat__label {
+    font-size: 13px;
+  }
+  .hero__popular .kn-chip {
+    height: 40px;
+    font-size: 15px;
+    padding: 0 16px;
+  }
+  .hero__text .kn-field {
+    min-height: 60px;
+    border-radius: 14px;
+    padding-left: 16px;
+  }
+  .hero__text .kn-field input {
+    font-size: 16px;
+  }
+  .hero__text .kn-field .kn-btn {
+    height: 48px;
+    width: 110px;
+    min-width: 110px;
+    font-size: 15px;
+    border-radius: 10px;
+  }
+
+  /* ---- Shelf titles ---- */
+  .hp-shelf__title {
+    font-size: 28px;
+  }
+
+  /* ---- BookCard rail items ---- */
+  .hp-rail .kn-book__title {
+    font-size: var(--fs-sm);
+  }
+  .hp-rail .kn-book__price {
+    font-size: 1.25rem;
+  }
+  .hp-rail .kn-book {
+    padding: var(--space-2);
+  }
+
+  /* KSD-style see-all: a chevron on the section title row replaces the desktop
+     ghost text button on mobile. */
+  .hp-shelf__head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-2);
+  }
+  .hp-shelf__titlerow {
+    justify-content: space-between;
+    gap: var(--space-3);
+  }
+  .hp-shelf__cta {
+    display: none;
+  }
+  .hp-shelf__chev {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 44px;
+    height: 44px;
+    margin: calc(-1 * var(--space-2)) calc(-1 * var(--space-2)) calc(-1 * var(--space-2)) 0;
+    color: var(--accent);
+    border-radius: var(--radius-pill);
+    transition: background var(--dur-fast) var(--ease-out);
+  }
+  .hp-shelf__chev:active {
+    background: var(--surface-accent);
+  }
+
+  /* Rails: tighter gap + smaller cards. */
+  .hp-shelf .hp-rail {
+    gap: var(--space-4);
+  }
+  .hp-shelf .hp-rail .kn-book {
+    flex: 0 0 150px;
+  }
+  .hp-recommends .hp-rail {
+    gap: var(--space-4);
+  }
+  .hp-recommends .hp-rail .kn-book {
+    flex: 0 0 150px;
+  }
+
+  /* Mobile spacing rhythm between sections. */
+  .hp-shelf {
+    padding-top: var(--space-10);
+  }
+  .hp-shelf:first-of-type {
+    padding-top: var(--space-5);
+  }
+
+  .hp-recommends {
+    margin-top: var(--space-8);
+    margin-bottom: var(--space-8);
+  }
+  .hp-recommends--framed {
+    padding: var(--space-5);
+  }
+  .hp-recommends__head {
+    flex-direction: column;
+    align-items: stretch;
+    gap: var(--space-3);
+    padding-right: 0;
+  }
+  .hp-recommends__titlerow {
+    justify-content: flex-start;
+    width: 100%;
+    gap: var(--space-3);
+  }
+  .hp-recommends__mascot {
+    position: static;
+    height: 46px;
+    flex: none;
+  }
+  .hp-recommends__chev {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex: none;
+    width: 44px;
+    height: 44px;
+    margin-left: auto;
+    margin-right: calc(-1 * var(--space-2));
+    color: var(--accent);
+    border-radius: var(--radius-pill);
+    transition: background var(--dur-fast) var(--ease-out);
+  }
+  .hp-recommends__chev:active {
+    background: color-mix(in oklab, var(--accent) 14%, transparent);
+  }
+  .hp-recommends__all {
+    display: none;
+  }
+}

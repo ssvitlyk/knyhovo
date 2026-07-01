@@ -1,3 +1,4 @@
+import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { ThemeToggle } from '@/components/ds/ThemeToggle';
 import { HeaderAuthActions, type HeaderUser } from '@/components/auth/HeaderAuthActions';
@@ -22,14 +23,14 @@ export async function SiteHeader(): Promise<React.JSX.Element> {
 
   return (
     <header className="site-header">
-      <a href="/search" aria-label="Knyhovo">
+      <Link href="/" aria-label="Knyhovo">
         <img className="site-logo site-logo--light" src="/logo/knyhovo-logo-light.png" alt="Knyhovo" />
         <img className="site-logo site-logo--dark" src="/logo/knyhovo-logo-dark.png" alt="Knyhovo" />
-      </a>
+      </Link>
       <nav className="site-nav">
-        <a href="#" className="nav-link">
+        <Link href="/" className="nav-link">
           Головна
-        </a>
+        </Link>
         <a href="/search" className="nav-link nav-link--active">
           Каталог
         </a>
