@@ -122,6 +122,89 @@ export async function invalidateAllLoginCodes(
   });
 }
 
+// ── MagicLinkToken ─────────────────────────────────────────────────────────────
+
+/**
+ * Count magic-link tokens created for `userId` since `since`.
+ * Counts ALL rows — including consumed/expired — to enforce the rate limit.
+ */
+export async function countMagicLinkTokensInWindow(
+  prisma: PrismaClient,
+  userId: string,
+  since: Date,
+): Promise<number> {
+  return prisma.magicLinkToken.count({
+    where: {
+      userId,
+      createdAt: { gte: since },
+    },
+  });
+}
+
+/** Insert a new magic-link token record. */
+export async function createMagicLinkToken(
+  prisma: PrismaClient,
+  data: { userId: string; tokenHash: string; returnTo: string | null; expiresAt: Date },
+): Promise<void> {
+  await prisma.magicLinkToken.create({
+    data: {
+      userId: data.userId,
+      tokenHash: data.tokenHash,
+      returnTo: data.returnTo,
+      expiresAt: data.expiresAt,
+    },
+  });
+}
+
+/**
+ * Find a magic-link token by its hash, with the associated user.
+ * Returns null if no row matches. Expiry/consumed checks live in the service.
+ */
+export async function findMagicLinkTokenByHash(
+  prisma: PrismaClient,
+  tokenHash: string,
+): Promise<
+  | {
+      id: string;
+      userId: string;
+      returnTo: string | null;
+      expiresAt: Date;
+      consumedAt: Date | null;
+      user: { id: string; email: string; createdAt: Date };
+    }
+  | null
+> {
+  return prisma.magicLinkToken.findFirst({
+    where: { tokenHash },
+    include: { user: true },
+  });
+}
+
+/** Mark a magic-link token as consumed by setting `consumedAt`. */
+export async function consumeMagicLinkToken(
+  prisma: PrismaClient,
+  id: string,
+  now: Date,
+): Promise<void> {
+  await prisma.magicLinkToken.update({
+    where: { id },
+    data: { consumedAt: now },
+  });
+}
+
+/** Consume (invalidate) all unconsumed magic-link tokens for a user except the given id. */
+export async function invalidateOtherMagicLinkTokens(
+  prisma: PrismaClient,
+  userId: string,
+  exceptId: string,
+  now: Date,
+): Promise<void> {
+  await prisma.magicLinkToken.updateMany({
+    where: { userId, consumedAt: null, id: { not: exceptId } },
+    data: { consumedAt: now },
+  });
+}
+
 // ── Session ──────────────────────────────────────────────────────────────────
 
 /** Insert a new session record. */
