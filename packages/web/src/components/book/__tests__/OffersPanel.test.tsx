@@ -33,7 +33,7 @@ const UNKNOWN_OFFER: BookProviderDto = {
 
 describe('OffersPanel', () => {
   it('with 2 in-stock providers shows the best price block, eyebrow, and both CTAs', () => {
-    render(
+    const { container } = render(
       <OffersPanel
         providers={[BOOKCLUB_OFFER, YAKABOO_OFFER]}
         lowestPrice={BOOKCLUB_OFFER.price}
@@ -49,12 +49,23 @@ describe('OffersPanel', () => {
     expect(screen.getByText('ЦІНИ У 2 КНИГАРНЯХ')).toBeInTheDocument();
 
     // Best price formatted
-    expect(screen.getByText('299 ₴')).toBeInTheDocument();
+    expect(screen.getAllByText('299 ₴').length).toBeGreaterThanOrEqual(1);
 
-    // Primary CTA with correct href
-    const primaryLink = screen.getByRole('link', { name: 'Перейти до книгарні' });
-    expect(primaryLink).toBeInTheDocument();
-    expect(primaryLink.getAttribute('href')).toBe('https://book-club.ua/book/1');
+    // Primary CTA (best-price block) + mobile sticky-bar CTA share the same label
+    // and href (both point at the best offer). Expect two «Перейти до книгарні».
+    const primaryLinks = screen.getAllByRole('link', { name: 'Перейти до книгарні' });
+    expect(primaryLinks).toHaveLength(2);
+    for (const link of primaryLinks) {
+      expect(link.getAttribute('href')).toBe('https://book-club.ua/book/1');
+    }
+
+    // The best-price block carries the id the sticky bar observes.
+    expect(container.querySelector('#bd-best-block')).not.toBeNull();
+
+    // Mobile sticky purchase bar is rendered (CSS hides it above the breakpoint).
+    expect(
+      screen.getByRole('region', { name: 'Купити книгу — найкраща ціна' }),
+    ).toBeInTheDocument();
 
     // Secondary row CTA with correct href
     const secondaryLink = screen.getByRole('link', { name: 'Перейти' });
@@ -106,5 +117,10 @@ describe('OffersPanel', () => {
 
     // No eyebrow with "ЦІНИ У"
     expect(screen.queryByText(/ЦІНИ У/)).not.toBeInTheDocument();
+
+    // No sticky purchase bar in the unavailable state.
+    expect(
+      screen.queryByRole('region', { name: 'Купити книгу — найкраща ціна' }),
+    ).not.toBeInTheDocument();
   });
 });
