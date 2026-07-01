@@ -1,5 +1,6 @@
 import { Badge } from '@/components/ds/Badge';
 import { WishlistToggle } from './WishlistToggle';
+import { StickyCta } from './StickyCta';
 import { formatMoney, providerDisplayName } from '@/lib/format';
 import { getBestOffer, getCheapestOffer, getOfferState, sortOffers } from '@/lib/offers';
 import type { Availability } from '@knyhovo/shared';
@@ -140,7 +141,7 @@ export function OffersPanel({
       <p className="bd-eyebrow" style={{ marginBottom: 0 }}>
         {`ЦІНИ У ${offersCount} КНИГАРНЯХ`}
       </p>
-      <div className="bdc-best">
+      <div className="bdc-best" id="bd-best-block">
         <Badge tone="green">{bestBadge}</Badge>
         <div className="bdc-best__pricerow">
           <span className="bdc-best__price">{formatMoney(best.price)}</span>
@@ -236,6 +237,7 @@ export function OffersPanel({
         })}
       </div>
       <p className="bd-updated">{updatedNote}</p>
+      <StickyCta price={best.price} store={providerDisplayName(best.provider)} href={best.url} />
     </aside>
   );
 }

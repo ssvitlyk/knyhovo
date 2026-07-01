@@ -58,6 +58,9 @@
 .bd-hint svg { flex: none; color: var(--icon-muted); margin-top: 1px; }
 
 .bdc-grid { display: grid; grid-template-columns: minmax(0, 1fr) 460px; gap: var(--space-12); align-items: start; }
+/* Desktop/tablet: the decision panel follows the viewport as the discovery
+   column scrolls (documented «sticky right-column card» intent). */
+@media (min-width: 768px) { .bdc-panel { position: sticky; top: var(--space-6); } }
 .bdc-idrow { display: flex; gap: var(--space-8); margin-bottom: var(--space-8); }
 .bdc-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); padding: var(--space-6); }
 .bdc-best { background: var(--accent-weak); border-radius: var(--radius-md); padding: var(--space-5); margin: var(--space-4) 0 var(--space-2); }
@@ -79,6 +82,12 @@
 .bdc-row__old { font-size: var(--fs-xs); color: var(--text-muted); text-decoration: line-through; white-space: nowrap; }
 .bdc-row--out { opacity: 0.66; }
 .bdc-row--out .bdc-row__price { color: var(--text-faint); }
+
+/* Mobile sticky purchase bar (frozen Book Details v1.1). Hidden by default;
+   shown only under the <768px breakpoint once the best-price block scrolls out
+   of view (StickyCta toggles data-visible). Opaque surface + hairline top, no
+   blur/transparency. */
+.bdm-sticky { display: none; }
 
 .bd-unavail { display: flex; flex-direction: column; align-items: center; text-align: center; padding: var(--space-4) var(--space-4) var(--space-5); }
 .bd-unavail__mascot { height: 230px; object-fit: contain; margin-bottom: var(--space-4); -webkit-mask-image: radial-gradient(ellipse 68% 66% at 50% 52%, black 58%, transparent 97%); mask-image: radial-gradient(ellipse 68% 66% at 50% 52%, black 58%, transparent 97%); }
@@ -108,4 +117,43 @@
   .bdc-grid { grid-template-columns: 1fr; gap: var(--space-8); }
   .bd-meta { grid-template-columns: 1fr; }
   .bd-section { margin-top: var(--space-8); }
+
+  /* Two-line offer rows: store + availability on top, price + CTA below —
+     roomier tap targets on narrow screens. Markup unchanged. */
+  .bdc-row {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    grid-template-areas:
+      "store avail"
+      "price cta";
+    gap: var(--space-1) var(--space-3);
+    align-items: center;
+  }
+  .bdc-row__store { grid-area: store; }
+  .bdc-row__avail { grid-area: avail; text-align: right; }
+  .bdc-row__price { grid-area: price; }
+  .bdc-row .kn-btn { grid-area: cta; justify-self: end; min-height: 44px; }
+
+  /* Sticky purchase bar visible state + bottom-padding reservation so it never
+     covers content (page reserves bar height + safe-area inset). */
+  .bd-main { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
+  .bdm-sticky[data-visible="true"] {
+    display: flex;
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 40;
+    align-items: center;
+    gap: var(--space-4);
+    padding: var(--space-3) var(--space-4);
+    padding-bottom: calc(var(--space-3) + env(safe-area-inset-bottom));
+    background: var(--surface);
+    border-top: 1px solid var(--border);
+    box-shadow: var(--shadow-md);
+  }
+  .bdm-sticky__deal { display: flex; flex-direction: column; min-width: 0; flex: 1; }
+  .bdm-sticky__price { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--fs-title); line-height: 1; color: var(--accent); }
+  .bdm-sticky__store { font-size: var(--fs-xs); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .bdm-sticky .kn-btn { flex: none; min-height: 44px; }
 }
