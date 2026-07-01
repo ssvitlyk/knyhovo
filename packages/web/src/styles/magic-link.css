@@ -1,0 +1,401 @@
+/*
+ * Magic Link Login (Auth) — ported from the frozen design (`ml-shared.jsx`).
+ * Only the `.ml-*` auth-panel layout lives here; the medallion (`.np-unsub__icon`),
+ * title (`.np-unsub__title`), toast (`.np-toast`/`.al-toast`), error note
+ * (`.al-note--err`) and input (`.kn-input`) are reused from existing stylesheets.
+ *
+ * The design's mobile rules were keyed off the canvas-only `.np--mob` class; here
+ * they are expressed as real `@media (max-width: 767px)` queries to match the app.
+ */
+
+/* Centred single-panel main — same rhythm as the public unsubscribe page. */
+.ml-main {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-16) 0;
+  min-height: 56vh;
+}
+
+/* Auth panel wrapped in a DS card (surface + hairline + radius-md + shadow-sm). */
+.ml-panel {
+  width: 100%;
+  max-width: 440px;
+  text-align: center;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-12);
+}
+
+/* Medallion + title spacing inside the panel (reuses .np-unsub__* recipe). */
+.ml-panel .np-unsub__icon {
+  margin-bottom: var(--space-5);
+}
+.ml-panel .np-unsub__title {
+  margin: 0 0 var(--space-3);
+}
+
+/* Lead / helper line under the title. */
+.ml-lead {
+  font-size: var(--fs-body);
+  color: var(--text-muted);
+  text-wrap: pretty;
+  margin: 0 0 var(--space-6);
+}
+.ml-lead b {
+  color: var(--text-body);
+  font-weight: var(--fw-semibold);
+}
+.ml-lead--inline {
+  margin-bottom: var(--space-2);
+}
+
+/* Success — recipient email as the primary visual anchor (serif accent). */
+.ml-email {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-title);
+  line-height: var(--lh-snug);
+  letter-spacing: var(--ls-tight);
+  color: var(--accent);
+  margin: 0 0 var(--space-6);
+  word-break: break-word;
+}
+
+/* Success — «Спам» helper (muted, never dominant). */
+.ml-spam {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  text-wrap: pretty;
+  margin: var(--space-6) 0 0;
+  opacity: 0.82;
+}
+
+/* Form — left-aligned inside the centred panel. */
+.ml-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  text-align: left;
+}
+.ml-field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+.ml-label {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text-body);
+}
+.ml-form .kn-input {
+  width: 100%;
+}
+.ml-form .kn-input:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Block actions. */
+.ml-actions {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-top: var(--space-1);
+}
+.ml-btn-block.kn-btn {
+  width: 100%;
+}
+
+/* Secondary supporting line (e.g. «Посилання діє обмежений час.»). */
+.ml-sub {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+  text-wrap: pretty;
+  margin: var(--space-4) 0 0;
+}
+
+/* Quiet text link (e.g. «Змінити email») — matches al-link. */
+.ml-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  background: none;
+  border: none;
+  padding: var(--space-2);
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text-muted);
+  text-decoration: none;
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.ml-link:hover {
+  color: var(--accent);
+}
+
+/* Privacy / trust micro-note under the form. */
+.ml-trust {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-2);
+  justify-content: center;
+  margin-top: var(--space-5);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  opacity: 0.7;
+  text-wrap: pretty;
+}
+.ml-trust svg {
+  flex: none;
+  margin-top: 1px;
+  color: var(--icon-muted);
+}
+
+/* Inline error card — reuses the frozen .al-note--err language. */
+.ml-error {
+  margin: 0 0 var(--space-5);
+  text-align: left;
+}
+
+/* Spinner — transient in-flight progress only. Static under reduced-motion. */
+.ml-spin {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid currentColor;
+  border-top-color: transparent;
+  vertical-align: -3px;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ml-spin {
+    animation: ml-rot 0.7s linear infinite;
+  }
+  @keyframes ml-rot {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}
+
+/* Redirect / «Входимо…» — subtle animated DS logo (transient loading, not a
+   decorative loop). Static (full opacity) under reduced-motion. */
+.ml-redirect .np-unsub__icon {
+  color: var(--accent);
+}
+.ml-redirect-logo {
+  height: 40px;
+  display: block;
+  margin: 0 auto var(--space-5);
+  opacity: 1;
+}
+/* Theme-swapped redirect logo (mirrors the .site-logo--light/--dark recipe). */
+.ml-redirect-logo--dark {
+  display: none;
+}
+[data-theme='dark'] .ml-redirect-logo--light {
+  display: none;
+}
+[data-theme='dark'] .ml-redirect-logo--dark {
+  display: block;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .ml-redirect-logo {
+    animation: ml-logo-pulse 1.4s var(--ease-out) infinite;
+  }
+  @keyframes ml-logo-pulse {
+    0%,
+    100% {
+      opacity: 0.5;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+}
+
+/* ── Auth-required reusable block ──────────────────────────────────────────
+   Neutral empty/auth state (NOT an error). Same panel rhythm. */
+.ml-authblock {
+  width: 100%;
+  max-width: 440px;
+  margin: 0 auto;
+  text-align: center;
+}
+.ml-authblock .np-unsub__icon {
+  margin-bottom: var(--space-5);
+}
+.ml-authblock__title {
+  font-family: var(--font-display);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-h3);
+  line-height: var(--lh-tight);
+  color: var(--text);
+  margin: 0 0 var(--space-3);
+}
+.ml-authblock__text {
+  font-size: var(--fs-body);
+  color: var(--text-muted);
+  text-wrap: pretty;
+  margin: 0 0 var(--space-6);
+}
+.ml-authblock .kn-btn {
+  min-width: 200px;
+}
+
+/* ── Login modal (header «Увійти») ─────────────────────────────────────────
+   Centred overlay reusing the panel recipe; mobile becomes a near-full-width
+   sheet. Scroll-lock + focus handling live in the Modal component. */
+.ml-modal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--space-6);
+  background: color-mix(in oklab, var(--text) 38%, transparent);
+}
+.ml-modal__content {
+  position: relative;
+  width: 100%;
+  max-width: 440px;
+  max-height: calc(100vh - var(--space-12));
+  overflow-y: auto;
+}
+.ml-modal__content .ml-panel {
+  width: 100%;
+}
+.ml-modal__close {
+  position: absolute;
+  top: var(--space-3);
+  right: var(--space-3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border: none;
+  background: none;
+  border-radius: var(--radius-pill);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+.ml-modal__close:hover {
+  color: var(--text);
+  background: var(--surface-accent);
+}
+
+/* ── Authenticated header control (account menu) ────────────────────────────
+   Sits in the existing .site-actions slot in place of «Увійти». Uses DS tokens
+   only; the dropdown is absolutely positioned so header layout is unchanged. */
+.kn-account {
+  position: relative;
+}
+/* Authenticated account button — accent-tinted so "logged in" reads clearly.
+   Same DS button base (secondary), only copper/amber accent border + warm
+   surface added; theme-swapped automatically via --accent / --surface tokens. */
+.kn-account__btn.kn-btn {
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 12%, var(--surface));
+  color: var(--text);
+}
+.kn-account__btn.kn-btn:hover {
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 22%, var(--surface));
+}
+.kn-account__btn.kn-btn:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+/* User glyph in the accent colour for an unmistakable signed-in signal. */
+.kn-account__btn svg {
+  color: var(--accent);
+}
+/* Email shown only inside the account menu, as muted secondary detail. */
+.kn-account__email {
+  display: block;
+  max-width: 220px;
+  margin: 0 0 var(--space-1);
+  padding: var(--space-2) var(--space-3);
+  border-bottom: 1px solid var(--border);
+  font-size: var(--fs-xs);
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.kn-account__menu {
+  position: absolute;
+  top: calc(100% + var(--space-2));
+  right: 0;
+  min-width: 180px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-md);
+  padding: var(--space-1);
+  z-index: 200;
+}
+.kn-account__item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: none;
+  border: none;
+  border-radius: var(--radius-xs);
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  color: var(--text-body);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.kn-account__item:hover {
+  background: var(--surface-accent);
+  color: var(--text);
+}
+.kn-account__item:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Mobile (≤767px) — more breathing room below the header, full-width controls. */
+@media (max-width: 767px) {
+  .ml-main {
+    padding: calc(var(--space-10) + 48px) 0 var(--space-10);
+    min-height: 60vh;
+  }
+  .ml-panel {
+    max-width: none;
+    padding: var(--space-8) var(--space-5);
+  }
+  .ml-actions .kn-btn {
+    min-height: 48px;
+  }
+  .ml-form .kn-input {
+    min-height: 48px;
+  }
+  .ml-link {
+    min-height: 44px;
+  }
+  .ml-authblock .kn-btn {
+    width: 100%;
+    min-height: 48px;
+  }
+  .ml-modal-overlay {
+    padding: var(--space-4);
+    align-items: flex-start;
+    padding-top: var(--space-10);
+  }
+  .ml-modal__content {
+    max-width: none;
+  }
+}

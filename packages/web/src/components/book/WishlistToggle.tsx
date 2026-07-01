@@ -1,6 +1,7 @@
 'use client';
 
 import { useId, useState, useRef } from 'react';
+import Link from 'next/link';
 import { Bookmark, BookmarkCheck, Bell, BellDot, Pencil } from 'lucide-react';
 import { Button } from '@/components/ds/Button';
 import { Badge } from '@/components/ds/Badge';
@@ -122,7 +123,9 @@ export function WishlistToggle({
       </div>
 
       {authNote && (
-        <p className="wl-toggle__note">Увійдіть, щоб зберігати книги</p>
+        <Link className="wl-toggle__note" href={`/login?returnTo=${encodeURIComponent(`/books/${bookId}`)}`}>
+          Увійдіть, щоб зберігати книги
+        </Link>
       )}
 
       {saved && (

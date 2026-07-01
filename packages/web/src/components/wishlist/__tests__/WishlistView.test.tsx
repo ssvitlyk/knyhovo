@@ -99,9 +99,9 @@ describe('WishlistView', () => {
     expect(screen.getByText('Книги зі знижками')).toBeTruthy();
   });
 
-  it('with items → quiet banner text is shown', () => {
+  it('with items → compact discounts empty-state text is shown', () => {
     render(<WishlistView items={[ITEM]} />);
-    expect(screen.getByText(/Knyhovo перевіряє ціни щодня о 08:00/)).toBeTruthy();
+    expect(screen.getByText(/Поки що книг зі знижками немає/)).toBeTruthy();
   });
 
   it('with items → renders hero headline', () => {

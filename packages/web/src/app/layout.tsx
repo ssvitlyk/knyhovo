@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
 import { SiteHeader } from '@/components/SiteHeader';
 import { SiteFooter } from '@/components/SiteFooter';
+import { LoginModalProvider } from '@/components/auth/LoginModalProvider';
 import '../styles/globals.css';
 
 export const metadata: Metadata = {
@@ -19,11 +20,15 @@ export default function RootLayout({ children }: { readonly children: ReactNode 
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
       <body>
-        <div className="page">
-          <SiteHeader />
-          {children}
-          <SiteFooter />
-        </div>
+        {/* One login modal for the whole app (singleton) — mounted here so every
+            «Увійти» trigger shares a single overlay/portal/backdrop. */}
+        <LoginModalProvider>
+          <div className="page">
+            <SiteHeader />
+            {children}
+            <SiteFooter />
+          </div>
+        </LoginModalProvider>
       </body>
     </html>
   );
