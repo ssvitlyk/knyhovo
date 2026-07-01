@@ -45,8 +45,11 @@ export function WishlistView({ items }: WishlistViewProps): React.JSX.Element {
       </div>
 
       <div className="v1-single">
-        {/* Section 1 — Книги зі знижками */}
-        <section className="hy-front" aria-label="Книги зі знижками">
+        {/* Section 1 — Книги зі знижками (compact when empty) */}
+        <section
+          className={triggered.length === 0 ? 'hy-front hy-front--empty' : 'hy-front'}
+          aria-label="Книги зі знижками"
+        >
           <div className="hy-group-head">
             <h2 className="hy-group-title">Книги зі знижками</h2>
             <span className="hy-group-count">{triggered.length}</span>
@@ -70,7 +73,9 @@ export function WishlistView({ items }: WishlistViewProps): React.JSX.Element {
             </>
           ) : (
             <p className="hy-front-empty">
-              Knyhovo перевіряє ціни щодня о 08:00, а Книговик підкаже, коли настане правильний момент купувати.
+              Поки що книг зі знижками немає.
+              <br />
+              Книговик повідомить, коли одна із ваших книг подешевшає.
             </p>
           )}
         </section>

@@ -1,12 +1,25 @@
-import { Button } from '@/components/ds/Button';
+import { cookies } from 'next/headers';
 import { ThemeToggle } from '@/components/ds/ThemeToggle';
+import { HeaderAuthActions, type HeaderUser } from '@/components/auth/HeaderAuthActions';
+import { me } from '@/lib/api/auth';
 
 /**
- * Reused site header (frozen). Logo lockups are theme-swapped via CSS so the
- * header stays a Server Component; the `ThemeToggle` child is the only client
- * island. Nav links and "Увійти" are static — their routes don't exist yet.
+ * Reused site header (frozen design). Logo lockups are theme-swapped via CSS so
+ * the header stays a Server Component; `ThemeToggle` and the auth control are the
+ * client islands. The session is resolved server-side (forwarding the cookie to
+ * `/api/auth/me`) so the header reflects auth state on every full render —
+ * guest → «Увійти», authenticated → account menu. Any lookup error degrades to
+ * the guest state so a flaky API never breaks the whole layout.
  */
-export function SiteHeader(): React.JSX.Element {
+export async function SiteHeader(): Promise<React.JSX.Element> {
+  let user: HeaderUser | null = null;
+  try {
+    const cookie = (await cookies()).toString();
+    user = await me(cookie);
+  } catch {
+    user = null;
+  }
+
   return (
     <header className="site-header">
       <a href="/search" aria-label="Knyhovo">
@@ -32,9 +45,7 @@ export function SiteHeader(): React.JSX.Element {
       </nav>
       <div className="site-actions">
         <ThemeToggle />
-        <Button variant="secondary" size="sm">
-          Увійти
-        </Button>
+        <HeaderAuthActions user={user} />
       </div>
     </header>
   );

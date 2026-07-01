@@ -1,5 +1,13 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { me, requestCode, verifyCode, logout, AuthError } from '../auth';
+import {
+  me,
+  requestCode,
+  verifyCode,
+  logout,
+  requestMagicLink,
+  verifyMagicLink,
+  AuthError,
+} from '../auth';
 import type { AuthUserDto } from '../types';
 
 const USER: AuthUserDto = {
@@ -104,6 +112,68 @@ describe('requestCode()', () => {
     const err = await requestCode('x@y.com').catch((e: unknown) => e);
     expect(err).toBeInstanceOf(AuthError);
     expect((err as AuthError).status).toBeNull();
+  });
+});
+
+describe('requestMagicLink()', () => {
+  it('posts email + returnTo to the relative URL with credentials: include', async () => {
+    let calledUrl = '';
+    let capturedInit: RequestInit | undefined;
+    mockFetch((async (input: RequestInfo | URL, init?: RequestInit) => {
+      calledUrl = String(input);
+      capturedInit = init;
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }) as typeof fetch);
+
+    await requestMagicLink('user@example.com', '/wishlist');
+
+    expect(calledUrl).toContain('/api/auth/magic-link');
+    expect(capturedInit?.credentials).toBe('include');
+    expect(capturedInit?.method).toBe('POST');
+    expect(JSON.parse(String(capturedInit?.body))).toEqual({
+      email: 'user@example.com',
+      returnTo: '/wishlist',
+    });
+  });
+
+  it('omits returnTo from the body when not provided', async () => {
+    let capturedInit: RequestInit | undefined;
+    mockFetch((async (_i: RequestInfo | URL, init?: RequestInit) => {
+      capturedInit = init;
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }) as typeof fetch);
+
+    await requestMagicLink('user@example.com');
+
+    expect(JSON.parse(String(capturedInit?.body))).toEqual({ email: 'user@example.com' });
+  });
+
+  it('throws AuthError on non-2xx (e.g. 429)', async () => {
+    mockFetch((async () => new Response('{}', { status: 429 })) as typeof fetch);
+    await expect(requestMagicLink('x@y.com')).rejects.toMatchObject({
+      name: 'AuthError',
+      status: 429,
+    });
+  });
+});
+
+describe('verifyMagicLink()', () => {
+  it('200 → returns user + returnTo', async () => {
+    mockFetch((async () =>
+      new Response(JSON.stringify({ user: USER, returnTo: '/wishlist' }), {
+        status: 200,
+      })) as typeof fetch);
+
+    const result = await verifyMagicLink('tok');
+    expect(result).toEqual({ user: USER, returnTo: '/wishlist' });
+  });
+
+  it('401 → throws AuthError (invalid/expired/used link)', async () => {
+    mockFetch((async () => new Response('{}', { status: 401 })) as typeof fetch);
+    await expect(verifyMagicLink('bad')).rejects.toMatchObject({
+      name: 'AuthError',
+      status: 401,
+    });
   });
 });
 

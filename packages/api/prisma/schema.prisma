@@ -183,10 +183,11 @@ model User {
   /// Global opt-out timestamp; when set, no alert emails are sent.
   unsubscribedAt     DateTime? @map("unsubscribed_at")
 
-  wishlistItems WishlistItem[]
-  loginCodes    LoginCode[]
-  sessions      Session[]
-  deliveries    NotificationDelivery[]
+  wishlistItems   WishlistItem[]
+  loginCodes      LoginCode[]
+  magicLinkTokens MagicLinkToken[]
+  sessions        Session[]
+  deliveries      NotificationDelivery[]
 
   @@map("users")
 }
@@ -219,6 +220,25 @@ model Session {
   @@index([userId])
   @@index([expiresAt])
   @@map("sessions")
+}
+
+/// Single-use Magic Link tokens for passwordless login. The clickable email link
+/// carries a random token; only its SHA-256 hash is stored. One-time (consumedAt)
+/// with a short TTL. `returnTo` is the validated internal path to land on after login.
+model MagicLinkToken {
+  id         String    @id @default(uuid())
+  userId     String    @map("user_id")
+  tokenHash  String    @unique @map("token_hash")
+  returnTo   String?   @map("return_to")
+  expiresAt  DateTime  @map("expires_at")
+  consumedAt DateTime? @map("consumed_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([expiresAt])
+  @@map("magic_link_tokens")
 }
 
 model WishlistItem {

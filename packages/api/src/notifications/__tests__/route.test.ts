@@ -13,10 +13,14 @@ const CONFIG: AuthConfig = {
   secret: 'test-secret',
   cookieSecure: false,
   codeTtlMs: 600_000,
+  magicLinkTtlMs: 1_800_000,
   sessionTtlMs: 2_592_000_000,
   rateWindowMs: 900_000,
   maxCodesPerWindow: 5,
   maxVerifyAttempts: 5,
+  resendApiKey: null,
+  fromEmail: 'Knyhovo <test@example.com>',
+  linkBaseUrl: 'https://knyhovo.test',
 };
 
 interface UserRow {
@@ -71,7 +75,7 @@ function makeFakePrisma(): PrismaClient {
 function makeAuthDeps(prisma: PrismaClient): AuthDeps {
   return {
     prisma,
-    mailer: { sendLoginCode: vi.fn(async () => undefined) },
+    mailer: { sendMagicLink: vi.fn(async () => undefined), sendLoginCode: vi.fn(async () => undefined) },
     config: CONFIG,
     now: () => FIXED_NOW,
     generateCode: () => '000000',

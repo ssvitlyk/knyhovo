@@ -35,7 +35,7 @@
 
 /* ---------- Section head (Книги зі знижками / Інші бажанки) ---------- */
 .hy-group-head {
-  display: flex; align-items: baseline; gap: var(--space-3);
+  display: flex; align-items: center; gap: var(--space-3);
   padding-bottom: var(--space-4);
   border-bottom: 1px solid var(--border);
   margin-bottom: var(--space-4);
@@ -45,10 +45,18 @@
   font-family: var(--font-display); font-weight: var(--fw-semibold);
   font-size: var(--fs-h3); color: var(--text); margin: 0;
 }
+/* Unified soft pill count badge for BOTH sections (shown even for 0).
+   Warm Knyhovo accent wash + accent digit; ~28px rounded-pill, centred.
+   A subtle inset accent ring lifts it off the warm «Книги зі знижками»
+   surface (fixes the light-theme blend) while staying soft on the page bg. */
 .hy-group-count {
-  font-size: var(--fs-sm); color: var(--text-muted);
-  background: var(--surface-accent); border-radius: var(--radius-pill);
-  padding: 2px var(--space-3); line-height: 1.4;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 28px; height: 28px; padding: 0 var(--space-2);
+  border-radius: var(--radius-pill);
+  background: color-mix(in oklab, var(--accent) 15%, var(--surface));
+  box-shadow: inset 0 0 0 1px color-mix(in oklab, var(--accent) 22%, transparent);
+  color: var(--accent);
+  font-size: var(--fs-sm); font-weight: var(--fw-semibold); line-height: 1;
 }
 
 /* ---------- Section containers ---------- */
@@ -57,10 +65,16 @@
   border-radius: var(--radius-md); padding: var(--space-5) var(--space-6);
   margin-bottom: var(--space-6);
 }
+/* Compact variant when there are no discounted books — same bg/border, but
+   ~half the height (tighter vertical padding + tighter head). Keeps title+badge. */
+.hy-front--empty { padding-top: var(--space-3); padding-bottom: var(--space-3); }
+.hy-front--empty .hy-group-head {
+  padding-bottom: var(--space-2); margin-bottom: var(--space-2);
+}
 .hy-group { margin-bottom: var(--space-6); }
 
 /* Quiet message inside the «Книги зі знижками» section (no discount data yet). */
-.hy-front-empty { margin: 0; color: var(--text-muted); font-size: var(--fs-sm); }
+.hy-front-empty { margin: 0; color: var(--text-muted); font-size: var(--fs-sm); line-height: var(--lh-normal); }
 
 /* ---------- Quiet banner (no discounts state) ---------- */
 .v1-quiet-banner {

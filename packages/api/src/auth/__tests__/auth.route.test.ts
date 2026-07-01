@@ -20,10 +20,14 @@ const TEST_CONFIG: AuthConfig = {
   secret: TEST_SECRET,
   cookieSecure: false,
   codeTtlMs: CODE_TTL_MS,
+  magicLinkTtlMs: 30 * 60_000,
   sessionTtlMs: SESSION_TTL_MS,
   rateWindowMs: 15 * 60_000,
   maxCodesPerWindow: 5,
   maxVerifyAttempts: 5,
+  resendApiKey: null,
+  fromEmail: 'Knyhovo <test@example.com>',
+  linkBaseUrl: 'https://knyhovo.test',
 };
 
 // ── Fake Mailer ───────────────────────────────────────────────────────────────
@@ -31,6 +35,12 @@ const TEST_CONFIG: AuthConfig = {
 class FakeMailer implements Mailer {
   public lastEmail: string | null = null;
   public lastCode: string | null = null;
+  public lastMagicLinkUrl: string | null = null;
+
+  async sendMagicLink(email: string, url: string): Promise<void> {
+    this.lastEmail = email;
+    this.lastMagicLinkUrl = url;
+  }
 
   async sendLoginCode(email: string, code: string): Promise<void> {
     this.lastEmail = email;

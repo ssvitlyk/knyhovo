@@ -23,15 +23,25 @@ const TEST_CONFIG: AuthConfig = {
   secret: 'test-secret',
   cookieSecure: false,
   codeTtlMs: 10 * 60_000,
+  magicLinkTtlMs: 30 * 60_000,
   sessionTtlMs: SESSION_TTL_MS,
   rateWindowMs: 15 * 60_000,
   maxCodesPerWindow: 5,
   maxVerifyAttempts: 5,
+  resendApiKey: null,
+  fromEmail: 'Knyhovo <test@example.com>',
+  linkBaseUrl: 'https://knyhovo.test',
 };
 
 // ── Fake Mailer ───────────────────────────────────────────────────────────────
 
 class FakeMailer implements Mailer {
+  async sendMagicLink(email: string, url: string): Promise<void> {
+    // no-op fake — suppress unused-var warnings by satisfying the Mailer interface
+    void email;
+    void url;
+  }
+
   async sendLoginCode(email: string, code: string): Promise<void> {
     // no-op fake — suppress unused-var warnings by satisfying the Mailer interface
     void email;

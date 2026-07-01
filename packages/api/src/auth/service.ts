@@ -10,12 +10,18 @@ import {
   incrementLoginCodeAttempts,
   consumeLoginCode,
   invalidateOtherLoginCodes,
+  countMagicLinkTokensInWindow,
+  createMagicLinkToken,
+  findMagicLinkTokenByHash,
+  consumeMagicLinkToken,
+  invalidateOtherMagicLinkTokens,
   createSession,
   findSessionByTokenHash,
   deleteSessionByTokenHash,
   deleteExpiredSessions,
 } from './repository.js';
 import { hashCode, hashToken, safeCompare } from './crypto.js';
+import { buildMagicLinkUrl, sanitizeReturnTo } from './return-to.js';
 import {
   InvalidCredentialsError,
   RateLimitedError,
@@ -68,6 +74,86 @@ export async function requestCode(deps: AuthDeps, email: string): Promise<void> 
   });
 
   await mailer.sendLoginCode(email, code);
+}
+
+/**
+ * Request a Magic Link for the given email address — the primary web flow.
+ * Creates the user record if needed, then emails a clickable login link.
+ * Enforces the same per-window rate limit as OTP requests.
+ *
+ * `returnTo` is the page the user came from; it is sanitised to an internal
+ * path before being stored, so the verify step can redirect safely.
+ */
+export async function requestMagicLink(
+  deps: AuthDeps,
+  email: string,
+  returnTo: string | null,
+): Promise<void> {
+  const { prisma, mailer, config, now, generateToken: genToken } = deps;
+  const currentTime = now();
+
+  const user = await upsertUserByEmail(prisma, email);
+
+  // Housekeeping: remove stale sessions in the background.
+  await deleteExpiredSessions(prisma, currentTime);
+
+  // Rate-limit: count ALL tokens (including consumed/expired) in the window.
+  const windowStart = new Date(currentTime.getTime() - config.rateWindowMs);
+  const tokenCount = await countMagicLinkTokensInWindow(prisma, user.id, windowStart);
+  if (tokenCount >= config.maxCodesPerWindow) {
+    throw new RateLimitedError('Too many login attempts. Please try again later.');
+  }
+
+  const token = genToken();
+  const expiresAt = new Date(currentTime.getTime() + config.magicLinkTtlMs);
+  await createMagicLinkToken(prisma, {
+    userId: user.id,
+    tokenHash: hashToken(token),
+    returnTo: sanitizeReturnTo(returnTo),
+    expiresAt,
+  });
+
+  const url = buildMagicLinkUrl(config.linkBaseUrl, token);
+  await mailer.sendMagicLink(email, url);
+}
+
+/**
+ * Verify a Magic Link token and issue a session.
+ * Returns the session token, the authenticated user, and the (sanitised)
+ * returnTo path. Always throws `InvalidCredentialsError` on any failure.
+ * The token is single-use: it is consumed (and siblings invalidated) on success.
+ */
+export async function verifyMagicLink(
+  deps: AuthDeps,
+  token: string,
+): Promise<{
+  token: string;
+  user: { id: string; email: string; createdAt: Date };
+  returnTo: string | null;
+}> {
+  const { prisma, config, now, generateToken: genToken } = deps;
+  const currentTime = now();
+
+  const record = await findMagicLinkTokenByHash(prisma, hashToken(token));
+  if (!record) throw new InvalidCredentialsError();
+  if (record.consumedAt) throw new InvalidCredentialsError();
+  if (record.expiresAt < currentTime) throw new InvalidCredentialsError();
+
+  // Success — consume the used token and invalidate any siblings.
+  await consumeMagicLinkToken(prisma, record.id, currentTime);
+  await invalidateOtherMagicLinkTokens(prisma, record.userId, record.id, currentTime);
+
+  // Issue a new session (same cookie/session mechanism as the OTP flow).
+  const sessionToken = genToken();
+  const tokenHash = hashToken(sessionToken);
+  const sessionExpiresAt = new Date(currentTime.getTime() + config.sessionTtlMs);
+  await createSession(prisma, { userId: record.userId, tokenHash, expiresAt: sessionExpiresAt });
+
+  return {
+    token: sessionToken,
+    user: record.user,
+    returnTo: sanitizeReturnTo(record.returnTo),
+  };
 }
 
 /**
