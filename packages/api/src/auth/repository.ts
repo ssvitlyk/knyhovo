@@ -229,7 +229,7 @@ export async function findSessionByTokenHash(
   prisma: PrismaClient,
   tokenHash: string,
   now: Date,
-): Promise<{ id: string; userId: string; user: { id: string; email: string; createdAt: Date } } | null> {
+): Promise<{ id: string; userId: string; user: { id: string; email: string; createdAt: Date; displayName: string | null } } | null> {
   return prisma.session.findFirst({
     where: {
       tokenHash,

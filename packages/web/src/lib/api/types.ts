@@ -77,6 +77,7 @@ export interface AuthUserDto {
   readonly id: string;
   readonly email: string;
   readonly createdAt: string;
+  readonly displayName: string | null;
 }
 
 /**

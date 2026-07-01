@@ -1,0 +1,93 @@
+/* ================================================================
+   Knyhovo · Settings → Профіль (feat/settings-profile) — production
+   port of the frozen pf-* styles. Source (read-only):
+   design-import/incoming/pf-shared.jsx (injectPFStyles block).
+   Composes DS v1.0 tokens ONLY — no new colours, radii or shadows.
+   Only adds pf-* rules; never restyles the np-, kn- or al- classes.
+   ================================================================ */
+
+/* Card stack — same rhythm as the Notifications card list (.np-cards) */
+.pf-cards { display: flex; flex-direction: column; gap: var(--space-5); }
+
+/* Account card — DS card anatomy + the SAME warm-paper wash as .np-card */
+.pf-card {
+  background: color-mix(in oklab, var(--accent) 4.5%, var(--surface));
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-sm);
+  padding: var(--space-6);
+}
+.pf-card__head { margin: 0 0 var(--space-5); }
+.pf-card__title {
+  font-family: var(--font-display); font-weight: var(--fw-semibold);
+  font-size: var(--fs-title); line-height: var(--lh-snug);
+  letter-spacing: var(--ls-tight); color: var(--text); margin: 0;
+}
+.pf-card__desc { font-size: var(--fs-sm); color: var(--text-muted); text-wrap: pretty; margin: var(--space-2) 0 0; max-width: 52ch; }
+
+/* Form field */
+.pf-field { display: flex; flex-direction: column; gap: var(--space-2); }
+.pf-field + .pf-field { margin-top: var(--space-5); }
+.pf-label { font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--text-body); }
+.pf-label__opt { color: var(--text-muted); font-weight: var(--fw-regular); }
+.pf-card .kn-input { width: 100%; }
+.pf-card .kn-input:read-only,
+.pf-card .kn-input:disabled { background: var(--surface-sunk); color: var(--text-muted); cursor: default; }
+.pf-card .kn-input:read-only:focus { border-color: var(--border); box-shadow: none; }
+.pf-help { font-size: var(--fs-sm); color: var(--text-muted); text-wrap: pretty; margin: 0; }
+
+/* Inline validation note — reuses the frozen .al-note--err language (never red) */
+.pf-field-err { margin-top: var(--space-2); }
+
+/* Card footer — action row (button right on desktop) */
+.pf-card__foot { display: flex; align-items: center; justify-content: flex-end; gap: var(--space-3); margin-top: var(--space-6); }
+.pf-card__foot--between { justify-content: space-between; }
+
+/* Definition rows (read-only account facts) — quiet label/value list */
+.pf-rows { display: flex; flex-direction: column; }
+.pf-row {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-5); padding: var(--space-4) 0;
+  border-bottom: 1px solid var(--border);
+}
+.pf-row:first-child { padding-top: 0; }
+.pf-row:last-child { padding-bottom: 0; border-bottom: none; }
+.pf-row__label { font-size: var(--fs-sm); color: var(--text-muted); flex: none; }
+.pf-row__value { display: flex; align-items: center; gap: var(--space-3); font-size: var(--fs-body); font-weight: var(--fw-medium); color: var(--text-body); text-align: right; min-width: 0; word-break: break-word; }
+.pf-row__value .kn-badge { flex: none; }
+
+/* Auth info block (Section 3) — icon medallion reuses .np-unsub__icon recipe */
+.pf-auth { display: flex; gap: var(--space-5); align-items: flex-start; }
+.pf-auth__icon { display: inline-flex; align-items: center; justify-content: center; width: 44px; height: 44px; border-radius: var(--radius-pill); background: var(--surface-accent); color: var(--icon-muted); flex: none; }
+.pf-auth__body { min-width: 0; flex: 1; }
+.pf-auth__title { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--fs-title); line-height: var(--lh-snug); color: var(--text); margin: 0 0 var(--space-2); }
+.pf-auth__text { font-size: var(--fs-sm); color: var(--text-muted); text-wrap: pretty; margin: 0; max-width: 54ch; }
+
+/* Danger zone (Section 4) — VERY calm. Never red, no destructive styling. */
+.pf-danger-eyebrow {
+  font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase; color: var(--text-muted); font-weight: var(--fw-semibold);
+  margin: var(--space-3) 0 var(--space-3);
+}
+.pf-card--quiet { background: var(--surface-sunk); }
+.pf-card--quiet .pf-card__title { font-size: var(--fs-body); font-family: var(--font-body); }
+.pf-quiet-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-5); flex-wrap: wrap; }
+.pf-quiet-row__text { min-width: 0; flex: 1 1 280px; }
+.pf-quiet-row__title { font-weight: var(--fw-semibold); font-size: var(--fs-body); color: var(--text); margin: 0 0 var(--space-1); }
+.pf-quiet-row__desc { font-size: var(--fs-sm); color: var(--text-muted); text-wrap: pretty; margin: 0; max-width: 52ch; }
+
+/* ── Mobile (max-width: 767px) — single column, full-width cards, 44px+ touch targets ── */
+@media (max-width: 767px) {
+  .pf-cards { gap: var(--space-4); }
+  .pf-card { padding: var(--space-5) var(--space-4); }
+  .pf-card__title { font-size: var(--fs-body); }
+  .pf-auth { flex-direction: column; gap: var(--space-3); }
+  .pf-card__foot { margin-top: var(--space-5); }
+  .pf-card__foot .kn-btn { width: 100%; min-height: 48px; }
+  .pf-card .kn-input { min-height: 48px; }
+  .pf-row { flex-direction: column; align-items: flex-start; gap: var(--space-1); }
+  .pf-row__value { text-align: left; }
+  .pf-quiet-row { flex-direction: column; align-items: stretch; gap: var(--space-4); }
+  .pf-quiet-row .kn-btn { width: 100%; min-height: 48px; }
+  .pf-auth__body .kn-btn { width: 100%; min-height: 48px; }
+}

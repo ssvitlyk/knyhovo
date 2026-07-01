@@ -4,6 +4,7 @@ interface UserRow {
   id: string;
   email: string;
   createdAt: Date;
+  displayName?: string | null;
 }
 
 /**
@@ -14,5 +15,6 @@ export function toAuthUserDto(user: UserRow): AuthUserDto {
     id: user.id,
     email: user.email,
     createdAt: user.createdAt.toISOString(),
+    displayName: user.displayName ?? null,
   };
 }
