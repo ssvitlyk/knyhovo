@@ -4,13 +4,20 @@ import { toAuthUserDto } from '../mapper.js';
 describe('toAuthUserDto', () => {
   it('maps fields correctly', () => {
     const date = new Date('2026-01-01T00:00:00Z');
-    const user = { id: 'user-1', email: 'test@example.com', createdAt: date };
+    const user = { id: 'user-1', email: 'test@example.com', createdAt: date, displayName: 'Alice' };
     const dto = toAuthUserDto(user);
     expect(dto).toEqual({
       id: 'user-1',
       email: 'test@example.com',
       createdAt: '2026-01-01T00:00:00.000Z',
+      displayName: 'Alice',
     });
+  });
+
+  it('defaults displayName to null when absent', () => {
+    const date = new Date('2026-01-01T00:00:00Z');
+    const dto = toAuthUserDto({ id: 'user-1', email: 'test@example.com', createdAt: date });
+    expect(dto.displayName).toBeNull();
   });
 
   it('converts createdAt to ISO string', () => {

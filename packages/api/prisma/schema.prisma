@@ -182,6 +182,8 @@ model User {
   unsubscribeToken   String?   @unique @map("unsubscribe_token")
   /// Global opt-out timestamp; when set, no alert emails are sent.
   unsubscribedAt     DateTime? @map("unsubscribed_at")
+  /// Optional display name shown in the UI profile.
+  displayName        String?   @map("display_name")
 
   wishlistItems   WishlistItem[]
   loginCodes      LoginCode[]

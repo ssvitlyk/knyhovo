@@ -3,7 +3,7 @@
 import { usePathname } from 'next/navigation';
 
 const ITEMS = [
-  { id: 'profile', label: 'Профіль', href: null },
+  { id: 'profile', label: 'Профіль', href: '/settings/profile' },
   { id: 'notifications', label: 'Сповіщення', href: '/settings/notifications' },
   { id: 'security', label: 'Безпека та вхід', href: null },
 ] as const;

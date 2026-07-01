@@ -14,6 +14,7 @@ const USER: AuthUserDto = {
   id: 'user-1',
   email: 'test@example.com',
   createdAt: '2026-01-01T00:00:00.000Z',
+  displayName: null,
 };
 
 function mockFetch(impl: typeof fetch): void {

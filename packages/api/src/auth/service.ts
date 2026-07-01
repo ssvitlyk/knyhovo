@@ -213,7 +213,7 @@ export async function verifyCode(
 export async function resolveSessionUser(
   deps: AuthDeps,
   tokenOrNull: string | null | undefined,
-): Promise<{ id: string; email: string; createdAt: Date } | null> {
+): Promise<{ id: string; email: string; createdAt: Date; displayName: string | null } | null> {
   if (!tokenOrNull) return null;
   const { prisma, now } = deps;
   const tokenHash = hashToken(tokenOrNull);

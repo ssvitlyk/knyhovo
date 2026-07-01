@@ -13,11 +13,10 @@ describe('SettingsNav', () => {
     expect(link).toHaveAttribute('aria-current', 'page');
   });
 
-  it('Профіль is aria-disabled (rendered as span)', () => {
+  it('Профіль is a link to /settings/profile', () => {
     render(<SettingsNav />);
-    const item = screen.getByText('Профіль');
-    expect(item.tagName).toBe('SPAN');
-    expect(item).toHaveAttribute('aria-disabled', 'true');
+    const link = screen.getByRole('link', { name: 'Профіль' });
+    expect(link).toHaveAttribute('href', '/settings/profile');
   });
 
   it('Безпека та вхід is aria-disabled (rendered as span)', () => {

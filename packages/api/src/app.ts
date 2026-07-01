@@ -25,6 +25,7 @@ import {
   registerUnsubscribeRoute,
   registerNotificationPreferencesRoute,
 } from './notifications/route.js';
+import { registerProfileRoute } from './profile/route.js';
 import type { AuthDeps } from './auth/service.js';
 
 /** Shape of every error response emitted by the API. */
@@ -155,6 +156,7 @@ export function buildApp(prisma: PrismaClient, authDeps?: AuthDeps): FastifyInst
     registerWishlistRoute(app, prisma, authDeps);
     registerWishlistAlertRoute(app, prisma, authDeps);
     registerNotificationPreferencesRoute(app, prisma, authDeps);
+    registerProfileRoute(app, prisma, authDeps);
   }
 
   return app;

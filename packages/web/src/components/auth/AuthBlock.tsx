@@ -7,6 +7,7 @@ import { useLoginModal } from './LoginModalProvider';
 const AUTH_COPY = {
   wishlist: 'Увійдіть, щоб зберігати книги та отримувати сповіщення про ціни.',
   settings: 'Увійдіть, щоб керувати налаштуваннями сповіщень.',
+  profile: 'Увійдіть, щоб керувати профілем.',
 } as const;
 
 export type AuthBlockContext = keyof typeof AUTH_COPY;
