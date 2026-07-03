@@ -31,6 +31,17 @@ enum Currency {
   @@map("currency")
 }
 
+enum CollectionType {
+  FEATURED  @map("featured")
+  EDITORIAL @map("editorial")
+  CURATED   @map("curated")
+  DYNAMIC   @map("dynamic")
+  GENRE     @map("genre")
+  MOOD      @map("mood")
+
+  @@map("collection_type")
+}
+
 enum Availability {
   IN_STOCK     @map("in-stock")
   OUT_OF_STOCK @map("out-of-stock")
@@ -109,13 +120,75 @@ model CanonicalBook {
   author    String
   /// null when no provider has supplied an ISBN for this book
   isbn      String?
+  /// null when the book has not been assigned to a genre
+  genreId   String?  @map("genre_id")
   createdAt DateTime @default(now()) @map("created_at")
 
   listings      ProviderListing[]
   wishlistItems WishlistItem[]
+  genre         Genre?  @relation(fields: [genreId], references: [id])
 
   @@index([isbn])
+  @@index([genreId])
   @@map("canonical_books")
+}
+
+model Genre {
+  id           String   @id @default(uuid())
+  slug         String   @unique
+  name         String
+  icon         String?
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  books CanonicalBook[]
+
+  @@map("genres")
+}
+
+model Mood {
+  id           String   @id @default(uuid())
+  slug         String   @unique
+  name         String
+  description  String
+  icon         String
+  displayOrder Int      @default(0) @map("display_order")
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@map("moods")
+}
+
+model Collection {
+  id           String         @id @default(uuid())
+  slug         String         @unique
+  type         CollectionType
+  title        String
+  eyebrow      String?
+  description  String?
+  statusLabel  String?        @map("status_label")
+  icon         String?
+  displayOrder Int            @default(0) @map("display_order")
+  isActive     Boolean        @default(true) @map("is_active")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  items CollectionItem[]
+
+  @@index([type, displayOrder])
+  @@map("collections")
+}
+
+model CollectionItem {
+  id              String @id @default(uuid())
+  collectionId    String @map("collection_id")
+  canonicalBookId String @map("canonical_book_id")
+  sortOrder       Int    @map("sort_order")
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, canonicalBookId])
+  @@index([collectionId, sortOrder])
+  @@map("collection_items")
 }
 
 model ProviderListing {

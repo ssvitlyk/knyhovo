@@ -90,3 +90,16 @@ export class WishlistItemNotFoundError extends Error {
     this.name = 'WishlistItemNotFoundError';
   }
 }
+
+/**
+ * Domain-level error raised when a collection (or dynamic feed / genre / mood)
+ * cannot be found by slug. The Fastify error handler maps this to HTTP 404.
+ */
+export class CollectionNotFoundError extends Error {
+  readonly code = 'COLLECTION_NOT_FOUND';
+
+  constructor(message = 'Добірку не знайдено.') {
+    super(message);
+    this.name = 'CollectionNotFoundError';
+  }
+}

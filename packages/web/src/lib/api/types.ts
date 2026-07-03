@@ -1,4 +1,4 @@
-import type { ProviderName, Availability } from '@knyhovo/shared';
+import type { ProviderName, Availability, Money } from '@knyhovo/shared';
 
 /**
  * Frontend mirror of the S8a `GET /api/search` response contract
@@ -198,4 +198,118 @@ export interface NotificationPreferencesDto {
   readonly priceDropEnabled: boolean;
   readonly backInStockEnabled: boolean;
   readonly unsubscribed: boolean;
+}
+
+/**
+ * Frontend mirror of the Collections contract
+ * (packages/api/src/collections/dto.ts). The DTOs are not exported from
+ * `@knyhovo/shared`, and the architecture forbids web → api imports, so the
+ * shape is mirrored here. `Money` is the single source-of-truth type imported
+ * from the shared package.
+ */
+
+export interface CollectionBookDto {
+  readonly id: string;
+  readonly title: string;
+  readonly author: string;
+  readonly coverUrl: string | null;
+  readonly minPrice: Money | null;
+  readonly oldPrice: Money | null;
+  readonly discountPercent: number | null;
+  readonly storeName: string | null;
+  readonly rating: number | null;
+  readonly reviewsCount: number | null;
+  readonly wishlistCount: number;
+  readonly isWishlisted: boolean;
+  readonly inStock: boolean;
+  readonly catalogAddedAt: string;
+}
+
+export interface GenreDto {
+  readonly slug: string;
+  readonly name: string;
+  readonly icon: string | null;
+  readonly bookCount: number;
+}
+
+export interface MoodDto {
+  readonly slug: string;
+  readonly name: string;
+  readonly description: string;
+  readonly icon: string;
+  readonly bookCount: number;
+}
+
+export interface CollectionSummaryDto {
+  readonly slug: string;
+  readonly type: string;
+  readonly title: string;
+  readonly eyebrow: string | null;
+  readonly description: string | null;
+  readonly statusLabel: string | null;
+  readonly icon: string | null;
+  readonly bookCount: number;
+  readonly previewBooks: readonly CollectionBookDto[];
+}
+
+export interface CollectionDetailDto {
+  readonly slug: string;
+  readonly type: string;
+  readonly title: string;
+  readonly eyebrow: string | null;
+  readonly description: string | null;
+  readonly statusLabel: string | null;
+  readonly icon: string | null;
+  readonly bookCount: number;
+}
+
+interface CollectionSectionBase {
+  readonly slug: string;
+  readonly title: string;
+  readonly eyebrow: string | null;
+  readonly description: string | null;
+  readonly statusLabel: string | null;
+  readonly href: string;
+}
+
+/** Discriminated union of home-page collection sections, keyed on `type`. */
+export type CollectionSection =
+  | (CollectionSectionBase & {
+      readonly type:
+        | 'wishlist-popular'
+        | 'new-arrivals'
+        | 'biggest-discounts'
+        | 'popular'
+        | 'underrated';
+      readonly items: readonly CollectionBookDto[];
+    })
+  | (CollectionSectionBase & {
+      readonly type: 'genres';
+      readonly items: readonly GenreDto[];
+    })
+  | (CollectionSectionBase & {
+      readonly type: 'moods';
+      readonly items: readonly MoodDto[];
+    })
+  | (CollectionSectionBase & {
+      readonly type: 'editorial';
+      readonly items: readonly CollectionSummaryDto[];
+    });
+
+export interface CollectionsHomeDto {
+  readonly featured: CollectionSummaryDto;
+  readonly sections: readonly CollectionSection[];
+}
+
+export interface CollectionBooksPageDto {
+  readonly collection: CollectionDetailDto;
+  readonly books: readonly CollectionBookDto[];
+  readonly page: number;
+  readonly perPage: number;
+  readonly total: number;
+  readonly totalPages: number;
+}
+
+export interface CollectionsSimilarDto {
+  readonly collections: readonly CollectionSummaryDto[];
 }

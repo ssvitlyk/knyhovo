@@ -37,9 +37,9 @@ export async function SiteHeader(): Promise<React.JSX.Element> {
         <a href="/wishlist" className="nav-link">
           Бажанки
         </a>
-        <a href="#" className="nav-link">
-          Знижки
-        </a>
+        <Link href="/catalog" className="nav-link">
+          Добірки
+        </Link>
         <a href="#" className="nav-link">
           Про нас
         </a>
