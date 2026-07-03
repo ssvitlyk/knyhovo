@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<!-- @pattern name="Knyhovo Settings → Профіль" surface="Settings → Профіль (/settings/profile)" version="1.0"
+     note="The last missing MVP screen. Account/Profile settings: Особисті дані (email readonly +
+           optional display name + Зберегти) · Обліковий запис (read-only facts + Активний badge) ·
+           Авторизація (Magic Link info + resend) · Небезпечна дія (Вийти — calm, never red).
+           Reuses the approved interior header/footer + Settings sidebar/layout verbatim. Composes
+           DS v1.0 only. Light + Dark · Desktop + Mobile (375px). No password, avatar or social login." -->
+<html lang="uk" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Knyhovo — Settings → Профіль</title>
+
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+  <link rel="stylesheet" href="design-import/alerts-v1/alerts.css">
+</head>
+<body>
+  <div id="pf-root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/_ds_bundle.js"></script>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="np-shared.jsx"></script>
+  <script type="text/babel" src="pf-shared.jsx"></script>
+  <script type="text/babel" src="pf-canvas.jsx"></script>
+
+  <template id="__bundler_thumbnail">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80">
+      <rect width="120" height="80" fill="#f9f3ed"/>
+      <rect x="12" y="14" width="30" height="52" rx="4" fill="#fff" stroke="#ece1d2" stroke-width="1"/>
+      <rect x="16" y="19" width="18" height="3" rx="1.5" fill="#b56a2d" opacity=".55"/>
+      <rect x="16" y="26" width="22" height="2.5" rx="1.25" fill="#ece1d2"/>
+      <rect x="16" y="32" width="22" height="2.5" rx="1.25" fill="#ece1d2"/>
+      <rect x="48" y="14" width="60" height="24" rx="4" fill="#fff" stroke="#ece1d2" stroke-width="1"/>
+      <rect x="52" y="19" width="24" height="4" rx="2" fill="#cdbfa9"/>
+      <rect x="52" y="28" width="40" height="5" rx="2.5" fill="#f9f3ed" stroke="#ece1d2" stroke-width="1"/>
+      <rect x="48" y="42" width="60" height="24" rx="4" fill="#fff" stroke="#ece1d2" stroke-width="1"/>
+      <rect x="52" y="47" width="20" height="4" rx="2" fill="#cdbfa9"/>
+      <rect x="52" y="55" width="14" height="6" rx="3" fill="#b56a2d"/>
+      <rect x="90" y="55" width="14" height="6" rx="3" fill="#24513e" opacity=".6"/>
+    </svg>
+  </template>
+</body>
+</html>

@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Knyhovo MVP — Product Board · v1.0 (Frozen)</title>
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+  <style>
+    :root { --board-bg: #E8E2D9; --board-line: #D5CCBE; --frame-bg: #fff; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; }
+    body { background: var(--board-bg); color: var(--text); font-family: var(--font-body); }
+    a { color: inherit; }
+
+    /* ── Top banner (frozen source-of-truth) ── */
+    .banner { position: sticky; top: 0; z-index: 40; background: var(--kn-ink); color: var(--kn-cream);
+      border-bottom: 1px solid #000; }
+    .banner-in { max-width: 1480px; margin: 0 auto; padding: 14px var(--space-6); display: flex; align-items: center; gap: var(--space-5); }
+    .banner img { height: 26px; }
+    .banner .v { display: flex; flex-direction: column; gap: 1px; }
+    .banner .v b { font-family: var(--font-display); font-size: 15px; font-weight: 600; letter-spacing: .01em; }
+    .banner .v span { font-size: 11px; color: #9A8E7E; letter-spacing: .02em; }
+    .banner .pills { display: flex; gap: 8px; margin-left: 4px; flex-wrap: wrap; }
+    .bpill { font-size: 10.5px; text-transform: uppercase; letter-spacing: .1em; padding: 4px 9px; border-radius: 999px;
+      border: 1px solid #3a342c; color: #cdbfa8; }
+    .bpill.frozen { background: #2C2114; color: var(--kn-amber); border-color: #4a3a1f; }
+    .banner .grow { flex: 1; }
+    .tourbtn { font-family: var(--font-body); font-size: 13px; font-weight: 600; color: var(--kn-ink); background: var(--kn-amber);
+      border: 0; border-radius: 8px; padding: 9px 16px; cursor: pointer; white-space: nowrap; }
+    .tourbtn:hover { background: var(--kn-amber-hover); }
+
+    /* ── Section nav ── */
+    .secnav { position: sticky; top: 55px; z-index: 30; background: rgba(232,226,217,.92); backdrop-filter: blur(6px);
+      border-bottom: 1px solid var(--board-line); }
+    .secnav-in { max-width: 1480px; margin: 0 auto; padding: 9px var(--space-6); display: flex; gap: 6px; overflow-x: auto; }
+    .secnav a { font-size: 12px; color: var(--kn-ink-600); text-decoration: none; padding: 5px 11px; border-radius: 999px;
+      white-space: nowrap; border: 1px solid transparent; }
+    .secnav a:hover { background: #fff; border-color: var(--board-line); color: var(--accent); }
+
+    /* ── Sections ── */
+    main { max-width: 1480px; margin: 0 auto; padding: var(--space-8) var(--space-6) var(--space-16); }
+    .section { margin-bottom: var(--space-12); scroll-margin-top: 110px; }
+    .sec-head { display: flex; align-items: baseline; gap: var(--space-3); margin-bottom: var(--space-5);
+      padding-bottom: var(--space-3); border-bottom: 1px solid var(--board-line); }
+    .sec-num { font-family: var(--font-display); font-size: 13px; font-weight: 600; color: var(--accent);
+      letter-spacing: .08em; flex: none; }
+    .sec-title { font-family: var(--font-display); font-size: var(--fs-h3); font-weight: 600; color: var(--kn-ink-700); margin: 0; }
+    .sec-sub { font-size: 13px; color: var(--kn-ink-400); margin-left: auto; max-width: 46ch; text-align: right; }
+
+    .grid { display: flex; flex-wrap: wrap; gap: var(--space-5); }
+
+    /* ── Frame card ── */
+    .card { background: var(--frame-bg); border: 1px solid var(--board-line); border-radius: 12px; overflow: hidden;
+      box-shadow: 0 1px 2px rgba(60,40,20,.06); transition: box-shadow .18s, transform .18s; cursor: pointer; }
+    .card:hover { box-shadow: 0 10px 28px rgba(60,40,20,.16); transform: translateY(-2px); }
+    .card .cap { padding: 10px 13px; display: flex; align-items: center; gap: 8px; border-bottom: 1px solid var(--board-line); }
+    .card .cap .t { font-size: 13px; font-weight: 600; color: var(--kn-ink-700); line-height: 1.25; }
+    .card .cap .s { font-size: 11px; color: var(--kn-ink-400); margin-top: 1px; }
+    .card .cap .meta { margin-left: auto; display: flex; gap: 5px; flex: none; }
+    .tag { font-size: 9.5px; text-transform: uppercase; letter-spacing: .07em; padding: 3px 7px; border-radius: 999px;
+      border: 1px solid var(--board-line); color: var(--kn-ink-400); white-space: nowrap; }
+    .tag.prim { background: var(--accent-weak); color: var(--accent); border-color: transparent; }
+    .tag.ext { background: #E5ECE7; color: var(--kn-green); border-color: transparent; }
+    .tag.live { background: #EAF0FB; color: var(--kn-blue); border-color: transparent; }
+
+    .thumb { position: relative; overflow: hidden; background: #faf7f2; }
+    .thumb iframe { border: 0; transform-origin: top left; pointer-events: none; background: #fff; }
+    .thumb .ph { position: absolute; inset: 0; display: grid; place-items: center; color: var(--kn-ink-300);
+      font-size: 12px; gap: 6px; text-align: center; }
+    .thumb .open { position: absolute; right: 10px; bottom: 10px; background: rgba(15,14,13,.82); color: #fff;
+      font-size: 11px; padding: 5px 10px; border-radius: 7px; opacity: 0; transition: opacity .18s; }
+    .card:hover .thumb .open { opacity: 1; }
+
+    /* Placeholder (not-yet-designed) */
+    .card.placeholder { cursor: default; }
+    .card.placeholder:hover { transform: none; box-shadow: 0 1px 2px rgba(60,40,20,.06); }
+    .nyd { display: grid; place-content: center; gap: 10px; text-align: center; padding: var(--space-6);
+      background: repeating-linear-gradient(135deg, #f3eee6, #f3eee6 11px, #efe8dd 11px, #efe8dd 22px); }
+    .nyd .ic { width: 34px; height: 34px; border-radius: 9px; border: 1.5px dashed var(--kn-ink-300); display: grid; place-items: center;
+      color: var(--kn-ink-300); margin: 0 auto; }
+    .nyd b { font-size: 13px; color: var(--kn-ink-600); }
+    .nyd span { font-size: 11px; color: var(--kn-ink-400); }
+    .nyd .badge-nyd { font-size: 9.5px; text-transform: uppercase; letter-spacing: .08em; color: var(--accent);
+      border: 1px solid var(--accent-weak); background: var(--accent-weak); padding: 3px 8px; border-radius: 999px; justify-self: center; }
+
+    /* ── Flow section card ── */
+    .flow { background: var(--kn-ink); color: var(--kn-cream); border-radius: 14px; padding: var(--space-8);
+      display: flex; gap: var(--space-8); flex-wrap: wrap; align-items: center; }
+    .flow .lead { flex: 1; min-width: 260px; }
+    .flow h3 { font-family: var(--font-display); font-size: 24px; font-weight: 600; margin: 0 0 8px; }
+    .flow p { font-size: 13px; color: #b3a691; margin: 0 0 18px; max-width: 44ch; line-height: 1.5; }
+    .flow ol { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 7px; }
+    .flow ol li { display: flex; align-items: center; gap: 7px; }
+    .flow ol li button { font-family: var(--font-body); font-size: 12px; color: var(--kn-cream); background: #221e19;
+      border: 1px solid #34302a; border-radius: 8px; padding: 7px 11px; cursor: pointer; }
+    .flow ol li button:hover { border-color: var(--kn-amber); color: var(--kn-amber); }
+    .flow ol li .arr { color: #5b544a; font-size: 13px; }
+
+    /* ── Overlay ── */
+    .ov { position: fixed; inset: 0; z-index: 100; background: rgba(15,14,13,.72); backdrop-filter: blur(4px);
+      display: none; flex-direction: column; }
+    .ov.on { display: flex; }
+    .ov-bar { display: flex; align-items: center; gap: var(--space-4); padding: 11px var(--space-6); color: #fff; flex: none; }
+    .ov-bar .t { font-family: var(--font-display); font-size: 15px; font-weight: 600; }
+    .ov-bar .s { font-size: 12px; color: #b3a691; }
+    .ov-bar .grow { flex: 1; }
+    .ov-step { font-size: 12px; color: #cdbfa8; padding: 5px 10px; border: 1px solid #4a443b; border-radius: 999px; }
+    .ov-btn { font-family: var(--font-body); font-size: 13px; color: #fff; background: #2a251f; border: 1px solid #423c34;
+      border-radius: 8px; padding: 8px 13px; cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+    .ov-btn:hover { border-color: var(--kn-amber); color: var(--kn-amber); }
+    .ov-btn[disabled] { opacity: .35; cursor: default; }
+    .ov-btn.amber { background: var(--kn-amber); color: var(--kn-ink); border: 0; font-weight: 600; }
+    .ov-btn.amber:hover { background: var(--kn-amber-hover); color: var(--kn-ink); }
+    .ov-stage { flex: 1; display: grid; place-items: center; padding: 0 var(--space-5) var(--space-5); min-height: 0; }
+    .ov-stage .device { background: #fff; border-radius: 12px; box-shadow: 0 24px 60px rgba(0,0,0,.5); overflow: hidden;
+      height: 100%; }
+    .ov-stage .device.m { border-radius: 28px; border: 8px solid #1a1714; height: 100%; }
+    .ov-stage iframe { border: 0; width: 100%; height: 100%; background: #fff; display: block; }
+    .ov-empty { color: #b3a691; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <header class="banner">
+    <div class="banner-in">
+      <img src="assets/logo/knyhovo-logo-dark.png" alt="Knyhovo">
+      <div class="v">
+        <b>MVP Product Board</b>
+        <span>Огляд усього продукту · live-екрани</span>
+      </div>
+      <div class="pills">
+        <span class="bpill frozen">Version 1.0 · Frozen</span>
+        <span class="bpill">Source of Truth</span>
+        <span class="bpill">Read-only · Review artifact</span>
+      </div>
+      <div class="grow"></div>
+      <button class="tourbtn" id="tourBtn">▶ Почати тур продуктом</button>
+    </div>
+  </header>
+
+  <nav class="secnav"><div class="secnav-in" id="secnav"></div></nav>
+
+  <main id="board"></main>
+
+  <!-- Overlay -->
+  <div class="ov" id="ov">
+    <div class="ov-bar">
+      <div>
+        <div class="t" id="ovTitle">—</div>
+        <div class="s" id="ovSub">—</div>
+      </div>
+      <div class="grow"></div>
+      <span class="ov-step" id="ovStep" style="display:none">—</span>
+      <button class="ov-btn" id="ovPrev" style="display:none">← Назад</button>
+      <button class="ov-btn amber" id="ovNext" style="display:none">Далі →</button>
+      <a class="ov-btn" id="ovTab" target="_blank" rel="noopener">Відкрити ↗</a>
+      <button class="ov-btn" id="ovClose">Закрити ✕</button>
+    </div>
+    <div class="ov-stage" id="ovStage"></div>
+  </div>
+
+  <script>
+  /* ═══════════════ FRAME REGISTRY — every frame references a real approved file by path ═══════════════ */
+  const F = {
+    foundations:   { t:'Foundations · токени та бренд', s:'Кольори · типографіка · простір · активи', src:'board-foundations.html', dev:'d', live:1 },
+    components:    { t:'Components · DS-бандл', s:'Button · Badge · Chip · SearchBar · BookCard · ThemeToggle', src:'board-components.html', dev:'d', live:1 },
+
+    home:          { t:'Головна', s:'Hero · пошук · підбірки · категорії · рекомендації · футер', src:'Homepage v1.0.html', dev:'d' },
+    collections:   { t:'Колекції — лендинг', s:'Тематичні підбірки книг', src:'Collections Landing Page.html', dev:'d' },
+
+    search:        { t:'Результати пошуку', s:'Сітка · сортування · пагінація', src:'Search Results Page.html', dev:'d' },
+    suggest:       { t:'Підказки пошуку', s:'Live-прототип автодоповнення', src:'design-import/search-intelligence-v1/Search Suggestions - Live Prototype.html', dev:'d' },
+    searchint:     { t:'Search Intelligence — десктоп', s:'Виправлення · ISBN · синоніми', src:'design-import/search-intelligence-v1/Search Intelligence - Desktop.html', dev:'d' },
+
+    book:          { t:'Сторінка книги', s:'Найкраща ціна · інші книгарні · вішлист (усі стани)', src:'Book Details - Exploration.html', dev:'d' },
+    pricehist:     { t:'Динаміка ціни (W5 API)', s:'Графік · типова ціна · стани', src:'design-import/price-history-v1/Book Details - Price History (W5 API).html', dev:'d' },
+    offers:        { t:'Offers Intelligence — десктоп', s:'Порівняння пропозицій книгарень', src:'design-import/store-offers-v1/Offers Intelligence - Desktop.html', dev:'d' },
+    authorshelf:   { t:'Інші книги автора', s:'Author Shelf v1.0 — degradation states', src:'packages/web/design-import/discovery-w9a-author-shelf/Author Shelf - Live Pattern.html', dev:'d' },
+
+    wishlist:      { t:'Бажанки v1.0', s:'Канонічний екран — Hybrid Freeze v2 (усі стани)', src:'Wishlist v1.0 - Hybrid Freeze v2.html', dev:'d', prim:1 },
+    wlverdicts:    { t:'Бажанки + вердикти', s:'Розширення W3 — поради та заощадження', src:'design-import/price-history-v1/Wishlist Verdicts.html', dev:'d', ext:1 },
+    wlalerts:      { t:'Бажанки + сповіщення', s:'Розширення W4 — стани цінових алертів', src:'design-import/alerts-v1/Wishlist Alerts.html', dev:'d', ext:1 },
+    discounts:     { t:'Книги зі знижками', s:'Розширення — секція знижок (empty/populated/loading)', src:'design-import/price-history-v1/Discounts Section.html', dev:'d', ext:1 },
+
+    notifprefs:    { t:'Налаштування сповіщень', s:'Settings → Сповіщення · усі стани · обидві теми', src:'Notification Preferences.html', dev:'d' },
+    unsubscribe:   { t:'Публічне відписування', s:'Окрема публічна сторінка', src:'Notification Unsubscribe.html', dev:'d' },
+    magiclink:     { t:'Вхід — Magic Link', s:'Passwordless · усі стани · обидві теми · десктоп + мобільний', src:'Magic Link Login.html', dev:'d', prim:1 },
+
+    alertcfg:      { t:'Налаштування алерту', s:'Price Alerts W4 — конфігурація', src:'design-import/alerts-v1/Alert Configuration.html', dev:'d' },
+    alertstates:   { t:'Стани сповіщень — десктоп', s:'saved · watch · triggered · paused', src:'design-import/alerts-v1/Alert States - Desktop.html', dev:'d' },
+    knyhovyk:      { t:'Книговик у продукті (W8c)', s:'Присутність персонажа на екранах', src:'design-import/knyhovyk-ai-assistant-v1/Knyhovyk in Product - W8c.html', dev:'d' },
+
+    /* mobile */
+    bookmob:       { t:'Сторінка книги — мобільний', s:'Decision-first · sticky CTA', src:'design-import/price-history-v1/Book Details - Mobile - Filled.html', dev:'m' },
+    searchmob:     { t:'Search Intelligence — мобільний', s:'Підказки та стани', src:'design-import/search-intelligence-v1/Search Intelligence - Mobile.html', dev:'m' },
+    offersmob:     { t:'Offers — мобільний', s:'Дві лінії · ціна + CTA', src:'design-import/store-offers-v1/Offers Intelligence - Mobile.html', dev:'m' },
+    alertmob:      { t:'Стани сповіщень — мобільний', s:'Акордеон-картка', src:'design-import/alerts-v1/Alert States - Mobile.html', dev:'m' },
+    alertcfgmob:   { t:'Налаштування алерту — мобільний', s:'Mobile alert configuration', src:'design-import/alerts-v1/Mobile Alert Configuration.html', dev:'m' },
+
+    /* states */
+    phloading:     { t:'Динаміка ціни — завантаження', s:'Skeleton, що дзеркалить макет', src:'design-import/price-history-v1/Price History - Loading States.html', dev:'d' },
+    phempty:       { t:'Динаміка ціни — порожньо', s:'Ще збираємо історію (маскот-голос)', src:'design-import/price-history-v1/Price History - Empty States.html', dev:'d' },
+    offerstates:   { t:'Матриця станів пропозицій', s:'in-stock · low · out · error', src:'design-import/store-offers-v1/Offer States Matrix.html', dev:'d' },
+    alertmatrix:   { t:'Матриця переходів алертів', s:'Lifecycle переходи станів', src:'design-import/alerts-v1/Alert Transition Matrix.html', dev:'d' },
+  };
+
+  const PLACEHOLDER = {
+    profile:  { t:'Профіль', s:'Settings → Профіль' },
+    security: { t:'Безпека та вхід', s:'Settings → Безпека' },
+  };
+
+  /* ═══════════════ BOARD STRUCTURE — 13 sections ═══════════════ */
+  const SECTIONS = [
+    { n:'01', id:'foundations', title:'Foundations', sub:'Токени, типографіка та захищені бренд-активи', frames:['foundations'] },
+    { n:'02', id:'components',  title:'Components',  sub:'Реальні компоненти дизайн-системи', frames:['components'] },
+    { n:'03', id:'home',        title:'Home',        sub:'Головна сторінка та лендинг колекцій', frames:['home','collections'] },
+    { n:'04', id:'search',      title:'Search',      sub:'Пошук, підказки та інтелект пошуку', frames:['search','suggest','searchint'] },
+    { n:'05', id:'book',        title:'Book Details', sub:'Сторінка книги, ціни, пропозиції, полиці', frames:['book','pricehist','offers','authorshelf','knyhovyk'] },
+    { n:'06', id:'wishlist',    title:'Wishlist «Бажанки»', sub:'Канонічний екран + розширення (вердикти, сповіщення, знижки)', frames:['wishlist','wlverdicts','wlalerts','discounts'] },
+    { n:'07', id:'settings',    title:'Settings',    sub:'Сповіщення задизайнено · Профіль і Безпека — ще ні', frames:['notifprefs','__profile','__security'] },
+    { n:'08', id:'auth',        title:'Auth «Вхід»', sub:'Passwordless magic-link — джерело істини v1.0', frames:['magiclink'] },
+    { n:'09', id:'notifprefs',  title:'Notification Preferences', sub:'Усі стани, обидві теми, десктоп + мобільний', frames:['notifprefs'] },
+    { n:'10', id:'unsubscribe', title:'Public Unsubscribe', sub:'Окрема публічна сторінка відписування', frames:['unsubscribe'] },
+    { n:'11', id:'mobile',      title:'Mobile',      sub:'Мобільні адаптації затверджених екранів', frames:['bookmob','searchmob','offersmob','alertmob','alertcfgmob'] },
+    { n:'12', id:'states',      title:'States',      sub:'Skeleton-завантаження, inline-помилки, порожні стани', frames:['phloading','phempty','offerstates','alertmatrix','alertstates','alertcfg'] },
+    { n:'13', id:'flow',        title:'Prototype Flow', sub:'Скрізний шлях користувача', frames:['__flow'] },
+  ];
+
+  /* ═══════════════ GUIDED JOURNEY ═══════════════ */
+  const JOURNEY = [
+    { fid:'home',        cap:'Головна' },
+    { fid:'search',      cap:'Пошук' },
+    { fid:'book',        cap:'Сторінка книги' },
+    { fid:'wishlist',    cap:'Бажанки' },
+    { fid:'notifprefs',  cap:'Налаштування' },
+    { fid:'notifprefs',  cap:'Сповіщення' },
+    { fid:'unsubscribe', cap:'Відписування' },
+    { fid:'home',        cap:'Назад на головну' },
+  ];
+
+  /* ═══════════════ THUMBNAIL SIZING ═══════════════ */
+  const DIMS = { d:{ w:1440, pw:382, ph:280 }, m:{ w:414, pw:208, ph:404 } };
+  const encSrc = (p) => encodeURI(p);
+
+  /* ── Build section nav ── */
+  const secnav = document.getElementById('secnav');
+  SECTIONS.forEach(s => {
+    const a = document.createElement('a');
+    a.href = '#sec-' + s.id;
+    a.textContent = s.n + ' ' + s.title;
+    secnav.appendChild(a);
+  });
+
+  /* ── Lazy iframe loader ── */
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const fr = e.target;
+        if (!fr.dataset.loaded) { fr.src = fr.dataset.src; fr.dataset.loaded = '1'; }
+        io.unobserve(fr);
+      }
+    });
+  }, { rootMargin: '600px 0px' });
+
+  function makeThumb(f) {
+    const d = DIMS[f.dev];
+    const scale = d.pw / d.w;
+    const logicalH = Math.round(d.ph / scale);
+    const thumb = document.createElement('div');
+    thumb.className = 'thumb';
+    thumb.style.width = d.pw + 'px';
+    thumb.style.height = d.ph + 'px';
+    const fr = document.createElement('iframe');
+    fr.title = f.t;
+    fr.loading = 'lazy';
+    fr.style.width = d.w + 'px';
+    fr.style.height = logicalH + 'px';
+    fr.style.transform = 'scale(' + scale + ')';
+    fr.dataset.src = encSrc(f.src);
+    thumb.appendChild(fr);
+    const open = document.createElement('div'); open.className = 'open'; open.textContent = 'Відкрити ⤢';
+    thumb.appendChild(open);
+    io.observe(fr);
+    return thumb;
+  }
+
+  function makeCard(fid) {
+    if (fid === '__flow') return makeFlowCard();
+    if (fid === '__profile') return makePlaceholder(PLACEHOLDER.profile);
+    if (fid === '__security') return makePlaceholder(PLACEHOLDER.security);
+    const f = F[fid];
+    const d = DIMS[f.dev];
+    const card = document.createElement('div');
+    card.className = 'card';
+    card.style.width = (d.pw + 2) + 'px';
+    const cap = document.createElement('div'); cap.className = 'cap';
+    cap.innerHTML = '<div><div class="t">' + f.t + '</div><div class="s">' + f.s + '</div></div>';
+    const meta = document.createElement('div'); meta.className = 'meta';
+    if (f.prim) meta.innerHTML += '<span class="tag prim">Канонічний</span>';
+    if (f.ext)  meta.innerHTML += '<span class="tag ext">Розширення</span>';
+    if (f.live) meta.innerHTML += '<span class="tag live">DS</span>';
+    meta.innerHTML += '<span class="tag">' + (f.dev === 'm' ? 'Mobile' : 'Desktop') + '</span>';
+    cap.appendChild(meta);
+    card.appendChild(cap);
+    card.appendChild(makeThumb(f));
+    card.addEventListener('click', () => openSingle(fid));
+    return card;
+  }
+
+  function makePlaceholder(p) {
+    const card = document.createElement('div');
+    card.className = 'card placeholder';
+    card.style.width = (DIMS.d.pw + 2) + 'px';
+    card.innerHTML =
+      '<div class="cap"><div><div class="t">' + p.t + '</div><div class="s">' + p.s + '</div></div>' +
+      '<div class="meta"><span class="tag">Placeholder</span></div></div>' +
+      '<div class="nyd" style="height:' + DIMS.d.ph + 'px">' +
+        '<div class="ic">＋</div>' +
+        '<b>Ще не задизайнено</b>' +
+        '<span>Цей екран відсутній у затвердженому наборі.</span>' +
+        '<span class="badge-nyd">Not yet designed</span>' +
+      '</div>';
+    return card;
+  }
+
+  function makeFlowCard() {
+    const wrap = document.createElement('div');
+    wrap.style.width = '100%';
+    const flow = document.createElement('div');
+    flow.className = 'flow';
+    const lead = document.createElement('div'); lead.className = 'lead';
+    lead.innerHTML = '<h3>Скрізний шлях користувача</h3>' +
+      '<p>Гайдований тур реальними екранами — як відкрити справжній сайт. Кожен крок відкриває live-сторінку у повноекранному режимі з навігацією «Далі / Назад».</p>';
+    const start = document.createElement('button'); start.className = 'tourbtn'; start.textContent = '▶ Запустити тур';
+    start.style.cssText = 'background:var(--kn-amber);color:var(--kn-ink);border:0;border-radius:8px;padding:10px 18px;font-weight:600;cursor:pointer;font-size:13px';
+    start.addEventListener('click', () => startTour(0));
+    lead.appendChild(start);
+    const ol = document.createElement('ol');
+    JOURNEY.forEach((j, i) => {
+      const li = document.createElement('li');
+      const b = document.createElement('button');
+      b.textContent = (i + 1) + ' · ' + j.cap;
+      b.addEventListener('click', () => startTour(i));
+      li.appendChild(b);
+      if (i < JOURNEY.length - 1) { const a = document.createElement('span'); a.className = 'arr'; a.textContent = '→'; li.appendChild(a); }
+      ol.appendChild(li);
+    });
+    flow.appendChild(lead); flow.appendChild(ol);
+    wrap.appendChild(flow);
+    return wrap;
+  }
+
+  /* ── Render board ── */
+  const board = document.getElementById('board');
+  SECTIONS.forEach(s => {
+    const sec = document.createElement('section');
+    sec.className = 'section'; sec.id = 'sec-' + s.id;
+    const head = document.createElement('div'); head.className = 'sec-head';
+    head.innerHTML = '<span class="sec-num">' + s.n + '</span><h2 class="sec-title">' + s.title + '</h2>' +
+      '<span class="sec-sub">' + s.sub + '</span>';
+    sec.appendChild(head);
+    const grid = document.createElement('div'); grid.className = 'grid';
+    s.frames.forEach(fid => grid.appendChild(makeCard(fid)));
+    sec.appendChild(grid);
+    board.appendChild(sec);
+  });
+
+  /* ═══════════════ OVERLAY + JOURNEY ENGINE ═══════════════ */
+  const ov = document.getElementById('ov');
+  const ovStage = document.getElementById('ovStage');
+  const ovTitle = document.getElementById('ovTitle');
+  const ovSub = document.getElementById('ovSub');
+  const ovStep = document.getElementById('ovStep');
+  const ovPrev = document.getElementById('ovPrev');
+  const ovNext = document.getElementById('ovNext');
+  const ovTab = document.getElementById('ovTab');
+  let tourIdx = -1; // -1 = single mode
+
+  function renderFrame(fid) {
+    const f = F[fid];
+    ovStage.innerHTML = '';
+    if (!f) { ovStage.innerHTML = '<div class="ov-empty">Кадр недоступний.</div>'; return; }
+    const device = document.createElement('div');
+    device.className = 'device' + (f.dev === 'm' ? ' m' : '');
+    if (f.dev === 'm') { device.style.width = '414px'; device.style.maxWidth = '94vw'; }
+    else { device.style.width = 'min(1440px, 96vw)'; }
+    const fr = document.createElement('iframe');
+    fr.src = encSrc(f.src); fr.title = f.t;
+    device.appendChild(fr);
+    ovStage.appendChild(device);
+    ovTitle.textContent = f.t;
+    ovSub.textContent = f.s;
+    ovTab.href = encSrc(f.src);
+  }
+
+  function openSingle(fid) {
+    tourIdx = -1;
+    ovStep.style.display = 'none';
+    ovPrev.style.display = 'none';
+    ovNext.style.display = 'none';
+    renderFrame(fid);
+    ov.classList.add('on');
+  }
+
+  function startTour(i) {
+    tourIdx = i;
+    ovStep.style.display = '';
+    ovPrev.style.display = '';
+    ovNext.style.display = '';
+    showTour();
+    ov.classList.add('on');
+  }
+  function showTour() {
+    const j = JOURNEY[tourIdx];
+    renderFrame(j.fid);
+    ovStep.textContent = 'Крок ' + (tourIdx + 1) + ' / ' + JOURNEY.length + ' · ' + j.cap;
+    ovPrev.disabled = tourIdx === 0;
+    ovNext.textContent = tourIdx === JOURNEY.length - 1 ? 'Завершити ✓' : 'Далі →';
+  }
+  ovPrev.addEventListener('click', () => { if (tourIdx > 0) { tourIdx--; showTour(); } });
+  ovNext.addEventListener('click', () => {
+    if (tourIdx === JOURNEY.length - 1) { closeOv(); }
+    else { tourIdx++; showTour(); }
+  });
+  function closeOv() { ov.classList.remove('on'); ovStage.innerHTML = ''; tourIdx = -1; }
+  document.getElementById('ovClose').addEventListener('click', closeOv);
+  document.getElementById('tourBtn').addEventListener('click', () => startTour(0));
+  ov.addEventListener('click', (e) => { if (e.target === ov) closeOv(); });
+  document.addEventListener('keydown', (e) => {
+    if (!ov.classList.contains('on')) return;
+    if (e.key === 'Escape') closeOv();
+    if (tourIdx >= 0) {
+      if (e.key === 'ArrowLeft' && tourIdx > 0) { tourIdx--; showTour(); }
+      if (e.key === 'ArrowRight') { if (tourIdx < JOURNEY.length - 1) { tourIdx++; showTour(); } }
+    }
+  });
+  </script>
+</body>
+</html>

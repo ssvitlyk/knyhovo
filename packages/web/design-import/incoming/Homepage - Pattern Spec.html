@@ -1,0 +1,225 @@
+<!DOCTYPE html>
+<!-- @pattern name="Knyhovo Homepage" version="1.0" status="freeze-candidate" reviewed="2026-06-21"
+     note="Foundation: Concept A (Oracle Search). Search-first hero + discovery shelves.
+           Compose only from window.KnyhovoDesignSystem_9fa616 exports. See CLAUDE.md." -->
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Knyhovo DS — Homepage v1.0 Pattern Spec</title>
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<style>
+  body { background: var(--bg); }
+  .doc { max-width: 900px; margin: 0 auto; padding: var(--space-12) var(--gutter) var(--space-20); }
+
+  .doc__eyebrow { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); margin-bottom: var(--space-3); }
+  .doc h1 { font-size: var(--fs-h1); margin-bottom: var(--space-2); }
+  .doc h1 em { font-style: italic; color: var(--accent); }
+  .doc__lead { font-size: var(--fs-lead); color: var(--text-body); max-width: 60ch; margin-bottom: var(--space-4); }
+  .doc__frozen {
+    display: inline-flex; align-items: center; gap: var(--space-2);
+    background: var(--surface-accent); border: 1px solid var(--border);
+    border-radius: var(--radius-pill); padding: var(--space-1) var(--space-4);
+    font-size: var(--fs-xs); font-weight: var(--fw-semibold);
+    color: var(--accent); margin-bottom: var(--space-10);
+  }
+  .doc h2 { font-size: var(--fs-h3); margin: var(--space-12) 0 var(--space-4); padding-top: var(--space-6); border-top: 1px solid var(--border); }
+  .doc h3 { font-family: var(--font-body); font-size: var(--fs-body); font-weight: var(--fw-semibold); color: var(--text); margin: var(--space-6) 0 var(--space-2); }
+  .doc p, .doc li { font-size: var(--fs-body); color: var(--text-body); line-height: var(--lh-normal); }
+  .doc ul, .doc ol { padding-left: 1.2em; display: flex; flex-direction: column; gap: var(--space-2); margin: var(--space-3) 0; }
+  .doc code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.85em; background: var(--surface-accent); border: 1px solid var(--border); border-radius: var(--radius-xs); padding: 1px 5px; color: var(--text); }
+  .doc pre { background: var(--surface-sunk); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-5); overflow-x: auto; margin: var(--space-4) 0; }
+  .doc pre code { background: none; border: none; padding: 0; font-size: 0.8125rem; line-height: 1.6; display: block; white-space: pre; }
+  .back-link { font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--accent); display: inline-block; margin-bottom: var(--space-8); }
+  .back-link:hover { color: var(--accent-hover); }
+
+  table { width: 100%; border-collapse: collapse; margin: var(--space-4) 0; font-size: var(--fs-sm); }
+  th { text-align: left; font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); font-weight: var(--fw-semibold); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border-strong); }
+  td { padding: var(--space-3); border-bottom: 1px solid var(--border); color: var(--text-body); vertical-align: top; }
+  td:first-child { color: var(--text); font-weight: var(--fw-medium); white-space: nowrap; }
+
+  .anatomy { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: var(--space-6); margin: var(--space-5) 0; display: flex; flex-direction: column; gap: var(--space-3); }
+  .wf { border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4); display: flex; align-items: center; gap: var(--space-3); font-size: var(--fs-sm); color: var(--text-body); background: var(--surface-sunk); min-height: 44px; }
+  .wf--tall { min-height: 96px; align-items: flex-start; }
+  .wf--accent { background: var(--surface-accent); }
+  .wf__num { flex: none; width: 22px; height: 22px; border-radius: var(--radius-pill); background: var(--accent); color: var(--text-on-accent); font-size: var(--fs-xs); font-weight: var(--fw-semibold); display: inline-flex; align-items: center; justify-content: center; }
+  .wf__col { display: flex; flex-direction: column; gap: 4px; }
+  .wf__sub { font-size: var(--fs-xs); color: var(--text-muted); }
+  .wf__grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); flex: 1; }
+  .wf__cell { border: 1px dashed var(--border); border-radius: var(--radius-xs); padding: var(--space-2) var(--space-3); font-size: var(--fs-xs); color: var(--text-muted); background: var(--surface); }
+
+  .pill { display: inline-block; font-size: var(--fs-xs); font-weight: var(--fw-medium); padding: 2px 8px; border-radius: var(--radius-pill); background: var(--surface-accent); color: var(--text-muted); border: 1px solid var(--border); }
+  .pill--green { background: color-mix(in oklab, var(--brand-green) 12%, var(--surface)); color: var(--brand-green); border-color: color-mix(in oklab, var(--brand-green) 30%, var(--border)); }
+  .pill--accent { background: var(--accent); color: var(--text-on-accent); border-color: var(--accent); }
+
+  .verdict { border: 1px solid color-mix(in oklab, var(--brand-green) 40%, var(--border)); background: color-mix(in oklab, var(--brand-green) 6%, var(--surface)); border-radius: var(--radius-md); padding: var(--space-6); margin: var(--space-5) 0; }
+  .verdict h3 { margin-top: 0; color: var(--brand-green); }
+  .verdict__tag { display: inline-block; font-family: var(--font-display); font-size: 1.25rem; font-weight: 700; color: var(--brand-green); margin-bottom: var(--space-2); }
+
+  @media print { .back-link { display: none; } .doc h2 { break-after: avoid; } .anatomy, pre, table, .verdict { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<main class="doc">
+  <a class="back-link" href="Homepage v1.0.html">← Жива сторінка патерну</a>
+  <p class="doc__eyebrow">KNYHOVO DESIGN SYSTEM · HOMEPAGE · PATTERN SPEC</p>
+  <h1>Knyhovo Homepage <em>v1.0</em></h1>
+  <p class="doc__lead">Фінальна архітектура головної сторінки. Фундамент — <strong>Концепт A (Oracle Search)</strong>: пошук як серце продукту, відкриття — полицями нижче. Складена виключно з затверджених компонентів DS v1.0. Жоден захищений актив не змінено; патерни Search Results, Book Details і Бажанки не зачеплено.</p>
+  <div class="doc__frozen">✦ Кандидат на заморозку · переглянуто 21.06.2026 · рекомендація щодо freeze — у кінці документа</div>
+
+  <!-- ═══ ARCHITECTURE ════════════════════════════════════════════════════════════ -->
+  <h2>1 · Фінальна архітектура</h2>
+  <p>Knyhovo — насамперед платформа порівняння цін на книги. Пошук залишається ядром користувацького шляху і домінує на головній. Відкриття (discovery) — це полиці під пошуком, а <strong>не</strong> рівноправний другий вхід.</p>
+  <h3>Обрана ставка</h3>
+  <p>З п'яти досліджених концептів за основу взято <strong>Концепт A · Oracle Search</strong>. Відхилено: D (Two Doors) — розщеплена архітектура; C (Price Intelligence) як фундамент; E (Discovery Hub) — журнальна головна; важкі редакційні / блогові макети; кілька конкурентних точок входу.</p>
+  <h3>Шлях користувача</h3>
+  <p>Приземлення → пошук за назвою / автором / ISBN → <em>Результати пошуку</em> → <em>Деталі книги</em>. Без конкретного запиту читач скролить полиці відкриття (Популярне · Новинки · Knyhovo радить) і входить у ту саму воронку через <code>BookCard</code>.</p>
+
+  <!-- ═══ ANATOMY ═════════════════════════════════════════════════════════════════ -->
+  <h2>2 · Анатомія сторінки</h2>
+  <div class="anatomy" aria-label="Схема головної сторінки">
+    <div class="wf"><span class="wf__num">1</span>Header — логотип · навігація (активний: «Головна») · ThemeToggle · «Увійти»</div>
+    <div class="wf wf--tall wf--accent"><span class="wf__num">2</span>
+      <div class="wf__col">
+        <strong>Hero — затверджений макет 50/50</strong>
+        <span class="wf__sub">Eyebrow · h1 «Де купити цю книгу? Knyhovo знає.» · лід · <strong>SearchBar</strong> · популярні запити (Chip) · статистика · Книговик (mascot-hero) праворуч</span>
+      </div>
+    </div>
+    <div class="wf wf--tall"><span class="wf__num">3</span>
+      <div class="wf__col" style="flex:1;width:100%">
+        <strong>Популярне зараз</strong> <span class="wf__sub">price-driven · CTA «Усі →»</span>
+        <div class="wf__grid"><div class="wf__cell">BookCard</div><div class="wf__cell">BookCard</div><div class="wf__cell">BookCard</div><div class="wf__cell">BookCard</div></div>
+      </div>
+    </div>
+    <div class="wf wf--tall"><span class="wf__num">4</span>
+      <div class="wf__col" style="flex:1;width:100%">
+        <strong>Новинки</strong> <span class="wf__sub">CTA «Весь каталог →»</span>
+        <div class="wf__grid"><div class="wf__cell">BookCard</div><div class="wf__cell">BookCard</div><div class="wf__cell">BookCard</div><div class="wf__cell">BookCard</div></div>
+      </div>
+    </div>
+    <div class="wf wf--tall wf--accent"><span class="wf__num">5</span>
+      <div class="wf__col" style="flex:1;width:100%">
+        <strong>Knyhovo радить</strong> <span class="wf__sub">редакційна кураторська полиця · аватар Книговика + italic-серіф нота · books only · CTA «Уся добірка»</span>
+        <div class="wf__grid"><div class="wf__cell">BookCard</div><div class="wf__cell">BookCard</div><div class="wf__cell">BookCard</div><div class="wf__cell">BookCard</div></div>
+      </div>
+    </div>
+    <div class="wf"><span class="wf__num">6</span>Footer — логотип · слоган · копірайт</div>
+  </div>
+
+  <!-- ═══ SECTIONS ════════════════════════════════════════════════════════════════ -->
+  <h2>3 · Специфікація секцій</h2>
+  <table>
+    <thead><tr><th>Секція</th><th>Призначення</th><th>Контент</th><th>Бейдж / акцент</th></tr></thead>
+    <tbody>
+      <tr><td>Hero</td><td>Пошук — головна дія</td><td>Затверджений макет 50/50; SearchBar; 5 популярних запитів; статистика 5 · 12k+ · щодня; Книговик</td><td>Italic-серіф акцент у h1 (<code>Knyhovo знає.</code>)</td></tr>
+      <tr><td>Популярне зараз</td><td>Price-driven відкриття</td><td>4 × frozen BookCard, 2-кол. сітка</td><td><span class="pill pill--green">Найкраща ціна</span> · <span class="pill pill--accent">-N%</span></td></tr>
+      <tr><td>Новинки</td><td>Свіжі видання</td><td>4 × frozen BookCard, 2-кол. сітка</td><td><span class="pill">Новинка</span> (accent)</td></tr>
+      <tr><td>Knyhovo радить</td><td>Кураторська редакційна полиця</td><td>4 × frozen BookCard у виділеному <code>--surface-accent</code> блоці; аватар + italic нота голосом Книговика. <strong>Books only</strong> — без статей, без журнального макета</td><td>Змішані за пріоритетом бейджів</td></tr>
+    </tbody>
+  </table>
+  <h3>Ієрархія бейджів (успадковано від frozen BookCard)</h3>
+  <p>Пріоритет, максимум один на картку: <span class="pill pill--green">Найкраща ціна</span> (green) → <span class="pill pill--accent">-N%</span> (solid) → <span class="pill">Новинка</span> (accent). Ціна — великий серіф <code>--accent</code>; стара ціна — muted strikethrough; назва книгарні — завжди <code>--text-muted</code>, ніколи не акцентована.</p>
+
+  <!-- ═══ COMPONENT INVENTORY ═════════════════════════════════════════════════════ -->
+  <h2>4 · Інвентар компонентів</h2>
+  <p>Уся головна складена з експортів <code>window.KnyhovoDesignSystem_9fa616</code>. Нових візуальних компонентів або варіантів карток <strong>не введено</strong>.</p>
+  <table>
+    <thead><tr><th>Компонент</th><th>Джерело</th><th>Де використано</th></tr></thead>
+    <tbody>
+      <tr><td>SearchBar</td><td>DS · forms</td><td>Hero — головна дія</td></tr>
+      <tr><td>BookCard</td><td>DS · display (frozen)</td><td>Усі три полиці · 12 інстансів</td></tr>
+      <tr><td>Badge</td><td>DS · display</td><td>BookCard — green / solid / accent</td></tr>
+      <tr><td>Chip</td><td>DS · forms</td><td>Hero — популярні запити</td></tr>
+      <tr><td>Button</td><td>DS · buttons</td><td>«Увійти» (secondary) · CTA полиць (ghost)</td></tr>
+      <tr><td>ThemeToggle</td><td>DS · display</td><td>Header — light/dark</td></tr>
+    </tbody>
+  </table>
+  <h3>Layout / chrome (page-level, не компоненти DS)</h3>
+  <ul>
+    <li><code>.site-header</code> / <code>.site-footer</code> — успадковано без змін від затвердженого website-патерну та Search Results.</li>
+    <li><code>.hero</code> — затверджений макет 50/50 з <code>ui_kits/website</code>; розмітка та пропорції без змін.</li>
+    <li><code>.hp-grid</code> — 2-кол. сітка горизонтальних BookCard (та сама механіка, що у frozen Search Results).</li>
+    <li><code>.hp-recommends--framed</code> — виділений <code>--surface-accent</code> блок; лише фон + рамка з токенів, без нового візуального словника.</li>
+  </ul>
+  <h3>Захищені активи</h3>
+  <ul>
+    <li>Логотип: <code>knyhovo-logo-light/dark.png</code> — без змін, перемикання за темою.</li>
+    <li>Книговик у Hero: <code>mascot-hero-light/dark.png</code> — затверджена ілюстрація, ідентичні масштаб і позиція в обох темах.</li>
+    <li>Аватар Книговика в «Knyhovo радить»: <code>avatar-light/dark.png</code> — затверджене обличчя-аватар.</li>
+  </ul>
+
+  <!-- ═══ RESPONSIVE ══════════════════════════════════════════════════════════════ -->
+  <h2>5 · Респонсив (frozen-правила)</h2>
+  <table>
+    <thead><tr><th>Брейкпоінт</th><th>Поведінка</th></tr></thead>
+    <tbody>
+      <tr><td>Desktop ≥901px</td><td>Hero 50/50; усі полиці — 2-кол. сітка горизонтальних BookCard; повна навігація.</td></tr>
+      <tr><td>≤900px</td><td>Hero стекається (Книговик зверху, height 300px); навігація ховається (успадковано від затвердженого hero).</td></tr>
+      <tr><td>Mobile &lt;768px</td><td>Один стовпець; BookCard переходять у вертикаль через page-level override (<code>flex-direction:column</code>, cover 104×150) — компонент BookCard <strong>не змінено</strong>; SearchBar на всю ширину; «Knyhovo радить» зменшує паддінги; 44px touch targets.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- ═══ DO NOT MODIFY ═══════════════════════════════════════════════════════════ -->
+  <h2>6 · Заборонено змінювати</h2>
+  <ul>
+    <li>Hero — затверджений макет 50/50, типографіка, копірайтинг «Де купити цю книгу? / Knyhovo знає.», позиція й масштаб Книговика.</li>
+    <li>Кількість і порядок секцій: Hero → Популярне зараз → Новинки → Knyhovo радить.</li>
+    <li>«Knyhovo радить» залишається <strong>books only</strong> — без статей, журнального макета чи блогових карток.</li>
+    <li>Frozen BookCard — без нових варіантів карток; ієрархія ціна › стара ціна › книгарня; правило max один бейдж.</li>
+    <li>Палітра, типографіка, радіуси, тіні, спейсинг — лише токени DS v1.0.</li>
+    <li>Патерни Search Results, Book Details, Бажанки — не редизайнити.</li>
+    <li>Захищені бренд-активи (логотип, Книговик, аватар).</li>
+  </ul>
+
+  <!-- ═══ FREEZE RECOMMENDATION ═══════════════════════════════════════════════════ -->
+  <h2>7 · Рекомендація щодо заморозки</h2>
+  <div class="verdict">
+    <span class="verdict__tag">✦ Готово до freeze — рекомендовано заморозити як Homepage v1.0</span>
+    <p>Архітектура повністю узгоджена з продуктовою стратегією (search-first), складена виключно з затверджених компонентів DS v1.0, не вводить нового візуального словника й не зачіпає жодного замороженого патерну. Обидві теми та обидва брейкпоінти відпрацьовано. Сторінка <strong>готова до заморозки і передачі в розробку</strong>.</p>
+    <h3>Перед фінальним freeze — підтвердити з продуктом (не блокери):</h3>
+    <ul>
+      <li><strong>Джерела даних полиць.</strong> Підтвердити логіку «Популярне зараз» (вікно популярності) та «Новинки» (поріг свіжості), а також хто і як курує «Knyhovo радить».</li>
+      <li><strong>Обкладинки книг.</strong> Жива версія використовує warm-плейсхолдери BookCard. Перед freeze підключити реальні обкладинки (проп <code>cover</code>) — візуальної зміни патерну не потребує.</li>
+      <li><strong>Призначення CTA.</strong> «Усі →», «Весь каталог →», «Уся добірка» мають вести на Search Results з відповідним фільтром.</li>
+      <li><strong>Стан без даних.</strong> Якщо полиця порожня (немає активних знижок / новинок) — секція ховається; підтвердити правило з продуктом.</li>
+    </ul>
+  </div>
+
+  <!-- ═══ MACHINE-READABLE NOTE ═══════════════════════════════════════════════════ -->
+  <h2>8 · Машиночитна нота</h2>
+  <pre><code>{
+  "pattern": "Knyhovo Homepage",
+  "version": "1.0",
+  "status": "freeze-candidate",
+  "foundation": "Concept A — Oracle Search (search-first)",
+  "reviewed": "2026-06-21",
+  "compose_from": ["SearchBar","BookCard","Badge","Chip","Button","ThemeToggle"],
+  "sections": ["Hero","Popular Now","New Releases","Knyhovo Recommends"],
+  "recommends": { "type": "editorial-curated-shelf", "books_only": true, "no_articles": true },
+  "grid": "2-col horizontal BookCard; 1-col vertical < 768px (page-level override, BookCard untouched)",
+  "themes": ["light","dark"],
+  "breakpoints": { "hero_stack": 900, "grid_single": 767 },
+  "protected_assets": ["logo","mascot-hero","avatar"],
+  "do_not_redesign": ["Search Results","Book Details","Wishlist"],
+  "recommendation": "ready-to-freeze"
+}</code></pre>
+
+  <a class="back-link" href="Homepage v1.0.html" style="margin-top:var(--space-10)">← Жива сторінка патерну</a>
+</main>
+
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80">
+    <rect width="120" height="80" fill="#F9F3ED"/>
+    <rect x="20" y="16" width="80" height="8" rx="2" fill="#3B2517"/>
+    <rect x="20" y="30" width="80" height="5" rx="2" fill="#ECE1D2"/>
+    <rect x="20" y="40" width="64" height="5" rx="2" fill="#ECE1D2"/>
+    <rect x="20" y="54" width="38" height="10" rx="3" fill="#B56A2D" opacity="0.4"/>
+  </svg>
+</template>
+</body>
+</html>

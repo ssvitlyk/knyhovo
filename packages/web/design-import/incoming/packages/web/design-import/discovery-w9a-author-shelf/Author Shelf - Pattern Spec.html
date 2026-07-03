@@ -1,0 +1,532 @@
+<!DOCTYPE html>
+<!-- @pattern name="Knyhovo Author Shelf" surface="Book Details v1.1 · «Інші книги автора» · W9a" version="1.0"
+     status="frozen" approved="2026-06-20"
+     note="W9a Author Shelf — «Інші книги автора». Approved & frozen specification for implementation. Extends
+           Book Details v1.1 (Variant C); does NOT introduce new pages and does NOT modify Search Results or the
+           Book Details hero. The ONLY new UI component for W9a. Data source is the canonical_books.author TEXT
+           field (string matching, no author entity) — the component is built to degrade gracefully on incomplete
+           matches, noisy author strings and small result sets. Composes the frozen BookCard + Book Details v1.1
+           related-shelf chassis + DS v1.0 tokens ONLY. No new visual language."
+     reuse="Stable Knyhovo pattern for direct reuse in Claude Code implementations. Compose from
+            window.KnyhovoDesignSystem_9fa616 (BookCard, Badge) + window.AuthorShelfKit (render AuthorShelfSection).
+            See author-shelf.jsx. The SINGLE canonical machine-readable spec lives in §19 of this document
+            (id=json) — read that, not this header; this attribute is intentionally minimal to avoid drift."
+     machine-readable-json-spec='{"pointer":"see section 19 (id=json) for the canonical machine-readable spec",
+       "pattern":"author-shelf","version":"1.0","stage":"W9a","status":"FROZEN","approved":"2026-06-20"}' -->
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Knyhovo — Author Shelf «Інші книги автора» · W9a · Frozen Spec</title>
+<link rel="stylesheet" href="../../../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="../../../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="../../../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="../../../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="../../../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="../../../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<link rel="stylesheet" href="../../../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+<link rel="stylesheet" href="../../../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+<link rel="stylesheet" href="author-shelf.css">
+<style>
+  body { background: var(--bg); }
+  .doc { max-width: 980px; margin: 0 auto; padding: var(--space-10) var(--gutter) var(--space-20); }
+  .topbar { display: flex; align-items: center; justify-content: space-between; max-width: 980px; margin: 0 auto; padding: var(--space-6) var(--gutter) 0; gap: var(--space-4); }
+  .topbar img { height: 32px; }
+  .topbar-r { display: flex; align-items: center; gap: var(--space-3); }
+  .topbar-tag { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-faint); }
+
+  .doc__eyebrow { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); margin-bottom: var(--space-3); }
+  .doc h1 { font-family: var(--font-display); font-size: var(--fs-h1); line-height: var(--lh-tight); letter-spacing: var(--ls-tight); margin-bottom: var(--space-2); }
+  .doc h1 em { font-style: italic; color: var(--accent); }
+  .doc__lead { font-size: var(--fs-lead); color: var(--text-body); max-width: 66ch; margin-bottom: var(--space-4); text-wrap: pretty; }
+  .doc__frozen {
+    display: inline-flex; align-items: center; gap: var(--space-2);
+    background: color-mix(in oklab, var(--brand-green) 12%, var(--surface));
+    border: 1px solid color-mix(in oklab, var(--brand-green) 35%, var(--border));
+    border-radius: var(--radius-pill); padding: var(--space-1) var(--space-4);
+    font-size: var(--fs-xs); font-weight: var(--fw-semibold);
+    color: var(--brand-green); margin-bottom: var(--space-8); text-wrap: pretty;
+  }
+  .doc h2 { font-family: var(--font-display); font-size: var(--fs-h3); margin: var(--space-12) 0 var(--space-4); padding-top: var(--space-6); border-top: 1px solid var(--border); }
+  .doc h3 { font-family: var(--font-body); font-size: var(--fs-body); font-weight: var(--fw-semibold); color: var(--text); margin: var(--space-6) 0 var(--space-2); }
+  .doc p, .doc li { font-size: var(--fs-body); color: var(--text-body); line-height: var(--lh-normal); }
+  .doc ul, .doc ol { padding-left: 1.2em; display: flex; flex-direction: column; gap: var(--space-2); margin: var(--space-3) 0; }
+  .doc strong { color: var(--text); }
+  .doc code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.85em; background: var(--surface-accent); border: 1px solid var(--border); border-radius: var(--radius-xs); padding: 1px 5px; color: var(--text); }
+  .doc pre { background: var(--surface-sunk); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-5); overflow-x: auto; margin: var(--space-4) 0; }
+  .doc pre code { background: none; border: none; padding: 0; font-size: 0.8125rem; line-height: 1.6; display: block; white-space: pre; }
+  .back-link { font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--accent); display: inline-block; margin-bottom: var(--space-8); }
+  .back-link:hover { color: var(--accent-hover); }
+
+  table { width: 100%; border-collapse: collapse; margin: var(--space-4) 0; font-size: var(--fs-sm); }
+  th { text-align: left; font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); font-weight: var(--fw-semibold); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border-strong); }
+  td { padding: var(--space-3); border-bottom: 1px solid var(--border); color: var(--text-body); vertical-align: top; }
+  td:first-child { color: var(--text); font-weight: var(--fw-medium); }
+  td code { white-space: nowrap; }
+
+  /* anatomy wireframe */
+  .anatomy { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: var(--space-6); margin: var(--space-5) 0; display: flex; flex-direction: column; gap: var(--space-2); }
+  .wf { border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4); display: flex; align-items: center; gap: var(--space-3); font-size: var(--fs-sm); color: var(--text-body); background: var(--surface-sunk); min-height: 40px; }
+  .wf--hot { background: var(--accent-weak); border-color: color-mix(in oklab, var(--accent) 50%, var(--border-strong)); color: var(--accent); font-weight: var(--fw-medium); }
+  .wf--dim { background: var(--surface); color: var(--text-faint); border-style: dotted; }
+  .wf__num { flex: none; width: 22px; height: 22px; border-radius: var(--radius-pill); background: var(--accent); color: var(--text-on-accent); font-size: var(--fs-xs); font-weight: var(--fw-semibold); display: inline-flex; align-items: center; justify-content: center; }
+
+  .spec { border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; margin: var(--space-4) 0; }
+  .spec__cap { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); font-weight: var(--fw-semibold); padding: var(--space-3) var(--space-4); background: var(--surface-sunk); border-bottom: 1px solid var(--border); }
+  .spec__body { background: var(--bg); padding: var(--space-6); }
+  .spec__body--mob { display: flex; justify-content: center; }
+  .spec__body--mob > div { width: 390px; max-width: 100%; }
+  .spec__body--mob .as-mobile { display: block !important; } /* force rail visible in specimen frames */
+  .spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
+
+  .bp { display: inline-block; font-size: var(--fs-xs); font-weight: var(--fw-medium); padding: 2px 10px; border-radius: var(--radius-pill); white-space: nowrap; }
+  .bp--d { background: var(--surface-accent); color: var(--text-muted); border: 1px solid var(--border); }
+  .bp--t { background: color-mix(in oklab, var(--accent) 10%, var(--surface)); color: var(--accent); border: 1px solid color-mix(in oklab, var(--accent) 30%, var(--border)); }
+  .bp--m { background: color-mix(in oklab, var(--brand-green) 10%, var(--surface)); color: var(--brand-green); border: 1px solid color-mix(in oklab, var(--brand-green) 30%, var(--border)); }
+
+  .dnm { background: color-mix(in oklab, var(--accent) 6%, var(--surface-sunk)); border: 1px solid color-mix(in oklab, var(--accent) 25%, var(--border)); border-radius: var(--radius-md); padding: var(--space-5) var(--space-6); }
+  .dnm ul { margin: 0; }
+  .dnm li { font-size: var(--fs-sm); }
+
+  .toc { columns: 2; column-gap: var(--space-10); margin: var(--space-4) 0 0; }
+  .toc a { color: var(--accent); font-size: var(--fs-sm); }
+
+  @media (max-width: 760px) { .spec-grid, .toc { grid-template-columns: 1fr; columns: 1; } }
+  @media print { .back-link { display: none; } .doc h2 { break-after: avoid; } .anatomy, .spec, pre, table { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<div class="topbar">
+  <img id="logo" src="../../../../assets/logo/knyhovo-logo-light.png" alt="Knyhovo">
+  <div class="topbar-r">
+    <span class="topbar-tag">W9a · Author Shelf</span>
+    <button id="theme-btn" class="kn-btn kn-btn--secondary kn-btn--sm" type="button">Темна тема</button>
+  </div>
+</div>
+
+<main class="doc">
+  <a class="back-link" href="Author Shelf — Live Pattern.html">← Живий патерн (усі стани · обидві теми · десктоп + мобільний)</a>
+  <p class="doc__eyebrow">KNYHOVO DESIGN SYSTEM · BOOK DETAILS v1.1 · DISCOVERY W9a · AUTHOR SHELF · v1.0</p>
+  <h1>Author Shelf — <em>«Інші книги автора»</em></h1>
+  <p class="doc__lead">Офіційна, заморожена специфікація полиці «Інші книги автора» для імплементації. Це єдиний новий UI-компонент W9a. Він <strong>розширює</strong> Book Details v1.1 (Variant C) — не вводить нових сторінок, не змінює Search Results і не торкається hero Book Details. Складено виключно з замороженого <code>BookCard</code>, каркасу полиць Book Details v1.1 та токенів DS v1.0.</p>
+  <div class="doc__frozen">✦ Author Shelf v1.0 — затверджено 20.06.2026 · W9a · заморожено для імплементації. Майбутні ітерації можуть розширювати функціональність, але не переробляти ці візуальні основи.</div>
+  <div class="dnm" style="margin-bottom:var(--space-8)"><p style="margin:0;font-weight:var(--fw-medium);color:var(--text)">⚠ Живі приклади є нормативними. Якщо проза й приклад суперечать — перемагає приклад.</p><p style="margin:var(--space-2) 0 0;font-size:var(--fs-sm);color:var(--text-body)">Живий патерн (<a href="Author Shelf - Live Pattern.html" style="color:var(--accent)">Author Shelf — Live Pattern</a>) і рендери в цьому документі — єдине джерело візуальної правди для розкладки, розмірів і поведінки. Обидва відтворюються з того самого <code>author-shelf.jsx</code> + <code>author-shelf.css</code>, що й продакшн.</p></div>
+
+  <nav class="toc" aria-label="Зміст">
+    <a href="#purpose">1 · Призначення та принцип</a>
+    <a href="#data">2 · Реальність даних і деградація</a>
+    <a href="#files">3 · Файли</a>
+    <a href="#placement">4 · Розміщення в Book Details</a>
+    <a href="#anatomy">5 · Анатомія компонента</a>
+    <a href="#card">6 · Анатомія картки</a>
+    <a href="#desktop">7 · Десктоп-розкладка</a>
+    <a href="#mobile">8 · Мобільна розкладка</a>
+    <a href="#empty">9 · Порожні стани й поріг</a>
+    <a href="#ordering">10 · Відбір і порядок</a>
+    <a href="#spacing">11 · Spacing і типографіка</a>
+    <a href="#interaction">12 · Взаємодія</a>
+    <a href="#a11y">13 · Доступність</a>
+    <a href="#responsive">14 · Адаптивні правила</a>
+    <a href="#themes">15 · Теми</a>
+    <a href="#copy">16 · Copy deck</a>
+    <a href="#impl">17 · Нотатки імплементації</a>
+    <a href="#dnm">18 · Не змінювати</a>
+    <a href="#json">19 · Machine-readable note</a>
+  </nav>
+
+  <!-- 1 -->
+  <h2 id="purpose">1 · Призначення та принцип</h2>
+  <p>Полиця відповідає на одне читацьке питання наприкінці сторінки книги: <strong>«Що ще писав цей автор?»</strong> Це природне продовження читання — від однієї книги до решти доробку автора, без нового пошуку.</p>
+  <ul>
+    <li><strong>Відкриття, не функція.</strong> Полиця — необов'язкова поверхня відкриття (W9a). Вона ніколи не конкурує з рішенням «де купити»; вона стоїть в самому низу, після всього основного контенту.</li>
+    <li><strong>Реюз, не редизайн.</strong> Картка — це заморожений <code>BookCard</code>; сітка й рейл — заморожений каркас полиць Book Details v1.1. Нової візуальної мови немає.</li>
+    <li><strong>Тиша краща за шум.</strong> Якщо показувати майже нічого — полиця <em>зникає повністю</em>. Жодних плейсхолдерів, жодного «нічого не знайдено», жодного добивання сітки порожніми клітинками. (Принцип «один тисяча ні на кожне так».)</li>
+    <li><strong>Спокій без гонитви.</strong> Жодних «бестселер», лічильників, «🔥». Порядок — у наявності й найдешевше; це не таблиця лідерів.</li>
+  </ul>
+
+  <!-- 2 -->
+  <h2 id="data">2 · Реальність даних і деградація</h2>
+  <p>Сьогодні автор у каталозі — це <strong>текстове поле</strong> <code>canonical_books.author</code>: без сутності, без ID, без дедуплікації. Звідси три обмеження, під які спроєктовано компонент.</p>
+  <table>
+    <thead><tr><th>Ризик даних</th><th>Поведінка компонента</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Неповні збіги</strong> — варіації написання («Т. Шевченко» / «Тарас Шевченко») розривають збіг.</td><td>Полиця показує лише те, що реально зматчилось, і не обіцяє повноти. «Усі книги автора →» веде на сторінку автора (Search Results), де користувач бачить весь відфільтрований список.</td></tr>
+      <tr><td><strong>Шумні імена</strong> — той самий рядок автора міг би відрізнятися від картки до картки.</td><td><strong>Рядок автора на картці приховано</strong> (він і так дублює заголовок секції) — тож варіації написання не виходять на поверхню. Series-полиця цього не робить; правило стосується лише author-полиці.</td></tr>
+      <tr><td><strong>Малі набори</strong> — у автора часто 0–3 інші книги в каталозі.</td><td>Поріг <code>min = 2</code>: при 0 або 1 книзі секції <strong>немає взагалі</strong>. При 2–3 — показуємо рівно стільки, без добивання.</td></tr>
+    </tbody>
+  </table>
+  <p>Канонічна сутність автора, дедуплікація написань і будь-яка author-intelligence — це <strong>W9b і поза скоупом</strong> цієї специфікації (узгоджено з W9 §12).</p>
+
+  <!-- 3 -->
+  <h2 id="files">3 · Файли</h2>
+  <table>
+    <thead><tr><th>Файл</th><th>Роль</th></tr></thead>
+    <tbody>
+      <tr><td><code>author-shelf.jsx</code></td><td>Композиція + логіка деградації. Експорт <code>window.AuthorShelfKit</code>: <code>selectAuthorShelf · AuthorShelfSection · AuthorShelf · AuthorShelfMobile · ASCard</code>. Селектор — єдине джерело правди деградації.</td></tr>
+      <tr><td><code>author-shelf.css</code></td><td>Усі стилі полиці. Композує лише токени DS v1.0; усі переозначення — на рівні сторінки, <code>BookCard</code> недоторканий.</td></tr>
+      <tr><td><code>Author Shelf — Live Pattern.html</code></td><td>Живий патерн — усі стани деградації, обидві теми, десктоп + мобільний, у контексті низу Book Details.</td></tr>
+      <tr><td><strong>Author Shelf — Pattern Spec.html</strong></td><td>Цей документ (v1.0) — анатомія, пороги, copy deck, machine-readable note.</td></tr>
+    </tbody>
+  </table>
+  <p>Композиція бере примітиви з <code>window.KnyhovoDesignSystem_9fa616</code> (<code>BookCard · Badge</code>) — не відтворює їх.</p>
+
+  <!-- 4 -->
+  <h2 id="placement">4 · Розміщення в Book Details</h2>
+  <p>Полиця — <strong>остання контентна секція</strong> сторінки: одразу <strong>після полиці «Книги серії»</strong> і <strong>перед футером</strong>. Порядок заморожений (успадковано з Book Details v1.1 + Price History v1.2.1):</p>
+  <div class="anatomy">
+    <div class="wf wf--dim">Хедер · персистентний пошук · хлібні крихти</div>
+    <div class="wf wf--dim">Hero — обкладинка · заголовок · автор · опис <em>(не змінюється)</em></div>
+    <div class="wf wf--dim">OffersPanel — «Де купити»</div>
+    <div class="wf wf--dim">«Динаміка ціни» — Price History</div>
+    <div class="wf wf--dim">Про книгу · опис · Про видання · метадані</div>
+    <div class="wf wf--dim"><span class="wf__num">S</span> Полиця «Книги серії» <em>(перша полиця, якщо є серія)</em></div>
+    <div class="wf wf--hot"><span class="wf__num">A</span> <strong>«Інші книги автора»</strong> — ця полиця, остання перед футером</div>
+    <div class="wf wf--dim">Футер (завжди присутній)</div>
+  </div>
+  <p><strong>Відношення до метаданих:</strong> завжди <em>нижче</em> блоку «Про видання» — метадані стосуються <em>цього</em> видання, полиця розширює погляд назовні, до доробку автора. <strong>Відношення до Price History:</strong> завжди нижче «Динаміки ціни». Полиця ніколи не піднімається над цими блоками й ніколи не стає окремою сторінкою.</p>
+  <p><strong>Порядок двох полиць (заморожено):</strong> «Книги серії» — перша (вужчий, релевантніший зв'язок), «Інші книги автора» — друга (ширший зв'язок). Якщо серії немає, author-полиця може бути єдиною полицею.</p>
+
+  <!-- 5 -->
+  <h2 id="anatomy">5 · Анатомія компонента</h2>
+  <pre><code>section.bd-section[data-screen-label="Author shelf · «Інші книги автора»"]
+├─ div.as-head                              (desktop: title ↔ see-all, baseline)
+│  ├─ h2.bd-h2 ["Інші книги автора"]
+│  └─ a.as-all  ["Усі книги автора (N) →"]  (ТІЛЬКИ коли total > cap)
+└─ div.as-shelf[.as-stagger]                (desktop/tablet grid · mobile → .as-shelf--mob)
+   └─ a.as-link → BookCard.kn-book × (≤ cap)
+      └─ [mobile only, коли hasMore] a.as-railmore → сторінка автора</code></pre>
+  <div class="spec"><div class="spec__cap">Жива анатомія · заповнено · десктоп · світла</div><div class="spec__body"><div id="spec-d-full"></div></div></div>
+
+  <!-- 6 -->
+  <h2 id="card">6 · Анатомія картки</h2>
+  <p>Картка — <strong>заморожений <code>BookCard</code></strong> (<code>.kn-book</code>), вертикальний варіант (як у Series-полиці). Жодних змін у компоненті; на author-полиці інший лише набір показаних полів.</p>
+  <table>
+    <thead><tr><th>Поле</th><th>Показано?</th><th>Стиль (заморожено)</th></tr></thead>
+    <tbody>
+      <tr><td>Обкладинка</td><td><strong>Так</strong></td><td><code>.kn-book__cover</code> — 104×150 десктоп / 96×138 мобільний. Плейсхолдер тепле паперо, поки <code>coverUrl=null</code>.</td></tr>
+      <tr><td>Назва</td><td><strong>Так</strong></td><td><code>.kn-book__title</code> — сериф, <code>--fs-title</code>, <code>--text</code>.</td></tr>
+      <tr><td>Ціна</td><td><strong>Так</strong></td><td><code>.kn-book__price</code> — сериф <code>1.5rem</code>, <code>--accent</code>. Первинна метадата.</td></tr>
+      <tr><td>Стара ціна</td><td>Якщо є</td><td>muted strikethrough, менша (<code>--text-faint</code>).</td></tr>
+      <tr><td>Книгарня</td><td><strong>Так</strong></td><td><code>.kn-book__store</code> — завжди <code>--text-muted</code>, ніколи не акцент (frozen tertiary).</td></tr>
+      <tr><td>Бейдж</td><td>Макс. один</td><td>Пріоритет: Найкраща ціна (green) → <code>-N%</code> (solid). На полиці зазвичай лише <code>-N%</code>.</td></tr>
+      <tr><td><s>Автор</s></td><td><strong>Приховано</strong></td><td>Редундантно із заголовком секції + ховає шумні варіанти написання. <code>.as-shelf .kn-book__author { display:none }</code>.</td></tr>
+      <tr><td><s>Наявність (лейбл)</s></td><td><strong>Приховано</strong></td><td>«—» замість ціни для out-of-stock; повний лейбл наявності лишається на OffersPanel/leaf.</td></tr>
+      <tr><td><s>Рейтинг</s></td><td><strong>Приховано</strong></td><td>Немає в даних і поза скоупом.</td></tr>
+    </tbody>
+  </table>
+  <p>Метадата-ієрархія повністю успадковує заморожені правила BookCard: <strong>ціна (акцент-сериф) › стара ціна (muted strike) › книгарня (muted, ніколи не акцент)</strong>.</p>
+
+  <!-- 7 -->
+  <h2 id="desktop">7 · Десктоп-розкладка <span class="bp bp--d">≥1024px</span></h2>
+  <ul>
+    <li><strong>Ширина секції:</strong> полиця-контейнер (<code>.as-shelf</code>) завжди на <strong>повну ширину контенту</strong> Book Details (двопанельна сітка Variant C тут уже не діє) — незалежно від кількості карток.</li>
+    <li><strong>Колонкова модель (єдиний механізм):</strong> кількість колонок = <code>min(карток, rowCap)</code>. Кожен брейкпоінт — окремий інстанс селектора, тож його <code>--as-cols</code> уже дорівнює <code>min(cards, rowCap)</code> (десктоп cap 4 → min(cards,4); таблет cap 3 → min(cards,3)); CSS розгортає у <code>repeat(var(--as-cols), minmax(0, var(--as-card-max)))</code>. <strong><code>auto-fit</code>/<code>auto-fill</code> заборонені</strong> — вони створюють порожні треки або розтягують картки. <code>gap: --space-5</code>; <code>justify-content: start</code>.</li>
+    <li><strong>Коли видимих книг &lt; cap (ключове правило):</strong> колонок рівно стільки, скільки карток; <strong>2 книги → 2 картки, 3 → 3, 4 → 4</strong>. Жодних порожніх чи зарезервованих треків; решта ряда — порожній простір контейнера (ліворуч), не клітинки сітки. Це узгоджує §7 із §9.</li>
+    <li><strong>Розмір картки (анти-розтягування):</strong> обкладинка 104×150 фіксована (frozen); <strong>кожен трек — <code>minmax(0, 272px)</code>, включно з повним 4-up рядом</strong>, тому ширина картки <strong>ідентична для 2, 3 чи 4 карток</strong> (ніякого «стрибка» ширини залежно від кількості). Мін ≈136px (обкладинка + 2×16 padding; <code>min-width:0</code> на картці — ніколи вужче), макс 272px (<code>--as-card-max</code>).</li>
+    <li><strong>Щільність:</strong> рівно один ряд — максимум <strong>4 картки</strong> (<code>cap=4</code>). Більше книг → «усі книги автора (N) →» на сторінку автора. Без другого ряду й без пагінації на сторінці книги.</li>
+    <li><strong>Картка:</strong> вертикальний <code>.kn-book</code> (<code>flex-direction: column</code> — page-level override), обкладинка 104×150.</li>
+    <li><strong>Заголовок-рядок (<code>.as-head</code>):</strong> <code>h2</code> «Інші книги автора» зліва, «усі книги автора →» справа, <code>align-items: baseline; justify-content: space-between</code>.</li>
+  </ul>
+
+  <!-- 8 -->
+  <h2 id="mobile">8 · Мобільна розкладка <span class="bp bp--m">&lt;768px</span></h2>
+  <ul>
+    <li><strong>Горизонтальний рейл (<code>.as-shelf--mob</code>):</strong> свайп, успадковано з мобільних полиць Book Details v1.1. Картки <code>flex: none; width: 168px</code>, обкладинка 96×138.</li>
+    <li><strong>Edge-bleed (точний намір):</strong> <code>margin: 0 calc(-1*--space-4)</code> + такий самий padding — <strong>перша картка повністю видима</strong> і притиснута до лівого гаттера контенту; картки йдуть управо; <strong>правий край viewport обрізає наступну картку до часткового peek</strong> — саме цей peek є єдиним сигналом, що рейл скролиться (ніяких стрілок/точок). Повністю порожньої правої картки бути не має.</li>
+    <li><strong>Свайп:</strong> <code>scroll-snap-type: x proximity</code>; кожна картка <code>scroll-snap-align: start</code> + <code>scroll-padding-left: --space-4</code> — спіймана картка сідає рівно в лівий гаттер. Скролбар прихований; <code>-webkit-overflow-scrolling: touch</code>.</li>
+    <li><strong>Поведінка картки:</strong> та сама вертикальна <code>.kn-book</code>; рядок автора так само прихований.</li>
+    <li><strong>Трейлінг-картка «усі»:</strong> коли книг більше за cap — остання у рейлі <code>a.as-railmore</code> (іконка + «Усі книги автора» + «N книг») веде на сторінку автора. <code>scroll-snap-align: end</code>.</li>
+    <li><strong>Cap на мобільному — 8</strong> карток у рейлі (свайп дешевший за клік); далі — трейлінг-картка.</li>
+    <li>44px цілі дотику на всіх інтерактивних елементах.</li>
+  </ul>
+  <div class="spec spec__body--mob" style="padding:0"><div class="spec__cap">Рейл · мобільний · світла</div><div class="spec__body spec__body--mob"><div id="spec-m-full"></div></div></div>
+
+  <!-- 9 -->
+  <h2 id="empty">9 · Порожні стани й поріг <span class="bp bp--t">ядро деградації</span></h2>
+  <p>На відміну від Price History (який <em>ніколи</em> не схлопується, бо це частина рішення про покупку), Author Shelf — <strong>необов'язкове відкриття</strong>, тож при нестачі книг його коректно <strong>прибрати повністю</strong>.</p>
+  <table>
+    <thead><tr><th>Кількість зматчених книг</th><th>Поведінка</th></tr></thead>
+    <tbody>
+      <tr><td><strong>0</strong> (немає інших книг / автор порожній)</td><td>Секції <strong>немає</strong>. <code>selectAuthorShelf</code> → <code>show:false</code>, компонент повертає <code>null</code>. Жодного заголовка, рамки чи плейсхолдера.</td></tr>
+      <tr><td><strong>1</strong> (нижче порогу)</td><td>Секції <strong>немає</strong>. Полиця з однієї книги — це не полиця; вона додає шум. Поріг <code>min = 2</code>.</td></tr>
+      <tr><td><strong>2–4</strong></td><td>Сітка/рейл рівно з наявних карток: <strong>кількість колонок = кількості карток</strong> (<code>data-count</code>). <strong>Без добивання</strong> порожніми клітинками/зарезервованими треками, без «усі →». Див. §7 і «Інваріанти розкладки» нижче.</td></tr>
+      <tr><td><strong>&gt; cap</strong> (5+ десктоп · 4+ таблет · 9+ мобільний)</td><td>Показуємо cap карток + «усі книги автора (N) →» (десктоп/таблет) / трейлінг-картку (мобільний) → сторінка автора.</td></tr>
+    </tbody>
+  </table>
+  <p><strong>Мінімум N = 2.</strong> Це єдиний поріг приховування. Немає окремого «empty state» з ілюстрацією чи маскотом — маскот Книговик на цій полиці <strong>не з'являється ніколи</strong> (вона не входить у дозволені W8c поверхні empty/first-book/unavailable). Порожнеча = відсутність секції.</p>
+  <p style="font-size:var(--fs-sm);color:var(--text-muted)">Картки завжди розкладаються у звичайну сітку (2 книги → 2 картки, 3 → 3, 4 → 4) — без overlap, stacking, fan чи absolute positioning. Приклади показані на повну ширину контенту Book Details, де живе сітка 4-up.</p>
+  <div class="spec"><div class="spec__cap">3 книги → 3 звичайні картки · колонок = карток · без «усі», без добивання</div><div class="spec__body"><div id="spec-d-min"></div></div></div>
+  <div class="spec" style="max-width:520px"><div class="spec__cap">0–1 книга → секцію омітнуто (нічого не рендериться)</div><div class="spec__body"><div id="spec-d-omit"></div></div></div>
+
+  <h3 style="margin-top:var(--space-8)">Інваріанти розкладки (implementation-safe)</h3>
+  <div class="dnm"><ul>
+    <li><strong>Кількість колонок = кількості видимих карток</strong> (до cap). Ніколи більше.</li>
+    <li><strong>Жодних порожніх клітинок сітки</strong> і жодних зарезервованих треків.</li>
+    <li><strong>Жодних filler-карток</strong> / плейсхолдерів, щоб заповнити ряд.</li>
+    <li><strong>Жодного overlap</strong> (накладання карток).</li>
+    <li><strong>Жодного fan / stacking</strong> (віяло/стос карток).</li>
+    <li><strong>Жодного <code>position: absolute</code></strong> для карток — лише grid (десктоп/таблет) або flex-рейл (мобільний).</li>
+    <li><strong>Картка ніколи не розтягується &gt; 272px</strong> і ніколи не звужується &lt; обкладинки+padding (≈136px).</li>
+    <li><strong>Полиця-контейнер завжди на повну ширину контенту</strong> — при &lt; cap незайнятий простір лишається порожнім праворуч, картки ліворуч.</li>
+  </ul></div>
+
+  <!-- 10 -->
+  <h2 id="ordering">10 · Відбір і порядок</h2>
+  <p>Селектор <code>selectAuthorShelf({ currentId, roster, seriesIds, cap })</code> — єдине джерело правди:</p>
+  <ol>
+    <li><strong>Виключення (єдиний ключ = канонічний <code>id</code>):</strong> прибрати поточну книгу (<code>currentId</code>) та всі книги з Series-полиці (<code>seriesIds</code>). Дедуп — <strong>за <code>id</code>, ніколи за назвою</strong> (назви збігаються між виданнями й ламаються на шумних рядках).</li>
+    <li><strong>Сортування:</strong> у наявності спершу (out-of-stock — в кінець), потім за зростанням ціни, потім tie-break за <code>id</code> (детерміновано між запитами). Спокійний порядок — не рейтинг.</li>
+    <li><strong>Availability map:</strong> <code>'in'</code> / <code>'low'</code> (обидва = в наявності для сортування) / <code>'out'</code> (ціна «—», в кінець). Якщо <strong>всі</strong> книги out-of-stock — полиця все одно показується (каталог автора існує); приховується лише при total &lt; 2.</li>
+    <li><strong>Поріг:</strong> <code>show = total ≥ 2</code>.</li>
+    <li><strong>Зріз:</strong> <code>books = sorted.slice(0, cap)</code>; <code>hasMore = total &gt; cap</code>; <code>cols = min(books.length, cap)</code> (явна кількість колонок).</li>
+  </ol>
+  <pre><code>function selectAuthorShelf({ currentId, roster, seriesIds = [], cap = 4 }) {
+  const series = new Set(seriesIds);
+  const pool = roster.filter(b =&gt; b.id !== currentId &amp;&amp; !series.has(b.id)); // dedup by id
+  const sorted = [...pool].sort((a, b) =&gt; {
+    const ao = a.avail === 'out', bo = b.avail === 'out';
+    if (ao !== bo) return ao ? 1 : -1;                       // in-stock first
+    const pa = a.price ?? 1e9, pb = b.price ?? 1e9;
+    if (pa !== pb) return pa - pb;                            // then cheapest
+    return String(a.id).localeCompare(String(b.id));         // deterministic tie-break
+  });
+  const total = sorted.length, books = sorted.slice(0, cap);
+  return { show: total &gt;= 2, books, total, hasMore: total &gt; cap, cols: Math.min(books.length, cap) };
+}</code></pre>
+
+  <!-- 11 -->
+  <h2 id="spacing">11 · Spacing і типографіка</h2>
+  <table>
+    <thead><tr><th>Елемент</th><th>Значення (токен)</th></tr></thead>
+    <tbody>
+      <tr><td>Відступ секції зверху</td><td><code>.bd-section</code> · <code>margin-top: --space-12</code> (десктоп) / <code>--space-8</code> (мобільний)</td></tr>
+      <tr><td>Заголовок-рядок → сітка</td><td><code>.as-head</code> · <code>margin-bottom: --space-5</code></td></tr>
+      <tr><td>Заголовок секції</td><td><code>.bd-h2</code> · <code>--font-display</code> semibold, <code>--fs-h3</code> (десктоп) / <code>--fs-title</code> (мобільний)</td></tr>
+      <tr><td>«усі книги автора →»</td><td><code>.as-all</code> · <code>--fs-sm</code> medium, <code>--accent</code> → hover <code>--accent-hover</code></td></tr>
+      <tr><td>Розрив між картками</td><td>десктоп <code>gap: --space-5</code> · мобільний рейл <code>gap: --space-4</code></td></tr>
+      <tr><td>Назва / ціна / книгарня</td><td>успадковано з <code>.kn-book__*</code> — сериф title, сериф <code>1.5rem</code> price <code>--accent</code>, <code>--fs-xs</code> store muted</td></tr>
+    </tbody>
+  </table>
+  <p>Усі значення — наявні токени DS v1.0. Жодних нових кольорів, типу, радіусів чи тіней.</p>
+
+  <!-- 12 -->
+  <h2 id="interaction">12 · Взаємодія</h2>
+  <ul>
+    <li><strong>Ціль кліку — вся картка.</strong> <code>BookCard</code> загорнутий у <code>a.as-link</code> (block) → leaf Book Details цієї книги. Обкладинка, назва, ціна — все веде на сторінку книги.</li>
+    <li><strong>Hover картки:</strong> успадковано з <code>.kn-book:hover</code> — підйом 2px + <code>--shadow-lg</code>, <code>--dur-base</code> ease-out. Без нових ефектів.</li>
+    <li><strong>«усі книги автора →» / трейлінг-картка</strong> → сторінка автора (Search Results, відфільтрований за рядком автора список — frozen, W9a). Hover → <code>--accent-hover</code> / межа й тінь.</li>
+    <li><strong>Анімація появи:</strong> одноразовий stagger (<code>.as-stagger</code>, 280ms ease-out, 50ms каскад), гейтований на <code>prefers-reduced-motion: no-preference</code>. <strong>Жодних нескінченних циклів.</strong> Під reduced-motion — статика.</li>
+    <li><strong>Свайп (мобільний)</strong> — нативний, з <code>scroll-snap proximity</code>. Без JS-керованого скролу.</li>
+  </ul>
+
+  <!-- 13 -->
+  <h2 id="a11y">13 · Доступність</h2>
+  <ul>
+    <li><strong>Семантика:</strong> <code>section</code> з <code>data-screen-label</code>; заголовок <code>h2</code> у природному порядку сторінки (після <code>h2</code> Series-полиці).</li>
+    <li><strong>Картка-посилання:</strong> <code>a.as-link</code> з <code>aria-label="Перейти до книги «{назва}»"</code>; внутрішній <code>BookCard</code> отримує <code>tabIndex={-1}</code>, щоб не було подвійної зупинки табуляції. Один елемент фокусу = одна картка.</li>
+    <li><strong>Порядок табуляції:</strong> зліва-направо, зверху-вниз (десктоп-сітка) / порядок рейлу (мобільний). Фокус на позаекранній картці рейлу нативно вводить її у видиму зону (без <code>scrollIntoView</code>).</li>
+    <li><strong>Фокус:</strong> 3px м'яке акцентне кільце (<code>--focus-ring</code>) на <code>.as-link</code>, <code>.as-all</code>, <code>.as-railmore</code> через <code>:focus-visible</code>.</li>
+    <li><strong>Цілі дотику:</strong> ≥44px на мобільному (вся картка + трейлінг-картка значно більші).</li>
+    <li><strong>Прихований автор</strong> прибраний через <code>display:none</code> — його немає і в дереві доступності, тож скрінрідер не читає повторюване ім'я на кожній картці; ім'я автора лишається в hero та заголовку секції.</li>
+    <li><strong>Обкладинка-плейсхолдер</strong> — <code>aria-hidden</code> (декоративна), назва книги несе сенс.</li>
+  </ul>
+
+  <!-- 14 -->
+  <h2 id="responsive">14 · Адаптивні правила</h2>
+  <table>
+    <thead><tr><th>Брейкпоінт</th><th>Розкладка</th><th>Cap</th><th>Обкладинка</th></tr></thead>
+    <tbody>
+      <tr><td><span class="bp bp--d">Desktop ≥1024</span></td><td>сітка 4-up (<code>.as-shelf</code>); при &lt;4 книг колонок = карток</td><td>4 + «усі →»</td><td>104×150</td></tr>
+      <tr><td><span class="bp bp--t">Tablet 768–1023</span></td><td>окремий інстанс <code>.as-tablet</code>, сітка <strong>3-up</strong> (успадковано з BD v1.1); 2→2, 3→3 (колонок = карток); 4+ → 3 картки</td><td>3 + «усі →» (cap 3)</td><td>104×150</td></tr>
+      <tr><td><span class="bp bp--m">Mobile &lt;768</span></td><td>горизонтальний рейл (<code>.as-shelf--mob</code>)</td><td>8 + трейлінг-картка</td><td>96×138</td></tr>
+    </tbody>
+  </table>
+  <p>Перехід сітка↔рейл — на 768px. До 320px без горизонтального скролу самої сторінки (скролиться лише рейл).</p>
+
+  <!-- 15 -->
+  <h2 id="themes">15 · Теми (світла / темна)</h2>
+  <p>Тема перемикається через <code>data-theme="light|dark"</code> на <code>&lt;html&gt;</code>. Усе ре-темиться через токени — однакові метрики, інші лише кольори. <strong>Жодного хардкоду кольору немає.</strong> Картки, ціни-акценти, межі й тіні — ті самі токени, що й у решті Book Details.</p>
+  <div class="spec"><div class="spec__cap">Полиця · десктоп · темна</div><div class="spec__body" data-theme="dark" style="background:var(--bg)"><div id="spec-d-dark"></div></div></div>
+
+  <!-- 16 -->
+  <h2 id="copy">16 · Copy deck</h2>
+  <p>Уся копія — українською; «Knyhovo» латиницею. Назва секції стала; ніяких вердиктів Книговика.</p>
+  <table>
+    <thead><tr><th>Ключ</th><th>Рядок</th></tr></thead>
+    <tbody>
+      <tr><td>Заголовок секції</td><td>Інші книги автора</td></tr>
+      <tr><td>Дія «усі» (десктоп)</td><td>Усі книги автора (N) →</td></tr>
+      <tr><td>Трейлінг-картка (мобільний)</td><td>Усі книги автора · N книг</td></tr>
+      <tr><td>aria-label картки</td><td>Перейти до книги «{назва}»</td></tr>
+      <tr><td>Ціна / стара ціна</td><td>245 ₴ (пробіл перед ₴) · стара — muted strikethrough</td></tr>
+      <tr><td>Out-of-stock на картці</td><td>ціна → «—» (без лейбла наявності)</td></tr>
+      <tr><td>Порожньо (0–1 книга)</td><td><em>— рядка немає: секція не рендериться —</em></td></tr>
+    </tbody>
+  </table>
+
+  <!-- 17 -->
+  <h2 id="impl">17 · Нотатки імплементації</h2>
+  <ul>
+    <li><strong>Композиція (єдиний контракт):</strong> рендерити <code>window.AuthorShelfKit.AuthorShelfSection</code> — вона викликає селектор ТРИЧІ (<code>cap:4</code> desktop, <code>cap:3</code> tablet, <code>cap:8</code> mobile) і рендерить ТРИ wrapper-и (<code>.as-desktop</code> + <code>.as-tablet</code> + <code>.as-mobile</code>); CSS показує рівно один на брейкпоінт (desktop ≥1024 · tablet 768–1023 · mobile &lt;768). <strong>Це єдиний підтримуваний адаптивний свіч</strong> — не перетворювати одну сітку на рейл через media. Кожен інстанс має власний cap, тож кількість колонок = кількості карток у кожному діапазоні (4-та книга на таблеті йде в «усі →», а не у другий ряд). Увага: неймспейс — <code>window.AuthorShelfKit</code> (НЕ <code>window.AuthorShelf</code>: React-компонент <code>AuthorShelf</code> затінив би однойменний глобал). DS-примітиви — з <code>window.KnyhovoDesignSystem_9fa616</code>.</li>
+    <li><strong>Кількість колонок:</strong> кожен інстанс передає одну явну інлайн-змінну <code>--as-cols</code> = <code>min(cards, rowCap)</code> свого брейкпоінта (desktop 4, tablet 3); CSS розгортає її у <code>repeat(var(--as-cols), minmax(0, var(--as-card-max)))</code>. <strong><code>auto-fit</code>/<code>auto-fill</code> заборонені</strong> (створюють порожні треки / розтягують картки).</li>
+    <li><strong>Прив'язка до backend:</strong> <code>roster</code> = <code>SELECT * FROM canonical_books WHERE author = :author AND id != :currentId</code> + best-price join (<code>provider_listings</code>); availability мапиться в <code>'in'|'low'|'out'</code>. Без нової інфраструктури — read-only за наявним текстовим полем.</li>
+    <li><strong>Дедуплікація з Series-полицею</strong> робиться у селекторі за <code>id</code> (передати <code>seriesIds</code>), не в розмітці. Той самий <code>id</code>-ключ виключає і поточну книгу.</li>
+    <li><strong>Без Tailwind.</strong> Лише <code>author-shelf.css</code> + токени DS. Усі переозначення — на рівні сторінки (<code>.as-shelf .kn-book__author{display:none}</code> тощо); <code>BookCard</code> недоторканий.</li>
+    <li>Полиця рендериться <strong>тільки</strong> коли <code>show === true</code>. Не монтувати порожній контейнер «про запас».</li>
+    <li>Обкладинки сьогодні <code>null</code> → теплий паперо-плейсхолдер BookCard; полиця не блокується на обкладинках (узгоджено з W9 відкритим питанням про обкладинки).</li>
+  </ul>
+
+  <!-- 18 -->
+  <h2 id="dnm">18 · Не змінювати</h2>
+  <div class="dnm"><ul>
+    <li>Розміщення — завжди остання контентна секція, після Series-полиці, перед футером.</li>
+    <li>Поріг <code>min = 2</code>: при 0–1 книзі секція повністю відсутня (жодного плейсхолдера, жодного маскота).</li>
+    <li>Реюз замороженого <code>BookCard</code>; жодного нового дизайну картки.</li>
+    <li>Приховування рядка автора на author-полиці (Series-полиця — без змін).</li>
+    <li>Показані/приховані поля картки та метадата-ієрархія (ціна-акцент › стара-muted › книгарня-muted).</li>
+    <li>Cap (4 десктоп / 8 мобільний) + «усі книги автора →» на сторінку автора замість другого ряду/пагінації.</li>
+    <li>Порядок відбору (виключення серії + поточної; у наявності → найдешевше).</li>
+    <li>Сітка 4-up (десктоп) / 3-up (таблет) / горизонтальний рейл (мобільний); брейкпоінт 768px. Кількість колонок = кількості видимих карток (без порожніх треків/filler); картка 136–272px; без overlap/fan/absolute.</li>
+    <li>Одноразова поява без нескінченних циклів; reduced-motion статика.</li>
+    <li>Токени, типографіка, радіуси, тіні DS v1.0 та всі захищені бренд-активи (лого, маскот).</li>
+    <li>Search Results і hero Book Details — не торкатися.</li>
+  </ul></div>
+
+  <!-- 19 -->
+  <h2 id="json">19 · Machine-readable note (для майбутніх сесій Claude)</h2>
+  <pre><code>{
+  "pattern": "author-shelf",
+  "of": "book-details",
+  "version": "1.0",
+  "stage": "W9a",
+  "status": "FROZEN",
+  "approved": "2026-06-20",
+  "label": "Інші книги автора",
+  "placement": "last content section · after Series shelf · before footer",
+  "data_source": "canonical_books.author TEXT (string match, no author entity). Rows carry a canonical id.",
+  "dedup_key": "canonical id (exclude currentId + seriesIds). NEVER title — titles collide across editions.",
+  "availability_map": { "in": "in stock", "low": "low stock (treated as in-stock for ordering)", "out": "out of stock → price «—», sorted last", "all_out": "shelf still shown; only omitted when total<2" },
+  "switch_contract": "render <AuthorShelfSection>: it runs selectAuthorShelf THREE times (cap4 desktop, cap3 tablet, cap8 mobile) and renders all THREE wrappers .as-desktop + .as-tablet + .as-mobile; CSS shows one per breakpoint. ONLY supported responsive switch — do not morph one grid into a rail. Each instance caps independently so grid column count == card count in every range.",
+  "components": { "integration": "AuthorShelfSection", "desktop": "AuthorShelf (.as-desktop)", "tablet": "AuthorShelfTablet (.as-tablet)", "mobile": "AuthorShelfMobile (.as-mobile)",
+                  "selector": "selectAuthorShelf", "grid": "ASGrid (shared desktop/tablet body)", "card": "ASCard (wraps frozen BookCard)" },
+  "exports": { "ui": "window.AuthorShelfKit", "ds": "window.KnyhovoDesignSystem_9fa616",
+               "note": "namespace is AuthorShelfKit, NOT window.AuthorShelf — the React component AuthorShelf would shadow a same-named global" },
+  "ds_primitives": ["BookCard", "Badge"],
+  "min_books": 2,
+  "hide_when": "matched < 2 → section omitted (component returns null)",
+  "cap": { "desktop": 4, "tablet": 3, "mobile": 8 },
+  "see_all": "Усі книги автора (N) → author page (Search Results filtered) when total > cap",
+  "ordering": "exclude current + series-shelf books (by id); in-stock first; then price ascending; tie-break by id (deterministic)",
+  "card": {
+    "base": "frozen BookCard .kn-book (vertical)",
+    "cover_px": { "desktop": [104,150], "mobile": [96,138] },
+    "shown": ["cover","title","price","oldPrice?","store","discount-badge?"],
+    "hidden": ["author (redundant + hides noisy strings)","availability-label","rating"],
+    "hierarchy": "price(accent serif) > oldPrice(muted strike) > store(muted, never accent)"
+  },
+  "layout": {
+    "column_model": "ONE mechanism: each breakpoint is its own selector instance, so its inline --as-cols already equals min(cards, rowCap); CSS expands to repeat(var(--as-cols), minmax(0,var(--as-card-max))). No per-breakpoint column override. auto-fit/auto-fill FORBIDDEN.",
+    "desktop": "grid repeat(--as-cols) · rowCap 4",
+    "tablet": "separate .as-tablet instance · grid repeat(--as-cols) · rowCap 3",
+    "mobile": "horizontal flex rail w/ scroll-snap",
+    "columns_equal_visible_when_under_cap": true,
+    "card_width_px": { "min": 136, "max": 272, "cover_fixed": [104,150], "note": "every track minmax(0,272px) incl full 4-up row → identical card width for 2/3/4 cards; min-width:0 on card" },
+    "shelf_box": "always full content width; trailing space is empty container, not cells"
+  },
+  "degradation": {
+    "0": "section omitted (show:false → null)",
+    "1": "section omitted (below min)",
+    "2": "2 columns = 2 cards, left-aligned, capped width, no see-all",
+    "3": "3 columns = 3 cards, left-aligned, capped width, no see-all",
+    "4": "4 columns = 4 cards, fill content width (= desktop cap; tablet caps at 3 → 3 + see-all)",
+    ">cap": "cap cards + see-all (desktop) / trailing rail card (mobile)"
+  },
+  "layout_invariants": [
+    "grid column count == visible card count (never more)",
+    "no empty/reserved grid tracks",
+    "no filler/placeholder cards to pad the row",
+    "no card overlap",
+    "no fan / stacking layout",
+    "no position:absolute for cards (grid on desktop/tablet, flex rail on mobile)",
+    "card width clamped 136..272px (no excessive stretch or shrink)",
+    "shelf container always full content width; under-cap leaves empty trailing space, not cells"
+  ],
+  "mobile_edge_bleed": {
+    "first_card": "fully visible, flush at left content gutter",
+    "trailing_card": "cut by viewport edge → partial peek",
+    "intent": "the peek is the only scroll affordance (no arrows/dots)",
+    "snap": "scroll-snap-align:start + scroll-padding-left:--space-4 → swiped card lands at left gutter"
+  },
+  "examples_are_normative": "Visual examples (Live Pattern + rendered specimens) are normative. If prose and examples conflict, the examples win. Both render from the same author-shelf.jsx + author-shelf.css as production.",
+  "breakpoints": { "desktop": ">=1024", "tablet": "768-1023", "mobile": "<768", "grid_to_rail": 768 },
+  "interaction": { "click_target": "whole card → leaf Book Details", "hover": ".kn-book:hover (lift+shadow)",
+                   "entrance": "one-shot stagger 280ms, gated reduced-motion, never infinite",
+                   "swipe": "native scroll-snap x proximity" },
+  "a11y": { "card": "a.as-link aria-label + inner BookCard tabIndex=-1", "focus": "--focus-ring :focus-visible",
+            "touch": ">=44px", "hidden_author": "display:none → not in a11y tree" },
+  "mascot": "never (not an allowed W8c empty/first-book/unavailable surface)",
+  "invariants": ["no new pages","Search Results untouched","Book Details hero untouched",
+                 "no new card design","no placeholders to fill the grid","tokens only",
+                 "BookCard component untouched (page-level overrides only)",
+                 "grid column count == visible card count","no empty tracks / filler cards",
+                 "no overlap / fan / absolute positioning","examples are normative (examples win over prose)"],
+  "future_W9b_out_of_scope": ["author entity / id","spelling dedup","author bio/photo","author-intelligence"],
+  "files": ["Author Shelf — Live Pattern.html","author-shelf.jsx","author-shelf.css","Author Shelf — Pattern Spec.html"]
+}</code></pre>
+
+  <p style="margin-top:var(--space-12);padding-top:var(--space-6);border-top:1px solid var(--border);color:var(--text-muted);font-size:var(--fs-sm)">Author Shelf v1.0 — «Інші книги автора» · W9a Discovery Foundation · Knyhovo Design System · 20.06.2026. Production-ready, approved for implementation handoff.</p>
+</main>
+
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80">
+    <rect width="120" height="80" fill="#f9f3ed"></rect>
+    <g fill="#fff" stroke="#ece1d2" stroke-width="1.2">
+      <rect x="16" y="26" width="18" height="38" rx="3"></rect>
+      <rect x="38" y="26" width="18" height="38" rx="3"></rect>
+      <rect x="60" y="26" width="18" height="38" rx="3"></rect>
+      <rect x="82" y="26" width="18" height="38" rx="3"></rect>
+    </g>
+    <rect x="16" y="15" width="40" height="5" rx="2.5" fill="#b56a2d"></rect>
+  </svg>
+</template>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/_ds_bundle.js"></script>
+<script type="text/babel" src="author-shelf.jsx"></script>
+<script type="text/babel">
+  const { AuthorShelf, AuthorShelfMobile, selectAuthorShelf, ROSTER, SERIES_IDS } = window.AuthorShelfKit;
+  const selFull = selectAuthorShelf({ currentId: 'w-ob', roster: ROSTER, seriesIds: SERIES_IDS, cap: 4 });
+  const selMin  = selectAuthorShelf({ currentId: 'w-ob', roster: ROSTER.slice(0, 3), seriesIds: [], cap: 4 });
+  const selMob  = selectAuthorShelf({ currentId: 'w-ob', roster: ROSTER, seriesIds: SERIES_IDS, cap: 8 }); // mobile cap = 8
+
+  function Omitted() {
+    return <div className="as-ph" style={{ justifyContent: 'center', fontStyle: 'italic', minHeight: 120 }}>
+      0–1 книга → <code style={{ margin: '0 6px' }}>show:false</code> · нічого не рендериться
+    </div>;
+  }
+  function mount(id, node) { const el = document.getElementById(id); if (el) ReactDOM.createRoot(el).render(<div className="bd-page">{node}</div>); }
+
+  mount('spec-d-full', <AuthorShelf sel={selFull} stagger />);
+  mount('spec-d-dark', <AuthorShelf sel={selFull} />);
+  mount('spec-d-min',  <AuthorShelf sel={selMin} />);
+  mount('spec-d-omit', <Omitted />);
+  mount('spec-m-full', <div className="bdm"><AuthorShelfMobile sel={selMob} /></div>);
+
+  (function () {
+    const root = document.documentElement, btn = document.getElementById('theme-btn'), logo = document.getElementById('logo');
+    function apply(t) {
+      root.setAttribute('data-theme', t);
+      btn.textContent = t === 'dark' ? 'Світла тема' : 'Темна тема';
+      logo.src = t === 'dark' ? '../../../../assets/logo/knyhovo-logo-dark.png' : '../../../../assets/logo/knyhovo-logo-light.png';
+    }
+    apply(localStorage.getItem('kn-theme') || 'light');
+    btn.addEventListener('click', function () {
+      const t = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('kn-theme', t); apply(t);
+    });
+  })();
+</script>
+</body>
+</html>

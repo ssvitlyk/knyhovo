@@ -1,0 +1,370 @@
+/* ============================================================
+   KNYHOVO · W7 — Search Intelligence (design only)
+   The intelligence layer that surrounds search: recovery,
+   suggestions, ISBN, series, author, editions, empty + errors.
+
+   Composes DS v1.0 tokens only — no new colours, type, radii,
+   shadows. Does NOT redesign the frozen Search Results page or
+   the global SearchBar; it adds layers around them.
+
+   §1  Frozen page chassis (copied verbatim from the approved
+       Search Results page — header / results / footer). DO NOT EDIT.
+   §2  W7 intelligence layer (new, additive).
+   ============================================================ */
+
+/* ============================================================
+   §1 — FROZEN CHASSIS  (verbatim from Search Results v1.0)
+   ============================================================ */
+.page { max-width: var(--container-wide); margin: 0 auto; padding: 0 var(--gutter); }
+
+.site-header { display: flex; align-items: center; gap: var(--space-8); padding: var(--space-5) 0; }
+.site-logo { height: 44px; display: block; }
+.site-nav { display: flex; gap: var(--space-6); margin-left: auto; }
+.nav-link { font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--text-body); transition: color var(--dur-fast) var(--ease-out); }
+.nav-link:hover { color: var(--accent); }
+.nav-link--active { color: var(--accent); font-weight: var(--fw-semibold); }
+.site-actions { display: flex; align-items: center; gap: var(--space-4); }
+
+.site-footer {
+  border-top: 1px solid var(--border);
+  padding: var(--space-10) 0 var(--space-12);
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3);
+}
+.footer-logo { height: 36px; }
+.footer-line { font-size: var(--fs-sm); color: var(--text-body); }
+.footer-copy { font-size: var(--fs-xs); color: var(--text-muted); }
+
+.results { padding: var(--space-8) 0 var(--space-16); }
+.results .kn-badge { white-space: nowrap; }
+.results__eyebrow {
+  font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: var(--space-3);
+}
+.results__title { font-size: var(--fs-h2); margin-bottom: var(--space-6); }
+.results__title em { font-style: italic; color: var(--accent); }
+.results__search { max-width: 720px; margin-bottom: var(--space-8); }
+.results__toolbar {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-4); flex-wrap: wrap;
+  border-top: 1px solid var(--border);
+  padding-top: var(--space-5); margin-bottom: var(--space-6);
+}
+.results__summary { font-size: var(--fs-sm); color: var(--text-muted); }
+.results__grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
+
+/* ============================================================
+   §2 — W7 INTELLIGENCE LAYER (new, additive)
+   ============================================================ */
+
+/* ---- Shared section scaffolding ---- */
+.si-block { margin-bottom: var(--space-10); }
+.si-label {
+  font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase;
+  color: var(--text-muted); margin-bottom: var(--space-4); display: flex; align-items: center; gap: var(--space-2);
+}
+.si-label svg { width: 14px; height: 14px; }
+mark.si-hl { background: none; color: var(--accent); font-weight: var(--fw-semibold); }
+
+/* W7 tier tag — for the gallery/spec only (never ships in product UI) */
+.si-tier {
+  font-family: var(--font-body); font-size: 11px; font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em; padding: 2px 7px; border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong); color: var(--text-muted); white-space: nowrap;
+}
+.si-tier--a { color: var(--brand-green); border-color: color-mix(in oklab, var(--brand-green) 40%, transparent); }
+.si-tier--b { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 45%, transparent); }
+.si-tier--c { color: var(--text-muted); border-color: var(--border-strong); border-style: dashed; }
+
+/* ============================================================
+   Recovery — corrected query notice (high-confidence auto-apply)
+   ============================================================ */
+.si-correct {
+  display: flex; align-items: flex-start; gap: var(--space-3);
+  background: var(--surface-accent); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: var(--space-4) var(--space-5);
+  margin-bottom: var(--space-6);
+}
+.si-correct__icon { color: var(--icon); flex: none; display: flex; margin-top: 2px; }
+.si-correct__icon svg { width: 20px; height: 20px; }
+.si-correct__body { flex: 1; min-width: 0; }
+.si-correct__line { font-size: var(--fs-body); color: var(--text-body); line-height: var(--lh-snug); }
+.si-correct__line strong { font-family: var(--font-display); font-weight: 600; color: var(--text); }
+.si-correct__alt {
+  margin-top: var(--space-2); font-size: var(--fs-sm); color: var(--text-muted);
+  background: none; border: none; padding: 0; cursor: pointer; font-family: var(--font-body);
+  transition: color var(--dur-fast) var(--ease-out);
+}
+.si-correct__alt:hover { color: var(--accent); }
+.si-correct__alt q { font-style: normal; color: var(--text-body); }
+
+/* ============================================================
+   Did-you-mean — low-confidence candidate chips
+   ============================================================ */
+.si-dym { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin-bottom: var(--space-6); }
+.si-dym__label { font-size: var(--fs-sm); color: var(--text-muted); }
+
+/* ============================================================
+   Suggestion card — jump to an author or a series
+   ============================================================ */
+.si-jump {
+  display: flex; align-items: center; gap: var(--space-4);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: var(--space-4) var(--space-5);
+  box-shadow: var(--shadow-sm); cursor: pointer; width: 100%; text-align: left;
+  font-family: var(--font-body);
+  transition: box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
+}
+.si-jump:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); border-color: var(--border-strong); }
+.si-jump + .si-jump { margin-top: var(--space-3); }
+.si-jump__icon {
+  width: 44px; height: 44px; flex: none; border-radius: var(--radius-pill);
+  background: var(--accent-weak); color: var(--accent);
+  display: flex; align-items: center; justify-content: center;
+}
+.si-jump__icon svg { width: 22px; height: 22px; }
+.si-jump__body { flex: 1; min-width: 0; }
+.si-jump__kind { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); }
+.si-jump__name { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-title); color: var(--text); margin-top: 1px; }
+.si-jump__meta { font-size: var(--fs-sm); color: var(--text-muted); margin-top: 2px; }
+.si-jump__chev { color: var(--icon-muted); flex: none; display: flex; }
+.si-jump__chev svg { width: 20px; height: 20px; }
+
+/* ============================================================
+   Author landing — header + segmented tabs + grid
+   ============================================================ */
+.si-author__head { display: flex; align-items: flex-end; gap: var(--space-5); margin-bottom: var(--space-5); flex-wrap: wrap; }
+.si-author__name { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h2); color: var(--text); line-height: 1.1; }
+.si-author__meta { font-size: var(--fs-sm); color: var(--text-muted); margin-top: var(--space-2); }
+.si-author__meta b { color: var(--text-body); font-weight: var(--fw-semibold); }
+.si-tabs { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; margin: 0 0 var(--space-5); }
+
+/* ============================================================
+   Series rail — reading-order list of volumes
+   ============================================================ */
+.si-series__bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); flex-wrap: wrap; margin-bottom: var(--space-5); }
+.si-series__list { display: flex; flex-direction: column; gap: var(--space-3); }
+.si-vol {
+  display: flex; align-items: center; gap: var(--space-4);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: var(--space-3) var(--space-4);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+}
+.si-vol:hover { box-shadow: var(--shadow-lg); transform: translateY(-1px); }
+.si-vol__no {
+  width: 34px; height: 34px; flex: none; border-radius: var(--radius-pill);
+  background: var(--surface-accent); color: var(--text-muted);
+  font-family: var(--font-display); font-weight: 600; font-size: var(--fs-body);
+  display: flex; align-items: center; justify-content: center;
+}
+.si-vol__cover {
+  width: 44px; height: 64px; flex: none; border-radius: var(--radius-xs);
+  background: linear-gradient(135deg, var(--surface-accent), var(--surface-sunk));
+  border: 1px solid var(--border);
+}
+.si-vol__body { flex: 1; min-width: 0; }
+.si-vol__title { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-body); color: var(--text); line-height: 1.25; }
+.si-vol__sub { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 2px; display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.si-vol__price { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-title); color: var(--accent); white-space: nowrap; }
+.si-vol__cta { flex: none; }
+.si-vol--owned { opacity: 0.7; }
+.si-dot { width: 7px; height: 7px; border-radius: var(--radius-pill); flex: none; display: inline-block; }
+.si-dot--ok { background: var(--brand-green); }
+.si-dot--soon { background: var(--accent); }
+.si-dot--out { background: var(--text-faint); }
+
+/* ============================================================
+   Editions / canonical work grouping (ambiguous queries + ISBN)
+   ============================================================ */
+.si-work {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); box-shadow: var(--shadow-sm);
+  overflow: hidden; margin-bottom: var(--space-6);
+}
+.si-work__head { display: flex; gap: var(--space-5); padding: var(--space-5); }
+.si-work__cover {
+  width: 84px; height: 122px; flex: none; border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--surface-accent), var(--surface-sunk));
+  border: 1px solid var(--border);
+}
+.si-work__title { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h3); color: var(--text); line-height: 1.15; }
+.si-work__author { font-size: var(--fs-sm); color: var(--text-muted); margin-top: 2px; }
+.si-work__note { font-size: var(--fs-sm); color: var(--text-body); margin-top: var(--space-3); line-height: var(--lh-snug); }
+.si-work__from { font-size: var(--fs-sm); color: var(--text-muted); margin-top: var(--space-3); }
+.si-work__from b { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-title); color: var(--accent); }
+
+.si-eds { border-top: 1px solid var(--border); }
+.si-eds__cap {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: var(--space-3) var(--space-5); background: var(--surface-sunk);
+  font-size: var(--fs-sm); color: var(--text-muted);
+}
+.si-ed {
+  display: flex; align-items: center; gap: var(--space-4);
+  padding: var(--space-4) var(--space-5); border-top: 1px solid var(--border);
+}
+.si-ed__fmt { flex: 1; min-width: 0; }
+.si-ed__fmt-name { font-size: var(--fs-body); color: var(--text); font-weight: var(--fw-medium); }
+.si-ed__fmt-meta { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 2px; }
+.si-ed__price { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-title); color: var(--accent); white-space: nowrap; }
+.si-ed__store { font-size: var(--fs-xs); color: var(--text-muted); }
+.si-ed__right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+
+/* ============================================================
+   Empty — book not found anywhere (mascot + action cards)
+   ============================================================ */
+.si-empty { display: flex; flex-direction: column; align-items: center; text-align: center; padding: var(--space-12) var(--space-6) var(--space-6); }
+.si-empty__mascot {
+  height: 230px; object-fit: contain; margin-bottom: var(--space-5);
+  -webkit-mask-image: radial-gradient(ellipse 68% 66% at 50% 52%, black 58%, transparent 97%);
+  mask-image: radial-gradient(ellipse 68% 66% at 50% 52%, black 58%, transparent 97%);
+}
+.si-empty__title { font-size: var(--fs-h3); margin-bottom: var(--space-2); }
+.si-empty__text { font-size: var(--fs-body); color: var(--text-body); margin-bottom: var(--space-8); max-width: 460px; line-height: var(--lh-snug); }
+.si-actions { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); width: 100%; max-width: 760px; }
+.si-act {
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-2);
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+  padding: var(--space-5) var(--space-4); box-shadow: var(--shadow-sm);
+}
+.si-act__icon {
+  width: 44px; height: 44px; border-radius: var(--radius-pill);
+  background: var(--accent-weak); color: var(--accent);
+  display: flex; align-items: center; justify-content: center; margin-bottom: var(--space-1);
+}
+.si-act__icon svg { width: 22px; height: 22px; }
+.si-act__title { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-body); color: var(--text); }
+.si-act__text { font-size: var(--fs-sm); color: var(--text-muted); line-height: var(--lh-snug); flex: 1; }
+.si-act .kn-btn { margin-top: var(--space-2); width: 100%; }
+
+/* ============================================================
+   Error — recoverable search-service failure & partial index
+   ============================================================ */
+.si-syserr { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-3); padding: var(--space-12) var(--space-6); max-width: 520px; margin: 0 auto; }
+.si-syserr__icon { color: var(--icon-muted); }
+.si-syserr__icon svg { width: 40px; height: 40px; }
+.si-syserr__title { font-size: var(--fs-h3); }
+.si-syserr__text { font-size: var(--fs-body); color: var(--text-body); line-height: var(--lh-snug); }
+.si-partial {
+  display: flex; align-items: center; gap: var(--space-3);
+  background: var(--surface-accent); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4);
+  font-size: var(--fs-sm); color: var(--text-body); margin-bottom: var(--space-6);
+}
+.si-partial svg { width: 18px; height: 18px; color: var(--icon-muted); flex: none; }
+.si-partial button { margin-left: auto; }
+
+/* ============================================================
+   Typeahead — suggestion dropdown (desktop) / sheet (mobile)
+   ============================================================ */
+.si-ta-wrap { position: relative; }
+.si-ta {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
+  overflow: hidden; padding: var(--space-2) 0;
+}
+/* desktop popover anchored under the field */
+.si-ta--pop {
+  position: absolute; top: calc(100% + var(--space-2)); left: 0; right: 0; z-index: 40;
+}
+.si-ta__group + .si-ta__group { border-top: 1px solid var(--border); margin-top: var(--space-2); padding-top: var(--space-2); }
+.si-ta__cap {
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase;
+  color: var(--text-muted); padding: var(--space-2) var(--space-5) var(--space-1);
+}
+.si-ta__clear { background: none; border: none; cursor: pointer; font-family: var(--font-body); font-size: var(--fs-xs); color: var(--text-muted); text-transform: none; letter-spacing: 0; }
+.si-ta__clear:hover { color: var(--accent); }
+.si-ta__row {
+  display: flex; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-5); cursor: pointer; width: 100%; text-align: left;
+  background: none; border: none; font-family: var(--font-body);
+  transition: background var(--dur-fast) var(--ease-out);
+  min-height: 44px;
+}
+.si-ta__row:hover, .si-ta__row[data-active="true"] { background: var(--accent-weak); }
+.si-ta__ico { width: 20px; flex: none; color: var(--icon-muted); display: flex; align-items: center; justify-content: center; }
+.si-ta__ico svg { width: 18px; height: 18px; }
+.si-ta__cover {
+  width: 28px; height: 40px; flex: none; border-radius: var(--radius-xs);
+  background: linear-gradient(135deg, var(--surface-accent), var(--surface-sunk));
+  border: 1px solid var(--border);
+}
+.si-ta__txt { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.si-ta__primary { font-size: var(--fs-body); color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.si-ta__secondary { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.si-ta__price { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-body); color: var(--accent); flex: none; }
+.si-ta__kbd { font-size: var(--fs-xs); color: var(--text-faint); flex: none; }
+
+/* ============================================================
+   Live typeahead prototype — host frame around a real SearchBar
+   ============================================================ */
+.si-live { max-width: 860px; margin: 0 auto; padding: var(--space-12) var(--gutter) var(--space-20); }
+.si-live__eyebrow { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); margin-bottom: var(--space-3); }
+.si-live__title { font-size: var(--fs-h2); margin-bottom: var(--space-2); }
+.si-live__title em { font-style: italic; color: var(--accent); }
+.si-live__lead { font-size: var(--fs-lead); color: var(--text-body); margin-bottom: var(--space-8); max-width: 620px; }
+.si-live__hint { font-size: var(--fs-sm); color: var(--text-muted); margin-top: var(--space-4); display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; }
+.si-live__hint b { color: var(--text-body); font-weight: var(--fw-medium); }
+.si-live__seed { display: flex; gap: var(--space-2); flex-wrap: wrap; margin-top: var(--space-3); }
+
+/* ============================================================
+   Mobile — full-screen suggestions sheet & device-frame helpers
+   ============================================================ */
+.si-m {
+  width: 375px; min-height: 760px; background: var(--bg);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.si-m__head { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-4) var(--space-3); }
+.si-m__logo { height: 30px; }
+.si-m__head-actions { margin-left: auto; display: flex; align-items: center; gap: var(--space-2); }
+.si-m__icon-btn { width: 44px; height: 44px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--icon-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.si-m__icon-btn svg { width: 20px; height: 20px; }
+.si-m__body { padding: 0 var(--space-4) var(--space-8); flex: 1; }
+.si-m__title { font-size: var(--fs-h3); margin: var(--space-2) 0 var(--space-5); }
+.si-m__title em { font-style: italic; color: var(--accent); }
+.si-m .results__search { max-width: none; margin-bottom: var(--space-5); }
+.si-m .si-actions { grid-template-columns: 1fr; max-width: none; }
+.si-m .si-author__head { gap: var(--space-3); }
+
+/* Mobile single-column layout — fixed-width frame, so we scope by class, not @media */
+.si-m .results { padding: 0 0 var(--space-8); }
+.si-m .results__eyebrow { margin-top: var(--space-2); }
+.si-m .results__title { font-size: var(--fs-h3); margin-bottom: var(--space-4); }
+.si-m .results__toolbar { padding-top: var(--space-4); margin-bottom: var(--space-4); }
+.si-m .results__grid { grid-template-columns: 1fr; gap: var(--space-3); }
+.si-m .results__grid .kn-book { flex-direction: column; }
+.si-m .results__grid .kn-book__cover { width: 92px; height: 134px; }
+.si-m .si-correct { padding: var(--space-3) var(--space-4); }
+.si-m .si-work__head { flex-direction: column; gap: var(--space-3); }
+.si-m .si-ed { flex-wrap: wrap; }
+.si-m .si-ed .kn-btn { width: 100%; margin-top: var(--space-2); }
+.si-m .si-vol { gap: var(--space-3); }
+.si-m .si-vol__cover { display: none; }
+.si-m .si-author__head { flex-direction: column; align-items: flex-start; }
+
+/* Mobile suggestions sheet — the dropdown becomes full-bleed under a sticky field */
+.si-sheet { display: flex; flex-direction: column; height: 100%; }
+.si-sheet__bar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); }
+.si-sheet__cancel { background: none; border: none; cursor: pointer; font-family: var(--font-body); font-size: var(--fs-sm); color: var(--accent); padding: var(--space-2); white-space: nowrap; }
+.si-sheet .si-ta { box-shadow: none; border: none; border-radius: 0; flex: 1; }
+
+/* ============================================================
+   Mobile editions / series adaptations
+   ============================================================ */
+.si-m .si-actions .si-act { flex-direction: row; text-align: left; align-items: center; }
+.si-m .si-act__text { text-align: left; }
+.si-m .si-act .kn-btn { width: auto; }
+
+/* ============================================================
+   Frozen-status note (review chrome — matches the homepage note)
+   ============================================================ */
+.kn-usage-note {
+  position: fixed; bottom: 0; left: 0; right: 0;
+  background: var(--surface-accent); border-top: 1px solid var(--border);
+  padding: 8px 24px; font-family: var(--font-body); font-size: var(--fs-xs);
+  color: var(--text-muted); display: flex; align-items: center; gap: 8px; z-index: 99;
+}
+.kn-usage-note b { color: var(--accent); font-weight: var(--fw-semibold); }
+.kn-usage-note a { margin-left: auto; font-weight: var(--fw-medium); color: var(--accent); white-space: nowrap; }
+.kn-usage-note a:hover { color: var(--accent-hover); }

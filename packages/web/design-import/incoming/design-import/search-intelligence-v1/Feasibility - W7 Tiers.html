@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<!-- @pattern name="Knyhovo Search Intelligence — Feasibility (W7a/b/c)" version="1.0" status="extension"
+     note="W7 prioritization: each capability tiered W7a (MVP-safe, frontend) · W7b (needs backend) · W7c (future).
+     With backend requirement + Claude Code implementation notes. Composes DS v1.0 tokens only." -->
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Knyhovo — W7 · Feasibility (W7a / W7b / W7c)</title>
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+<link rel="stylesheet" href="si.css">
+<link rel="stylesheet" href="si-doc.css">
+</head>
+<body>
+<div class="doc__topbar">
+  <img id="doc-logo" src="../../assets/logo/knyhovo-logo-light.png" alt="Knyhovo">
+  <button id="theme-btn" class="kn-btn kn-btn--secondary kn-btn--sm" type="button">Темна тема</button>
+</div>
+
+<div class="doc">
+  <p class="doc__eyebrow">W7 · ШАР ІНТЕЛЕКТУ ПОШУКУ · ПРІОРИТИЗАЦІЯ</p>
+  <h1 class="doc__title">Feasibility — <em>W7a / W7b / W7c</em></h1>
+  <p class="doc__lead">
+    Кожна спроможність шару віднесена до тиру за вартістю реалізації. Орієнтир для Claude Code: що можна зібрати
+    на фронтенді вже зараз, що чекає на бекенд, а що — майбутній інтелект.
+  </p>
+
+  <div class="doc__legend">
+    <div><span class="si-tier si-tier--a">W7a</span> <span><b>MVP-безпечно.</b> Фронтенд + наявний пошук. Без нового бекенду.</span></div>
+    <div><span class="si-tier si-tier--b">W7b</span> <span><b>Потребує бекенду.</b> Нові ендпоінти / дані / індекс.</span></div>
+    <div><span class="si-tier si-tier--c">W7c</span> <span><b>Майбутнє.</b> NLP / ML / збагачені дані.</span></div>
+  </div>
+
+  <!-- W7a -->
+  <section>
+    <h2><span class="num">W7a</span>MVP-безпечно — фронтенд</h2>
+    <p class="doc__sublead">Будується поверх наявного пошуку. Не блокується бекендом — можна відвантажувати першим.</p>
+    <div class="doc__tablewrap">
+      <table>
+        <thead><tr><th>Спроможність</th><th>Що відвантажується</th><th>Бекенд</th><th>Нотатка для Claude Code</th></tr></thead>
+        <tbody>
+          <tr><td><b>Typeahead · idle + ввід</b></td><td>Випадаюче меню: нещодавні, книги, автори, серії</td><td>Наявний search API + дебаунс; нещодавні в <code>localStorage</code></td><td>Композ. <code>.kn-field</code> + <code>role="combobox/listbox"</code>; дебаунс 150–250мс; ↑↓↵Esc; <code>aria-activedescendant</code>. Див. <code>si-typeahead.jsx</code> (готовий компонент).</td></tr>
+          <tr><td><b>ISBN-детект у полі</b></td><td>Рядок «Розпізнано ISBN» при вводі</td><td>Жодного — клієнтська регулярка</td><td><code>siLooksLikeIsbn()</code> уже в <code>si-typeahead.jsx</code>: 10–13 цифр / 978–979. Лише UI-гілка.</td></tr>
+          <tr><td><b>Картка-перехід автор/серія</b></td><td>Картка над результатами, якщо запит = ім’я/серія</td><td>Точний lookup за наявним індексом авторів/серій</td><td><code>SIJump</code> у <code>si-blocks.jsx</code>. Показувати лише на точний (не fuzzy) збіг → без бекенду.</td></tr>
+          <tr><td><b>Порожній стан + «стежити»</b></td><td>Мускот + дія «стежити за появою»</td><td>Перевикор. наявний механізм Wishlist-сповіщень</td><td><code>SIEmpty</code>. «Стежити» = той самий alert-flow, що й W4. Мускот: <code>magnifier</code>/<code>lantern</code> за темою.</td></tr>
+          <tr><td><b>Помилка пошуку</b></td><td>Локальна відновлювана помилка + «спробувати ще раз»</td><td>Жодного — обробка збою запиту</td><td><code>SISysError</code>. Зберегти запит у стані; ретрай повторює останній виклик. Ніколи не глобальна сторінка.</td></tr>
+          <tr><td><b>Частковий індекс</b></td><td>Попередження «3 з 5 книгарень»</td><td>Прапорець у відповіді: які джерела відповіли</td><td><code>SIPartial</code>. Якщо API вже повертає per-store статус — суто UI. Інакше тривіальне поле відповіді.</td></tr>
+          <tr><td><b>Авто-виправлення (словник)</b></td><td>Виправлення для топ-N відомих назв + «шукати оригінал»</td><td>Невеликий словник псевдонімів/помилок (статичний)</td><td><code>SICorrectNotice</code>. MVP: курований словник популярних помилок («гари потер»→«Гаррі Поттер»). Повний fuzzy — у W7b.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- W7b -->
+  <section>
+    <h2><span class="num">W7b</span>Потребує бекенду</h2>
+    <p class="doc__sublead">Залежить від нових ендпоінтів, нормалізації даних або пошукового індексу. Дизайн готовий — чекає на дані.</p>
+    <div class="doc__tablewrap">
+      <table>
+        <thead><tr><th>Спроможність</th><th>Що відвантажується</th><th>Бекенд</th><th>Нотатка для Claude Code</th></tr></thead>
+        <tbody>
+          <tr><td><b>Did-you-mean (fuzzy)</b></td><td>Чипи кандидатів + найближчі збіги для будь-якого запиту</td><td>Fuzzy/тригерний пошук (наприклад, trigram / edit-distance) на повному каталозі</td><td><code>SIRecoverLow</code>. UI приймає масив кандидатів + результати. Потрібен ендпоінт «suggest».</td></tr>
+          <tr><td><b>Групування видань (твір)</b></td><td>Канонічний твір + список видань, ціна за форматом</td><td>Модель «work → editions»; нормалізація дублікатів видань</td><td><code>SIWork</code>. Ключова вимога — стабільний <code>workId</code>. Поки немає — показувати плоскі результати (frozen Search Results).</td></tr>
+          <tr><td><b>ISBN → кілька видань</b></td><td>Вибір видання за ISBN</td><td>ISBN-індекс, що мапить на <code>workId</code> + варіанти</td><td>Той самий <code>SIWork</code>. Точний ISBN → одне видання (W7a); багато — після моделі work.</td></tr>
+          <tr><td><b>Добірка автора</b></td><td>Лендинг автора + Популярні / Найвідстежуваніші / Найдешевші</td><td>Агрегації за автором: популярність, к-сть відстежень, мін. ціна</td><td><code>SIAuthorLanding</code>. Таби — це сортування наявного набору книг автора. «Найвідстежуваніші» потребує лічильника Wishlist.</td></tr>
+          <tr><td><b>Попросити додати книгу</b></td><td>Дія «надіслати запит книгарням»</td><td>Черга запитів на додавання + адмін-потік</td><td>Друга дія в <code>SIEmpty</code>. Перша («стежити») — W7a; ця — окремий бекенд-процес.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- W7c -->
+  <section>
+    <h2><span class="num">W7c</span>Майбутній інтелект</h2>
+    <p class="doc__sublead">Потребує NLP / ML або збагачених метаданих. Дизайн фіксує намір; реалізація — пізніше.</p>
+    <div class="doc__tablewrap">
+      <table>
+        <thead><tr><th>Спроможність</th><th>Що відвантажується</th><th>Бекенд</th><th>Нотатка для Claude Code</th></tr></thead>
+        <tbody>
+          <tr><td><b>Розбір «назва+автор»</b></td><td>Один запит → окремо назва й автор («марсіянин енді веєр»)</td><td>NLP-парсер сутностей запиту + транслітерація</td><td><code>SIRecoverHigh</code> (martian). До NLP — деградує в звичайний fuzzy did-you-mean (W7b).</td></tr>
+          <tr><td><b>Навігація серією · порядок читання</b></td><td>Усі томи серії в правильному порядку читання</td><td>Метадані серій: <code>seriesId</code>, порядковий номер, тип (роман/збірка)</td><td><code>SISeriesRail</code>. Порядок читання ≠ дата виходу — потребує курованих даних. До них — приховати рейку.</td></tr>
+          <tr><td><b>Кросмовне відновлення</b></td><td>Рос./англ. запит → українське видання</td><td>Багатомовний мапінг назв + транслітерація</td><td>Гілка «ведьмак»→«Відьмак». MVP: курований словник; повне — мовна модель.</td></tr>
+          <tr><td><b>Семантична близькість</b></td><td>«книга про звички» → «Атомні звички»</td><td>Embeddings / семантичний індекс</td><td>Поза межами поточних макетів; зарезервовано як напрям. Не блокує W7a/b.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <h2><span class="num">06</span>Послідовність відвантаження</h2>
+    <ul>
+      <li><strong>Реліз 1 (W7a).</strong> Typeahead, ISBN-детект, переходи на точний збіг, порожній стан зі «стежити», помилки, частковий індекс, словникове авто-виправлення. Нуль нового бекенду, крім per-store-статусу у відповіді.</li>
+      <li><strong>Реліз 2 (W7b).</strong> Fuzzy suggest-ендпоінт → did-you-mean; модель work→editions → групування + ISBN-видання; агрегації автора → лендинг; черга «попросити додати».</li>
+      <li><strong>Реліз 3 (W7c).</strong> NLP-розбір запиту, метадані серій, кросмовний мапінг, семантика.</li>
+    </ul>
+  </section>
+
+  <div class="doc__nav">
+    <a href="Search Intelligence - Principles & States.html">← Принципи та стани</a>
+    <a href="Search Intelligence - Desktop.html">Desktop макети →</a>
+    <a href="Search Intelligence - Mobile.html">Mobile макети →</a>
+    <a href="Search Suggestions - Live Prototype.html">Живий typeahead →</a>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var root = document.documentElement, btn = document.getElementById('theme-btn'), logo = document.getElementById('doc-logo');
+    var saved = localStorage.getItem('kn-theme') || 'light';
+    function apply(t) {
+      root.setAttribute('data-theme', t);
+      btn.textContent = t === 'dark' ? 'Світла тема' : 'Темна тема';
+      logo.src = t === 'dark' ? '../../assets/logo/knyhovo-logo-dark.png' : '../../assets/logo/knyhovo-logo-light.png';
+    }
+    apply(saved);
+    btn.addEventListener('click', function () {
+      var t = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('kn-theme', t); apply(t);
+    });
+  })();
+</script>
+</body>
+</html>

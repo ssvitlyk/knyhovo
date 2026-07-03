@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<!-- @pattern name="Knyhovo Search Intelligence — Principles & States" version="1.0" status="extension"
+     note="W7 design rationale: intelligence principles, state inventory, user flows, copy/tone rules,
+     accessibility, and Claude Code feasibility pointers. Composes DS v1.0 tokens only. Design + rationale —
+     does not redesign Search Results or the SearchBar." -->
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Knyhovo — W7 · Принципи та стани</title>
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+<link rel="stylesheet" href="si.css">
+<link rel="stylesheet" href="si-doc.css">
+</head>
+<body>
+<div class="doc__topbar">
+  <img id="doc-logo" src="../../assets/logo/knyhovo-logo-light.png" alt="Knyhovo">
+  <button id="theme-btn" class="kn-btn kn-btn--secondary kn-btn--sm" type="button">Темна тема</button>
+</div>
+
+<div class="doc">
+  <p class="doc__eyebrow">W7 · ШАР ІНТЕЛЕКТУ ПОШУКУ · ДИЗАЙН</p>
+  <h1 class="doc__title">Принципи та <em>стани</em> інтелекту пошуку</h1>
+  <p class="doc__lead">
+    Шар інтелекту навколо пошуку: відновлення після помилок, підказки, ISBN, серії, автори, групування видань,
+    порожні та помилкові стани. Мета — підняти успішність пошуку, коли запит неточний, частковий або книги ще немає в базі.
+  </p>
+
+  <div class="doc__status">
+    <span><b>Розширення, не редизайн.</b> W7 додає шар НАВКОЛО замороженого Search Results v1.0 та глобального SearchBar.
+    Сторінка результатів, поле пошуку, BookCard, типографіка, кольори, відступи та тіні не змінюються. Усі екрани
+    зібрані лише з <code>window.KnyhovoDesignSystem_9fa616</code> + токенів DS v1.0.</span>
+  </div>
+
+  <!-- 1 · Principles -->
+  <section>
+    <h2><span class="num">01</span>Принципи інтелекту</h2>
+    <p class="doc__sublead">Сім правил, що визначають кожен стан нижче.</p>
+    <div class="doc__principles">
+      <div class="doc__principle"><div class="n">1</div><h4>Відновлюй, не впирайся</h4><p>Жоден запит не веде в глухий кут. Кожен нульовий результат пропонує наступний крок — виправлення, найближчий збіг або дію.</p></div>
+      <div class="doc__principle"><div class="n">2</div><h4>Knyhovo шукає, Книговик радить</h4><p>Тон інструмента vs. порадника. «Знайдено за виправленим запитом» — інструмент; «Книговик підкаже» — помічник. Підказка ніколи не звучить як від книгарні.</p></div>
+      <div class="doc__principle"><div class="n">3</div><h4>За впевненістю</h4><p>Високовпевнене виправлення застосовується автоматично (з поверненням до оригіналу). Низьковпевнене — лише пропонує «можливо», нічого не підмінюючи.</p></div>
+      <div class="doc__principle"><div class="n">4</div><h4>Групуй за твором, не за лотом</h4><p>Видання одного канонічного твору згортаються в один запис. Користувач обирає формат, ми показуємо найкращу ціну саме на нього.</p></div>
+      <div class="doc__principle"><div class="n">5</div><h4>Спокій, не шум</h4><p>Без FOMO, без агресивного автозаповнення, без перехоплення вводу. Підказки допомагають, а не нав’язують.</p></div>
+      <div class="doc__principle"><div class="n">6</div><h4>Чесно про прогалини</h4><p>Якщо книги немає — кажемо прямо й пропонуємо стежити, попросити додати або вказати ISBN. Нічого не вигадуємо.</p></div>
+      <div class="doc__principle"><div class="n">7</div><h4>Переви­користовуй, не винаходь</h4><p>SearchBar, BookCard, Chip, Badge, Button. Жодної нової візуальної мови — лише нові композиції наявних елементів.</p></div>
+    </div>
+  </section>
+
+  <!-- 2 · State inventory -->
+  <section>
+    <h2><span class="num">02</span>Інвентар станів</h2>
+    <p class="doc__sublead">16 станів шару. Тир — пріоритет реалізації: <span class="si-tier si-tier--a">W7a</span> MVP-безпечно · <span class="si-tier si-tier--b">W7b</span> потребує бекенду · <span class="si-tier si-tier--c">W7c</span> майбутнє.</p>
+    <div class="doc__tablewrap">
+      <table>
+        <thead><tr><th>#</th><th>Стан</th><th>Тригер</th><th>Відповідь інтелекту</th><th>Тир</th></tr></thead>
+        <tbody>
+          <tr><td>1</td><td><b>Авто-виправлення</b></td><td>Друкарська помилка, близька до відомої назви («гари потер»)</td><td>Запит виправляється автоматично, результати показані; кнопка «натомість шукати оригінал»</td><td><span class="si-tier si-tier--a">W7a</span></td></tr>
+          <tr><td>2</td><td><b>Did-you-mean</b></td><td>Неоднозначний / іншомовний запит («ведьмак»)</td><td>Чипи кандидатів + перехід до серії/автора + найближчі збіги; нічого не підмінюється</td><td><span class="si-tier si-tier--b">W7b</span></td></tr>
+          <tr><td>3</td><td><b>Перехід автор/серія</b></td><td>Запит збігається з іменем автора або назвою серії</td><td>Картка-перехід над результатами</td><td><span class="si-tier si-tier--a">W7a</span></td></tr>
+          <tr><td>4</td><td><b>Розбір назви+автора</b></td><td>Змішаний транслітерований запит («марсіянин енді веєр»)</td><td>Розпізнаються назва й автор окремо; точний результат</td><td><span class="si-tier si-tier--c">W7c</span></td></tr>
+          <tr><td>5</td><td><b>Typeahead · idle</b></td><td>Фокус на порожньому полі</td><td>Нещодавні запити + підказка що вводити</td><td><span class="si-tier si-tier--a">W7a</span></td></tr>
+          <tr><td>6</td><td><b>Typeahead · ввід</b></td><td>≥1 символ</td><td>Згруповані підказки: книги (обкладинка+ціна) · автори · серії, з підсвіткою</td><td><span class="si-tier si-tier--a">W7a</span></td></tr>
+          <tr><td>7</td><td><b>Typeahead · ISBN</b></td><td>Ввід схожий на ISBN</td><td>Рядок «Розпізнано ISBN» + Enter для точного пошуку</td><td><span class="si-tier si-tier--a">W7a</span></td></tr>
+          <tr><td>8</td><td><b>ISBN · точний збіг</b></td><td>ISBN → одне видання</td><td>Перехід до книги</td><td><span class="si-tier si-tier--a">W7a</span></td></tr>
+          <tr><td>9</td><td><b>ISBN · кілька видань</b></td><td>ISBN мапиться на твір із кількома виданнями</td><td>Вибір видання (формат · рік · видавництво · ціна)</td><td><span class="si-tier si-tier--b">W7b</span></td></tr>
+          <tr><td>10</td><td><b>ISBN · не знайдено</b></td><td>Невідомий ISBN</td><td>Порожній стан + дії (стежити · додати · уточнити)</td><td><span class="si-tier si-tier--a">W7a</span></td></tr>
+          <tr><td>11</td><td><b>Канонічний твір</b></td><td>Популярна назва з багатьма виданнями («Маленький принц»)</td><td>Один твір + згруповані видання, ціна за найдешевшим продавцем</td><td><span class="si-tier si-tier--b">W7b</span></td></tr>
+          <tr><td>12</td><td><b>Добірка автора</b></td><td>Запит лише з іменем автора («Стівен Кінг»)</td><td>Заголовок автора + перемикач Популярні / Найвідстежуваніші / Найдешевші</td><td><span class="si-tier si-tier--b">W7b</span></td></tr>
+          <tr><td>13</td><td><b>Навігація серією</b></td><td>Запит — серія, або користувач на одному томі</td><td>Список томів у порядку читання: наявність · ціна · «у вішлисті»</td><td><span class="si-tier si-tier--c">W7c</span></td></tr>
+          <tr><td>14</td><td><b>Порожньо · не знайдено</b></td><td>Нуль результатів у всіх книгарнях</td><td>Мускот + стежити за появою · попросити додати · вказати ISBN</td><td><span class="si-tier si-tier--a">W7a</span> / <span class="si-tier si-tier--b">W7b</span></td></tr>
+          <tr><td>15</td><td><b>Помилка пошуку</b></td><td>Збій сервісу пошуку</td><td>Локальна відновлювана помилка, запит збережено</td><td><span class="si-tier si-tier--a">W7a</span></td></tr>
+          <tr><td>16</td><td><b>Частковий індекс</b></td><td>Частина книгарень не відповідає</td><td>Спокійне попередження «3 з 5» над результатами + «оновити»</td><td><span class="si-tier si-tier--a">W7a</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 3 · Flows -->
+  <section>
+    <h2><span class="num">03</span>Користувацькі сценарії</h2>
+    <p class="doc__sublead">Чотири ключові шляхи відновлення та переходу.</p>
+    <div class="doc__flow">
+      <div class="doc__flowrow">
+        <h4>A · Друкарська помилка → результати</h4>
+        <div class="doc__steps">
+          <div class="doc__step"><span class="doc__step-box">«гари потер»<small>ввід з помилкою</small></span><span class="doc__arrow">→</span></div>
+          <div class="doc__step"><span class="doc__step-box doc__step-box--accent">Виправлено: «Гаррі Поттер»<small>висока впевненість</small></span><span class="doc__arrow">→</span></div>
+          <div class="doc__step"><span class="doc__step-box doc__step-box--green">7 книг + перехід до серії<small>результат</small></span></div>
+        </div>
+      </div>
+      <div class="doc__flowrow">
+        <h4>B · Лише автор → добірка → книга</h4>
+        <div class="doc__steps">
+          <div class="doc__step"><span class="doc__step-box">«Стівен Кінг»<small>ім’я автора</small></span><span class="doc__arrow">→</span></div>
+          <div class="doc__step"><span class="doc__step-box doc__step-box--accent">Добірка автора<small>Популярні / Найдешевші</small></span><span class="doc__arrow">→</span></div>
+          <div class="doc__step"><span class="doc__step-box doc__step-box--green">Сторінка книги<small>найкраща ціна</small></span></div>
+        </div>
+      </div>
+      <div class="doc__flowrow">
+        <h4>C · ISBN → вибір видання → книга</h4>
+        <div class="doc__steps">
+          <div class="doc__step"><span class="doc__step-box">Вставлено ISBN<small>розпізнано в полі</small></span><span class="doc__arrow">→</span></div>
+          <div class="doc__step"><span class="doc__step-box doc__step-box--accent">Кілька видань<small>формат · рік</small></span><span class="doc__arrow">→</span></div>
+          <div class="doc__step"><span class="doc__step-box doc__step-box--green">Обране видання<small>найкраща ціна</small></span></div>
+        </div>
+      </div>
+      <div class="doc__flowrow">
+        <h4>D · Не знайдено → стежити / попросити</h4>
+        <div class="doc__steps">
+          <div class="doc__step"><span class="doc__step-box">Нуль результатів<small>немає ніде</small></span><span class="doc__arrow">→</span></div>
+          <div class="doc__step"><span class="doc__step-box doc__step-box--accent">Мускот + 3 дії<small>стежити · додати · ISBN</small></span><span class="doc__arrow">→</span></div>
+          <div class="doc__step"><span class="doc__step-box doc__step-box--green">Сповіщення про появу<small>Книговик стежить</small></span></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 4 · Copy -->
+  <section>
+    <h2><span class="num">04</span>Копірайт і тон</h2>
+    <ul>
+      <li><strong>Розподіл ролей.</strong> Knyhovo <em>шукає / перевіряє / знаходить</em> ціни (інструмент). Книговик <em>радить / стежить / підказує</em> (персональний помічник). Підказка ніколи не читається як від книгарні.</li>
+      <li><strong>Виправлення завжди оборотне.</strong> Авто-виправлення показує «Натомість шукати «оригінал»» — користувач завжди може повернутися.</li>
+      <li><strong>Чесність про невідоме.</strong> «Поки що не маємо…», «За цим ISBN нічого не знайдено» — прямо, без вибачень-надмірностей і без вигаданих результатів.</li>
+      <li><strong>Без FOMO.</strong> Жодних «Поспішайте!», окликів, лічильників. Спокій — частина бренду.</li>
+      <li><strong>Ціна.</strong> Формат <code>245 ₴</code> (пробіл перед ₴); назва книгарні після «·», завжди <code>--text-muted</code>.</li>
+    </ul>
+  </section>
+
+  <!-- 5 · Accessibility -->
+  <section>
+    <h2><span class="num">05</span>Доступність</h2>
+    <ul>
+      <li><strong>Typeahead.</strong> <code>role="combobox"</code> на полі, <code>role="listbox"</code> на меню; <code>↑ ↓</code> рухають активний рядок, <code>↵</code> переходить, <code>Esc</code> закриває. Активний рядок — <code>aria-activedescendant</code>; підсвітка не лише кольором.</li>
+      <li><strong>Дотик.</strong> Усі рядки підказок та дії ≥44px; на мобільному typeahead — повноекранний аркуш.</li>
+      <li><strong>Наявність томів серії</strong> передається текстом + крапкою, не лише кольором.</li>
+      <li><strong>Фокус.</strong> Успадкований 3px DS focus-ring; жодних відключених станів без текстової причини.</li>
+      <li><strong>Стани</strong> оголошуються через <code>aria-live="polite"</code> у зведенні результатів (успадковано з Search Results).</li>
+    </ul>
+  </section>
+
+  <div class="doc__nav">
+    <a href="Feasibility — W7 Tiers.html">Feasibility · W7a / W7b / W7c →</a>
+    <a href="Search Intelligence - Desktop.html">Desktop макети →</a>
+    <a href="Search Intelligence - Mobile.html">Mobile макети →</a>
+    <a href="Search Suggestions - Live Prototype.html">Живий typeahead →</a>
+  </div>
+</div>
+
+<script>
+  (function () {
+    var root = document.documentElement, btn = document.getElementById('theme-btn'), logo = document.getElementById('doc-logo');
+    var saved = localStorage.getItem('kn-theme') || 'light';
+    function apply(t) {
+      root.setAttribute('data-theme', t);
+      btn.textContent = t === 'dark' ? 'Світла тема' : 'Темна тема';
+      logo.src = t === 'dark' ? '../../assets/logo/knyhovo-logo-dark.png' : '../../assets/logo/knyhovo-logo-light.png';
+    }
+    apply(saved);
+    btn.addEventListener('click', function () {
+      var t = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('kn-theme', t); apply(t);
+    });
+  })();
+</script>
+</body>
+</html>

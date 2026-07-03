@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<!-- @pattern name="Knyhovo Price Alerts" surface="Alert Transition Matrix · spec (W4)" version="1.0"
+     status="extension" note="W4 FINALIZATION — deterministic spec of how a price alert evolves over time:
+     seven states, every transition (trigger · visual · animation · confirmation · persistence), quiet
+     confirmation patterns, animation + persistence rules. Light + dark via DS ThemeToggle. Documentation
+     only; composes window.AL/ALData + DS v1.0 tokens. No redesign of Wishlist / Book Details / Price History." -->
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Knyhovo — Alert Transition Matrix (W4)</title>
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+<link rel="stylesheet" href="alerts.css">
+<link rel="stylesheet" href="altr-matrix.css">
+</head>
+<body>
+<div id="altr-root"></div>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/_ds_bundle.js"></script>
+<script type="text/babel" src="al-data.jsx"></script>
+<script type="text/babel" src="al-core.jsx"></script>
+<script type="text/babel" src="altr-doc.jsx"></script>
+
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80">
+    <rect width="120" height="80" fill="#f9f3ed"></rect>
+    <circle cx="34" cy="40" r="7" fill="none" stroke="#b56a2d" stroke-width="2"></circle>
+    <path d="M44 40h28" stroke="#cdbfa9" stroke-width="2"></path>
+    <path d="M68 36l5 4-5 4" fill="none" stroke="#cdbfa9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"></path>
+    <circle cx="86" cy="40" r="7" fill="none" stroke="#24513e" stroke-width="2"></circle>
+    <path d="M83 40l2 2 4-4" fill="none" stroke="#24513e" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"></path>
+  </svg>
+</template>
+</body>
+</html>

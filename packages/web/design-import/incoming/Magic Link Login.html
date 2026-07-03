@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<!-- @pattern name="Knyhovo Magic Link Login" surface="Auth · /login · GET /auth/verify?token=…"
+     note="Passwordless magic-link auth. Natural continuation of the FROZEN Knyhovo surfaces
+           (Settings → Сповіщення, Public unsubscribe): reuses the approved header/footer,
+           centred panel rhythm, DS v1.0 components/tokens. No password, no social login,
+           no registration. Light + Dark · Desktop + Mobile (375px)." -->
+<html lang="uk" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Knyhovo — Magic Link Login</title>
+
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+  <link rel="stylesheet" href="design-import/alerts-v1/alerts.css">
+</head>
+<body>
+  <div id="ml-root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/_ds_bundle.js"></script>
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="np-shared.jsx"></script>
+  <script type="text/babel" src="ml-shared.jsx"></script>
+  <script type="text/babel" src="ml-canvas.jsx"></script>
+
+  <template id="__bundler_thumbnail">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80">
+      <rect width="120" height="80" fill="#F9F3ED"/>
+      <rect x="36" y="30" width="48" height="32" rx="5" fill="#FFFFFF" stroke="#ECE1D2" stroke-width="1.5"/>
+      <path d="M40 36l20 12 20-12" fill="none" stroke="#B56A2D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <circle cx="60" cy="22" r="6" fill="none" stroke="#B56A2D" stroke-width="2"/>
+      <path d="M60 25v5" stroke="#B56A2D" stroke-width="2" stroke-linecap="round"/>
+    </svg>
+  </template>
+</body>
+</html>

@@ -1,0 +1,793 @@
+<!DOCTYPE html>
+<!-- @pattern name="Knyhovyk in Product — W8c" version="1.0" status="integration-catalog"
+     note="W8c. A PRACTICAL integration catalog: how the approved Knyhovyk (W8b Character Bible)
+     lives inside real product surfaces. Concrete UI patterns per scenario — where he appears,
+     in which form, what he says, why there, why NOT elsewhere. Composes ONLY W8b rules + DS v1.0
+     tokens. Creates no new character principles. Does NOT design chat / AI UX / backend, and does
+     NOT redraw the protected mascot — composes the approved assets only. Source of truth = W8b. -->
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Книговик у продукті — W8c · Каталог інтеграції</title>
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+<link rel="stylesheet" href="ka.css">
+<style>
+  /* W8c-only additions — composed from DS tokens, no new colour language.
+     Reuses the W8b presence-tag scale and the ka.css component layer. */
+
+  /* Presence tag scale (same semantics as W8b) — pair with .ka-tag */
+  .pt--hi  { color: var(--brand-green); border-color: color-mix(in oklab, var(--brand-green) 42%, transparent); }
+  .pt--med { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 45%, transparent); }
+  .pt--lo  { color: var(--text-muted); border-color: var(--border-strong); }
+  .pt--no  { color: var(--text-faint); border-style: dashed; }
+  .pt--form { color: var(--text-body); border-color: var(--border-strong); font-family: var(--font-body); }
+
+  /* Canonical avatar system — two approved poses only. Overrides the shared
+     circular face-crop on THIS page: the pose (finger / book) MUST read, so we
+     contain the full approved illustration. No theme swap — these two transparent
+     PNGs are the only avatar assets and read on both light and dark surfaces. */
+  .ka-av { border-radius: 0; background-color: transparent; border: none;
+           background-size: contain; background-position: center; background-repeat: no-repeat;
+           background-image: url("../../assets/mascot/avatarWithBook.png"); }
+  .ka-av--attn { background-image: url("../../assets/mascot/avatarAtention.png"); }
+  .ka-av--book { background-image: url("../../assets/mascot/avatarWithBook.png"); }
+  .ka-av--sm { width: 40px; height: 40px; }
+  .ka-av--md { width: 58px; height: 58px; }
+  .ka-av--lg { width: 96px; height: 96px; }
+
+  /* §01 — Canonical Avatar System rule + freeze */
+  .w8c-rule { background: var(--surface-accent); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius-md); padding: var(--space-5); margin: var(--space-4) 0 var(--space-6); }
+  .w8c-rule__head { display: flex; align-items: center; gap: var(--space-3); margin-bottom: var(--space-3); flex-wrap: wrap; }
+  .w8c-rule__head h3 { margin: 0; font-size: var(--fs-title); font-family: var(--font-display); font-weight: 600; }
+  .w8c-rule__tag { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; font-weight: var(--fw-semibold); color: var(--brand-green); border: 1px solid color-mix(in oklab, var(--brand-green) 42%, transparent); border-radius: var(--radius-pill); padding: 2px 10px; }
+  .w8c-rule p { font-size: var(--fs-sm); color: var(--text-body); line-height: var(--lh-snug); margin: 0; }
+  .w8c-rule p + p { margin-top: var(--space-3); }
+  .w8c-rule code, .w8c-hero-note code { font-size: var(--fs-xs); background: var(--surface); padding: 1px 6px; border-radius: var(--radius-xs); color: var(--accent); font-weight: var(--fw-semibold); }
+  .w8c-canon__key { display: block; font-style: italic; color: var(--text-muted); margin-top: 6px; }
+
+  .w8c-hero-note { display: grid; grid-template-columns: 96px 1fr; gap: var(--space-5); align-items: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-5); box-shadow: var(--shadow-sm); margin-top: var(--space-3); }
+  .w8c-hero-note__stage { width: 96px; height: 120px; display: flex; align-items: center; justify-content: center; }
+  .w8c-hero-note__stage img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .w8c-hero-note h4 { margin: 0 0 6px; font-size: var(--fs-body); }
+  .w8c-hero-note p { font-size: var(--fs-sm); color: var(--text-muted); line-height: var(--lh-snug); margin: 0; }
+  .w8c-hero-note p b { color: var(--text-body); font-weight: var(--fw-semibold); }
+
+  .w8c-oneform { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--accent); border-radius: var(--radius-md); padding: var(--space-5); box-shadow: var(--shadow-sm); margin-top: var(--space-3); }
+  .w8c-oneform__law { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-title); color: var(--text); margin-bottom: var(--space-4); display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+  .w8c-oneform__law span { color: var(--text-faint); }
+  .w8c-forbidden { list-style: none; padding: 0; margin: var(--space-3) 0 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2) var(--space-5); }
+  .w8c-forbidden li { font-size: var(--fs-sm); color: var(--text-body); line-height: var(--lh-snug); padding-left: var(--space-5); position: relative; }
+  .w8c-forbidden li::before { content: "\00D7"; position: absolute; left: 0; top: -1px; color: var(--text-faint); font-weight: 700; font-size: 15px; }
+
+  /* §01 — Canonical avatar section */
+  .w8c-canon { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-top: var(--space-2); }
+  .w8c-canon__card { display: grid; grid-template-columns: auto 1fr; gap: var(--space-5); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-5); box-shadow: var(--shadow-sm); }
+  .w8c-canon__stage { width: 138px; height: 138px; border-radius: var(--radius-sm); background: var(--surface-accent); border: 1px solid var(--border); display: flex; align-items: center; justify-content: center; padding: var(--space-3); align-self: start; }
+  .w8c-canon__stage img { max-width: 100%; max-height: 100%; object-fit: contain; }
+  .w8c-canon__file { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: var(--fs-sm); color: var(--accent); font-weight: var(--fw-semibold); }
+  .w8c-canon__role { font-size: var(--fs-sm); color: var(--text-body); line-height: var(--lh-snug); margin: 6px 0 var(--space-3); }
+  .w8c-canon__role b { color: var(--text); font-weight: var(--fw-semibold); }
+  .w8c-canon__list { list-style: none; padding: 0; margin: 0; }
+  .w8c-canon__list li { font-size: var(--fs-sm); color: var(--text-body); line-height: var(--lh-snug); padding-left: var(--space-4); position: relative; margin-bottom: 5px; }
+  .w8c-canon__list li::before { content: ""; position: absolute; left: 0; top: 8px; width: 5px; height: 5px; border-radius: var(--radius-pill); background: var(--accent); }
+
+  .w8c-noav { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); background: var(--surface); border: 1px dashed var(--border-strong); border-radius: var(--radius-md); padding: var(--space-4) var(--space-5); }
+  .w8c-noav > span:not(.ka-tag) { font-size: var(--fs-sm); color: var(--text-muted); background: var(--surface-accent); border-radius: var(--radius-pill); padding: 4px 12px; }
+
+  .w8c-tav { display: inline-flex; align-items: center; gap: var(--space-2); white-space: nowrap; }
+  .w8c-tav i { width: 30px; height: 30px; flex: none; background-size: contain; background-repeat: no-repeat; background-position: center; }
+  .w8c-tav--attn i { background-image: url("../../assets/mascot/avatarAtention.png"); }
+  .w8c-tav--book i { background-image: url("../../assets/mascot/avatarWithBook.png"); }
+  .w8c-tav code { font-size: var(--fs-xs); background: var(--surface-accent); padding: 1px 6px; border-radius: var(--radius-xs); color: var(--text); }
+
+  /* How-to-read legend */
+  .w8c-legend { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); margin-top: var(--space-2); }
+  .w8c-legend__item { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-4); box-shadow: var(--shadow-sm); }
+  .w8c-legend__item h4 { font-size: var(--fs-body); margin-bottom: var(--space-2); display: flex; align-items: center; gap: var(--space-2); }
+  .w8c-legend__item p { font-size: var(--fs-xs); color: var(--text-muted); line-height: var(--lh-snug); }
+
+  /* Pattern card — the catalog's repeating unit: live demo + spec */
+  .w8c-pat { display: grid; grid-template-columns: 1.05fr 0.95fr; gap: var(--space-5); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-5); box-shadow: var(--shadow-sm); margin-bottom: var(--space-4); }
+  .w8c-pat__demo { background: var(--surface-accent); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-5); display: flex; flex-direction: column; justify-content: center; gap: var(--space-3); min-height: 132px; }
+  .w8c-pat__meta { display: flex; flex-direction: column; gap: var(--space-3); }
+  .w8c-pat__name { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-title); color: var(--text); line-height: 1.15; }
+  .w8c-pat__tags { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+  .w8c-pat__why { font-size: var(--fs-sm); color: var(--text-muted); line-height: var(--lh-snug); }
+  .w8c-pat__why b { color: var(--text-body); font-weight: var(--fw-semibold); }
+  .w8c-lbl { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); font-weight: var(--fw-semibold); }
+
+  /* Mock search field */
+  .w8c-field { display: flex; align-items: center; gap: var(--space-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: var(--space-3) var(--space-4); }
+  .w8c-field svg { width: 18px; height: 18px; color: var(--icon); flex: none; }
+  .w8c-field span { font-size: var(--fs-sm); color: var(--text); }
+  .w8c-field .ph { color: var(--text-faint); }
+
+  /* Knyhovyk voice / advice note inside a demo (voice-only + avatar variants) */
+  .w8c-note { display: flex; gap: var(--space-3); align-items: flex-start; background: var(--surface); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4); }
+  .w8c-note__t { font-size: var(--fs-sm); color: var(--text-body); line-height: var(--lh-snug); }
+  .w8c-note__t q { font-style: italic; color: var(--text); quotes: "«" "»"; }
+  .w8c-note__t .who { display: block; font-size: 11px; text-transform: uppercase; letter-spacing: var(--ls-eyebrow); color: var(--text-faint); font-weight: var(--fw-semibold); margin-bottom: 3px; }
+  .w8c-note .ka-av { margin-top: 1px; }
+
+  /* Self-sufficient surface (Knyhovyk absent) */
+  .w8c-silent { display: flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 56px; color: var(--text-faint); font-style: italic; font-size: var(--fs-sm); border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); }
+
+  /* Result row stub */
+  .w8c-result { display: flex; align-items: center; gap: var(--space-3); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: var(--space-3); }
+  .w8c-result__t { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-sm); color: var(--text); }
+  .w8c-result__s { font-size: var(--fs-xs); color: var(--text-muted); }
+  .w8c-result__p { margin-left: auto; font-family: var(--font-display); font-weight: 600; color: var(--accent); }
+
+  /* Alert mocks — email / push / notification center */
+  .w8c-alerts { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-4); margin-top: var(--space-2); }
+  .w8c-mailcard { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); overflow: hidden; display: flex; flex-direction: column; }
+  .w8c-mailcard__cap { font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); font-weight: var(--fw-semibold); padding: var(--space-3) var(--space-4) 0; }
+  .w8c-mailcard__body { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); flex: 1; }
+  .w8c-from { display: flex; align-items: center; gap: var(--space-3); }
+  .w8c-from__name { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--text); }
+  .w8c-from__meta { font-size: var(--fs-xs); color: var(--text-muted); }
+  .w8c-subject { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-body); color: var(--text); line-height: 1.2; }
+  .w8c-mailtext { font-size: var(--fs-sm); color: var(--text-body); line-height: var(--lh-snug); }
+  .w8c-mailtext q { font-style: italic; color: var(--text); quotes: "«" "»"; }
+  .w8c-push { background: var(--surface); border: 1px solid var(--border-strong); border-radius: var(--radius-md); box-shadow: var(--shadow-md); padding: var(--space-3) var(--space-4); display: flex; gap: var(--space-3); align-items: flex-start; }
+
+  /* Homepage zone map */
+  .w8c-zones { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-2); }
+  .w8c-zone { display: flex; align-items: stretch; gap: var(--space-4); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-4) var(--space-5); box-shadow: var(--shadow-sm); }
+  .w8c-zone__bar { width: 4px; border-radius: var(--radius-pill); flex: none; }
+  .w8c-zone__bar--hi  { background: var(--brand-green); }
+  .w8c-zone__bar--med { background: var(--accent); }
+  .w8c-zone__bar--no  { background: var(--border-strong); }
+  .w8c-zone__main { flex: 1; }
+  .w8c-zone__name { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-body); color: var(--text); }
+  .w8c-zone__desc { font-size: var(--fs-sm); color: var(--text-muted); line-height: var(--lh-snug); margin-top: 2px; }
+  .w8c-zone__tags { display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-end; flex: none; justify-content: center; }
+
+  /* Empty-state mode cards */
+  .w8c-modes { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); margin-top: var(--space-2); }
+  .w8c-mode { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: var(--space-5) var(--space-4); display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-3); }
+  .w8c-mode__stage { width: 100%; min-height: 124px; border-radius: var(--radius-sm); background: var(--surface-accent); display: flex; align-items: center; justify-content: center; overflow: hidden; padding: var(--space-3); }
+  .w8c-mode__name { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-body); color: var(--text); }
+  .w8c-mode__when { font-size: var(--fs-xs); color: var(--text-muted); line-height: var(--lh-snug); }
+
+  /* Anti-pattern grid */
+  .w8c-anti { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-top: var(--space-2); }
+  .w8c-anti__card { background: var(--surface); border: 1px solid var(--border); border-top: 3px solid var(--border-strong); border-radius: var(--radius-md); padding: var(--space-5); box-shadow: var(--shadow-sm); }
+  .w8c-anti__bad { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 11px; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-faint); font-weight: var(--fw-semibold); margin-bottom: var(--space-3); }
+  .w8c-anti__bad svg { width: 14px; height: 14px; }
+  .w8c-anti__name { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-title); color: var(--text); margin-bottom: var(--space-2); }
+  .w8c-anti__ex { font-style: italic; color: var(--text-muted); font-size: var(--fs-sm); background: var(--surface-accent); border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3); line-height: var(--lh-snug); }
+  .w8c-anti__ex q { quotes: "«" "»"; }
+  .w8c-anti__why { font-size: var(--fs-sm); color: var(--text-body); line-height: var(--lh-snug); }
+  .w8c-anti__why b { color: var(--text); font-weight: var(--fw-semibold); }
+
+  @media (max-width: 860px) {
+    .w8c-legend { grid-template-columns: 1fr 1fr; }
+    .w8c-alerts { grid-template-columns: 1fr; }
+    .w8c-modes { grid-template-columns: 1fr 1fr; }
+    .w8c-canon { grid-template-columns: 1fr; }
+    .w8c-forbidden { grid-template-columns: 1fr; }
+    .w8c-hero-note { grid-template-columns: 1fr; justify-items: start; }
+  }
+  @media (max-width: 680px) {
+    .w8c-pat { grid-template-columns: 1fr; }
+    .w8c-anti { grid-template-columns: 1fr; }
+    .w8c-modes { grid-template-columns: 1fr; }
+    .w8c-zone { flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+<div class="doc__topbar">
+  <img id="doc-logo" src="../../assets/logo/knyhovo-logo-light.png" alt="Knyhovo">
+  <div class="doc__topbar-r">
+    <span class="doc__w8">W8c · Книговик у продукті</span>
+    <button id="theme-btn" class="kn-btn kn-btn--secondary kn-btn--sm" type="button">Темна тема</button>
+  </div>
+</div>
+
+<div class="doc">
+  <p class="doc__eyebrow">W8c · КАТАЛОГ ІНТЕГРАЦІЇ</p>
+  <h1 class="doc__title">Біблія каже <em>хто</em>. Каталог показує <em>як</em>.</h1>
+  <p class="doc__lead">
+    W8b відповів на питання «хто такий Книговик?». Цей документ відповідає на «як саме
+    користуватися ним у продукті?». Не абстрактні принципи — конкретні UI-патерни для реальних
+    сценаріїв: де Книговик з'являється, у якій формі, що говорить, чому саме там і чому його немає
+    в інших місцях. Після цього каталогу команда інтегрує Книговика без додаткових дизайн-рішень.
+  </p>
+
+  <div class="doc__status">
+    <span><b>Тільки правила W8b.</b> Каталог нічого не вигадує: усі форми, рівні присутності й тон
+    узяті з <a href="Character System - W8b.html">Біблії персонажа</a> — вона лишається source of
+    truth. Тут немає нових принципів, немає дизайну чату чи AI UX, немає бекенду й немає редизайну
+    заморожених екранів. Книговик не перемальовується — компонуються лише затверджені ассети.</span>
+  </div>
+
+  <div class="doc__toc">
+    <a href="#read">Як читати</a>
+    <a href="#avatar">Канонічний аватар</a>
+    <a href="#search">Search Intelligence</a>
+    <a href="#wishlist">Бажанки</a>
+    <a href="#alerts">Сповіщення</a>
+    <a href="#details">Book Details</a>
+    <a href="#home">Головна</a>
+    <a href="#empty">Порожні стани</a>
+    <a href="#ai">Майбутня AI-поверхня</a>
+    <a href="#anti">Анти-патерни</a>
+  </div>
+
+  <!-- 00 · how to read -->
+  <section id="read">
+    <h2><span class="num">00</span>Як читати цей каталог</h2>
+    <p class="doc__sublead">Кожен патерн описано двома мірами з W8b: <b>рівень присутності</b> (наскільки помітний) і <b>форма</b> (у якому вигляді). Правило незмінне: що рутинніша й щільніша поверхня — то тихіша форма. За замовчуванням — тиша.</p>
+    <div class="w8c-legend">
+      <div class="w8c-legend__item"><h4><span class="ka-tag pt--hi">висока</span></h4><p>Книговик — герой поверхні. Повна сцена / півфігура. Рідкісні емоційні моменти.</p></div>
+      <div class="w8c-legend__item"><h4><span class="ka-tag pt--med">середня</span></h4><p>Поряд із порадою. Аватар + голос. Присутній за умовою: є дані або є подія.</p></div>
+      <div class="w8c-legend__item"><h4><span class="ka-tag pt--lo">низька</span></h4><p>Тихий знак або сам лише тон. Іконка / голос / підпис. Не привертає уваги до себе.</p></div>
+      <div class="w8c-legend__item"><h4><span class="ka-tag pt--no">відсутня</span></h4><p>Книговика немає. Поверхня самодостатня — йому нема чого додати.</p></div>
+    </div>
+    <p class="ka-quiet" style="margin-top: var(--space-4);">Форми (з §02 Біблії): <b>повна сцена · півфігура · аватар · аватар сповіщення · іконка · лише голос · лише підпис</b>. Одна поверхня — рівно одна форма. Ніколи дві одночасно.</p>
+  </section>
+
+  <!-- 01 · canonical avatar -->
+  <section id="avatar">
+    <h2><span class="num">01</span>Канонічний аватар W8</h2>
+    <p class="doc__sublead">Книговик у W8 — це рівно дві канонічні форми аватара. Вибір між ними — за роллю моменту: він або <b>радить</b> (звертає увагу на висновок), або <b>досліджує</b> (пояснює та орієнтує).</p>
+
+    <div class="w8c-rule">
+      <div class="w8c-rule__head">
+        <h3>Canonical Avatar System</h3>
+        <span class="w8c-rule__tag">Заморожено · source of truth W8</span>
+      </div>
+      <p>Усі поверхні W8 Discovery &amp; Browsing використовують <b>рівно два канонічні аватари</b> Книговика: <code>avatarAtention.png</code> і <code>avatarWithBook.png</code>. Інших аватарів, поз, емоцій, реквізиту чи варіацій <b>не існує</b>.</p>
+      <p>Будь-яка нова поза, жест, емоція або окремий аватар потребують <b>оновлення специфікації W8</b> і не можуть додаватися локально окремими командами. Ця система — source of truth для всіх W8 Discovery &amp; Browsing поверхонь.</p>
+    </div>
+
+    <div class="w8c-canon">
+      <div class="w8c-canon__card">
+        <div class="w8c-canon__stage"><img src="../../assets/mascot/avatarAtention.png" alt="Книговик піднімає палець — увага, порада"></div>
+        <div>
+          <div class="w8c-canon__file">avatarAtention.png</div>
+          <div class="w8c-canon__role">Книговик піднімає палець. Він <b>уже проаналізував</b> ситуацію і тепер дає напрям або висновок.<span class="w8c-canon__key">Не досліджує — вже знає відповідь.</span></div>
+          <div class="w8c-lbl">Використовуємо для</div>
+          <ul class="w8c-canon__list">
+            <li>Гарний момент купувати</li>
+            <li>Зараз гарний момент</li>
+            <li>Книга подешевшала · книга з вашої бажанки подешевшала</li>
+            <li>Знову в наявності</li>
+            <li>Я б ще зачекав</li>
+            <li>Будь-яка рекомендація чи порада</li>
+            <li>Будь-який verdict або judgement</li>
+            <li>Будь-який момент, де Книговик звертає увагу користувача</li>
+          </ul>
+        </div>
+      </div>
+      <div class="w8c-canon__card">
+        <div class="w8c-canon__stage"><img src="../../assets/mascot/avatarWithBook.png" alt="Книговик читає книгу — дослідження, пояснення"></div>
+        <div>
+          <div class="w8c-canon__file">avatarWithBook.png</div>
+          <div class="w8c-canon__role">Книговик читає книгу. Він <b>ще досліджує</b>, тлумачить, пояснює або веде крізь невизначеність.<span class="w8c-canon__key">Ще досліджує або пояснює.</span></div>
+          <div class="w8c-lbl">Використовуємо для</div>
+          <ul class="w8c-canon__list">
+            <li>Поки стежу</li>
+            <li>Замало даних</li>
+            <li>Не знайшов цієї назви. Спробуймо автора або ISBN?</li>
+            <li>За назвою нічого, але є збіг за автором</li>
+            <li>Авто-виправлення та відновлення пошуку</li>
+            <li>Немає результатів</li>
+            <li>Книга лише в одній книгарні</li>
+            <li>Помилка пошуку · пояснення стану чи причини</li>
+            <li>Будь-яке інформаційне або пошукове повідомлення</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+
+    <h3>Без аватара</h3>
+    <p class="doc__sublead" style="margin-bottom: var(--space-4);">Чинні правила W8 незмінні. Аватар <b>не показуємо</b>, коли поверхня самодостатня: точний збіг за ISBN, прості системні чи технічні підтвердження, очевидні детерміновані результати, екрани, що пояснюють себе самі.</p>
+    <div class="w8c-noav">
+      <span class="ka-tag pt--no">без аватара</span>
+      <span>Нова книга у бажанці</span><span>Перехід до автора</span><span>Точний збіг за ISBN</span><span>Системні · технічні підтвердження</span>
+    </div>
+
+    <div class="w8c-lbl" style="margin-top: var(--space-8);">Мапа: стан → аватар</div>
+    <div class="doc__tablewrap" style="margin-top: var(--space-3);">
+      <table>
+        <thead><tr><th>Стан</th><th>Аватар</th><th>Чому</th></tr></thead>
+        <tbody>
+          <tr><td>Гарний момент купувати</td><td><span class="w8c-tav w8c-tav--attn"><i></i><code>avatarAtention</code></span></td><td>Уже проаналізував — дає напрям.</td></tr>
+          <tr><td>Зараз гарний момент</td><td><span class="w8c-tav w8c-tav--attn"><i></i><code>avatarAtention</code></span></td><td>Готовий вердикт із причиною.</td></tr>
+          <tr><td>Книга подешевшала · з бажанки подешевшала</td><td><span class="w8c-tav w8c-tav--attn"><i></i><code>avatarAtention</code></span></td><td>Позитивна подія — звертає увагу.</td></tr>
+          <tr><td>Знову в наявності</td><td><span class="w8c-tav w8c-tav--attn"><i></i><code>avatarAtention</code></span></td><td>Подія, на яку чекав користувач.</td></tr>
+          <tr><td>Я б ще зачекав</td><td><span class="w8c-tav w8c-tav--attn"><i></i><code>avatarAtention</code></span></td><td>Порада утриматися.</td></tr>
+          <tr><td>Будь-яка рекомендація / verdict</td><td><span class="w8c-tav w8c-tav--attn"><i></i><code>avatarAtention</code></span></td><td>Книговик дає напрям.</td></tr>
+          <tr><td>Авто-виправлення пошуку</td><td><span class="w8c-tav w8c-tav--book"><i></i><code>avatarWithBook</code></span></td><td>Ще тлумачить запит.</td></tr>
+          <tr><td>Немає результатів</td><td><span class="w8c-tav w8c-tav--book"><i></i><code>avatarWithBook</code></span></td><td>Веде з тупика далі.</td></tr>
+          <tr><td>Відновлення пошуку (збіг за автором)</td><td><span class="w8c-tav w8c-tav--book"><i></i><code>avatarWithBook</code></span></td><td>Досліджує, шукає обхід.</td></tr>
+          <tr><td>Поки стежу</td><td><span class="w8c-tav w8c-tav--book"><i></i><code>avatarWithBook</code></span></td><td>Ще збирає дані.</td></tr>
+          <tr><td>Замало даних</td><td><span class="w8c-tav w8c-tav--book"><i></i><code>avatarWithBook</code></span></td><td>Пояснює невизначеність.</td></tr>
+          <tr><td>Пояснення стану · помилка пошуку</td><td><span class="w8c-tav w8c-tav--book"><i></i><code>avatarWithBook</code></span></td><td>Інформаційне повідомлення.</td></tr>
+          <tr><td>Книга лише в одній книгарні</td><td><span class="w8c-tav w8c-tav--book"><i></i><code>avatarWithBook</code></span></td><td>Пояснює причину.</td></tr>
+          <tr><td>Точний збіг за ISBN</td><td><span class="ka-tag pt--no">без аватара</span></td><td>Результат самодостатній.</td></tr>
+          <tr><td>Нова книга у бажанці</td><td><span class="ka-tag pt--no">без аватара</span></td><td>Просте підтвердження дії.</td></tr>
+          <tr><td>Перехід до автора</td><td><span class="ka-tag pt--no">без аватара</span></td><td>Детермінований результат.</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <h3>Повна сцена — окремий рівень системи</h3>
+    <div class="w8c-hero-note">
+      <div class="w8c-hero-note__stage"><img src="../../assets/mascot/mascot-lantern.png" alt="Повна сцена Книговика з ліхтарем — Hero Mascot"></div>
+      <div>
+        <h4>Hero Mascot ≠ канонічний аватар</h4>
+        <p>Повна сцена з ліхтарем — <b>окремий бренд-актив Hero Surface</b>. Вона <b>не входить</b> до Canonical Avatar System, яка складається лише з <code>avatarAtention.png</code> і <code>avatarWithBook.png</code>. Hero Mascot і канонічний аватар — різні рівні системи персонажа.</p>
+      </div>
+    </div>
+
+    <h3>Одна поверхня → один Книговик → одна форма</h3>
+    <div class="w8c-oneform">
+      <div class="w8c-oneform__law">Одна поверхня <span>→</span> один Книговик <span>→</span> одна форма</div>
+      <div class="w8c-lbl">Заборонено</div>
+      <ul class="w8c-forbidden">
+        <li>показувати два аватари одночасно;</li>
+        <li>показувати аватар разом із повною сценою;</li>
+        <li>створювати додаткові аватари для окремих кейсів;</li>
+        <li>вводити нові пози без оновлення W8.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 02 · search intelligence -->
+  <section id="search">
+    <h2><span class="num">02</span>Search Intelligence</h2>
+    <p class="doc__sublead">Пошук — щільна, рутинна поверхня. Книговик тут переважно <b>голос</b>, рідше аватар, і ніколи не повна сцена. Він з'являється, лише коли результат сам по собі недостатній: треба підказати, врятувати або пояснити. Точний результат говорить за себе — тоді Книговик мовчить.</p>
+
+    <!-- auto-correction -->
+    <div class="w8c-pat">
+      <div class="w8c-pat__demo">
+        <div class="w8c-field"><i data-lucide="search"></i><span>дюуна</span></div>
+        <div class="w8c-note">
+          <div class="ka-av ka-av--sm ka-av--book" role="img" aria-label="Книговик читає"></div>
+          <div class="w8c-note__t"><span class="who">Книговик каже</span><q>Можливо, ви мали на увазі „Дюна"? Ось що знайшлося.</q></div>
+        </div>
+      </div>
+      <div class="w8c-pat__meta">
+        <div class="w8c-pat__name">Авто-виправлення</div>
+        <div class="w8c-pat__tags"><span class="ka-tag pt--med">середня</span><span class="ka-tag pt--form">аватар · голос</span></div>
+        <div class="w8c-pat__why"><b>Чому тут:</b> він міняє намір користувача, тож мусить пояснити, що саме виправив — мовчазна підміна руйнує довіру. Виправляє, не нав'язуючи: «можливо».</div>
+      </div>
+    </div>
+
+    <!-- no results -->
+    <div class="w8c-pat">
+      <div class="w8c-pat__demo">
+        <div class="w8c-field"><i data-lucide="search"></i><span>Несподівана назва</span></div>
+        <div class="w8c-note">
+          <div class="ka-av ka-av--sm ka-av--book" role="img" aria-label="Книговик читає"></div>
+          <div class="w8c-note__t"><span class="who">Книговик каже</span><q>Не знайшов цієї назви. Спробуймо автора або ISBN?</q></div>
+        </div>
+      </div>
+      <div class="w8c-pat__meta">
+        <div class="w8c-pat__name">Немає результатів</div>
+        <div class="w8c-pat__tags"><span class="ka-tag pt--med">середня</span><span class="ka-tag pt--form">аватар · голос</span></div>
+        <div class="w8c-pat__why"><b>Чому тут:</b> порожній екран — глухий кут. Книговик як провідник дає вихід замість сухої помилки «нічого не знайдено». Пропонує наступний крок, не вибачається.</div>
+      </div>
+    </div>
+
+    <!-- search recovery -->
+    <div class="w8c-pat">
+      <div class="w8c-pat__demo">
+        <div class="w8c-note">
+          <div class="ka-av ka-av--sm ka-av--book" role="img" aria-label="Книговик читає"></div>
+          <div class="w8c-note__t"><span class="who">Книговик каже</span><q>За назвою нічого, але є збіг за автором. Показую книги автора.</q></div>
+        </div>
+        <div class="w8c-result"><span class="w8c-result__t">Книги цього автора</span><span class="w8c-result__p">12</span></div>
+      </div>
+      <div class="w8c-pat__meta">
+        <div class="w8c-pat__name">Відновлення пошуку</div>
+        <div class="w8c-pat__tags"><span class="ka-tag pt--med">середня</span><span class="ka-tag pt--form">голос</span></div>
+        <div class="w8c-pat__why"><b>Чому тут:</b> він рятує запит — переводить тупик у корисний результат і чесно каже, на що саме переключив. Без обіцянок, яких не виконав.</div>
+      </div>
+    </div>
+
+    <!-- ISBN match -->
+    <div class="w8c-pat">
+      <div class="w8c-pat__demo">
+        <div class="w8c-field"><i data-lucide="search"></i><span>9786177535024</span></div>
+        <div class="w8c-result"><div class="ka-cover ka-cover--sm"></div><div><div class="w8c-result__t">Точний збіг за ISBN</div><div class="w8c-result__s">5 книгарень · від 245 ₴</div></div></div>
+        <div class="w8c-silent"><i data-lucide="check" style="width:14px;height:14px;"></i> Книговик мовчить</div>
+      </div>
+      <div class="w8c-pat__meta">
+        <div class="w8c-pat__name">Збіг за ISBN</div>
+        <div class="w8c-pat__tags"><span class="ka-tag pt--no">відсутня</span><span class="ka-tag pt--form">—</span></div>
+        <div class="w8c-pat__why"><b>Чому НЕ тут:</b> точний ISBN-збіг однозначний — результат самодостатній. Додавати «я знайшов» було б шумом. Тиша за замовчуванням: нема чого пояснювати — нема Книговика.</div>
+      </div>
+    </div>
+
+    <!-- author jump -->
+    <div class="w8c-pat">
+      <div class="w8c-pat__demo">
+        <div class="w8c-field"><i data-lucide="search"></i><span>Маркес</span></div>
+        <div class="w8c-result"><span class="w8c-result__t">Ґабріель Ґарсіа Маркес</span><span class="w8c-result__s">· автор</span><span class="w8c-result__p">23</span></div>
+        <div class="w8c-silent"><i data-lucide="check" style="width:14px;height:14px;"></i> Книговик мовчить</div>
+      </div>
+      <div class="w8c-pat__meta">
+        <div class="w8c-pat__name">Перехід до автора</div>
+        <div class="w8c-pat__tags"><span class="ka-tag pt--no">відсутня</span><span class="ka-tag pt--form">—</span></div>
+        <div class="w8c-pat__why"><b>Чому НЕ тут:</b> система впевнено розпізнала автора й показала його полицю — пояснювати нема чого. Книговик з'являється лише коли результат непевний, а не щоб озвучити очевидне.</div>
+      </div>
+    </div>
+
+    <!-- search error -->
+    <div class="w8c-pat">
+      <div class="w8c-pat__demo">
+        <div class="w8c-note">
+          <div class="ka-av ka-av--sm ka-av--book" role="img" aria-label="Книговик читає"></div>
+          <div class="w8c-note__t"><span class="who">Книговик каже</span><q>Щось не спрацювало з пошуком. Спробуймо ще раз?</q></div>
+        </div>
+        <button class="kn-btn kn-btn--secondary kn-btn--sm" type="button" style="align-self:flex-start;">Повторити пошук</button>
+      </div>
+      <div class="w8c-pat__meta">
+        <div class="w8c-pat__name">Помилка пошуку</div>
+        <div class="w8c-pat__tags"><span class="ka-tag pt--med">середня</span><span class="ka-tag pt--form">голос</span></div>
+        <div class="w8c-pat__why"><b>Чому тут:</b> технічний збій — момент стриманої турботи (емоція «стурбований»). Книговик визнає проблему спокійно, без драми, і дає дію. Не звинувачує користувача.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 02 · wishlist -->
+  <section id="wishlist">
+    <h2><span class="num">03</span>Бажанки</h2>
+    <p class="doc__sublead">Бажанки — поверхня <b>середньої</b> присутності: тут Книговик стежить за ціною й радить момент. Форма — аватар поряд із порадою, рідше голос. Один Книговик на блок, ніколи на кожну книгу окремо.</p>
+
+    <!-- price drop -->
+    <div class="w8c-pat">
+      <div class="w8c-pat__demo">
+        <div class="ka-advice ka-advice--good ka-advice--inline">
+          <div class="ka-av ka-av--md ka-av--attn" role="img" aria-label="Книговик радить"></div>
+          <div class="ka-advice__body">
+            <div class="ka-advice__verdict">Гарний момент купувати</div>
+            <div class="ka-advice__reason">Подешевшало на <b>60 ₴</b> від типової ціни.</div>
+          </div>
+        </div>
+      </div>
+      <div class="w8c-pat__meta">
+        <div class="w8c-pat__name">Книга подешевшала</div>
+        <div class="w8c-pat__tags"><span class="ka-tag pt--med">середня</span><span class="ka-tag pt--form">аватар · голос</span></div>
+        <div class="w8c-pat__why"><b>Чому тут:</b> позитивна подія з реальною вигодою — заслужена радість. Зелений лише тут, бо є справжній виграш. Завжди з причиною: «на 60 ₴ від типової».</div>
+      </div>
+    </div>
+
+    <!-- back in stock -->
+    <div class="w8c-pat">
+      <div class="w8c-pat__demo">
+        <div class="ka-advice ka-advice--inline">
+          <div class="ka-av ka-av--md ka-av--attn" role="img" aria-label="Книговик радить"></div>
+          <div class="ka-advice__body">
+            <div class="ka-advice__verdict">Знову в наявності</div>
+            <div class="ka-advice__reason">Книга знову є у двох книгарнях. Ціна — як минулого разу.</div>
+          </div>
+        </div>
+      </div>
+      <div class="w8c-pat__meta">
+        <div class="w8c-pat__name">Книга знову в наявності</div>
+        <div class="w8c-pat__tags"><span class="ka-tag pt--med">середня</span><span class="ka-tag pt--form">аватар · голос</span></div>
+        <div class="w8c-pat__why"><b>Чому тут:</b> подія, на яку чекав користувач. Нейтральний (не зелений) — повернення в наявність ще не вигода. Без штучного дефіциту: «поспіши, поки не розкупили» — заборонено.</div>
+      </div>
+    </div>
+
+    <!-- no history -->
+    <div class="w8c-pat">
+      <div class="w8c-pat__demo">
+        <div class="ka-advice ka-advice--inline">
+          <div class="ka-av ka-av--md ka-av--book" role="img" aria-label="Книговик читає"></div>
+          <div class="ka-advice__body">
+            <div class="ka-advice__verdict">Поки стежу</div>
+            <div class="ka-advice__reason">Маю замало даних, щоб радити момент. Постежу за ціною й підкажу.</div>
+          </div>
+        </div>
+      </div>
+      <div class="w8c-pat__meta">
+        <div class="w8c-pat__name">Книга без історії цін</div>
+        <div class="w8c-pat__tags"><span class="ka-tag pt--med">середня</span><span class="ka-tag pt--form">аватар · голос</span></div>
+        <div class="w8c-pat__why"><b>Чому тут:</b> чесна стриманість замість здогаду. Книговик не вигадує впевнену пораду на порожніх даних — каже про брак історії й бере на стеження.</div>
+      </div>
+    </div>
+
+    <!-- new book added -->
+    <div class="w8c-pat">
+      <div class="w8c-pat__demo">
+        <div class="w8c-result"><div class="ka-cover ka-cover--sm"></div><div><div class="w8c-result__t">Книга додана до бажанки</div><div class="w8c-result__s">Стежимо за ціною щодня о 08:00</div></div></div>
+        <div class="w8c-silent"><i data-lucide="check" style="width:14px;height:14px;"></i> Без появи персонажа</div>
+      </div>
+      <div class="w8c-pat__meta">
+        <div class="w8c-pat__name">Нова книга у бажанці</div>
+        <div class="w8c-pat__tags"><span class="ka-tag pt--no">відсутня</span><span class="ka-tag pt--form">— (системний підпис)</span></div>
+        <div class="w8c-pat__why"><b>Чому НЕ тут:</b> просте підтвердження дії — Книговику нема що додати. Поки немає події (зміни ціни чи наявності), він мовчить. Поява без причини — анти-патерн.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 03 · alerts -->
+  <section id="alerts">
+    <h2><span class="num">04</span>Сповіщення</h2>
+    <p class="doc__sublead">Сповіщення несуть Книговика поза екраном продукту. Форма всюди — <b>аватар сповіщення</b> (дрібне обличчя «від кого») плюс голос або підпис. Присутність <b>низька</b>: знак атрибуції, а не сцена. Тон однаковий у всіх каналах — спокійний, з причиною, без хайпу.</p>
+
+    <div class="w8c-alerts">
+      <!-- email -->
+      <div class="w8c-mailcard">
+        <div class="w8c-mailcard__cap">Email</div>
+        <div class="w8c-mailcard__body">
+          <div class="w8c-from">
+            <div class="ka-av ka-av--sm ka-av--attn" role="img" aria-label="Книговик радить"></div>
+            <div><div class="w8c-from__name">Книговик · Knyhovo</div><div class="w8c-from__meta">сповіщення з бажанки</div></div>
+          </div>
+          <div class="w8c-subject">Книга з вашої бажанки подешевшала</div>
+          <div class="w8c-mailtext"><q>Подешевшало на 60 ₴ від типової ціни — гарний момент купувати. Ось чому я повідомляю.</q></div>
+          <button class="kn-btn kn-btn--secondary kn-btn--sm" type="button" style="align-self:flex-start;">Подивитися ціну</button>
+        </div>
+      </div>
+
+      <!-- push -->
+      <div class="w8c-mailcard">
+        <div class="w8c-mailcard__cap">Push</div>
+        <div class="w8c-mailcard__body">
+          <div class="w8c-push">
+            <div class="ka-av ka-av--sm ka-av--attn" role="img" aria-label="Книговик радить"></div>
+            <div>
+              <div class="w8c-from__name">Книговик · Knyhovo</div>
+              <div class="w8c-mailtext" style="margin-top:2px;">„Дюна" подешевшала на 60 ₴. Гарний момент купувати.</div>
+            </div>
+          </div>
+          <div class="w8c-mailtext" style="color:var(--text-muted);">Коротко, з фактом і причиною. Без капслоку, знаків оклику й дедлайнів.</div>
+        </div>
+      </div>
+
+      <!-- notification center -->
+      <div class="w8c-mailcard">
+        <div class="w8c-mailcard__cap">Центр сповіщень</div>
+        <div class="w8c-mailcard__body">
+          <div class="w8c-from" style="align-items:flex-start;">
+            <div class="ka-av ka-av--sm ka-av--attn" role="img" aria-label="Книговик радить"></div>
+            <div>
+              <div class="w8c-mailtext"><b style="color:var(--text);">Книга з бажанки подешевшала</b> — 60 ₴ нижче за типову ціну.</div>
+              <div class="w8c-from__meta" style="margin-top:4px;">від Книговика · 2 год тому</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="ka-quiet" style="margin-top: var(--space-4);">У дзвіночку й бейджі — лише <b>іконка / аватар сповіщення</b>, без тексту в самому знаку. Текст і пояснення розкриваються в центрі сповіщень.</p>
+  </section>
+
+  <!-- 04 · book details -->
+  <section id="details">
+    <h2><span class="num">05</span>Book Details</h2>
+    <p class="doc__sublead">На сторінці книги Книговик присутній <b>низько</b> й тільки за наявності даних: пояснює ціну та момент поряд із блоком пропозицій. Форма — голос, інколи аватар. Зелений вердикт — лише на реальну вигоду; усе інше нейтральне; ніколи червоне.</p>
+
+    <!-- good moment -->
+    <div class="w8c-pat">
+      <div class="w8c-pat__demo">
+        <div class="ka-advice ka-advice--good ka-advice--inline">
+          <div class="ka-av ka-av--md ka-av--attn" role="img" aria-label="Книговик радить"></div>
+          <div class="ka-advice__body">
+            <div class="ka-advice__verdict">Зараз гарний момент</div>
+            <div class="ka-advice__reason">Ціна <b>нижча за типову</b>, наявність є.</div>
+            <div class="ka-advice__foot"><span class="ka-conf"><span class="ka-conf__dots"><span class="ka-conf__dot ka-conf__dot--on"></span><span class="ka-conf__dot ka-conf__dot--on"></span><span class="ka-conf__dot ka-conf__dot--on"></span></span><span class="ka-conf__lbl">впевнений</span></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="w8c-pat__meta">
+        <div class="w8c-pat__name">Хороший момент купувати</div>
+        <div class="w8c-pat__tags"><span class="ka-tag pt--lo">низька</span><span class="ka-tag pt--form">аватар · голос</span></div>
+        <div class="w8c-pat__why"><b>Чому тут:</b> є дані й позитивний факт — спокійна впевненість. Вердикт завжди несе причину; рекомендація без «чому» заборонена.</div>
+      </div>
+    </div>
+
+    <!-- wait -->
+    <div class="w8c-pat">
+      <div class="w8c-pat__demo">
+        <div class="ka-advice ka-advice--inline">
+          <div class="ka-av ka-av--md ka-av--attn" role="img" aria-label="Книговик радить"></div>
+          <div class="ka-advice__body">
+            <div class="ka-advice__verdict">Я б ще зачекав</div>
+            <div class="ka-advice__reason">Ціна зараз <b>вища за звичну</b>.</div>
+            <div class="ka-advice__foot"><span class="ka-conf"><span class="ka-conf__dots"><span class="ka-conf__dot ka-conf__dot--on"></span><span class="ka-conf__dot ka-conf__dot--on"></span><span class="ka-conf__dot"></span></span><span class="ka-conf__lbl">досить впевнений</span></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="w8c-pat__meta">
+        <div class="w8c-pat__name">Краще зачекати</div>
+        <div class="w8c-pat__tags"><span class="ka-tag pt--lo">низька</span><span class="ka-tag pt--form">аватар · голос</span></div>
+        <div class="w8c-pat__why"><b>Чому тут:</b> Книговик на боці читача, тож радить не купувати, коли невигідно — навіть проти продажу. Нейтральний тон, без тиску в інший бік.</div>
+      </div>
+    </div>
+
+    <!-- too little data -->
+    <div class="w8c-pat">
+      <div class="w8c-pat__demo">
+        <div class="ka-advice ka-advice--inline ka-advice--voice">
+          <div class="ka-advice__body">
+            <div class="ka-advice__verdict" style="font-size:var(--fs-body);">Замало даних, щоб радити</div>
+            <div class="ka-advice__reason">Постежу за ціною й підкажу момент.</div>
+            <div class="ka-advice__foot"><span class="ka-conf"><span class="ka-conf__dots"><span class="ka-conf__dot ka-conf__dot--on"></span><span class="ka-conf__dot"></span><span class="ka-conf__dot"></span></span><span class="ka-conf__lbl">невпевнений</span></span></div>
+          </div>
+        </div>
+      </div>
+      <div class="w8c-pat__meta">
+        <div class="w8c-pat__name">Замало даних</div>
+        <div class="w8c-pat__tags"><span class="ka-tag pt--lo">низька</span><span class="ka-tag pt--form">голос</span></div>
+        <div class="w8c-pat__why"><b>Чому тут:</b> невизначеність не ховається — рівень впевненості видимий. Форма тихне до голосу, бо радити ще нема чого. Краще «замало даних», ніж здогад.</div>
+      </div>
+    </div>
+
+    <!-- single store -->
+    <div class="w8c-pat">
+      <div class="w8c-pat__demo">
+        <div class="w8c-result"><div class="ka-cover ka-cover--sm"></div><div><div class="w8c-result__t">Доступно в 1 книгарні</div><div class="w8c-result__s">245 ₴ · наявність є</div></div></div>
+        <div class="w8c-note">
+          <div class="ka-av ka-av--sm ka-av--book" role="img" aria-label="Книговик читає"></div>
+          <div class="w8c-note__t"><span class="who">Книговик каже</span><q>Поки що книга є лише в одній книгарні. Порівняти ні з чим.</q></div>
+        </div>
+      </div>
+      <div class="w8c-pat__meta">
+        <div class="w8c-pat__name">Книга лише в одній книгарні</div>
+        <div class="w8c-pat__tags"><span class="ka-tag pt--lo">низька</span><span class="ka-tag pt--form">голос</span></div>
+        <div class="w8c-pat__why"><b>Чому тут:</b> без порівняння немає «кращої ціни» — Книговик чесно це визнає, а не вдає вибір. Не рекламує єдину книгарню, лишається нейтральним.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 · homepage -->
+  <section id="home">
+    <h2><span class="num">06</span>Головна сторінка</h2>
+    <p class="doc__sublead">Головна — єдине місце з <b>високою</b> присутністю: тут Книговик — обличчя бренду й теплий вхід. Але рівно одна повна сцена на сторінку. Решта блоків — середня або відсутня присутність. <strong>Головна — не парк маскотів:</strong> один герой угорі, далі — тиша й тон.</p>
+    <div class="w8c-zones">
+      <div class="w8c-zone">
+        <div class="w8c-zone__bar w8c-zone__bar--hi"></div>
+        <div class="w8c-zone__main"><div class="w8c-zone__name">Hero — головний банер</div><div class="w8c-zone__desc">Повна сцена Книговика. Обличчя бренду, заклик до пошуку. Єдина висока поява на сторінці.</div></div>
+        <div class="w8c-zone__tags"><span class="ka-tag pt--hi">висока</span><span class="ka-tag pt--form">повна сцена</span></div>
+      </div>
+      <div class="w8c-zone">
+        <div class="w8c-zone__bar w8c-zone__bar--med"></div>
+        <div class="w8c-zone__main"><div class="w8c-zone__name">Полиця рекомендацій</div><div class="w8c-zone__desc">Один рядок «Книговик радить» з аватаром-атрибуцією. Присутній, бо є реальна порада з причиною.</div></div>
+        <div class="w8c-zone__tags"><span class="ka-tag pt--med">середня</span><span class="ka-tag pt--form">аватар · голос</span></div>
+      </div>
+      <div class="w8c-zone">
+        <div class="w8c-zone__bar w8c-zone__bar--no"></div>
+        <div class="w8c-zone__main"><div class="w8c-zone__name">Популярні книги · категорії</div><div class="w8c-zone__desc">Чисті картки книг. Контент самодостатній — друга поява персонажа була б дублюванням.</div></div>
+        <div class="w8c-zone__tags"><span class="ka-tag pt--no">відсутня</span><span class="ka-tag pt--form">—</span></div>
+      </div>
+      <div class="w8c-zone">
+        <div class="w8c-zone__bar w8c-zone__bar--no"></div>
+        <div class="w8c-zone__main"><div class="w8c-zone__name">Футер · форми · службові блоки</div><div class="w8c-zone__desc">Навігація й транзакційні елементи. Книговику нема чого додати — він мовчить.</div></div>
+        <div class="w8c-zone__tags"><span class="ka-tag pt--no">відсутня</span><span class="ka-tag pt--form">—</span></div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 06 · empty states -->
+  <section id="empty">
+    <h2><span class="num">07</span>Порожні стани</h2>
+    <p class="doc__sublead">Порожні стани — улюблена територія Книговика-провідника, але форма залежить від ваги моменту. Чотири допустимі режими — від повної сцени до повної відсутності. Вибирай найтихіший, якого достатньо.</p>
+    <div class="w8c-modes">
+      <div class="w8c-mode">
+        <div class="w8c-mode__stage"><img src="../../assets/mascot/mascot-magnifier.png" alt="Книговик" data-mascot style="height:118px; object-fit:contain;"></div>
+        <div class="w8c-mode__name">Повна сцена</div>
+        <div class="ka-tag pt--hi">висока</div>
+        <div class="w8c-mode__when">Перший вхід, онбординг, перша порожня бажанка. Емоційний момент, де Книговик — герой і веде перший крок.</div>
+      </div>
+      <div class="w8c-mode">
+        <div class="w8c-mode__stage"><div class="ka-av ka-av--lg ka-av--book" role="img" aria-label="Аватар Книговика"></div></div>
+        <div class="w8c-mode__name">Аватар</div>
+        <div class="ka-tag pt--med">середня</div>
+        <div class="w8c-mode__when">Порожній стан із порадою «від кого»: немає результатів, але є наступний крок. Обличчя поряд із текстом.</div>
+      </div>
+      <div class="w8c-mode">
+        <div class="w8c-mode__stage"><span class="ka-voice"><i data-lucide="message-circle"></i> Книговик каже</span></div>
+        <div class="w8c-mode__name">Лише голос</div>
+        <div class="ka-tag pt--lo">низька</div>
+        <div class="w8c-mode__when">Щільні або повторювані порожні стани: лишається тон і підказка, зникає зображення. Без зайвої сцени.</div>
+      </div>
+      <div class="w8c-mode">
+        <div class="w8c-mode__stage"><span class="w8c-silent" style="border:none; min-height:auto;">самодостатній екран</span></div>
+        <div class="w8c-mode__name">Повна відсутність</div>
+        <div class="ka-tag pt--no">відсутня</div>
+        <div class="w8c-mode__when">Технічні чи транзакційні порожні стани (порожній кошик, фільтр без збігів у службовому списку). Нема чого додати — нема Книговика.</div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 07 · future ai surface -->
+  <section id="ai">
+    <h2><span class="num">08</span>Майбутня AI-поверхня</h2>
+    <p class="doc__sublead">Тут <strong>немає дизайну чату</strong> — лише як Біблія персонажа переноситься на майбутню розмовну поверхню (Level 3–4 з §07 W8b). Команда відповідає на три питання, не вигадуючи персонажа заново. UX, екрани й агентна логіка — поза скоупом.</p>
+    <div class="doc__grid doc__grid--3">
+      <div class="doc__card">
+        <h4>Яка форма?</h4>
+        <p><b>Плаваючий помічник</b> — тихий аватар, який користувач кличе сам. У розмові — той самий аватар як «від кого» відповідь. Ніколи повна сцена в діалозі: щільна поверхня вимагає тихої форми.</p>
+      </div>
+      <div class="doc__card">
+        <h4>Який рівень присутності?</h4>
+        <p><b>Середня, лише на вимогу.</b> Не нав'язується, не перекриває контент, закривається одним рухом. Поки користувач не покликав — Книговика немає. Тиша лишається типовим станом.</p>
+      </div>
+      <div class="doc__card">
+        <h4>Які guardrails незмінні?</h4>
+        <p>Усі з §08 Біблії. Не вигадує фактів і показує невпевненість; не тисне; радить, не продає; кожна відповідь — із джерелом і причиною; той самий спокійний тон.</p>
+      </div>
+    </div>
+    <div class="doc__tablewrap" style="margin-top: var(--space-6);">
+      <table>
+        <thead><tr><th>З Біблії (W8b)</th><th>Переноситься в AI-поверхню як</th></tr></thead>
+        <tbody>
+          <tr><td>«Knyhovo шукає. Книговик радить»</td><td>Відповідь звучить як порада провідника, не як видача магазину.</td></tr>
+          <tr><td>Видимий рівень впевненості (§05)</td><td>AI показує, наскільки впевнений; «маю замало даних» лишається валідною відповіддю.</td></tr>
+          <tr><td>Не вигадує (§08)</td><td>Відповіді з джерелами; без джерела — чесне «не знаю».</td></tr>
+          <tr><td>Тест упізнавання (§06)</td><td>Той самий аватар-обличчя й тон — користувач упізнає того самого Книговика.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="ka-quiet" style="margin-top: var(--space-3);">Це межа документа: даємо каркас характеру для AI, а не дизайн розмови. Конкретний UX чату — окрема майбутня робота.</p>
+  </section>
+
+  <!-- 08 · anti-patterns -->
+  <section id="anti">
+    <h2><span class="num">09</span>Анти-патерни</h2>
+    <p class="doc__sublead">Неправильні приклади — і чому кожен порушує Біблію персонажа. Якщо патерн нагадує щось із цього списку — він не пройшов запобіжники §08.</p>
+    <div class="w8c-anti">
+      <div class="w8c-anti__card">
+        <div class="w8c-anti__bad"><i data-lucide="copy"></i> Анти-патерн</div>
+        <div class="w8c-anti__name">Книговик всюди</div>
+        <div class="w8c-anti__ex">Аватар у хедері, повна сцена в hero, голос у кожній картці, бейдж у футері — на одному екрані.</div>
+        <div class="w8c-anti__why"><b>Порушує «тишу за замовчуванням».</b> Присутність заслуговують, а не розкидають. Що частіше з'являється — то менше важить кожна поява. Один герой на поверхню.</div>
+      </div>
+      <div class="w8c-anti__card">
+        <div class="w8c-anti__bad"><i data-lucide="layers"></i> Анти-патерн</div>
+        <div class="w8c-anti__name">Книговик дублюється</div>
+        <div class="w8c-anti__ex">Повна сцена й аватар Книговика одночасно в одному блоці поради.</div>
+        <div class="w8c-anti__why"><b>Дві форми разом руйнують ілюзію персонажа.</b> Правило §08: один Книговик на поверхню, рівно одна форма. Інакше це не герой, а елемент інтерфейсу.</div>
+      </div>
+      <div class="w8c-anti__card">
+        <div class="w8c-anti__bad"><i data-lucide="megaphone"></i> Анти-патерн</div>
+        <div class="w8c-anti__name">Книговик рекламує книгарню</div>
+        <div class="w8c-anti__ex"><q>Раджу купити саме в цій книгарні — найкращі умови!</q></div>
+        <div class="w8c-anti__why"><b>Він на боці читача, не магазину.</b> Назва книгарні завжди нейтральна. Книговик порівнює ціни, а не просуває продавця — інакше втрачається довіра.</div>
+      </div>
+      <div class="w8c-anti__card">
+        <div class="w8c-anti__bad"><i data-lucide="alarm-clock"></i> Анти-патерн</div>
+        <div class="w8c-anti__name">Книговик тисне купувати</div>
+        <div class="w8c-anti__ex"><q>Поспішай — лишилось 2 примірники! Не пропусти!</q></div>
+        <div class="w8c-anti__why"><b>FOMO й дедлайни заборонені.</b> Рішення — за користувачем. Замість тиску — спокійна порада з причиною. Штучний дефіцит = голос продавця, не провідника.</div>
+      </div>
+      <div class="w8c-anti__card">
+        <div class="w8c-anti__bad"><i data-lucide="volume-2"></i> Анти-патерн</div>
+        <div class="w8c-anti__name">Книговик кричить про знижки</div>
+        <div class="w8c-anti__ex"><q>МЕГА-ЗНИЖКА!!! НАЙНИЖЧА ЦІНА В ІСТОРІЇ!!!</q></div>
+        <div class="w8c-anti__why"><b>Хайп, капслок і знаки оклику — заборонена емоція.</b> Натомість: <q>подешевшало на 60 ₴ від типової ціни</q>. Факт і спокій замість крику.</div>
+      </div>
+      <div class="w8c-anti__card">
+        <div class="w8c-anti__bad"><i data-lucide="ghost"></i> Анти-патерн</div>
+        <div class="w8c-anti__name">Книговик з'являється без причини</div>
+        <div class="w8c-anti__ex"><q>Привіт! Я тут :)</q> — на екрані оплати, без події й поради.</div>
+        <div class="w8c-anti__why"><b>Кожна поява має нести причину.</b> Немає події, поради чи емоційного моменту — немає Книговика. Поверхня самодостатня; поява без сенсу = шум.</div>
+      </div>
+    </div>
+    <div class="doc__pull" style="margin-top: var(--space-10);">Книговик <em>заслуговує</em> кожну появу. <span class="mute">Якщо причини немає — правильна форма це тиша.</span></div>
+  </section>
+
+  <nav class="doc__nav" id="docnav"></nav>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="nav.js"></script>
+<script src="theme.js"></script>
+</body>
+</html>

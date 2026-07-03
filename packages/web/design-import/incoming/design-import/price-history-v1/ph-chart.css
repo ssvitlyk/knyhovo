@@ -1,0 +1,237 @@
+/* ================================================================
+   Knyhovo · PRICE HISTORY EXTENSION (W3) — new calm chart + verdict
+   + savings styles. Composes frozen DS v1.0 tokens ONLY — no new
+   colors, type, radii or shadows are invented here.
+
+   Philosophy: history supports Knyhovyk's advice. Calm, advisory,
+   readable. NOT financial-trading visual language.
+   Green hierarchy: strongest green = «Чудовий момент» only;
+   moderate green = savings values; neutral = ordinary prices.
+   High prices use informational blue / muted amber — never red.
+   ================================================================ */
+
+/* ── Price-history section wrapper ───────────────────────────── */
+.ph-section { margin-top: var(--space-16); }
+.ph-section--mob { margin-top: var(--space-10); }
+.ph-frame .ph-section { margin-top: 0; }
+.ph-head {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: var(--space-5); flex-wrap: nowrap; margin-bottom: var(--space-3);
+}
+/* W5 final freeze · chips stay on the title's row, optically centred with it */
+.ph-head .ph-h2 { min-width: 0; }
+.ph-head .ph-periods { flex: 0 0 auto; }
+.ph-h2 {
+  font-family: var(--font-display); font-weight: var(--fw-semibold);
+  font-size: var(--fs-h3); line-height: var(--lh-snug); color: var(--text); margin: 0;
+}
+.ph-h2--sm { font-size: var(--fs-title); }
+
+/* Period selector — DS chips, no new control language */
+.ph-periods { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.ph-periods--mob {
+  display: flex; gap: var(--space-2); flex-wrap: wrap;
+  align-items: center; justify-content: center; row-gap: var(--space-2);
+}
+.ph-period {
+  font-family: var(--font-body); font-size: var(--fs-sm); font-weight: var(--fw-medium);
+  color: var(--text-body); background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius-pill);
+  padding: 6px var(--space-4); cursor: pointer; white-space: nowrap;
+  transition: border-color var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.ph-period:hover { border-color: var(--accent); color: var(--accent); }
+.ph-period[data-on="true"] { background: var(--accent); color: var(--text-on-accent); border-color: var(--accent); }
+.ph-periods--mob .ph-period { display: inline-flex; align-items: center; justify-content: center; height: 44px; min-height: 44px; padding: 0 var(--space-4); line-height: 1; }
+/* W5 final freeze · fixed mobile chip footprints — even, no reflow on label length */
+.ph-periods--mob .ph-period:nth-child(1),
+.ph-periods--mob .ph-period:nth-child(2) { min-width: 72px; }   /* 30 днів · 90 днів */
+.ph-periods--mob .ph-period:nth-child(3) { min-width: 56px; }   /* Рік */
+.ph-periods--mob .ph-period:nth-child(4) { min-width: 80px; }   /* Весь час */
+
+/* Knyhovyk's advisory line — references historical context, never urgency */
+.ph-advisory {
+  font-size: var(--fs-body); color: var(--text-body);
+  margin: 0 0 var(--space-5); max-width: 68ch; text-wrap: pretty;
+}
+.ph-advisory--mob { font-size: var(--fs-sm); line-height: var(--lh-normal); max-width: none; }
+
+/* ── W3.2 · mobile «Динаміка ціни» vertical-rhythm system ─────────────────
+   One spacing scale, applied top-to-bottom, identical in light + dark (token
+   driven — only colours differ between themes):
+     title → chips     : --space-4 (16px)
+     chips → text      : --space-4 (16px)
+     text  → graph card: --space-5 (20px)
+   The 4-stat 2×2 grid keeps its own internal rhythm (unchanged).            */
+.ph-section--mob .ph-h2 { margin-bottom: var(--space-4); }
+.ph-section--mob .ph-periods--mob { margin-bottom: var(--space-4); }
+.ph-section--mob .ph-advisory--mob { margin: 0 0 var(--space-5); }
+.ph-advisory b { font-weight: var(--fw-semibold); }
+.ph-advisory--good b { color: var(--brand-green); }   /* strongest green: good moment */
+.ph-advisory--high b { color: var(--text); }          /* v1.2.1: neutral — blue retired for high/up */
+.ph-advisory--calm b { color: var(--text); }          /* stable: neutral emphasis */
+
+/* ── Chart card ──────────────────────────────────────────────── */
+.ph-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-sm);
+  padding: var(--space-6);
+}
+.ph-card--mob { padding: var(--space-5); }
+.ph-chartwrap { position: relative; }
+.ph-chart { width: 100%; height: auto; display: block; overflow: visible; }
+
+/* SVG text + strokes (driven by tokens via currentColor where possible) */
+.ph-axislabel { fill: var(--text-faint); font-size: 11px; font-family: var(--font-body); }
+.ph-annot { fill: var(--text-muted); font-size: 11.5px; font-family: var(--font-body); font-weight: 500; }
+.ph-annot--low { fill: var(--brand-green); }
+.ph-annot--now { fill: var(--accent); }
+.ph-annot--now-good { fill: var(--brand-green); }
+.ph-band { fill: var(--surface-accent); opacity: 0.8; }
+.ph-band-edge { stroke: var(--border); stroke-width: 1; opacity: 0.7; }
+.ph-bandlabel {
+  fill: var(--text-faint); font-size: 10.5px; font-family: var(--font-body); letter-spacing: 0.01em;
+}
+
+/* ── Stat strip (current / lowest / highest / change) ────────── */
+.ph-stats {
+  display: flex; flex-wrap: wrap; gap: var(--space-8);
+  margin-top: var(--space-5); padding-top: var(--space-5);
+  border-top: 1px solid var(--border);
+}
+.ph-stats--mob { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5) var(--space-4); margin-top: var(--space-4); padding-top: var(--space-4); }
+.ph-stat { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.ph-stat__label {
+  font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow);
+  text-transform: uppercase; color: var(--text-muted);
+}
+.ph-stat__val {
+  font-family: var(--font-display); font-weight: var(--fw-semibold);
+  font-size: 1.5rem; line-height: 1.1; color: var(--text); white-space: nowrap;
+}
+.ph-stats--mob .ph-stat__val { font-size: 1.3125rem; }
+.ph-stat__val--now { color: var(--accent); }
+.ph-stat__val--now-good { color: var(--brand-green); }   /* current is the best moment */
+.ph-stat__val--low { color: var(--brand-green); }
+.ph-stat__val--typical { color: var(--text-body); }
+.ph-stat__change { display: inline-flex; align-items: center; gap: 5px; }
+.ph-stat__change--down { color: var(--brand-green); }     /* cheaper = good = green */
+.ph-stat__change--up { color: var(--text-muted); }        /* v1.2.1: neutral/muted — blue retired */
+.ph-stat__change--flat { color: var(--text-muted); }
+
+/* ── Empty state — "no historical data yet" (calm, honest) ───── */
+.ph-empty {
+  background: var(--surface-sunk); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: var(--space-6);
+  display: flex; gap: var(--space-5); align-items: flex-start; min-height: 140px;
+}
+.ph-empty--mob { padding: var(--space-5); }
+/* W5 final freeze · error is a compact card, not a full-width banner */
+.ph-empty--error { max-width: 520px; }
+.ph-empty > div { min-width: 0; }
+.ph-empty__icon {
+  width: 44px; height: 44px; flex: none; color: var(--icon-muted);
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center;
+}
+.ph-empty__titlerow { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-2); flex-wrap: wrap; }
+.ph-empty__titlerow .kn-badge { flex: 0 0 auto; }
+.ph-empty__title { flex: 0 1 auto; min-width: 0; }
+.ph-empty__titlerow .kn-badge { white-space: nowrap; }
+.ph-empty__title { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--fs-title); color: var(--text); }
+.ph-empty p { font-size: var(--fs-sm); color: var(--text-muted); max-width: 58ch; margin: 0; text-wrap: pretty; }
+
+/* ── Loading skeleton (warm surfaces only — frozen rule) ─────── */
+.ph-sk-block {
+  display: inline-block; background: var(--surface-accent);
+  border-radius: var(--radius-xs); animation: ph-pulse 1.4s ease-in-out infinite;
+}
+.ph-sk-lines { display: flex; flex-direction: column; gap: var(--space-2); margin-bottom: var(--space-5); }
+/* W5 final freeze · chart skeleton mirrors the real chart footprint (height +
+   typical-band zone + sparse axis row) so loading → filled never shifts layout. */
+.ph-sk-chart {
+  position: relative; overflow: hidden;
+  width: 100%; height: 244px; border-radius: var(--radius-sm);
+  background: var(--surface-sunk); animation: ph-pulse 1.4s ease-in-out infinite;
+}
+.ph-sk-chart--mob { height: 168px; }
+.ph-sk-chart__band {
+  position: absolute; left: 0; right: 0; top: 30%; height: 28%;
+  background: var(--surface-accent); animation: ph-pulse 1.4s ease-in-out infinite;
+}
+.ph-sk-chart__axis {
+  position: absolute; left: var(--space-4); right: var(--space-6); bottom: 16px;
+  display: flex; justify-content: space-between; gap: var(--space-4);
+}
+.ph-sk-chart--mob .ph-sk-chart__axis { left: var(--space-2); right: var(--space-5); bottom: 12px; }
+.ph-sk-chart__axis span {
+  width: 30px; height: 9px; border-radius: var(--radius-xs);
+  background: var(--surface-accent); animation: ph-pulse 1.4s ease-in-out infinite;
+}
+@keyframes ph-pulse { 0%, 100% { opacity: .7; } 50% { opacity: .35; } }
+
+/* ── State / period swap hook (W5 final freeze) ───────────────────
+   The crossfade (150–200ms, respects prefers-reduced-motion) is a
+   SPECIFICATION documented in the freeze doc, not a runtime effect:
+   kept a no-op here so content is always visible in every environment.
+   Implementers attach the transition to this hook. */
+.ph-swap { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .ph-sk-block, .ph-sk-chart, .ph-sk-chart__band, .ph-sk-chart__axis span { animation: none; } }
+
+/* ================================================================
+   VERDICT v2 — extends the frozen verdict set with an icon + a
+   historical-context explanation. Colorblind-safe: each verdict is
+   distinguished by ICON SHAPE + TITLE + POSITION, never colour alone.
+   ================================================================ */
+
+/* Inline badge used inside wishlist rows (icon + label) */
+.phv-badge {
+  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
+  font-family: var(--font-body); font-size: var(--fs-xs); font-weight: var(--fw-semibold);
+  line-height: 1.4; border-radius: var(--radius-pill); padding: 3px 10px 3px 8px;
+}
+.phv-badge svg { flex: none; }
+.phv-badge--green { background: color-mix(in oklab, var(--brand-green) 16%, transparent); color: var(--brand-green); }
+.phv-badge--neutral { background: var(--surface-accent); color: var(--text-muted); }
+.phv-badge--blue { background: color-mix(in oklab, var(--brand-blue) 16%, transparent); color: var(--brand-blue); }
+
+/* Verdict reason line — the historical-context sentence under the badge */
+.phv-reason { font-size: var(--fs-xs); color: var(--text-muted); text-wrap: pretty; }
+.phv-reason--green { color: var(--brand-green); }
+
+/* Large anatomy block (spec / documentation) */
+.phv-block {
+  display: flex; gap: var(--space-4); align-items: flex-start;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); box-shadow: var(--shadow-sm);
+  padding: var(--space-5);
+}
+.phv-block--green { border-color: color-mix(in oklab, var(--brand-green) 32%, var(--border)); }
+.phv-block__icon {
+  width: 44px; height: 44px; border-radius: var(--radius-pill); flex: none;
+  display: flex; align-items: center; justify-content: center;
+}
+.phv-block__icon--green { background: color-mix(in oklab, var(--brand-green) 16%, transparent); color: var(--brand-green); }
+.phv-block__icon--neutral { background: var(--surface-accent); color: var(--text-muted); }
+.phv-block__icon--blue { background: color-mix(in oklab, var(--brand-blue) 16%, transparent); color: var(--brand-blue); }
+.phv-block__body { min-width: 0; }
+.phv-block__head { display: flex; align-items: center; gap: var(--space-2); margin-bottom: 4px; flex-wrap: wrap; }
+.phv-block__title { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--fs-title); color: var(--text); }
+.phv-block__text { font-size: var(--fs-sm); color: var(--text-muted); margin: 0; text-wrap: pretty; }
+.phv-block__tone {
+  font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase;
+  color: var(--text-faint);
+}
+
+/* ── Savings visualization (old → current → saved) ───────────── */
+.phv-savings { display: flex; flex-direction: column; align-items: flex-end; gap: 1px; white-space: nowrap; }
+.phv-savings--left { align-items: flex-start; }
+.phv-savings__old { font-size: var(--fs-sm); color: var(--text-muted); text-decoration: line-through; }
+.phv-savings__now { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: 1.5rem; line-height: 1.15; color: var(--accent); }
+.phv-savings__now--good { color: var(--brand-green); }
+.phv-savings__saved { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: 1.0625rem; color: var(--brand-green); }
+
+/* Savings anatomy card (spec) */
+.phv-spec-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-5); }
+.phv-spec-card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: var(--space-5); }
+.phv-spec-card h4 { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); font-weight: var(--fw-semibold); margin: 0 0 var(--space-4); }

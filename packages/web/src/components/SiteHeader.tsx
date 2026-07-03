@@ -31,9 +31,9 @@ export async function SiteHeader(): Promise<React.JSX.Element> {
         <Link href="/" className="nav-link">
           Головна
         </Link>
-        <a href="/search" className="nav-link nav-link--active">
+        <Link href="/catalog" className="nav-link nav-link--active">
           Каталог
-        </a>
+        </Link>
         <a href="/wishlist" className="nav-link">
           Бажанки
         </a>

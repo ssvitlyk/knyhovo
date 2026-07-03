@@ -1,0 +1,108 @@
+/* ============================================================
+   KNYHOVO · COLOR TOKENS
+   "Use warm, natural tones." Copper drives the light theme,
+   light-orange drives the dark theme.
+   ============================================================ */
+
+:root {
+  /* ---- Brand palette (raw values from the source design system) ---- */
+  --kn-paper:        #F4E7D3; /* папір — warm paper beige */
+  --kn-copper:       #B56A2D; /* мідний — copper accent (light theme) */
+  --kn-green:        #24513E; /* зелений — scarf / forest green */
+  --kn-blue:         #243C7A; /* синій — deep blue */
+  --kn-brown:        #3B2517; /* темно-коричневий — dark brown */
+
+  --kn-ink:          #0F0E0D; /* фон темний — near-black background */
+  --kn-surface:      #1C1916; /* поверхня — dark surface */
+  --kn-surface-2:    #2A2521; /* поверхня 2 — raised dark surface */
+  --kn-cream:        #EADFCF; /* текст світлий — cream text on dark */
+  --kn-amber:        #F0A34A; /* акцент темний — light-orange accent (dark theme) */
+
+  /* ---- Derived light-theme surfaces (sampled from approved heroes) ---- */
+  --kn-page:         #F9F3ED; /* page background, light */
+  --kn-card:         #FFFFFF; /* card / search field, light */
+  --kn-paper-soft:   #FBF6EE; /* very soft paper for sections */
+
+  /* ---- Derived tints (warm, natural) ---- */
+  --kn-copper-hover: #9C5826; /* copper darkened — hover */
+  --kn-copper-press: #874A1F; /* copper darkened more — active */
+  --kn-amber-hover:  #F4B36A; /* amber lightened — hover (dark) */
+  --kn-amber-press:  #D98A33; /* amber deepened — active (dark) */
+  --kn-green-soft:   #E5ECE7; /* green at low opacity feel, light */
+  --kn-line:         #ECE1D2; /* hairline borders on paper */
+  --kn-line-dark:    #322C26; /* hairline borders on ink */
+
+  /* ---- Ink scale (text on light) ---- */
+  --kn-ink-700:      #3B2517; /* primary heading ink (dark brown) */
+  --kn-ink-600:      #4A3B2E; /* body text */
+  --kn-ink-400:      #8C7B6A; /* muted / secondary */
+  --kn-ink-300:      #B6A892; /* placeholder / faint */
+}
+
+/* ============================================================
+   SEMANTIC ALIASES — LIGHT THEME (default)
+   ============================================================ */
+:root,
+[data-theme="light"] {
+  color-scheme: light;
+
+  --bg:              var(--kn-page);
+  --surface:         var(--kn-card);
+  --surface-sunk:    var(--kn-paper-soft);
+  --surface-accent:  var(--kn-paper);
+
+  --text:            var(--kn-ink-700);
+  --text-body:       var(--kn-ink-600);
+  --text-muted:      var(--kn-ink-400);
+  --text-faint:      var(--kn-ink-300);
+  --text-on-accent:  #FFFFFF;
+
+  --accent:          var(--kn-copper);
+  --accent-hover:    var(--kn-copper-hover);
+  --accent-press:    var(--kn-copper-press);
+  --accent-weak:     #F3E4D5;
+
+  --border:          var(--kn-line);
+  --border-strong:   #DBC9B2;
+  --ring:            color-mix(in oklab, var(--kn-copper) 35%, transparent);
+
+  --icon:            var(--kn-copper);
+  --icon-muted:      var(--kn-ink-400);
+
+  /* brand spot colors stay constant across themes */
+  --brand-green:     var(--kn-green);
+  --brand-blue:      var(--kn-blue);
+}
+
+/* ============================================================
+   SEMANTIC ALIASES — DARK THEME
+   ============================================================ */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --bg:              var(--kn-ink);
+  --surface:         var(--kn-surface);
+  --surface-sunk:    #161310;
+  --surface-accent:  var(--kn-surface-2);
+
+  --text:            var(--kn-cream);
+  --text-body:       #D6CABA;
+  --text-muted:      #9A8E7E;
+  --text-faint:      #6E6457;
+  --text-on-accent:  #2A1505;
+
+  --accent:          var(--kn-amber);
+  --accent-hover:    var(--kn-amber-hover);
+  --accent-press:    var(--kn-amber-press);
+  --accent-weak:     #2C2114;
+
+  --border:          var(--kn-line-dark);
+  --border-strong:   #44392F;
+  --ring:            color-mix(in oklab, var(--kn-amber) 40%, transparent);
+
+  --icon:            var(--kn-amber);
+  --icon-muted:      #9A8E7E;
+
+  --brand-green:     #3E8C68;
+  --brand-blue:      #5E78C4;
+}

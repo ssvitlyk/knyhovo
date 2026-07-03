@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<!-- @pattern name="Knyhovyk AI Assistant — Character System" version="1.0" status="foundation"
+     note="W8. Character identity, visual + voice-only representations, rules for new forms,
+     recognizability invariants. Knyhovyk is a CHARACTER, not a single illustration. DS v1.0 tokens only.
+     Does not redraw or regenerate the protected mascot — composes the approved assets only." -->
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Книговик — W8 · Система персонажа</title>
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+<link rel="stylesheet" href="ka.css">
+</head>
+<body>
+<div class="doc__topbar">
+  <img id="doc-logo" src="../../assets/logo/knyhovo-logo-light.png" alt="Knyhovo">
+  <div class="doc__topbar-r">
+    <span class="doc__w8">W8 · Knyhovyk AI Foundation</span>
+    <button id="theme-btn" class="kn-btn kn-btn--secondary kn-btn--sm" type="button">Темна тема</button>
+  </div>
+</div>
+
+<div class="doc">
+  <p class="doc__eyebrow">W8 · СИСТЕМА ПЕРСОНАЖА</p>
+  <h1 class="doc__title">Книговик — це <em>характер</em>, а не ілюстрація</h1>
+  <p class="doc__lead">
+    Поточний мускот — Книговик у кріслі з лупою (світла) чи ліхтарем (темна) — лише одне його
+    втілення. Система персонажа описує, як Книговик лишається собою в багатьох майбутніх формах:
+    від повної сцени до маленького аватара й до самого лише голосу.
+  </p>
+
+  <div class="doc__status">
+    <span><b>Персонаж переживає будь-яке окреме зображення.</b> Ідентичність Книговика
+    <strong>не прив'язана</strong> до конкретної пози, лупи, ліхтаря, крісла, лампи чи чашки.
+    Ця сторінка не перемальовує захищений мускот — вона лише компонує затверджені ассети та
+    визначає правила для майбутніх форм.</span>
+  </div>
+
+  <div class="doc__toc">
+    <a href="#identity">Ідентичність</a>
+    <a href="#today">Форми сьогодні</a>
+    <a href="#future">Майбутні форми</a>
+    <a href="#matrix">Яка форма де</a>
+    <a href="#newrules">Нові форми</a>
+    <a href="#dna">Що робить його собою</a>
+  </div>
+
+  <!-- identity -->
+  <section id="identity">
+    <h2><span class="num">01</span>Ідентичність персонажа</h2>
+    <p class="doc__sublead">Книговик — оживлена книга: паперовий персонаж із теплим обличчям і характером допитливого, доброзичливого провідника по світу книг. Це ядро незмінне; усе інше — змінна сцена.</p>
+    <div class="doc__grid">
+      <div class="doc__card"><h4>Хто він</h4><p>Жива книга-провідник. Допитливий, теплий, спокійний. Любить книги й любить людей, що їх шукають. Помічник, а не талісман-прикраса.</p></div>
+      <div class="doc__card"><h4>Що незмінне</h4><p>Обличчя й вираз, пропорції, форма сторінок, зелений шарф, сумка з книгами, тепла «паперова» манера рендеру. Це ДНК (див. §06).</p></div>
+      <div class="doc__card"><h4>Що змінне</h4><p>Поза, аксесуар, сцена, тло, масштаб, рівень деталізації. Лупа й ліхтар — приклади змінного, не визначення персонажа.</p></div>
+      <div class="doc__card"><h4>Чим він не є</h4><p>Не логотип Knyhovo, не іконка інтерфейсу, не дитячий маскот-клоун. І не «крісло з лампою» — це лише одна сцена.</p></div>
+    </div>
+  </section>
+
+  <!-- today -->
+  <section id="today">
+    <h2><span class="num">02</span>Чотири способи показати Книговика</h2>
+    <p class="doc__sublead">Від найбагатшого до найтихішого. Кожна поверхня обирає рівно один — ніколи кілька одночасно.</p>
+    <div class="ka-forms">
+      <div class="ka-form">
+        <div class="ka-form__stage"><img src="../../assets/mascot/mascot-magnifier.png" alt="Книговик" data-mascot style="height:80px; object-fit:contain;"></div>
+        <div class="ka-form__name">Повна сцена</div>
+        <div class="ka-form__use">Емоційні, рідкісні моменти: порожні стани, онбординг, перша книга. Книговик як герой екрана.</div>
+      </div>
+      <div class="ka-form">
+        <div class="ka-form__stage"><div class="ka-av ka-av--lg" role="img" aria-label="Аватар Книговика"></div></div>
+        <div class="ka-form__name">Аватар</div>
+        <div class="ka-form__use">Поряд із порадою: блок рекомендації, сповіщення. Маленьке обличчя «від кого» порада.</div>
+      </div>
+      <div class="ka-form">
+        <div class="ka-form__stage"><span class="ka-voice"><i data-lucide="message-circle"></i> Книговик каже</span></div>
+        <div class="ka-form__name">Лише голос</div>
+        <div class="ka-form__use">Щільні інтерфейси: рядок поради без обличчя. Тон лишається Книговиковим, місця займає мінімум.</div>
+      </div>
+      <div class="ka-form">
+        <div class="ka-form__stage"><span class="ka-form__icon">К</span></div>
+        <div class="ka-form__name">Іконка / аватар-фолбек</div>
+        <div class="ka-form__use">Системні місця: іконка застосунку, фолбек аватара. Спрощений знак, що все ще «це він».</div>
+      </div>
+    </div>
+    <p class="ka-quiet" style="margin-top: var(--space-3);">Аватар та іконка тут — крон затверджених ассетів і знак-замінник; вони не перемальовують персонажа.</p>
+  </section>
+
+  <!-- future -->
+  <section id="future">
+    <h2><span class="num">03</span>Майбутні форми</h2>
+    <p class="doc__sublead">Книговик може зростати в нові пози й образи. Кожна нова форма — це <strong>той самий персонаж</strong> у новій сцені, а не новий маскот. Усі вони мапляться на один із чотирьох рівнів присутності вище.</p>
+    <div class="doc__grid doc__grid--3">
+      <div class="doc__card"><h4>Книговик-читач</h4><p>Спокій, домівка, бренд. <span class="ka-tag ka-tag--hide" style="margin-top:8px;">повна сцена</span></p></div>
+      <div class="doc__card"><h4>Дослідник</h4><p>Пошук, відкриття. Поточна поза з лупою. <span class="ka-tag ka-tag--hide" style="margin-top:8px;">повна сцена</span></p></div>
+      <div class="doc__card"><h4>Порадник</h4><p>Рекомендації, момент купівлі. <span class="ka-tag ka-tag--hide" style="margin-top:8px;">аватар</span></p></div>
+      <div class="doc__card"><h4>Бібліотекар</h4><p>Серії, видання, навігація. <span class="ka-tag ka-tag--hide" style="margin-top:8px;">аватар · голос</span></p></div>
+      <div class="doc__card"><h4>Святкує</h4><p>Ціль досягнута, велика економія. <span class="ka-tag ka-tag--hide" style="margin-top:8px;">повна сцена · аватар</span></p></div>
+      <div class="doc__card"><h4>Думає</h4><p>AI обробляє запит, «збираю дані». <span class="ka-tag ka-tag--hide" style="margin-top:8px;">аватар</span></p></div>
+      <div class="doc__card"><h4>Сповіщення</h4><p>Дрібний знак у дзвіночку / пуші. <span class="ka-tag ka-tag--hide" style="margin-top:8px;">іконка</span></p></div>
+      <div class="doc__card"><h4>Асистент / чат</h4><p>Майбутня AI-поверхня (поза скоупом W8). <span class="ka-tag ka-tag--hide" style="margin-top:8px;">аватар · голос</span></p></div>
+      <div class="doc__card"><h4>Сезонний · спрощений</h4><p>Свята; іконка-моно. Варіація сцени, не персонажа. <span class="ka-tag ka-tag--hide" style="margin-top:8px;">сцена · іконка</span></p></div>
+    </div>
+    <p class="ka-quiet" style="margin-top: var(--space-3);">Форми наведено як концепції присутності. Ілюстрації майбутніх поз створює бренд-художник за правилами §05–§06 — система UX їх не малює і не передбачає готовими.</p>
+  </section>
+
+  <!-- matrix -->
+  <section id="matrix">
+    <h2><span class="num">04</span>Яка форма — у якій ситуації</h2>
+    <p class="doc__sublead">Правило: що рутинніша й щільніша поверхня — то тихіша форма. Повна сцена — рідкісна й заслужена.</p>
+    <div class="doc__tablewrap">
+      <table>
+        <thead><tr><th>Ситуація</th><th>Форма</th><th>Чому</th></tr></thead>
+        <tbody>
+          <tr><td>Порожній стан, онбординг, перша книга</td><td><span class="ka-tag ka-tag--hide">повна сцена</span></td><td>Рідкісний емоційний момент — Книговик веде як герой екрана</td></tr>
+          <tr><td>Блок поради, сповіщення, момент купівлі</td><td><span class="ka-tag ka-tag--hide">аватар</span></td><td>Порада має обличчя «від кого», але не домінує над контентом</td></tr>
+          <tr><td>Щільні списки, інлайн-підказки, тости</td><td><span class="ka-tag ka-tag--hide">лише голос</span></td><td>Місця обмаль — лишається тон, зникає зображення</td></tr>
+          <tr><td>Іконка застосунку, фолбек аватара, дзвіночок</td><td><span class="ka-tag ka-tag--hide">іконка</span></td><td>Системне місце — спрощений упізнаваний знак</td></tr>
+          <tr><td>Чисто транзакційні екрани (оплата, форми, налаштування)</td><td><span class="ka-tag ka-tag--dont">жодної</span></td><td>Книговику нема чого додати — він не захаращує</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p style="margin-top: var(--space-4);">Повна карта поверхонь — у <a href="Presence Map.html">Карті присутності</a>.</p>
+  </section>
+
+  <!-- new rules -->
+  <section id="newrules">
+    <h2><span class="num">05</span>Правила введення нових форм</h2>
+    <ol>
+      <li><strong>Одне ядро.</strong> Нова форма зберігає обличчя, пропорції, шарф, паперову манеру. Змінюються лише поза, аксесуар і сцена.</li>
+      <li><strong>Один рівень присутності.</strong> Кожна форма заздалегідь приписана до рівня (сцена / аватар / голос / іконка) — вона не «плаває» між ними.</li>
+      <li><strong>Заслужена, не декоративна.</strong> Нову позу додають під реальну потребу поверхні, а не «бо мило». Якщо існуюча форма годиться — нову не вводять.</li>
+      <li><strong>Тест упізнавання.</strong> Прибери лупу, крісло й тло — людина має впізнати Книговика за обличчям і шарфом. Якщо ні — це інший персонаж.</li>
+      <li><strong>Один Книговик на екран.</strong> Дві форми одночасно — заборонено. Це руйнує ілюзію єдиного персонажа.</li>
+      <li><strong>Захищені ассети — лише через бренд.</strong> Логотип і мускот має фінальні версії; нові пози створює бренд-художник, не інтерфейс.</li>
+    </ol>
+  </section>
+
+  <!-- dna -->
+  <section id="dna">
+    <h2><span class="num">06</span>Що робить будь-яку форму Книговиком</h2>
+    <p class="doc__sublead">Незмінна ДНК. Має пережити зміни ілюстрацій, аватарів, майбутні AI-інтеграції, редизайни й сезонні варіації.</p>
+    <div class="doc__grid doc__grid--3">
+      <div class="doc__card"><h4>Обличчя й вираз</h4><p>Тепле, спокійне, доброзичливе обличчя з характером допитливого помічника.</p></div>
+      <div class="doc__card"><h4>Зелений шарф</h4><p>Лісова зелень бренду — постійна деталь силуету в будь-якій позі.</p></div>
+      <div class="doc__card"><h4>Паперова природа</h4><p>Він — оживла книга: форма сторінок, паперова текстура, теплий «казковий» рендер.</p></div>
+      <div class="doc__card"><h4>Сумка з книгами</h4><p>Супутник-провідник, що носить книги. Знак ролі, не випадковий реквізит.</p></div>
+      <div class="doc__card"><h4>Тепла палітра</h4><p>Мідь/папір на світлі, кремовий і світло-помаранчевий на темному — завжди теплі тони DS.</p></div>
+      <div class="doc__card"><h4>Спокійна постава</h4><p>Жодної агресії чи метушні. Рух є, паніки немає — як і в голосі.</p></div>
+    </div>
+    <div class="doc__status" style="margin-top: var(--space-8); border-left-color: var(--border-strong);">
+      <span><b>Не прив'язуй ідентичність до сцени.</b> Крісло, лампа, чашка, лупа й ліхтар — змінний реквізит.
+      Персонаж має пережити будь-яке окреме зображення. Користувач упізнає Книговика як одного й того самого
+      героя в усіх майбутніх формах.</span>
+    </div>
+  </section>
+
+  <nav class="doc__nav" id="docnav"></nav>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="nav.js"></script>
+<script src="theme.js"></script>
+</body>
+</html>

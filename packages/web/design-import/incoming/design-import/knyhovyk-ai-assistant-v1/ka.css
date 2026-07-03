@@ -1,0 +1,274 @@
+/* ============================================================
+   KNYHOVO · W8 — Knyhovyk AI Assistant UX Foundation
+   Doc-page layout + the additive "assistant chrome" component
+   layer. Composes DS v1.0 tokens ONLY — no new colours, type,
+   radii or shadows. Does NOT redesign any frozen screen; it
+   defines the assistant experience that lives around them.
+   ============================================================ */
+
+/* ============================================================
+   §1 — DOC PAGE LAYOUT  (reading column, shared across all 8 docs)
+   ============================================================ */
+.doc { max-width: 1000px; margin: 0 auto; padding: var(--space-10) var(--gutter) var(--space-24); }
+.doc__topbar { display: flex; align-items: center; justify-content: space-between; max-width: 1000px; margin: 0 auto; padding: var(--space-6) var(--gutter) 0; gap: var(--space-4); }
+.doc__topbar img { height: 34px; }
+.doc__topbar-r { display: flex; align-items: center; gap: var(--space-3); }
+.doc__w8 { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-faint); }
+
+.doc__eyebrow { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); margin-bottom: var(--space-3); }
+.doc__title { font-size: var(--fs-h1); line-height: 1.06; letter-spacing: var(--ls-tight); margin-bottom: var(--space-4); }
+.doc__title em { font-style: italic; color: var(--accent); }
+.doc__lead { font-size: var(--fs-lead); color: var(--text-body); max-width: 68ch; line-height: var(--lh-snug); }
+
+.doc__status {
+  display: flex; gap: var(--space-3); align-items: flex-start;
+  background: var(--surface-accent); border: 1px solid var(--border); border-left: 3px solid var(--accent);
+  border-radius: var(--radius-md); padding: var(--space-4) var(--space-5); margin: var(--space-8) 0 var(--space-12);
+  font-size: var(--fs-sm); color: var(--text-body); line-height: var(--lh-snug);
+}
+.doc__status b { color: var(--accent); font-weight: var(--fw-semibold); }
+
+.doc section { margin-bottom: var(--space-16); scroll-margin-top: var(--space-8); }
+.doc h2 { font-size: var(--fs-h3); margin-bottom: var(--space-3); padding-top: var(--space-5); border-top: 1px solid var(--border); }
+.doc h2 .num { color: var(--text-faint); font-family: var(--font-body); font-weight: var(--fw-semibold); margin-right: var(--space-3); }
+.doc__sublead { font-size: var(--fs-body); color: var(--text-muted); margin-bottom: var(--space-6); max-width: 74ch; line-height: var(--lh-snug); }
+.doc h3 { font-size: var(--fs-title); margin: var(--space-8) 0 var(--space-3); }
+.doc h4 { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-title); }
+.doc p, .doc li { font-size: var(--fs-body); color: var(--text-body); line-height: var(--lh-normal); }
+.doc strong { color: var(--text); font-weight: var(--fw-semibold); }
+.doc em.u { font-style: italic; color: var(--accent); }
+.doc code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 0.85em; background: var(--surface-accent); padding: 1px 6px; border-radius: var(--radius-xs); color: var(--text); }
+.doc ul, .doc ol { padding-left: var(--space-5); margin-top: var(--space-3); }
+.doc li { margin-bottom: var(--space-2); }
+.doc a { color: var(--accent); }
+.doc a:hover { color: var(--accent-hover); }
+
+/* Two-column principle / card grid */
+.doc__grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-top: var(--space-2); }
+.doc__grid--3 { grid-template-columns: repeat(3, 1fr); }
+.doc__card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-5); box-shadow: var(--shadow-sm); }
+.doc__card .n { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h3); color: var(--accent); line-height: 1; }
+.doc__card h4 { margin: var(--space-3) 0 var(--space-2); color: var(--text); }
+.doc__card p { font-size: var(--fs-sm); color: var(--text-muted); line-height: var(--lh-snug); }
+.doc__card p + p { margin-top: var(--space-2); }
+
+/* Pull principle (big single statement) */
+.doc__pull {
+  font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h2);
+  line-height: 1.16; letter-spacing: var(--ls-tight); color: var(--text);
+  margin: var(--space-6) 0; max-width: 22ch;
+}
+.doc__pull em { font-style: italic; color: var(--accent); }
+.doc__pull .mute { color: var(--text-faint); }
+
+/* Tables */
+.doc__tablewrap { overflow-x: auto; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface); box-shadow: var(--shadow-sm); margin-top: var(--space-4); }
+.doc table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.doc__tablewrap table { margin: 0; }
+.doc th, .doc td { text-align: left; padding: var(--space-3) var(--space-4); border-bottom: 1px solid var(--border); vertical-align: top; line-height: var(--lh-snug); }
+.doc th { font-size: var(--fs-xs); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); font-weight: var(--fw-semibold); border-bottom: 1px solid var(--border-strong); white-space: nowrap; }
+.doc td { color: var(--text-body); }
+.doc td b { color: var(--text); font-weight: var(--fw-semibold); }
+.doc tr:last-child td { border-bottom: none; }
+
+/* Footer cross-nav */
+.doc__nav { display: flex; gap: var(--space-2) var(--space-5); flex-wrap: wrap; margin-top: var(--space-12); padding-top: var(--space-6); border-top: 1px solid var(--border); }
+.doc__nav a { font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--accent); }
+.doc__nav a[aria-current="page"] { color: var(--text-faint); pointer-events: none; }
+.doc__nav a:hover { color: var(--accent-hover); }
+
+/* ============================================================
+   §2 — STATUS / TAG PRIMITIVES
+   ============================================================ */
+.ka-tag {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-family: var(--font-body); font-size: 11px; font-weight: var(--fw-semibold);
+  letter-spacing: 0.04em; padding: 3px 9px; border-radius: var(--radius-pill);
+  border: 1px solid var(--border-strong); color: var(--text-muted); white-space: nowrap;
+}
+.ka-tag--req   { color: var(--brand-green); border-color: color-mix(in oklab, var(--brand-green) 42%, transparent); }
+.ka-tag--opt   { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 45%, transparent); }
+.ka-tag--hide  { color: var(--text-muted); border-style: dashed; }
+.ka-tag--good  { color: var(--brand-green); border-color: color-mix(in oklab, var(--brand-green) 42%, transparent); }
+.ka-tag--do    { color: var(--brand-green); border-color: color-mix(in oklab, var(--brand-green) 42%, transparent); }
+.ka-tag--dont  { color: var(--text-muted); border-style: dashed; }
+.ka-tag--stage { font-family: var(--font-display); }
+
+/* ============================================================
+   §3 — KNYHOVYK FORMS  (avatar crop / voice-only / icon)
+   The --ka-face image is set per-theme by the page script
+   (magnifier ↔ lantern). Never redraws the mascot — it crops
+   the approved illustration to a circular avatar.
+   ============================================================ */
+.ka-av {
+  border-radius: var(--radius-pill); flex: none;
+  background-image: var(--ka-face); background-repeat: no-repeat;
+  background-size: 232%; background-position: 50% 17%;
+  background-color: var(--surface-accent); border: 1px solid var(--border);
+}
+.ka-av--sm { width: 30px; height: 30px; }
+.ka-av--md { width: 44px; height: 44px; }
+.ka-av--lg { width: 66px; height: 66px; }
+
+/* Full mascot scene (empty/onboarding only) — soft-masked like the frozen empty state */
+.ka-mascot {
+  height: 220px; object-fit: contain; display: block;
+  -webkit-mask-image: radial-gradient(ellipse 68% 66% at 50% 52%, black 58%, transparent 97%);
+  mask-image: radial-gradient(ellipse 68% 66% at 50% 52%, black 58%, transparent 97%);
+}
+
+/* Voice-only marker */
+.ka-voice {
+  display: inline-flex; align-items: center; gap: var(--space-2);
+  font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase;
+  color: var(--text-muted); font-weight: var(--fw-semibold);
+}
+.ka-voice svg { width: 14px; height: 14px; color: var(--icon); }
+
+/* Forms strip (Character System) */
+.ka-forms { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-4); margin-top: var(--space-2); }
+.ka-form {
+  background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md);
+  padding: var(--space-5) var(--space-4); box-shadow: var(--shadow-sm);
+  display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--space-3);
+}
+.ka-form__stage {
+  width: 100%; height: 92px; border-radius: var(--radius-sm); background: var(--surface-accent);
+  display: flex; align-items: center; justify-content: center; overflow: hidden;
+}
+.ka-form__name { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-body); color: var(--text); }
+.ka-form__use { font-size: var(--fs-xs); color: var(--text-muted); line-height: var(--lh-snug); }
+.ka-form__none { font-family: var(--font-display); font-size: var(--fs-h3); color: var(--text-faint); }
+.ka-form__icon {
+  width: 48px; height: 48px; border-radius: var(--radius-pill); border: 2px solid var(--icon);
+  display: flex; align-items: center; justify-content: center; color: var(--icon);
+  font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h3);
+}
+
+/* ============================================================
+   §4 — CONFIDENCE METER  (neutral, calm — not a chart, not coloured)
+   ============================================================ */
+.ka-conf { display: inline-flex; align-items: center; gap: var(--space-2); }
+.ka-conf__dots { display: inline-flex; gap: 3px; }
+.ka-conf__dot { width: 7px; height: 7px; border-radius: var(--radius-pill); background: var(--border-strong); }
+.ka-conf__dot--on { background: var(--text-body); }
+.ka-conf__lbl { font-size: var(--fs-xs); color: var(--text-muted); }
+
+/* ============================================================
+   §5 — KNYHOVYK ADVICE BLOCK  (the core recommendation chrome)
+   verdict (display) + reason (always) + confidence. Green ONLY
+   for positive user value; neutral otherwise; never red.
+   ============================================================ */
+.ka-advice {
+  display: flex; gap: var(--space-4); align-items: flex-start;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-md); padding: var(--space-4) var(--space-5);
+  box-shadow: var(--shadow-sm);
+}
+.ka-advice--good {
+  border-color: color-mix(in oklab, var(--brand-green) 45%, var(--border));
+  background: color-mix(in oklab, var(--brand-green) 6%, var(--surface));
+}
+.ka-advice__body { flex: 1; min-width: 0; }
+.ka-advice__verdict { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-title); color: var(--text); line-height: 1.2; }
+.ka-advice--good .ka-advice__verdict { color: var(--brand-green); }
+.ka-advice__reason { font-size: var(--fs-sm); color: var(--text-muted); line-height: var(--lh-snug); margin-top: var(--space-2); }
+.ka-advice__reason b { color: var(--text-body); font-weight: var(--fw-semibold); }
+.ka-advice__foot { display: flex; align-items: center; gap: var(--space-4); flex-wrap: wrap; margin-top: var(--space-3); }
+.ka-advice__cta { flex: none; }
+
+/* Voice-only advice (no avatar — just Knyhovyk's words inline) */
+.ka-advice--voice { border-left: 3px solid var(--accent); }
+
+/* Inline / compact advice used inside example surfaces */
+.ka-advice--inline { box-shadow: none; }
+
+/* ============================================================
+   §6 — EXAMPLE SURFACES  (light mock context for desktop/mobile)
+   Just enough chrome to show WHERE advice lives — not full pages.
+   ============================================================ */
+.ka-ex { display: grid; gap: var(--space-5); }
+.ka-ex__cap { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); margin-bottom: var(--space-2); }
+
+.ka-surface {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius-lg); padding: var(--space-5); box-shadow: var(--shadow-sm);
+}
+.ka-surface__title { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h3); color: var(--text); margin-bottom: var(--space-1); }
+.ka-surface__sub { font-size: var(--fs-sm); color: var(--text-muted); margin-bottom: var(--space-4); }
+
+/* Mock offer row */
+.ka-offer { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) 0; }
+.ka-offer + .ka-offer { border-top: 1px solid var(--border); }
+.ka-offer__store { flex: 1; font-size: var(--fs-sm); color: var(--text-muted); }
+.ka-offer__price { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-title); color: var(--accent); }
+.ka-price-lg { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h2); color: var(--accent); }
+.ka-price-old { font-size: var(--fs-sm); color: var(--text-muted); text-decoration: line-through; }
+.ka-cover { width: 84px; height: 122px; flex: none; border-radius: var(--radius-sm); background: linear-gradient(135deg, var(--surface-accent), var(--surface-sunk)); border: 1px solid var(--border); }
+.ka-cover--sm { width: 44px; height: 64px; }
+.ka-row { display: flex; gap: var(--space-4); align-items: flex-start; }
+
+/* Phone frame for mobile examples */
+.ka-phone {
+  width: 360px; border-radius: 30px; border: 1px solid var(--border-strong);
+  background: var(--bg); box-shadow: var(--shadow-lg); padding: var(--space-3);
+  margin: 0 auto;
+}
+.ka-phone__screen { border-radius: 22px; background: var(--bg); overflow: hidden; }
+.ka-phone__bar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4) var(--space-2); }
+.ka-phone__bar img { height: 26px; }
+.ka-phone__body { padding: 0 var(--space-4) var(--space-5); }
+.ka-mobgrid { display: grid; grid-template-columns: repeat(2, 1fr); gap: var(--space-6); align-items: start; }
+
+/* Do / Don't paired columns */
+.ka-dd { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-top: var(--space-2); }
+.ka-dd__col { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-5); box-shadow: var(--shadow-sm); }
+.ka-dd__col--do { border-top: 3px solid var(--brand-green); }
+.ka-dd__col--dont { border-top: 3px solid var(--border-strong); }
+.ka-dd__h { display: flex; align-items: center; gap: var(--space-2); margin-bottom: var(--space-4); }
+.ka-dd__h h4 { font-size: var(--fs-title); }
+.ka-dd ul { list-style: none; padding: 0; margin: 0; }
+.ka-dd li { font-size: var(--fs-sm); color: var(--text-body); line-height: var(--lh-snug); padding-left: var(--space-5); position: relative; margin-bottom: var(--space-3); }
+.ka-dd li::before { position: absolute; left: 0; top: 0; }
+.ka-dd__col--do li::before { content: "✓"; color: var(--brand-green); font-weight: 700; }
+.ka-dd__col--dont li::before { content: "×"; color: var(--text-faint); font-weight: 700; }
+.ka-dd q { font-style: italic; color: var(--text); quotes: "«" "»"; }
+
+/* Quote / line examples */
+.ka-says { display: flex; flex-direction: column; gap: var(--space-3); margin-top: var(--space-2); }
+.ka-say { display: flex; gap: var(--space-3); align-items: flex-start; background: var(--surface-accent); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-3) var(--space-4); }
+.ka-say__q { font-family: var(--font-display); font-size: var(--fs-body); color: var(--text); font-style: italic; flex: 1; }
+.ka-say__when { font-size: var(--fs-xs); color: var(--text-muted); white-space: nowrap; }
+
+/* Evolution ladder (Level 0→3 / Stage 1→3) */
+.ka-ladder { display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--space-3); margin-top: var(--space-2); }
+.ka-ladder--3 { grid-template-columns: repeat(3, 1fr); }
+.ka-rung { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-5) var(--space-4); box-shadow: var(--shadow-sm); display: flex; flex-direction: column; gap: var(--space-2); }
+.ka-rung__lvl { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--accent); font-weight: var(--fw-semibold); }
+.ka-rung__name { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-title); color: var(--text); }
+.ka-rung__desc { font-size: var(--fs-sm); color: var(--text-muted); line-height: var(--lh-snug); }
+.ka-rung--future { border-style: dashed; }
+
+/* Section anchor / quiet divider */
+.ka-quiet { font-size: var(--fs-sm); color: var(--text-muted); font-style: italic; }
+
+/* Generic icon button (theme toggle uses the DS button class) */
+.doc__toc { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: var(--space-6); }
+.doc__toc a { font-size: var(--fs-sm); color: var(--text-body); border: 1px solid var(--border); border-radius: var(--radius-pill); padding: 5px 12px; }
+.doc__toc a:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ============================================================
+   §7 — RESPONSIVE
+   ============================================================ */
+@media (max-width: 860px) {
+  .ka-forms { grid-template-columns: repeat(2, 1fr); }
+  .ka-ladder, .ka-ladder--3 { grid-template-columns: 1fr 1fr; }
+  .ka-mobgrid { grid-template-columns: 1fr; justify-items: center; }
+}
+@media (max-width: 680px) {
+  .doc__grid, .doc__grid--3 { grid-template-columns: 1fr; }
+  .doc__pull { font-size: var(--fs-h3); }
+  .ka-dd { grid-template-columns: 1fr; }
+  .ka-forms { grid-template-columns: 1fr 1fr; }
+  .ka-ladder, .ka-ladder--3 { grid-template-columns: 1fr; }
+}

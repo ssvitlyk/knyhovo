@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Homepage Discovery — Exploration · Knyhovo</title>
+
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/_ds_bundle.js"></script>
+
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; height: 100%; background: #f0eee9; }
+  #root { min-height: 100vh; }
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<!-- Load order: shared → concepts → main canvas -->
+<script type="text/babel" src="design-canvas.jsx"></script>
+<script type="text/babel" src="hp-shared.jsx"></script>
+<script type="text/babel" src="hp-concepts.jsx"></script>
+
+<script type="text/babel">
+const { DesignCanvas, DCSection, DCArtboard } = window;
+const { ConceptA, ConceptB, ConceptC, ConceptD, ConceptE } = window;
+const { HpAnnotation } = window;
+
+// ── Annotation data ────────────────────────────────────────────────────────────
+const META = {
+  A: {
+    letter:'A', name:'Oracle Search — Пошук як основа',
+    ia:'Пошук → Результати → Книга. Discovery — рейли під пошуком, не рівноправний шлях.',
+    journey:'Приземляєшся → вводиш назву або ISBN → бачиш результати → переходиш на книгу. Якщо без запиту — скролиш рейли внизу.',
+    searchProm:'Максимальна', discoveryProm:'Низька',
+    strengths:['Гранично зрозуміло, що робить Knyhovo','Мінімум когнітивного навантаження','Прямий шлях для більшості сценаріїв','Найближчий до поточного продукту — мінімальний ризик'],
+    weaknesses:['Порожній стан пошуку — глухий кут без ідей','Discovery — afterthought, не ціль','Не виражає унікальну цінність (порівняння цін) в hero','Мало причин повертатись без конкретного запиту'],
+    why:'Knyhovo сьогодні — пошуковий агрегатор. Цей концепт найближчий до поточного стану і найлегший в реалізації. Добрий маяк, але Discovery потребує більшого.',
+  },
+  B: {
+    letter:'B', name:'Editorial Front — Книгарня',
+    ia:'Перегляд → Редакційний pick → Жанр → Список → Книга. Пошук — у хедері як завжди доступний fallback.',
+    journey:'Бачиш рекомендовану книгу → кліком йдеш на деталі або скролиш жанри → переглядаєш рейли → пошук будь-коли через хедер.',
+    searchProm:'Середня', discoveryProm:'Висока',
+    strengths:['Виражає голос і характер бренду "теплий провідник"','Книговик природно вписується в "Knyhovo радить"','Кілька рівноправних шляхів відкриття','Дає причину повертатись — новий editorial щотижня'],
+    weaknesses:['Залежить від якості і ритму редакційного контенту','Пошук менш очевидний — ризик для task-oriented юзерів','Більше операційної роботи (хтось обирає книгу тижня)'],
+    why:'Відповідає бренд-позиції "теплий провідник". Перетворює Knyhovo з утиліти на місце, куди хочеться повернутися — від "я шукав" до "я зайшов подивитись".',
+  },
+  C: {
+    letter:'C', name:'Price Intelligence — Ціна як відкриття',
+    ia:'Знижки → Книга → Порівняння офферів → Купівля або Вішлист. Пошук — у хедері.',
+    journey:'Бачиш книги, що подешевшали сьогодні → обираєш цікаву → переходиш на деталі → порівнюєш ціни у 5 книгарнях → купуєш або зберігаєш.',
+    searchProm:'Середня', discoveryProm:'Максимальна',
+    strengths:['Унікальна позиція: тільки Knyhovo показує це','Discovery = ціна, а не жанр — свіжий, диференційований кут','Вішлист-механіка вплітається органічно','Конкретна конкретна корисність з першого екрану'],
+    weaknesses:['Ризик "порожньої полиці" якщо мало активних знижок','Може виглядати як Rozetka/deals-сайт, а не book guide','Зміщує фокус із пошуку, який є основним сценарієм сьогодні'],
+    why:'Knyhovo — ціновий агрегатор. Цей концепт єдиний, де головна конкурентна перевага платформи (5 книгарень, щоденне оновлення) є hero-фічею, а не підтекстом. Найкраще диференціює від Google Books і Goodreads.',
+  },
+  D: {
+    letter:'D', name:'Two Doors — Рівний вибір',
+    ia:'Паралельні шляхи: Пошук → Результати → Книга; або: Жанр/настрій → Список → Книга. Обидва з першого екрану.',
+    journey:'Бачиш дві зони → обираєш двері відповідно до настрою → йдеш далі своїм шляхом. Без примусу до пошуку, без прихованого discovery.',
+    searchProm:'Висока', discoveryProm:'Висока',
+    strengths:['Чесно обслуговує обох типів користувачів одразу','Навчає нових юзерів, що Knyhovo — більше за пошук','Немає конфлікту за увагу між search і browse'],
+    weaknesses:['Параліч вибору — "а що мені обрати?"','Права зона слабша без персоналізації','Нестандартний паттерн для книжкових сайтів — потребує тестування'],
+    why:'Knyhovo росте. Сьогодні є search-юзери, завтра додадуться browse-юзери. Two Doors — стратегічно правильна архітектура для масштабування продукту без перебудови hero.',
+  },
+  E: {
+    letter:'E', name:'Discovery Hub — Журнал',
+    ia:'Перегляд → Editorial grid → Жанр або рейл → Книга. Пошук у sticky-хедері як постійний fallback.',
+    journey:'Приземляєшся → бачиш editorial pull → або кліком на жанр/рейл → пошук будь-де через хедер. Максимум можливих точок входу.',
+    searchProm:'Висока', discoveryProm:'Максимальна',
+    strengths:['Максимум discovery без жертви search','Відчуття живого, оновлюваного місця','Editorial grid — сильний візуальний якір і повернення','Гнучкий: editorial, жанри, рейли незалежні секції'],
+    weaknesses:['Більше контенту потрібно підтримувати','Складніше реалізувати ніж search-first концепт','Editorial card потребує якісний вибір щотижня'],
+    why:'Довгострокове бачення Knyhovo: від утиліти до місця, де читачі проводять час. Найбільш амбітний концепт і найкраще виражає brand personality "warm guide that helps you discover books".',
+  },
+};
+
+// ── Intro artboard ─────────────────────────────────────────────────────────────
+const IntroCard = () => (
+  <div data-theme="light" style={{
+    width:840, padding:'48px 56px',
+    background:'var(--surface)', borderRadius:12,
+    border:'1px solid var(--border)', boxShadow:'0 4px 24px rgba(0,0,0,0.07)',
+  }}>
+    <p style={{ fontFamily:'var(--font-body)', fontSize:11, fontWeight:600, letterSpacing:'0.14em', textTransform:'uppercase', color:'var(--text-muted)', marginTop:0, marginBottom:20 }}>
+      HOMEPAGE DISCOVERY · АРХІТЕКТУРНА РОЗВІДКА
+    </p>
+    <h1 style={{ fontFamily:'var(--font-display)', fontSize:32, fontWeight:700, color:'var(--text)', margin:'0 0 12px', lineHeight:1.15 }}>
+      5 різних відповідей на одне питання:<br />
+      <em style={{ color:'var(--accent)' }}>як читач потрапляє на книгу?</em>
+    </h1>
+    <p style={{ fontFamily:'var(--font-body)', fontSize:15, color:'var(--text-body)', lineHeight:1.6, margin:'0 0 32px' }}>
+      Кожен концепт — окрема ставка на те, що є головною цінністю Knyhovo для читача. 
+      Вони не взаємовиключні: сильне рішення може запозичити елементи кількох.
+    </p>
+    <div style={{ display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr', gap:12 }}>
+      {[
+        { l:'A', n:'Oracle Search',      sub:'Пошук — головне' },
+        { l:'B', n:'Editorial Front',    sub:'Редакційна книгарня' },
+        { l:'C', n:'Price Intelligence', sub:'Ціна як відкриття' },
+        { l:'D', n:'Two Doors',          sub:'Рівний вибір' },
+        { l:'E', n:'Discovery Hub',      sub:'Журнал-хаб' },
+      ].map(c => (
+        <div key={c.l} style={{
+          background:'var(--surface-sunk)', borderRadius:8,
+          border:'1px solid var(--border)', padding:'16px 14px',
+        }}>
+          <span style={{ fontFamily:'var(--font-display)', fontSize:22, fontWeight:700, color:'var(--accent)', display:'block', marginBottom:6 }}>{c.l}</span>
+          <span style={{ fontFamily:'var(--font-body)', fontSize:12, fontWeight:600, color:'var(--text)', display:'block', marginBottom:2 }}>{c.n}</span>
+          <span style={{ fontFamily:'var(--font-body)', fontSize:11, color:'var(--text-muted)' }}>{c.sub}</span>
+        </div>
+      ))}
+    </div>
+    <p style={{ fontFamily:'var(--font-body)', fontSize:12, color:'var(--text-muted)', marginTop:28, marginBottom:0, lineHeight:1.6 }}>
+      <strong>Scope:</strong> структура і продуктова стратегія, без деталей реалізації. · DS v1.0, BookCard, Search Results і Book Details — заморожені основи.
+    </p>
+  </div>
+);
+
+// ── App ────────────────────────────────────────────────────────────────────────
+const App = () => (
+  <DesignCanvas>
+    <DCSection id="intro" title="Homepage Discovery Exploration" subtitle="5 архітектурних концептів · структура і продуктова стратегія">
+      <DCArtboard id="intro-card" label="Контекст" width={840} height={540}>
+        <IntroCard />
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="concept-a" title="A · Oracle Search" subtitle="Пошук — серце продукту">
+      <DCArtboard id="art-a" label="Концепт A" width={1280} height={1720}>
+        <ConceptA />
+        <HpAnnotation {...META.A} />
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="concept-b" title="B · Editorial Front" subtitle="Редакційна книгарня">
+      <DCArtboard id="art-b" label="Концепт B" width={1280} height={1750}>
+        <ConceptB />
+        <HpAnnotation {...META.B} />
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="concept-c" title="C · Price Intelligence" subtitle="Ціна як механізм відкриття">
+      <DCArtboard id="art-c" label="Концепт C" width={1280} height={1440}>
+        <ConceptC />
+        <HpAnnotation {...META.C} />
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="concept-d" title="D · Two Doors" subtitle="Рівний вибір між пошуком і переглядом">
+      <DCArtboard id="art-d" label="Концепт D" width={1280} height={1370}>
+        <ConceptD />
+        <HpAnnotation {...META.D} />
+      </DCArtboard>
+    </DCSection>
+
+    <DCSection id="concept-e" title="E · Discovery Hub" subtitle="Журнал-хаб: browse first, search always">
+      <DCArtboard id="art-e" label="Концепт E" width={1280} height={1800}>
+        <ConceptE />
+        <HpAnnotation {...META.E} />
+      </DCArtboard>
+    </DCSection>
+  </DesignCanvas>
+);
+
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80">
+    <rect width="120" height="80" fill="#F9F3ED"/>
+    <rect x="10" y="10" width="100" height="60" rx="6" fill="#FFFFFF" stroke="#ECE1D2" stroke-width="1"/>
+    <rect x="18" y="18" width="84" height="12" rx="3" fill="#F4E7D3"/>
+    <rect x="18" y="34" width="56" height="6" rx="2" fill="#B56A2D" opacity="0.3"/>
+    <rect x="18" y="44" width="84" height="5" rx="2" fill="#ECE1D2"/>
+    <rect x="18" y="52" width="64" height="5" rx="2" fill="#ECE1D2"/>
+    <circle cx="96" cy="22" r="6" fill="#B56A2D" opacity="0.15"/>
+  </svg>
+</template>
+</body>
+</html>

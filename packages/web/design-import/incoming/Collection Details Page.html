@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<!-- Knyhovo — Collection Details v1.0 (2026-07-03)
+     A single reusable template for every collection type opened from Collections
+     Landing (Книговик радить · Знижки · Новинки · Настрій · Жанр · Добірка редакції…).
+     Content page, not a discovery/marketing page: books are the visual focus from the
+     first viewport. No mascot, no hero illustration, no large decorative sections.
+     Compact info header (breadcrumb → H1 → short desc) → sticky sort bar (book count +
+     a single sort dropdown only — no filter button, no chips, no secondary rows; the
+     backend returns books in the optimal order per collection) → book grid (the exact
+     .bkc card from Collections Landing, reused verbatim) → frozen pagination → Similar
+     Collections (the exact fresh-card editorial style, reused verbatim) → footer.
+     Composes DS v1.0 tokens/components only. Logic in collection-details-app.jsx. -->
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Добірка — Knyhovo</title>
+
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/_ds_bundle.js"></script>
+
+<style>
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-body); overflow-x: hidden; }
+.page { max-width: 1320px; margin: 0 auto; padding: 0 48px; }
+
+[data-theme="light"] { --kn-rose: #BC5A57; --kn-heart-red: #E0332B; }
+[data-theme="dark"]  { --kn-rose: #E48E8A; --kn-heart-red: #FF5449; }
+[data-theme="dark"] {
+  --text-body: color-mix(in oklab, white 6%, #D6CABA);
+  --text-muted: color-mix(in oklab, white 7%, #9A8E7E);
+}
+
+/* ── DEV PREVIEW SWITCHER (review scaffolding, not product chrome) ── */
+.dev-switch { border-bottom: 1px dashed var(--border-strong); background: var(--surface-accent); padding: 10px 0; }
+.dev-switch__row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dev-switch__label { font-size: 12px; font-weight: 700; color: var(--text-muted); letter-spacing: .04em; text-transform: uppercase; margin-right: 4px; }
+.dev-switch__btn { font-family: var(--font-body); font-size: 12.5px; font-weight: 600; padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); cursor: pointer; transition: all 140ms ease-out; }
+.dev-switch__btn:hover { border-color: var(--accent); color: var(--accent); }
+.dev-switch__btn--active { background: var(--accent); border-color: var(--accent); color: var(--text-on-accent); }
+
+/* ── HEADER (frozen, verbatim from Collections Landing) ─────── */
+.site-header { display: flex; align-items: center; gap: var(--space-8); height: 72px; }
+.site-brand { display: flex; align-items: center; }
+.site-logo { height: 64px; display: block; margin-left: -9px; }
+.site-nav { display: flex; gap: 32px; margin-left: auto; }
+.nav-link { display: inline-flex; align-items: center; gap: 7px; font-size: 16px; font-weight: 500; color: var(--text-body); transition: color 140ms ease-out; text-decoration: none; }
+.nav-link:hover { color: var(--accent); }
+.nav-link--active { color: var(--accent); font-weight: 600; }
+.site-actions { display: flex; align-items: center; gap: var(--space-5); margin-left: var(--space-8); margin-right: -9px; }
+.site-actions .kn-btn { height: 40px; padding: 0 20px; font-size: 14px; font-weight: 600; border-radius: 10px; }
+.nav-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 19px; height: 19px; padding: 0 6px; border-radius: 999px; background: var(--kn-rose); color: #fff; font-size: 11px; font-weight: 700; line-height: 1; margin-left: 6px; }
+
+/* ── BREADCRUMB ───────────────────────────────────────────────  */
+.cd-crumbs { display: flex; align-items: center; gap: 8px; padding: 14px 0 0; font-size: 13px; color: var(--text-muted); }
+.cd-crumbs a { color: var(--text-muted); text-decoration: none; transition: color 140ms ease-out; }
+.cd-crumbs a:hover { color: var(--accent); }
+.cd-crumbs__sep { color: var(--text-faint); }
+.cd-crumbs__current { color: var(--text); font-weight: 600; }
+
+/* ── COMPACT INFO HEADER (catalogue-first — breadcrumb · title+count · short desc only) ── */
+.cd-info { padding: 6px 0 10px; }
+.cd-titlerow { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 24px; }
+.cd-title { flex: 1 1 auto; min-width: 0; font-family: var(--font-display); font-size: 1.9rem; font-weight: 700; line-height: 1.12; letter-spacing: -0.015em; max-width: 42ch; }
+.cd-count { font-size: 14px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+.cd-count b { color: var(--text); font-weight: 700; }
+.cd-desc { font-size: 15px; color: var(--text-muted); line-height: 1.55; max-width: 74ch; margin-top: 6px; text-wrap: pretty; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.cd-desc--open { -webkit-line-clamp: unset; overflow: visible; }
+.cd-desc-toggle { margin-top: 5px; font-family: var(--font-body); font-size: 13.5px; font-weight: 600; color: var(--accent); background: none; border: none; cursor: pointer; padding: 0; transition: opacity 140ms ease-out; }
+.cd-desc-toggle:hover { opacity: 0.7; }
+
+/* ── SORT BAR — sticky, minimal: book count + a single sort dropdown ──
+   This page is a book listing, not a filtering interface. The backend returns
+   books in the optimal order for each collection, so the only exposed control
+   is sort. No filter button, no chips, no secondary rows. ── */
+.cd-sortbar { position: sticky; top: 0; z-index: 50; background: var(--bg); border-bottom: 1px solid var(--border); padding: 10px 0; transition: box-shadow 200ms ease-out; }
+.cd-sortbar--stuck { box-shadow: 0 10px 24px -18px color-mix(in oklab, var(--text) 30%, transparent); }
+.cd-sortbar__row { display: flex; align-items: center; justify-content: flex-end; gap: 16px; }
+
+/* ── SORT DROPDOWN (KSD-style select) ── */
+.cd-sort { position: relative; flex-shrink: 0; }
+.cd-sort__btn {
+  display: inline-flex; align-items: center; justify-content: space-between; gap: 10px;
+  height: 40px; padding: 0 14px; min-width: 208px;
+  font-family: var(--font-body); font-size: 14px; font-weight: 600; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px;
+  cursor: pointer; transition: border-color 140ms ease-out, color 140ms ease-out, box-shadow 140ms ease-out;
+}
+.cd-sort__btn:hover { border-color: var(--accent); }
+.cd-sort__btn:focus-visible { outline: none; box-shadow: var(--focus-ring); border-color: var(--accent); }
+.cd-sort__btn[aria-expanded="true"] { border-color: var(--accent); }
+.cd-sort__val { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.cd-sort__val svg { color: var(--icon-muted); flex-shrink: 0; }
+.cd-sort__caret { transition: transform 180ms ease-out; color: var(--text-muted); flex-shrink: 0; }
+.cd-sort__btn[aria-expanded="true"] .cd-sort__caret { transform: rotate(180deg); }
+.cd-sort__menu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 80; min-width: 100%;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: var(--shadow-lg); padding: 6px; list-style: none;
+  animation: cd-pop 160ms ease-out;
+}
+.cd-sort__opt {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 9px 12px; border-radius: 8px; border: none; background: none; cursor: pointer;
+  font-family: var(--font-body); font-size: 14px; font-weight: 500; color: var(--text-body);
+  text-align: left; white-space: nowrap; transition: background 120ms ease-out, color 120ms ease-out;
+}
+.cd-sort__opt:hover { background: var(--surface-accent); color: var(--text); }
+.cd-sort__opt--active { color: var(--accent); font-weight: 600; }
+.cd-sort__check { width: 16px; flex-shrink: 0; color: var(--accent); }
+.cd-sort__check--hidden { visibility: hidden; }
+@keyframes cd-pop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .cd-sort__menu { animation: none; } .cd-sort__caret { transition: none; } }
+
+/* ── BOOK GRID (catalogue) ───────────────────────────────────── */
+.cd-grid-wrap { padding: 12px 0 8px; }
+.cd-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; }
+.cd-empty { padding: 60px 0; text-align: center; color: var(--text-muted); font-size: 15px; }
+
+/* ── BOOK CARD — exact recreation of the frozen .bkc pattern ─── */
+.bkc {
+  position: relative;
+  display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 18px; padding: 14px; text-decoration: none; color: inherit;
+  box-shadow: var(--shadow-sm); cursor: pointer;
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;
+}
+.bkc:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: color-mix(in oklab, var(--accent) 26%, var(--border)); }
+.bkc__coverwrap { position: relative; }
+.bkc__coverclip { position: relative; border-radius: 12px; overflow: hidden; aspect-ratio: 2 / 3; background: var(--surface-accent); box-shadow: var(--shadow-sm); }
+.bkc__cover { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 260ms ease-out; }
+.bkc:hover .bkc__cover { transform: scale(1.045); }
+.bkc__badge {
+  position: absolute; top: 10px; left: 10px; display: inline-flex; align-items: center; gap: 4px;
+  font-size: 11px; font-weight: 700; padding: 4px 9px; border-radius: 999px; line-height: 1;
+  box-shadow: var(--shadow-sm); z-index: 2;
+}
+.bkc__badge svg { width: 12px; height: 12px; flex-shrink: 0; }
+.bkc__badge--accent { background: var(--accent); color: var(--text-on-accent); }
+.bkc__badge--green  { background: var(--brand-green); color: #fff; }
+.bkc__badge--rose   { background: var(--kn-rose); color: #fff; }
+.bkc__badge--neutral{ background: var(--text-muted); color: var(--bg); }
+.bkc__wish {
+  position: absolute; right: 8px; bottom: 18px; z-index: 5;
+  width: 40px; height: 40px; border-radius: 50%; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface); color: var(--kn-rose);
+  border: 1px solid var(--border); box-shadow: var(--shadow-md); cursor: pointer;
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out, color 150ms, background 150ms, border-color 150ms;
+}
+.bkc__wish svg { width: 18px; height: 18px; stroke-width: 2.4; }
+.bkc:hover .bkc__wish { box-shadow: var(--shadow-lg); }
+.bkc__wish:hover { transform: scale(1.1); box-shadow: var(--shadow-lg); border-color: color-mix(in oklab, var(--kn-rose) 45%, var(--border)); }
+.bkc__wish--on, .bkc__wish--on:hover, .bkc:hover .bkc__wish--on { background: var(--surface); border-color: color-mix(in oklab, var(--kn-heart-red) 45%, var(--border)); color: var(--kn-heart-red); }
+.bkc__wish--pop { animation: kn-heart-pop 280ms ease-out; }
+@keyframes kn-heart-pop { 0% { transform: scale(1); } 42% { transform: scale(1.3); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .bkc__wish--pop { animation: none; } }
+.bkc__body { display: flex; flex-direction: column; flex: 1; padding: 15px 4px 4px; }
+.bkc__title { font-family: var(--font-display); font-weight: 600; font-size: 16px; line-height: 1.32; letter-spacing: -0.005em; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.64em; word-break: break-word; }
+.bkc__author { font-size: 13px; color: var(--text-muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bkc__foot { display: flex; align-items: baseline; gap: 8px; margin-top: auto; padding-top: 12px; padding-right: 46px; }
+.bkc__price { font-family: var(--font-display); font-weight: 700; font-size: 18px; color: var(--accent); }
+.bkc__old { font-size: 13px; color: var(--text-faint); text-decoration: line-through; }
+.bkc--out .bkc__coverclip { opacity: 0.55; }
+.bkc--out .bkc__cover { filter: grayscale(0.3); }
+
+/* ── PAGINATION (frozen spec, verbatim from Search Results) ──── */
+.kn-pagination { display: flex; align-items: center; justify-content: center; gap: var(--space-4); padding-top: var(--space-10); padding-bottom: var(--space-4); }
+.kn-pagination__pages { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; justify-content: center; }
+.kn-pagination__ellipsis { font-size: var(--fs-sm); color: var(--text-muted); padding: 0 var(--space-1); display: inline-flex; align-items: center; user-select: none; }
+
+/* ── SIMILAR COLLECTIONS (exact fresh-card style, verbatim) ──── */
+.cd-similar { padding: 56px 0 8px; border-top: 1px solid var(--border); margin-top: 24px; }
+.cd-similar__title { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; margin-bottom: 18px; }
+.fresh-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.fresh-card {
+  display: flex; flex-direction: column; gap: 10px; padding: 20px 22px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+  text-decoration: none; color: inherit; cursor: pointer;
+  transition: box-shadow 200ms ease-out, transform 200ms ease-out;
+}
+.fresh-card:hover { box-shadow: var(--shadow-md); transform: translateY(-3px); }
+.fresh-card__head { display: flex; align-items: center; gap: 10px; }
+.fresh-card__icon { width: 36px; height: 36px; border-radius: 10px; background: var(--surface-accent); color: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.fresh-card__type { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; color: var(--accent); }
+.fresh-card__name { font-family: var(--font-display); font-weight: 700; font-size: 1.2rem; line-height: 1.25; }
+.fresh-card__desc { font-size: 13.5px; color: var(--text-muted); line-height: 1.55; flex: 1; }
+.fresh-card__covers { display: flex; align-items: center; gap: 8px; margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--border); }
+.fresh-card__stack { display: flex; align-items: center; padding-left: 2px; }
+.fresh-card__stack img { width: 34px; height: 51px; object-fit: cover; border-radius: 4px; box-shadow: var(--shadow-sm); border: 1.5px solid var(--surface); margin-left: -15px; flex-shrink: 0; transition: transform 200ms ease-out; }
+.fresh-card__stack img:first-child { margin-left: 0; }
+.fresh-card:hover .fresh-card__stack img { transform: translateY(-2px); }
+.fresh-card__count { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+
+/* ── FOOTER (frozen, verbatim) ────────────────────────────────  */
+.site-footer { border-top: 1px solid var(--border); padding: 24px 0; margin-top: 40px; }
+.footer-row { display: flex; align-items: center; gap: 28px; flex-wrap: wrap; }
+.footer-logo { height: 32px; display: block; }
+.footer-links { display: flex; align-items: center; gap: 26px; margin-left: auto; flex-wrap: wrap; }
+.footer-links a { font-size: 14px; font-weight: 500; color: var(--text-body); text-decoration: none; transition: color 140ms; }
+.footer-links a:hover { color: var(--accent); }
+.footer-copy { font-size: 12.5px; color: var(--text-muted); white-space: nowrap; }
+
+/* ── RESPONSIVE ───────────────────────────────────────────────  */
+@media (max-width: 1119px) {
+  .cd-grid { grid-template-columns: repeat(3, 1fr); }
+  .fresh-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 768px) {
+  .page { padding: 0 20px; }
+  .site-nav { display: none; }
+  .site-actions .kn-btn:not(.kn-btn--icon) { display: none; }
+  .cd-crumbs { padding: 12px 0 0; }
+  .cd-titlerow { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .cd-title { font-size: 1.4rem; max-width: none; }
+  .cd-count { font-size: 13px; }
+  .cd-info { padding: 4px 0 10px; }
+  .cd-desc { font-size: 14px; -webkit-line-clamp: 3; margin-top: 6px; }
+  .cd-sortbar { padding: 10px 0; }
+  .cd-sortbar__row { flex-direction: column; align-items: stretch; gap: 10px; }
+  .cd-sort { width: 100%; }
+  .cd-sort__btn { width: 100%; height: 48px; min-width: 0; font-size: 15px; }
+  .cd-sort__menu { left: 0; right: 0; }
+  .cd-sort__opt { padding: 12px; font-size: 15px; }
+  .cd-grid-wrap { padding: 12px 0 4px; }
+  .dev-switch { padding: 8px 0; }
+  .dev-switch__row { flex-wrap: nowrap; overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .dev-switch__btn { flex-shrink: 0; }
+  .cd-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .bkc { padding: 10px; border-radius: 14px; }
+  .bkc__coverclip { border-radius: 9px; }
+  .bkc__body { padding: 8px 2px 0; }
+  .bkc__title { font-size: 13.5px; line-height: 1.28; -webkit-line-clamp: 2; min-height: 2.5em; }
+  .bkc__author { font-size: 11px; margin-top: 2px; }
+  .bkc__foot { padding-top: 6px; padding-right: 34px; }
+  .bkc__price { font-size: 15px; }
+  .bkc__old { font-size: 11px; }
+  .bkc__wish { width: 32px; height: 32px; right: 6px; bottom: 12px; }
+  .bkc__wish svg { width: 15px; height: 15px; }
+  .kn-pagination .kn-btn { min-height: 44px; min-width: 44px; }
+  .footer-row { flex-direction: column; align-items: flex-start; gap: 16px; }
+  .footer-links { margin-left: 0; gap: 20px; }
+}
+
+@keyframes kn-rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+.reveal { animation: kn-rise 500ms ease-out both; }
+@media (prefers-reduced-motion: reduce) { .reveal { animation: none; } }
+@media print { .reveal { animation: none !important; } }
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script type="text/babel" src="collection-details-app.jsx"></script>
+</body>
+</html>

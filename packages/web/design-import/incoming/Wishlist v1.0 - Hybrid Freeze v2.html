@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<!-- @pattern name="Knyhovo «Бажанки» (Wishlist)" surface="Wishlist v1.0 — Hybrid Freeze (D + C)" version="1.0"
+     status="frozen" note="CANONICAL HTML ENTRYPOINT — thin mounting host ONLY. Restores the
+     entrypoint referenced by CLAUDE.md. Contains NO copied CSS, NO copied JSX, NO recreated
+     components: it loads the existing frozen shared implementation (wl-h2-*.jsx → window.H2),
+     the canonical Wishlist stylesheet (design-import/price-history-v1/ph-wl.css), and mounts
+     into #h2-root. Source of truth remains the shared wl-h2 implementation. Future changes
+     must be made in the shared implementation, never in this host." -->
+<html lang="uk" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Knyhovo — Бажанки v1.0 (Hybrid Freeze v2)</title>
+
+  <!-- Design System tokens + component styles (shared references) -->
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+
+  <!-- Canonical Wishlist stylesheet (resolved shared location — NOT inlined) -->
+  <link rel="stylesheet" href="design-import/price-history-v1/ph-wl.css">
+</head>
+<body>
+  <div id="h2-root"></div>
+
+  <!-- React / ReactDOM / Babel (pinned + integrity) -->
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+
+  <!-- Design System bundle → window.KnyhovoDesignSystem_9fa616 -->
+  <script src="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/_ds_bundle.js"></script>
+
+  <!-- Existing frozen implementation (shared source of truth — mounted by reference) -->
+  <script type="text/babel" src="design-canvas.jsx"></script>
+  <script type="text/babel" src="wishlist-shared.jsx"></script>
+  <script type="text/babel" src="wl-h2-shared.jsx"></script>
+  <script type="text/babel" src="wl-h2-views.jsx"></script>
+  <script type="text/babel" src="wl-h2-states.jsx"></script>
+  <script type="text/babel" src="wl-h2-docs.jsx"></script>
+  <script type="text/babel" src="wl-h2-canvas.jsx"></script>
+</body>
+</html>

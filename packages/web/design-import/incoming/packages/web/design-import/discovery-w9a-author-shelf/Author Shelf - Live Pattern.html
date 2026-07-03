@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<!-- @pattern name="Knyhovo Author Shelf" surface="Book Details v1.1 · «Інші книги автора» · W9a" version="1.0"
+     status="live-reference" note="Live reference for the W9a Author Shelf — all degradation states, both
+     themes, desktop + mobile. Composes the frozen BookCard + Book Details v1.1 related-shelf chassis only.
+     No new pages. Search Results and the Book Details hero are untouched. Spec: Author Shelf — Pattern Spec.html." -->
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Author Shelf · «Інші книги автора» — Live Reference (W9a)</title>
+<link rel="stylesheet" href="../../../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="../../../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="../../../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="../../../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="../../../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="../../../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<link rel="stylesheet" href="../../../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+<link rel="stylesheet" href="../../../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+<link rel="stylesheet" href="author-shelf.css">
+<style>
+  body { background: var(--bg); margin: 0; }
+  .pg { max-width: 1240px; margin: 0 auto; padding: var(--space-6) var(--gutter) var(--space-20); }
+  .pg__bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-4); margin-bottom: var(--space-8); }
+  .pg__bar img { height: 32px; }
+  .pg__bar-r { display: flex; align-items: center; gap: var(--space-3); }
+  .pg__tag { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-faint); }
+  .pg__eyebrow { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); margin-bottom: var(--space-2); }
+  .pg__title { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--fs-h1); line-height: var(--lh-tight); letter-spacing: var(--ls-tight); margin: 0 0 var(--space-3); }
+  .pg__title em { font-style: italic; color: var(--accent); }
+  .pg__lead { font-size: var(--fs-lead); color: var(--text-body); max-width: 70ch; line-height: var(--lh-snug); margin: 0 0 var(--space-6); text-wrap: pretty; }
+  .pg__links { display: flex; gap: var(--space-2) var(--space-5); flex-wrap: wrap; margin-bottom: var(--space-10); }
+  .pg__links a { font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--accent); }
+  .pg__links a[aria-current="page"] { color: var(--text-faint); pointer-events: none; }
+
+  .cap { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); font-weight: var(--fw-semibold); margin: var(--space-12) 0 var(--space-1); padding-top: var(--space-6); border-top: 1px solid var(--border); }
+  .cap--note { color: var(--text-faint); font-style: italic; text-transform: none; letter-spacing: 0; font-weight: var(--fw-regular); border: none; padding-top: 0; margin: var(--space-2) 0 var(--space-4); font-size: var(--fs-sm); max-width: 78ch; }
+
+  .frame { border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: var(--bg); }
+  .frame__hd { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); font-weight: var(--fw-semibold); padding: var(--space-3) var(--space-5); background: var(--surface-sunk); border-bottom: 1px solid var(--border); }
+  .frame__bd { padding: var(--space-6) var(--space-6) var(--space-8); }
+
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
+  .stack { display: grid; gap: var(--space-2); }
+  .stack > .bd-section:first-child { margin-top: 0; }
+
+  /* phone frame for the mobile rail specimen */
+  .phone { width: 390px; max-width: 100%; margin: 0 auto; border: 1px solid var(--border); border-radius: var(--radius-lg); background: var(--bg); box-shadow: var(--shadow-md); overflow: hidden; }
+  .phone__bd { padding: var(--space-4) var(--space-4) var(--space-6); }
+  .phone__bd .bd-section { margin-top: 0; }
+  .phone .as-mobile, .spec__body--mob .as-mobile { display: block !important; } /* force rail visible in specimen frames (doc viewed at desktop width) */
+
+  @media (max-width: 900px) { .grid2 { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+<div class="pg">
+  <div class="pg__bar">
+    <img id="logo" src="../../../../assets/logo/knyhovo-logo-light.png" alt="Knyhovo">
+    <div class="pg__bar-r">
+      <span class="pg__tag">W9a · Author Shelf</span>
+      <button id="theme-btn" class="kn-btn kn-btn--secondary kn-btn--sm" type="button">Темна тема</button>
+    </div>
+  </div>
+
+  <p class="pg__eyebrow">KNYHOVO · BOOK DETAILS v1.1 · DISCOVERY W9a · ЖИВИЙ ПАТЕРН</p>
+  <h1 class="pg__title">Прочитав одну — <em>а що ще писав цей автор?</em></h1>
+  <p class="pg__lead">Полиця «Інші книги автора» — остання секція Book Details. Вона зібрана з замороженого <strong>BookCard</strong> і каркасу полиць Book Details v1.1; нової візуальної мови немає. Єдиний сигнал — текстове поле автора, тому полиця <strong>деградує плавно</strong>: ніколи не доповнює порожнечу й тихо зникає, коли показувати нічого.</p>
+  <div class="pg__links">
+    <a aria-current="page">Author Shelf · Live</a>
+    <a href="Author Shelf — Pattern Spec.html">Frozen Spec →</a>
+    <a href="../../../../Book Details - Exploration.html">Book Details v1.1</a>
+    <a href="../discovery-browsing-w9/W9 - Discovery &amp; Browsing UX Spec.html">W9 Discovery Spec</a>
+  </div>
+
+  <!-- 1 · IN CONTEXT (desktop, light) -->
+  <p class="cap">У контексті · десктоп · світла тема</p>
+  <p class="cap--note">Полиця живе під рештою Book Details. Секції вище показані приглушено лише тут, щоб зафіксувати порядок: пропозиції → динаміка ціни → опис → про видання → <strong>Книги серії</strong> → <strong>Інші книги автора</strong> → футер.</p>
+  <div class="frame">
+    <div class="frame__hd">Book Details · нижня частина сторінки</div>
+    <div class="frame__bd"><div id="ctx-light"></div></div>
+  </div>
+
+  <!-- 2 · degradation matrix (desktop) -->
+  <p class="cap">Матриця деградації · десктоп</p>
+  <p class="cap--note">Один селектор керує всім: <code>show</code> (≥2 книги, інакше секції немає), <code>cap</code> (4 десктоп · 8 мобільний) і <code>«усі книги автора →»</code> (коли книг більше за cap). Полиця ніколи не показує плейсхолдери, щоб заповнити сітку. Десктопні приклади — на повну ширину контенту Book Details (саме там живе сітка 4-up).</p>
+  <div class="frame">
+    <div class="frame__hd">Багато книг → cap 4 + «усі книги автора (N) →»</div>
+    <div class="frame__bd"><div id="d-full"></div></div>
+  </div>
+  <div class="frame" style="margin-top: var(--space-5)">
+    <div class="frame__hd">3 книги → 3 звичайні картки · без «усі», без добивання</div>
+    <div class="frame__bd"><div id="d-min"></div></div>
+  </div>
+  <div class="grid2" style="margin-top: var(--space-5)">
+    <div class="frame">
+      <div class="frame__hd">1 книга → секцію омітнуто (нижче поріг)</div>
+      <div class="frame__bd"><div id="d-one"></div></div>
+    </div>
+    <div class="frame">
+      <div class="frame__hd">0 книг → секцію омітнуто</div>
+      <div class="frame__bd"><div id="d-zero"></div></div>
+    </div>
+  </div>
+
+  <!-- 3 · mobile rail -->
+  <p class="cap">Мобільний рейл · свайп · світла + темна</p>
+  <p class="cap--note">Горизонтальний рейл (успадковано з мобільних полиць Book Details v1.1): картки 168px, обрізаний край натякає на скрол, scroll-snap для спокійного свайпу, трейлінг-картка «усі книги автора». 44px цілі дотику.</p>
+  <div class="grid2">
+    <div class="frame">
+      <div class="frame__hd">Mobile · світла</div>
+      <div class="frame__bd"><div class="phone"><div class="phone__bd"><div id="m-light"></div></div></div></div><!-- mobile rail · cap 8 -->
+    </div>
+    <div class="frame">
+      <div class="frame__hd">Mobile · темна</div>
+      <div class="frame__bd" data-theme="dark" style="background: var(--bg)"><div class="phone"><div class="phone__bd"><div id="m-dark"></div></div></div></div>
+    </div>
+  </div>
+
+  <!-- 4 · in context (dark) -->
+  <p class="cap">У контексті · десктоп · темна тема</p>
+  <div class="frame">
+    <div class="frame__hd">Book Details · нижня частина · темна</div>
+    <div class="frame__bd" data-theme="dark" style="background: var(--bg)"><div id="ctx-dark"></div></div>
+  </div>
+</div>
+
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80">
+    <rect width="120" height="80" fill="#f9f3ed"></rect>
+    <g fill="#fff" stroke="#ece1d2" stroke-width="1.2">
+      <rect x="14" y="24" width="20" height="40" rx="3"></rect>
+      <rect x="38" y="24" width="20" height="40" rx="3"></rect>
+      <rect x="62" y="24" width="20" height="40" rx="3"></rect>
+      <rect x="86" y="24" width="20" height="40" rx="3"></rect>
+    </g>
+    <rect x="14" y="14" width="44" height="5" rx="2.5" fill="#b56a2d"></rect>
+  </svg>
+</template>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/_ds_bundle.js"></script>
+<script type="text/babel" src="author-shelf.jsx"></script>
+<script type="text/babel">
+  const { AuthorShelf, AuthorShelfMobile, selectAuthorShelf, ROSTER, SERIES_IDS } = window.AuthorShelfKit;
+
+  // Dimmed upstream sections — show ONLY the order, never shipped like this.
+  function UpstreamGhosts() {
+    const rows = ['Де купити · пропозиції', 'Динаміка ціни', 'Про книгу · опис', 'Про видання · метадані', 'Книги серії «Відьмак»'];
+    return (
+      <React.Fragment>
+        {rows.map((r, i) => (
+          <div key={r} className="bd-section" style={i === 0 ? { marginTop: 0 } : null}>
+            <div className="as-ph"><span className="as-ph__tag">{i === 4 ? 'Series shelf' : 'frozen'}</span> {r}</div>
+          </div>
+        ))}
+      </React.Fragment>
+    );
+  }
+
+  function FooterGhost() {
+    return <div className="bd-section"><div className="as-ph"><span className="as-ph__tag">always</span> Футер</div></div>;
+  }
+
+  // Selector instances for the matrix.
+  const selFull = selectAuthorShelf({ currentId: 'w-ob', roster: ROSTER, seriesIds: SERIES_IDS, cap: 4 });
+  const selMin  = selectAuthorShelf({ currentId: 'w-ob', roster: ROSTER.slice(0, 3), seriesIds: [], cap: 4 });
+  const selOne  = selectAuthorShelf({ currentId: 'w-ob', roster: ROSTER.slice(0, 1), seriesIds: [], cap: 4 });
+  const selZero = selectAuthorShelf({ currentId: 'w-ob', roster: [], seriesIds: [], cap: 4 });
+  const selMob  = selectAuthorShelf({ currentId: 'w-ob', roster: ROSTER, seriesIds: SERIES_IDS, cap: 8 }); // mobile cap = 8
+
+  function Omitted({ n }) {
+    return <div className="as-ph" style={{ justifyContent: 'center', fontStyle: 'italic' }}>
+      {n} книг(и) → <code style={{ margin: '0 4px' }}>show:false</code> · React повертає <code style={{ margin: '0 4px' }}>null</code> — нічого не рендериться
+    </div>;
+  }
+
+  function mount(id, node) { const el = document.getElementById(id); if (el) ReactDOM.createRoot(el).render(node); }
+
+  mount('ctx-light', <div className="bd-page"><div className="stack"><UpstreamGhosts /><AuthorShelf sel={selFull} stagger /><FooterGhost /></div></div>);
+  mount('ctx-dark',  <div className="bd-page"><div className="stack"><UpstreamGhosts /><AuthorShelf sel={selFull} /><FooterGhost /></div></div>);
+
+  mount('d-full', <div className="bd-page"><AuthorShelf sel={selFull} /></div>);
+  mount('d-min',  <div className="bd-page"><AuthorShelf sel={selMin} /></div>);
+  mount('d-one',  <div className="bd-page">{<Omitted n={1} />}</div>);
+  mount('d-zero', <div className="bd-page">{<Omitted n={0} />}</div>);
+
+  mount('m-light', <div className="bd-page bdm"><AuthorShelfMobile sel={selMob} /></div>);
+  mount('m-dark',  <div className="bd-page bdm"><AuthorShelfMobile sel={selMob} /></div>);
+
+  // theme toggle
+  (function () {
+    const root = document.documentElement;
+    const btn = document.getElementById('theme-btn');
+    const logo = document.getElementById('logo');
+    function apply(t) {
+      root.setAttribute('data-theme', t);
+      btn.textContent = t === 'dark' ? 'Світла тема' : 'Темна тема';
+      logo.src = t === 'dark' ? '../../../../assets/logo/knyhovo-logo-dark.png' : '../../../../assets/logo/knyhovo-logo-light.png';
+    }
+    apply(localStorage.getItem('kn-theme') || 'light');
+    btn.addEventListener('click', function () {
+      const t = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('kn-theme', t); apply(t);
+    });
+  })();
+</script>
+</body>
+</html>

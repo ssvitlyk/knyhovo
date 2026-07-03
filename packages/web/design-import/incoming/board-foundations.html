@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Knyhovo — Foundations</title>
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+  <style>
+    body { background: var(--bg); color: var(--text); font-family: var(--font-body); margin: 0; }
+    .fwrap { max-width: 1180px; margin: 0 auto; padding: var(--space-10) var(--space-8) var(--space-16); }
+    .feyebrow { font-size: var(--fs-xs); letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 var(--space-2); }
+    h1.ftitle { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h2); letter-spacing: -.02em; margin: 0 0 var(--space-2); color: var(--text); }
+    .flead { font-size: var(--fs-lead); color: var(--text-body); margin: 0 0 var(--space-10); max-width: 60ch; }
+    .fgroup { margin-bottom: var(--space-12); }
+    .fgroup > h2 { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h3); color: var(--text); margin: 0 0 var(--space-1); }
+    .fgroup > p.fsub { font-size: var(--fs-sm); color: var(--text-muted); margin: 0 0 var(--space-5); }
+    .swatches { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: var(--space-4); }
+    .swatch { border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; background: var(--surface); box-shadow: var(--shadow-sm); }
+    .swatch .chip { height: 72px; }
+    .swatch .meta { padding: var(--space-3) var(--space-4); }
+    .swatch .meta b { display: block; font-size: var(--fs-sm); font-weight: 600; color: var(--text); }
+    .swatch .meta code { font-size: var(--fs-xs); color: var(--text-muted); font-family: ui-monospace, monospace; }
+    .typerow { display: flex; align-items: baseline; gap: var(--space-5); padding: var(--space-4) 0; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+    .typerow:last-child { border-bottom: 0; }
+    .typerow .lab { width: 130px; flex: none; font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: .1em; color: var(--text-muted); }
+    .scaleboxes { display: flex; gap: var(--space-4); flex-wrap: wrap; align-items: flex-end; }
+    .scalebox { text-align: center; }
+    .scalebox .b { background: var(--accent-weak); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+    .scalebox .lab { font-size: var(--fs-xs); color: var(--text-muted); margin-top: 6px; }
+    .radii { display: flex; gap: var(--space-5); flex-wrap: wrap; }
+    .radii .r { width: 96px; height: 96px; background: var(--surface-accent); border: 1px solid var(--border-strong); display: grid; place-items: end center; padding-bottom: 8px; font-size: var(--fs-xs); color: var(--text-muted); }
+    .shadows { display: flex; gap: var(--space-6); flex-wrap: wrap; }
+    .shadows .s { width: 150px; height: 96px; background: var(--surface); border-radius: var(--radius-md); display: grid; place-items: center; font-size: var(--fs-xs); color: var(--text-muted); }
+    .brandrow { display: flex; gap: var(--space-8); align-items: center; flex-wrap: wrap; }
+    .brandcard { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-6); box-shadow: var(--shadow-sm); }
+    .brandcard.dark { background: var(--kn-ink); }
+  </style>
+</head>
+<body>
+  <div class="fwrap">
+    <p class="feyebrow">Knyhovo Design System · v1.0 · Frozen</p>
+    <h1 class="ftitle">01 · Foundations</h1>
+    <p class="flead">Токени, типографіка та бренд-активи — джерело істини для всіх екранів. Нічого тут не вигадано: значення читаються напряму з токенів дизайн-системи.</p>
+
+    <section class="fgroup">
+      <h2>Колір · світла тема</h2>
+      <p class="fsub">Тепла палітра. Мідний (copper) — акцент світлої теми.</p>
+      <div class="swatches" id="sw-light"></div>
+    </section>
+
+    <section class="fgroup" data-theme="dark" style="background:var(--kn-ink); border-radius:var(--radius-lg); padding:var(--space-6);">
+      <h2 style="color:var(--kn-cream)">Колір · темна тема</h2>
+      <p class="fsub" style="color:#9A8E7E">Near-black ink. Світло-помаранчевий (amber) — акцент темної теми.</p>
+      <div class="swatches" id="sw-dark"></div>
+    </section>
+
+    <section class="fgroup">
+      <h2>Типографіка</h2>
+      <p class="fsub">Lora (serif) — заголовки, дисплей, ціни, акцентний рядок. Inter (sans) — текст, UI, кнопки.</p>
+      <div class="typerow"><span class="lab">Display</span><span style="font-family:var(--font-display); font-size:56px; font-weight:600; letter-spacing:-.02em; line-height:1.05; color:var(--text)">Книгу не знайшли?</span></div>
+      <div class="typerow"><span class="lab">H2 · Lora</span><span style="font-family:var(--font-display); font-size:var(--fs-h2); font-weight:600; color:var(--text)">Бажанки, за якими стежить Книговик</span></div>
+      <div class="typerow"><span class="lab">Accent · italic</span><span style="font-family:var(--font-display); font-style:italic; font-size:var(--fs-h3); color:var(--accent)">Knyhovo знає.</span></div>
+      <div class="typerow"><span class="lab">Body · Inter</span><span style="font-family:var(--font-body); font-size:16px; line-height:1.55; color:var(--text-body); max-width:48ch">Щодня знаходимо найнижчу ціну на книгу серед п'яти книгарень і підказуємо слушний момент для покупки.</span></div>
+      <div class="typerow"><span class="lab">Price · Lora</span><span style="font-family:var(--font-display); font-size:28px; font-weight:600; color:var(--accent)">245 ₴</span></div>
+      <div class="typerow"><span class="lab">Eyebrow</span><span style="font-size:var(--fs-xs); text-transform:uppercase; letter-spacing:.14em; color:var(--text-muted)">ПОРІВНЯННЯ ЦІН · 5 КНИГАРЕНЬ · ЩОДНЯ</span></div>
+    </section>
+
+    <section class="fgroup">
+      <h2>Простір · 4px-сітка</h2>
+      <div class="scaleboxes" id="spacing"></div>
+    </section>
+
+    <section class="fgroup">
+      <h2>Радіуси</h2>
+      <div class="radii">
+        <div class="r" style="border-radius:var(--radius-sm)">8px · кнопки</div>
+        <div class="r" style="border-radius:var(--radius-md)">12px · картки</div>
+        <div class="r" style="border-radius:16px">16px · пошук</div>
+        <div class="r" style="border-radius:999px">pill · чипи</div>
+      </div>
+    </section>
+
+    <section class="fgroup">
+      <h2>Тіні</h2>
+      <p class="fsub">М'які, тепло-коричневі, низька щільність. Ніколи різких чорних тіней у світлій темі.</p>
+      <div class="shadows">
+        <div class="s" style="box-shadow:var(--shadow-sm)">shadow-sm</div>
+        <div class="s" style="box-shadow:var(--shadow-md)">shadow-md</div>
+        <div class="s" style="box-shadow:var(--shadow-lg)">shadow-lg</div>
+      </div>
+    </section>
+
+    <section class="fgroup">
+      <h2>Бренд-активи · захищені</h2>
+      <p class="fsub">Лого-локапи та маскот «Книговик» — фінальні. Дозволено лише масштабування та зміна світла/темряви.</p>
+      <div class="brandrow">
+        <div class="brandcard"><img src="assets/logo/knyhovo-logo-light.png" alt="Knyhovo logo" style="height:44px"></div>
+        <div class="brandcard dark"><img src="assets/logo/knyhovo-logo-dark.png" alt="Knyhovo logo dark" style="height:44px"></div>
+        <div class="brandcard"><img src="assets/mascot/mascot-magnifier.png" alt="Книговик · лупа" style="height:150px"></div>
+        <div class="brandcard dark"><img src="assets/mascot/mascot-lantern.png" alt="Книговик · ліхтар" style="height:150px"></div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const LIGHT = [
+      ['--bg', 'Сторінка', '#F9F3ED'], ['--surface', 'Картка', '#FFFFFF'],
+      ['--surface-accent', 'Папір', '#F4E7D3'], ['--accent', 'Акцент · copper', '#B56A2D'],
+      ['--text', 'Текст', '#3B2517'], ['--text-muted', 'Приглушений', '#8C7B6A'],
+      ['--brand-green', 'Зелений · шарф', '#24513E'], ['--brand-blue', 'Синій', '#243C7A'],
+      ['--border', 'Лінія', '#ECE1D2'],
+    ];
+    const DARK = [
+      ['--kn-ink', 'Фон', '#0F0E0D'], ['--kn-surface', 'Поверхня', '#1C1916'],
+      ['--kn-surface-2', 'Поверхня 2', '#2A2521'], ['--kn-amber', 'Акцент · amber', '#F0A34A'],
+      ['--kn-cream', 'Текст', '#EADFCF'], ['--kn-line-dark', 'Лінія', '#322C26'],
+    ];
+    function swatchHTML(v, name, hex) {
+      return `<div class="swatch"><div class="chip" style="background:var(${v})"></div><div class="meta"><b>${name}</b><code>${hex}</code></div></div>`;
+    }
+    document.getElementById('sw-light').innerHTML = LIGHT.map(s => swatchHTML(...s)).join('');
+    document.getElementById('sw-dark').innerHTML = DARK.map(s => swatchHTML(...s)).join('');
+    const SP = [['space-1',4],['space-2',8],['space-3',12],['space-4',16],['space-6',24],['space-8',32],['space-12',48]];
+    document.getElementById('spacing').innerHTML = SP.map(([n,px]) =>
+      `<div class="scalebox"><div class="b" style="width:${px}px;height:${px}px"></div><div class="lab">${px}</div></div>`).join('');
+  </script>
+</body>
+</html>

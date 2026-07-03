@@ -1,0 +1,124 @@
+/* ================================================================
+   Knyhovo · W6 — Store Offers Intelligence layer
+   A thin, calm intelligence layer ADDED ON TOP of the frozen
+   Book Details OffersPanel (bd-chassis.css). It never repaints the
+   frozen foundations — best-price block composition, price hierarchy
+   (serif accent price · muted strike old · muted store), panel
+   surface/radius/shadow, button + badge styles — all inherited.
+   New work introduces ONLY: a reasons line, a per-row status meta
+   line, and the empty / loading / error panel bodies.
+   Composes DS v1.0 tokens only — no new colours, type, radii, shadow.
+   ================================================================ */
+
+/* ---- Best-offer EXPLANATION (signal 1) ------------------------- */
+/* Sits inside the frozen .bdc-best, between the store line and the
+   full-width CTA. Explains WHY this is the pick, not just that it is. */
+/* Keep the best-block + row status badges on a single line. */
+.bdc-best > .kn-badge, .so-row__store .kn-badge { white-space: nowrap; }
+
+.so-reasons { display: flex; flex-direction: column; gap: 6px; margin: 0 0 var(--space-4); }
+.so-reason { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-sm); color: var(--text-body); line-height: 1.3; }
+.so-reason svg { flex: none; color: var(--brand-green); }
+/* Honest caveat when the best choice is NOT the cheapest listing. */
+.so-best-note { display: flex; align-items: flex-start; gap: var(--space-2); font-size: var(--fs-xs); color: var(--text-muted); margin: 0 0 var(--space-4); }
+.so-best-note svg { flex: none; margin-top: 1px; color: var(--icon-muted); }
+
+/* ---- Intelligence offer row ----------------------------------- */
+/* Extends the frozen single-line .bdc-row into a two-line row: the
+   top line keeps the frozen anatomy (store · price · CTA); a quiet
+   status meta line is added underneath. CTA spans both lines. */
+.so-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-areas:
+    "store price cta"
+    "meta  meta  cta";
+  column-gap: var(--space-4);
+  row-gap: 5px;
+  align-items: center;
+  padding: var(--space-4) 0;
+  border-top: 1px solid var(--border);
+}
+.so-row:first-of-type { border-top: none; }
+
+.so-row__store { grid-area: store; display: flex; align-items: center; gap: 6px; min-width: 0; font-weight: var(--fw-medium); color: var(--text); }
+.so-row__name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* Reliability indicator (signal 2): subtle verified mark — never
+   competes with the title or price, never coloured as accent. */
+.so-verified { flex: none; display: inline-flex; color: var(--icon-muted); }
+.so-row__store .kn-badge { flex: none; }
+
+.so-row__pricecell { grid-area: price; display: flex; align-items: baseline; gap: var(--space-2); white-space: nowrap; }
+.so-row__old { font-size: var(--fs-xs); color: var(--text-muted); text-decoration: line-through; }
+.so-row__price { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: 1.25rem; line-height: 1; color: var(--accent); }
+
+.so-row__cta { grid-area: cta; align-self: center; justify-self: end; }
+
+/* Status meta line — availability · freshness · delivery (signals 3-5).
+   One calm muted line; the only colour is the availability dot. */
+.so-row__meta { grid-area: meta; display: flex; flex-wrap: wrap; align-items: center; gap: 3px 7px; font-size: var(--fs-xs); color: var(--text-muted); line-height: 1.4; }
+.so-fact { display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+.so-fact + .so-fact::before { content: "·"; margin-right: 7px; color: var(--text-faint); }
+.so-fact svg { flex: none; }
+.so-fact--warn { color: var(--text-body); }
+.so-fact--warn svg { color: var(--icon-muted); }
+
+/* Availability dot */
+.so-dot { width: 7px; height: 7px; border-radius: 50%; flex: none; }
+.so-dot--in { background: var(--brand-green); }
+.so-dot--low { background: var(--accent); }
+.so-dot--out { background: var(--text-faint); }
+.so-dot--unknown { background: transparent; border: 1.5px solid var(--text-faint); }
+.so-avail--in { color: var(--brand-green); }
+.so-avail--low { color: var(--accent); }
+.so-avail--out, .so-avail--unknown { color: var(--text-muted); }
+
+/* Dimmed rows: out of stock · store unavailable · link unavailable. */
+.so-row--muted { opacity: 0.62; }
+.so-row--muted .so-row__price { color: var(--text-faint); }
+
+/* Grouped duplicate listings (signal: «Схожі пропозиції обʼєднано»).
+   A quiet caption hung beneath the row it belongs to. */
+.so-grouped { grid-column: 1 / -1; display: flex; align-items: center; gap: var(--space-2); margin-top: 6px; font-size: var(--fs-xs); color: var(--text-muted); }
+.so-grouped svg { flex: none; color: var(--icon-muted); }
+.so-grouped button { background: none; border: none; padding: 0; margin-left: 2px; font: inherit; color: var(--accent); cursor: pointer; }
+.so-grouped button:hover { text-decoration: underline; }
+
+/* ---- Panel bodies: empty · loading · error -------------------- */
+.so-state { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-5) 0 var(--space-2); }
+.so-state__icon { width: 40px; height: 40px; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; background: var(--surface-accent); color: var(--icon-muted); }
+.so-state__title { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--fs-title); color: var(--text); }
+.so-state__text { font-size: var(--fs-sm); color: var(--text-muted); max-width: 42ch; text-wrap: pretty; }
+.so-state__actions { display: flex; flex-wrap: wrap; gap: var(--space-3); margin-top: var(--space-2); }
+
+/* Loading skeleton — warm surface blocks only, never cold grey.
+   Mirrors the real panel footprint so there is no load→filled shift. */
+.so-sk { display: block; background: var(--surface-accent); border-radius: var(--radius-sm); }
+.so-sk-best { background: var(--surface-accent); border-radius: var(--radius-md); padding: var(--space-5); margin: var(--space-4) 0 var(--space-2); }
+.so-sk-rows { margin-top: var(--space-2); }
+.so-sk-row { display: grid; grid-template-columns: minmax(0,1fr) auto; gap: var(--space-2) var(--space-4); padding: var(--space-4) 0; border-top: 1px solid var(--border); }
+.so-sk-row:first-child { border-top: none; }
+@media (prefers-reduced-motion: no-preference) {
+  .so-sk, .so-sk-best { animation: so-pulse 1.4s var(--ease-out) infinite; }
+  .so-sk-best .so-sk { animation: none; }
+}
+@keyframes so-pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.55; } }
+
+/* One-shot staggered entrance for filled rows (frozen rule: dropped
+   after the cascade; static under reduced-motion). */
+@media (prefers-reduced-motion: no-preference) {
+  .so-stagger .so-row, .so-stagger .bdc-best { opacity: 0; transform: translateY(6px); animation: so-rise 280ms var(--ease-out) forwards; }
+  .so-stagger .bdc-best { animation-delay: 0ms; }
+  .so-stagger .so-row:nth-child(1) { animation-delay: 60ms; }
+  .so-stagger .so-row:nth-child(2) { animation-delay: 110ms; }
+  .so-stagger .so-row:nth-child(3) { animation-delay: 160ms; }
+  .so-stagger .so-row:nth-child(4) { animation-delay: 210ms; }
+  .so-stagger .so-row:nth-child(5) { animation-delay: 260ms; }
+}
+@keyframes so-rise { to { opacity: 1; transform: none; } }
+
+/* ---- Mobile: tap targets + no horizontal scroll -------------- */
+.bdm .so-row, .so-panel--mobile .so-row { grid-template-columns: minmax(0, 1fr) auto; grid-template-areas: "store price" "meta cta"; row-gap: var(--space-2); }
+.bdm .so-row__cta, .so-panel--mobile .so-row__cta { justify-self: end; }
+.bdm .so-row .kn-btn, .so-panel--mobile .so-row .kn-btn { min-height: 44px; }
+.bdm .so-row__name, .so-panel--mobile .so-row__name { white-space: normal; overflow: visible; text-overflow: clip; word-break: break-word; }

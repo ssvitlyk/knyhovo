@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<!-- @pattern name="Knyhovyk AI Assistant — Copy System" version="1.0" status="foundation"
+     note="W8. Reusable writing rules per surface, role split, message structure, Do/Don't library.
+     DS v1.0 tokens only. Not chat UI, not backend." -->
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Книговик — W8 · Копірайт</title>
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+<link rel="stylesheet" href="ka.css">
+</head>
+<body>
+<div class="doc__topbar">
+  <img id="doc-logo" src="../../assets/logo/knyhovo-logo-light.png" alt="Knyhovo">
+  <div class="doc__topbar-r">
+    <span class="doc__w8">W8 · Knyhovyk AI Foundation</span>
+    <button id="theme-btn" class="kn-btn kn-btn--secondary kn-btn--sm" type="button">Темна тема</button>
+  </div>
+</div>
+
+<div class="doc">
+  <p class="doc__eyebrow">W8 · СИСТЕМА КОПІРАЙТУ</p>
+  <h1 class="doc__title">Книговик звучить <em>однаково</em> скрізь</h1>
+  <p class="doc__lead">
+    Переви́користовувані правила письма: розподіл ролей, будова повідомлення й тон по кожній поверхні —
+    від пошуку до майбутніх AI-відповідей. Один голос, незалежно від місця й рівня інтелекту.
+  </p>
+
+  <div class="doc__status">
+    <span><b>Один голос, дві ролі.</b> Knyhovo (платформа) — інструмент: шукає й перевіряє ціни.
+    Книговик (персонаж) — помічник: радить, стежить, пояснює. Порада ніколи не звучить як від
+    книгарні. Спокій, без FOMO, без окликів.</span>
+  </div>
+
+  <div class="doc__toc">
+    <a href="#roles">Ролі</a>
+    <a href="#structure">Будова</a>
+    <a href="#surfaces">По поверхнях</a>
+    <a href="#library">Do / Don't</a>
+    <a href="#details">Дрібниці</a>
+  </div>
+
+  <!-- roles -->
+  <section id="roles">
+    <h2><span class="num">01</span>Розподіл ролей</h2>
+    <p class="doc__sublead">Найперше правило копірайту. Дієслово видає, хто говорить.</p>
+    <div class="doc__grid">
+      <div class="doc__card">
+        <span class="ka-voice"><i data-lucide="search"></i> Knyhovo — інструмент («ми»)</span>
+        <p style="margin-top: var(--space-3);"><em class="u">шукає · перевіряє · моніторить · знаходить · оновлює</em></p>
+        <p>«Щодня о 08:00 перевіряємо ціни у 5 книгарнях.» · «Знайдено 7 видань.»</p>
+      </div>
+      <div class="doc__card">
+        <span class="ka-voice"><i data-lucide="message-circle"></i> Книговик — помічник («я»)</span>
+        <p style="margin-top: var(--space-3);"><em class="u">радить · стежить · підказує · пояснює · повідомляє</em></p>
+        <p>«Я стежу за ціною.» · «Я б зачекав.» · «Підкажу, коли настане момент.»</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- structure -->
+  <section id="structure">
+    <h2><span class="num">02</span>Будова повідомлення</h2>
+    <p class="doc__sublead">Будь-яка порада: <strong>вердикт → причина → (впевненість)</strong>. Ніколи лише вердикт, ніколи лише причина.</p>
+    <div class="ka-says">
+      <div class="ka-say"><span class="ka-say__q">«Зараз гарний момент купувати. Ціна на 18% нижча за типову.»</span><span class="ka-say__when">вердикт + причина</span></div>
+      <div class="ka-say"><span class="ka-say__q">«Я б ще трохи зачекав — за 90 днів книга була дешевшою чотири рази.»</span><span class="ka-say__when">порада + доказ</span></div>
+      <div class="ka-say"><span class="ka-say__q">«Ціна впала: −40 ₴ від учора, тепер 240 ₴ у Yakaboo.»</span><span class="ka-say__when">факт + деталь</span></div>
+      <div class="ka-say"><span class="ka-say__q">«Маю замало даних, щоб радити. Стежу — підкажу пізніше.»</span><span class="ka-say__when">межа + обіцянка</span></div>
+    </div>
+    <ul style="margin-top: var(--space-5);">
+      <li><strong>Коротко.</strong> Одна думка — один рядок. Вердикт уміщується у фразу.</li>
+      <li><strong>Перша особа для поради</strong> («я б…»), перша особа множини для платформи («ми перевіряємо…»).</li>
+      <li><strong>Sentence case, без окликів.</strong> Крапка, не знак оклику. Спокій — у пунктуації теж.</li>
+    </ul>
+  </section>
+
+  <!-- surfaces -->
+  <section id="surfaces">
+    <h2><span class="num">03</span>Правила по поверхнях</h2>
+    <div class="doc__tablewrap">
+      <table>
+        <thead><tr><th>Поверхня</th><th>Голос</th><th>Каже</th><th>Не каже</th></tr></thead>
+        <tbody>
+          <tr><td><b>Пошук</b></td><td>Knyhovo (інструмент)</td><td>«Знайдено за виправленим запитом», «Розпізнано ISBN»</td><td>порад про купівлю — тут їх немає</td></tr>
+          <tr><td><b>Бажанки</b></td><td>Книговик</td><td>«Я стежу», «Ціна досягла твоєї цілі», «Економія 60 ₴»</td><td>«Поспішай купити!», тиску терміновістю</td></tr>
+          <tr><td><b>Сповіщення</b></td><td>Книговик</td><td>«Ціна впала: −40 ₴», «Знову в наявності»</td><td>«Гаряча знижка!», КАПСУ, кількох подій в одному</td></tr>
+          <tr><td><b>Динаміка ціни</b></td><td>Книговик</td><td>«Нижче за типову ціну», «близько до мінімуму за рік»</td><td>«найвища ціна» (приховано), «звичайна ціна» (кажемо «типова»)</td></tr>
+          <tr><td><b>Порожні стани</b></td><td>Книговик</td><td>«Поки що не маємо…», «Я повідомлю, щойно з'явиться»</td><td>надмірних вибачень, вигаданих результатів</td></tr>
+          <tr><td><b>Майбутні AI-відповіді</b></td><td>Книговик</td><td>«За даними, що маю…», «Я не впевнений щодо…»</td><td>впевненості без доказу, відповіді поза знанням про ціни/книги</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- library -->
+  <section id="library">
+    <h2><span class="num">04</span>Бібліотека Do / Don't</h2>
+    <p class="doc__sublead">Однакові ситуації — голосом Книговика й чужим голосом. Ліворуч — як треба.</p>
+
+    <div class="ka-dd">
+      <div class="ka-dd__col ka-dd__col--do">
+        <div class="ka-dd__h"><span class="ka-tag ka-tag--do">Книговик</span><h4>Так</h4></div>
+        <ul>
+          <li><q>Зараз гарний момент купувати — на 18% нижче за типову.</q></li>
+          <li><q>Я б ще трохи зачекав.</q></li>
+          <li><q>Маю замало даних, щоб радити.</q></li>
+          <li><q>Ціна впала: −40 ₴ від учора.</q></li>
+          <li><q>Поки що не маємо цієї книги. Я повідомлю, коли з'явиться.</q></li>
+        </ul>
+      </div>
+      <div class="ka-dd__col ka-dd__col--dont">
+        <div class="ka-dd__h"><span class="ka-tag ka-tag--dont">Не так</span><h4>Ні</h4></div>
+        <ul>
+          <li><q>Неймовірна ціна! Купуйте зараз!</q></li>
+          <li><q>Ціна може зрости — не зволікайте!</q></li>
+          <li><q>Рекомендуємо до покупки.</q> <span style="color:var(--text-faint);">(без причини)</span></li>
+          <li><q>🔥 Гаряча знижка дня −40 ₴!</q></li>
+          <li><q>На жаль, нічого не знайдено :(</q></li>
+        </ul>
+      </div>
+    </div>
+
+    <div class="ka-dd" style="margin-top: var(--space-4);">
+      <div class="ka-dd__col ka-dd__col--do">
+        <div class="ka-dd__h"><span class="ka-tag ka-tag--do">Принцип</span><h4>Завжди</h4></div>
+        <ul>
+          <li>Пояснюй причину в тому ж рядку.</li>
+          <li>Признавай межу: «не впевнений», «замало даних».</li>
+          <li>Розділяй ролі: Knyhovo знаходить, Книговик радить.</li>
+          <li>Тримай спокій: крапка замість оклику.</li>
+          <li>Лиши рішення за читачем — порада ніколи не діє сама.</li>
+        </ul>
+      </div>
+      <div class="ka-dd__col ka-dd__col--dont">
+        <div class="ka-dd__h"><span class="ka-tag ka-tag--dont">Принцип</span><h4>Ніколи</h4></div>
+        <ul>
+          <li>Не тисни часом і дефіцитом.</li>
+          <li>Не вигадуй упевненості, якої немає.</li>
+          <li>Не говори голосом книгарні-продавця.</li>
+          <li>Не став оклики й не пиши КАПСОМ заради емоції.</li>
+          <li>Не давай поради без доказу.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- details -->
+  <section id="details">
+    <h2><span class="num">05</span>Дрібниці, що тримають тон</h2>
+    <ul>
+      <li><strong>Ціна:</strong> <code>240 ₴</code> — пробіл перед ₴; назва книгарні після «·», завжди приглушена.</li>
+      <li><strong>Бренд:</strong> «Knyhovo» латиницею навіть в українському реченні.</li>
+      <li><strong>Термінологія:</strong> «типова ціна» (не «звичайна»); «мінімум за рік»; «найвища ціна» — прихована, не показуємо.</li>
+      <li><strong>Числа як доказ:</strong> відсотки й суми («−18%», «−40 ₴») переконливіші за прикметники.</li>
+      <li><strong>Без емодзі.</strong> Тепло несуть мускот і палітра.</li>
+      <li><strong>Звертання на «ти»</strong> — тепло й по-дружньому, послідовно скрізь («твоя ціль», «підкажу тобі»).</li>
+    </ul>
+  </section>
+
+  <nav class="doc__nav" id="docnav"></nav>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="nav.js"></script>
+<script src="theme.js"></script>
+</body>
+</html>

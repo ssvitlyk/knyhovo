@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<!-- @pattern name="Knyhovo Notification Unsubscribe" surface="Public · GET /api/notifications/unsubscribe?token=…"
+     note="Окрема мінімальна публічна сторінка відписки. НЕ змішується з Settings.
+           Той самий затверджений header/footer Knyhovo. Compose DS v1.0 only. Light + Dark." -->
+<html lang="uk" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Knyhovo — Відписка від сповіщень</title>
+
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+  <link rel="stylesheet" href="design-import/alerts-v1/alerts.css">
+</head>
+<body style="margin:0;">
+  <div id="unsub-root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/_ds_bundle.js"></script>
+  <script type="text/babel" src="np-shared.jsx"></script>
+  <script type="text/babel">
+    function PublicUnsubscribe() {
+      const [mobile, setMobile] = React.useState(() => window.matchMedia('(max-width: 767px)').matches);
+      React.useEffect(() => {
+        const mq = window.matchMedia('(max-width: 767px)');
+        const fn = (e) => setMobile(e.matches);
+        mq.addEventListener('change', fn);
+        return () => mq.removeEventListener('change', fn);
+      }, []);
+      // Render at document scope (theme follows <html data-theme>); strip the
+      // inner data-theme wrapper by syncing theme from the document.
+      const theme = document.documentElement.getAttribute('data-theme') || 'light';
+      return <window.NP_Unsubscribe mobile={mobile} theme={theme} />;
+    }
+    ReactDOM.createRoot(document.getElementById('unsub-root')).render(<PublicUnsubscribe />);
+  </script>
+
+  <template id="__bundler_thumbnail">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80">
+      <rect width="120" height="80" fill="#F9F3ED"/>
+      <rect x="34" y="28" width="52" height="34" rx="5" fill="#FFFFFF" stroke="#ECE1D2" stroke-width="1.5"/>
+      <path d="M38 34l22 13 22-13" fill="none" stroke="#B56A2D" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+      <line x1="32" y1="24" x2="88" y2="66" stroke="#B56A2D" stroke-width="2.5" stroke-linecap="round"/>
+    </svg>
+  </template>
+</body>
+</html>

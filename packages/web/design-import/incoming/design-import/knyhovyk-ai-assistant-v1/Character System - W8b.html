@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<!-- @pattern name="Knyhovyk Character System — W8b" version="1.0" status="foundation"
+     note="W8b. The Knyhovyk CHARACTER BIBLE. Forms · Presence · Emotions · Behaviour ·
+     Visual Independence · Evolution (L0→L4) · Guardrails · Future Readiness. Knyhovyk is a
+     CHARACTER, not the chair illustration. Capabilities grow; character does not change.
+     DS v1.0 tokens only. Does NOT design chat / AI UX / backend / agents / new product screens,
+     and does NOT redraw or regenerate the protected mascot — composes the approved assets only. -->
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Книговик — W8b · Біблія персонажа</title>
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+<link rel="stylesheet" href="ka.css">
+<style>
+  /* W8b-only additions — composed from DS tokens, no new colour language. */
+  .kab-tag--hi   { color: var(--brand-green); border-color: color-mix(in oklab, var(--brand-green) 42%, transparent); }
+  .kab-tag--med  { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 45%, transparent); }
+  .kab-tag--lo   { color: var(--text-muted); border-color: var(--border-strong); }
+  .kab-tag--no   { color: var(--text-faint); border-style: dashed; }
+
+  /* 5-rung evolution ladder */
+  .ka-ladder--5 { grid-template-columns: repeat(5, 1fr); }
+  .ka-rung__cap { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-faint); font-weight: var(--fw-semibold); margin-top: var(--space-2); }
+  .ka-rung ul { list-style: none; padding: 0; margin: var(--space-1) 0 0; }
+  .ka-rung li { font-size: var(--fs-xs); color: var(--text-muted); line-height: var(--lh-snug); padding-left: 12px; position: relative; margin-bottom: 4px; }
+  .ka-rung li::before { content: "·"; position: absolute; left: 2px; color: var(--text-faint); }
+  .ka-rung__dna { font-size: var(--fs-xs); color: var(--brand-green); line-height: var(--lh-snug); margin-top: var(--space-2); padding-top: var(--space-2); border-top: 1px solid var(--border); }
+
+  /* Emotion chips grid */
+  .kab-emos { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-3); margin-top: var(--space-2); }
+  .kab-emo { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-4); box-shadow: var(--shadow-sm); }
+  .kab-emo__name { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-body); color: var(--text); }
+  .kab-emo__when { font-size: var(--fs-xs); color: var(--text-muted); line-height: var(--lh-snug); margin-top: 4px; }
+  .kab-emo__form { font-size: 11px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.04em; margin-top: var(--space-2); }
+
+  /* Visual-independence: invariant vs prop split */
+  .kab-split { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-top: var(--space-2); }
+  .kab-col { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-5); box-shadow: var(--shadow-sm); }
+  .kab-col--keep { border-top: 3px solid var(--brand-green); }
+  .kab-col--prop { border-top: 3px solid var(--border-strong); }
+  .kab-col h4 { font-size: var(--fs-title); margin-bottom: var(--space-3); }
+  .kab-col ul { list-style: none; padding: 0; margin: 0; }
+  .kab-col li { font-size: var(--fs-sm); color: var(--text-body); line-height: var(--lh-snug); padding-left: var(--space-5); position: relative; margin-bottom: var(--space-3); }
+  .kab-col li b { color: var(--text); font-weight: var(--fw-semibold); }
+  .kab-col--keep li::before { content: "✓"; position: absolute; left: 0; color: var(--brand-green); font-weight: 700; }
+  .kab-col--prop li::before { content: "~"; position: absolute; left: 0; color: var(--text-faint); font-weight: 700; }
+
+  /* Recognition strip — same character, three densities */
+  .kab-recog { display: flex; align-items: center; gap: var(--space-5); flex-wrap: wrap; margin-top: var(--space-5); padding: var(--space-5); background: var(--surface-accent); border: 1px solid var(--border); border-radius: var(--radius-md); }
+  .kab-recog__item { display: flex; flex-direction: column; align-items: center; gap: var(--space-2); text-align: center; }
+  .kab-recog__lbl { font-size: var(--fs-xs); color: var(--text-muted); }
+  .kab-recog__arrow { color: var(--text-faint); font-size: var(--fs-h3); }
+
+  @media (max-width: 680px) {
+    .ka-ladder--5 { grid-template-columns: 1fr; }
+    .kab-emos { grid-template-columns: 1fr; }
+    .kab-split { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="doc__topbar">
+  <img id="doc-logo" src="../../assets/logo/knyhovo-logo-light.png" alt="Knyhovo">
+  <div class="doc__topbar-r">
+    <span class="doc__w8">W8b · Knyhovyk Character Bible</span>
+    <button id="theme-btn" class="kn-btn kn-btn--secondary kn-btn--sm" type="button">Темна тема</button>
+  </div>
+</div>
+
+<div class="doc">
+  <p class="doc__eyebrow">W8b · БІБЛІЯ ПЕРСОНАЖА</p>
+  <h1 class="doc__title">Можливості ростуть. <em>Характер не змінюється.</em></h1>
+  <p class="doc__lead">
+    Книговик — це характер і провідник бренду, а не поточна ілюстрація в кріслі. Ця біблія
+    персонажа фіксує, у яких формах він живе, як поводиться, які емоції показує і як масштабується
+    від маскота до AI-помічника — так, щоб через п'ять років користувач відчував: «це той самий
+    Книговик».
+  </p>
+
+  <div class="doc__status">
+    <span><b>Книговик ≠ ілюстрація.</b> Він <strong>не</strong> крісло, не лампа, не чашка й не лупа.
+    Це система персонажа, а не UX нового функціоналу: тут немає чату, AI-екранів, бекенду чи агентів
+    і немає редизайну заморожених екранів. Документ не перемальовує захищений мускот — лише компонує
+    затверджені ассети та задає правила для майбутніх форм.</span>
+  </div>
+
+  <div class="doc__toc">
+    <a href="#principles">Принципи</a>
+    <a href="#forms">Форми персонажа</a>
+    <a href="#presence">Карта присутності</a>
+    <a href="#emotions">Емоції</a>
+    <a href="#behaviour">Поведінка</a>
+    <a href="#independence">Візуальна незалежність</a>
+    <a href="#evolution">Шлях еволюції</a>
+    <a href="#guardrails">Запобіжники</a>
+    <a href="#readiness">Готовність до майбутнього</a>
+  </div>
+
+  <!-- 01 · principles -->
+  <section id="principles">
+    <h2><span class="num">01</span>Принципи</h2>
+    <p class="doc__sublead">Один незмінний закон тримає всю систему: персонаж старший за будь-яку свою форму. Усе решта — змінне.</p>
+    <p class="doc__pull">Через 5 років — <em>«це той самий Книговик»</em>. <span class="mute">Навіть якщо зміниться стиль ілюстрацій, UI, з'явиться чат, голос чи агенти.</span></p>
+    <div class="doc__grid">
+      <div class="doc__card"><h4>Характер старший за форму</h4><p>Поза, сцена, аксесуар і рівень деталізації — змінні. Обличчя, шарф, паперова природа й спокійний тон — ні. Форма обслуговує характер, не навпаки.</p></div>
+      <div class="doc__card"><h4>Knyhovo шукає. Книговик радить</h4><p>Платформа знаходить ціни — інструмент. Книговик пояснює й підказує момент — провідник. Користувач має відчувати «Книговик допоміг», а не «сайт сказав».</p></div>
+      <div class="doc__card"><h4>Тиша за замовчуванням</h4><p>Присутність заслуговують, а не розкидають. Якщо Книговику нема чого додати — він мовчить. Менше появ роблять кожну з них вагомою.</p></div>
+      <div class="doc__card"><h4>Готовність без редизайну</h4><p>Система передбачає зростання можливостей наперед, щоб поява AI не вимагала переробляти персонажа. Команда отримує готовий каркас, а не чистий аркуш.</p></div>
+    </div>
+  </section>
+
+  <!-- 02 · character forms -->
+  <section id="forms">
+    <h2><span class="num">02</span>Форми персонажа</h2>
+    <p class="doc__sublead">Усі допустимі форми — від найбагатшої сцени до самого лише підпису. Кожна поверхня обирає рівно одну форму; ніколи дві одночасно. Що рутинніша й щільніша поверхня — то тихіша форма.</p>
+
+    <div class="ka-forms">
+      <div class="ka-form">
+        <div class="ka-form__stage"><img src="../../assets/mascot/mascot-magnifier.png" alt="Книговик" data-mascot style="height:80px; object-fit:contain;"></div>
+        <div class="ka-form__name">Повна сцена</div>
+        <div class="ka-form__use">Рідкісні емоційні моменти — Книговик як герой екрана.</div>
+      </div>
+      <div class="ka-form">
+        <div class="ka-form__stage"><div class="ka-av ka-av--lg" role="img" aria-label="Аватар Книговика"></div></div>
+        <div class="ka-form__name">Аватар</div>
+        <div class="ka-form__use">Обличчя «від кого» порада — поряд із рекомендацією чи сповіщенням.</div>
+      </div>
+      <div class="ka-form">
+        <div class="ka-form__stage"><span class="ka-voice"><i data-lucide="message-circle"></i> Книговик каже</span></div>
+        <div class="ka-form__name">Лише голос</div>
+        <div class="ka-form__use">Щільні інтерфейси: лишається тон, зникає зображення.</div>
+      </div>
+      <div class="ka-form">
+        <div class="ka-form__stage"><span class="ka-form__icon">К</span></div>
+        <div class="ka-form__name">Іконка</div>
+        <div class="ka-form__use">Системні місця: іконка застосунку, фолбек аватара, дзвіночок.</div>
+      </div>
+    </div>
+    <p class="ka-quiet" style="margin-top: var(--space-3);">Вище — чотири форми, які можна показати вже сьогодні з затверджених ассетів. Нижче — повний реєстр восьми форм із правилами використання. Ілюстрації нових поз створює бренд-художник за §06.</p>
+
+    <div class="doc__tablewrap" style="margin-top: var(--space-6);">
+      <table>
+        <thead><tr><th>Форма</th><th>Коли / де</th><th>Обмеження</th><th>Присутність</th></tr></thead>
+        <tbody>
+          <tr><td><b>Full Mascot</b><br>повна сцена</td><td>Онбординг, порожні стани, перша книга, велике святкування. Книговик займає центр екрана.</td><td>Рідко. Один раз на флоу. Ніколи у щільних списках чи транзакційних екранах.</td><td><span class="ka-tag kab-tag--hi">висока</span></td></tr>
+          <tr><td><b>Half Mascot</b><br>півфігура</td><td>Панель-порадник, де є вертикальний простір: великий блок рекомендації, підсумок тижня.</td><td>Не дублює повну сцену на тому ж екрані. Обрізана по пояс, без зайвого реквізиту.</td><td><span class="ka-tag kab-tag--hi">висока</span></td></tr>
+          <tr><td><b>Avatar</b><br>кругле обличчя</td><td>Поряд із порадою, рядком рекомендації, у сповіщенні — «від кого» ця думка.</td><td>Маленький (30–66px). Не домінує над контентом. Один на блок.</td><td><span class="ka-tag kab-tag--med">середня</span></td></tr>
+          <tr><td><b>Floating Assistant</b><br>викличний помічник</td><td>Майбутня поверхня помічника: тихий аватар, який користувач кличе сам. Поза скоупом дизайну тут.</td><td>Лише на вимогу, ніколи не нав'язується. Не перекриває контент. Закривається одним рухом.</td><td><span class="ka-tag kab-tag--med">середня</span></td></tr>
+          <tr><td><b>Notification Avatar</b><br>аватар сповіщення</td><td>Дзвіночок, пуш, бейдж центру сповіщень — дрібний знак «від Книговика».</td><td>Тільки обличчя, дрібний масштаб. Без сцени й тексту в самому знаку.</td><td><span class="ka-tag kab-tag--lo">низька</span></td></tr>
+          <tr><td><b>Tiny Icon</b><br>іконка / моно-знак</td><td>Іконка застосунку, favicon, фолбек аватара, дуже щільні місця.</td><td>Спрощений до знака («К» / силует). Має лишатися впізнаваним. Без міміки.</td><td><span class="ka-tag kab-tag--lo">низька</span></td></tr>
+          <tr><td><b>Voice Only</b><br>лише голос</td><td>Інлайн-підказки, тости, щільні списки: порада словами в тоні Книговика, без зображення.</td><td>Тон обов'язково Книговиків. Завжди з поясненням. Без хайпу й тиску.</td><td><span class="ka-tag kab-tag--lo">низька</span></td></tr>
+          <tr><td><b>Text Only</b><br>лише підпис</td><td>Найщільніше: коротка фраза з атрибуцією «— Книговик» там, де навіть голосовий блок завеликий.</td><td>Тільки підпис-атрибуція. Не вигадує даних. Лишається спокійним і чесним.</td><td><span class="ka-tag kab-tag--no">мінімальна</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 03 · presence map -->
+  <section id="presence">
+    <h2><span class="num">03</span>Карта присутності</h2>
+    <p class="doc__sublead">Де Книговик з'являється — і де ні. Чотири рівні присутності. Повна крос-поверхнева матриця (форма × роль × рівень інтелекту) живе в окремій <a href="Presence Map.html">Карті присутності</a>; тут — рівні з погляду персонажа.</p>
+    <div class="doc__grid" style="margin-bottom: var(--space-6);">
+      <div class="doc__card"><span class="ka-tag kab-tag--hi">висока</span><p style="margin-top: var(--space-3);">Книговик — герой поверхні. Повна сцена / півфігура. Рідкісні емоційні моменти.</p></div>
+      <div class="doc__card"><span class="ka-tag kab-tag--med">середня</span><p style="margin-top: var(--space-3);">Книговик поряд із порадою. Аватар + голос. Присутній за умовою (є дані / є подія).</p></div>
+      <div class="doc__card"><span class="ka-tag kab-tag--lo">низька</span><p style="margin-top: var(--space-3);">Тихий знак або сам лише тон. Іконка / голос / підпис. Не привертає уваги до себе.</p></div>
+      <div class="doc__card"><span class="ka-tag kab-tag--no">відсутня</span><p style="margin-top: var(--space-3);">Книговика немає. Поверхня самодостатня — йому нема чого додати.</p></div>
+    </div>
+    <div class="doc__tablewrap">
+      <table>
+        <thead><tr><th>Поверхня</th><th>Присутність</th><th>Форма</th><th>Роль</th></tr></thead>
+        <tbody>
+          <tr><td>Homepage</td><td><span class="ka-tag kab-tag--hi">висока</span></td><td>повна сцена</td><td>Обличчя бренду, теплий вхід у продукт</td></tr>
+          <tr><td>Порожні стани · онбординг</td><td><span class="ka-tag kab-tag--hi">висока</span></td><td>повна сцена</td><td>Веде, пояснює перший крок</td></tr>
+          <tr><td>Бажанки (Wishlist)</td><td><span class="ka-tag kab-tag--med">середня</span></td><td>аватар · голос</td><td>Радить момент купівлі, стежить за ціною</td></tr>
+          <tr><td>Сповіщення / Alerts</td><td><span class="ka-tag kab-tag--med">середня</span></td><td>аватар сповіщення · голос</td><td>Повідомляє про подію, пояснює чому</td></tr>
+          <tr><td>Search Intelligence</td><td><span class="ka-tag kab-tag--med">середня</span></td><td>голос</td><td>Підказує пошук, рятує порожній результат</td></tr>
+          <tr><td>Book Details · Price History</td><td><span class="ka-tag kab-tag--lo">низька</span></td><td>голос · аватар</td><td>Пояснює ціну й момент — за наявності даних</td></tr>
+          <tr><td>Search Results</td><td><span class="ka-tag kab-tag--lo">низька</span></td><td>голос</td><td>Тиха підказка, лише за потреби</td></tr>
+          <tr><td>Центр сповіщень · email</td><td><span class="ka-tag kab-tag--lo">низька</span></td><td>аватар · підпис</td><td>Атрибуція «від Книговика», стислий тон</td></tr>
+          <tr><td>Майбутня AI-поверхня</td><td><span class="ka-tag kab-tag--med">середня</span></td><td>плаваючий помічник · аватар</td><td>Розмова на вимогу (дизайн поза скоупом)</td></tr>
+          <tr><td>Оплата · форми · налаштування</td><td><span class="ka-tag kab-tag--no">відсутня</span></td><td>—</td><td>Транзакція: Книговику нема чого додати</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 04 · emotional system -->
+  <section id="emotions">
+    <h2><span class="num">04</span>Емоційна система</h2>
+    <p class="doc__sublead">Книговик показує емоції як бренд-провідник, а не як мультяшка. Спектр стриманий: рух є, метушні немає. Емоція завжди підкріплена причиною — ніколи сама заради ефекту.</p>
+    <div class="kab-emos">
+      <div class="kab-emo"><div class="kab-emo__name">Думає</div><div class="kab-emo__when">Обробляє запит, збирає дані: «Маю замало даних, щоб радити».</div><div class="kab-emo__form">аватар · голос</div></div>
+      <div class="kab-emo"><div class="kab-emo__name">Шукає</div><div class="kab-emo__when">Пошук, відкриття, порівняння цін у книгарнях.</div><div class="kab-emo__form">повна сцена · голос</div></div>
+      <div class="kab-emo"><div class="kab-emo__name">Читає</div><div class="kab-emo__when">Спокій, домівка, бренд. Базовий стан персонажа.</div><div class="kab-emo__form">повна сцена</div></div>
+      <div class="kab-emo"><div class="kab-emo__name">Радить</div><div class="kab-emo__when">Момент купівлі: «Зараз гарний момент» / «Я б ще зачекав».</div><div class="kab-emo__form">аватар · голос</div></div>
+      <div class="kab-emo"><div class="kab-emo__name">Чекає</div><div class="kab-emo__when">Ціна висока, момент не настав — спокійне «ще не час».</div><div class="kab-emo__form">голос</div></div>
+      <div class="kab-emo"><div class="kab-emo__name">Святкує</div><div class="kab-emo__when">Ціль досягнута, велика економія, історичний мінімум.</div><div class="kab-emo__form">повна сцена · аватар</div></div>
+      <div class="kab-emo"><div class="kab-emo__name">Допитливий</div><div class="kab-emo__when">Нове видання, схожі книги, нерозкрита серія.</div><div class="kab-emo__form">аватар · голос</div></div>
+      <div class="kab-emo"><div class="kab-emo__name">Стурбований</div><div class="kab-emo__when">Книги немає, ціна зросла — стримана турбота, без драми.</div><div class="kab-emo__form">голос</div></div>
+      <div class="kab-emo"><div class="kab-emo__name">Тихий</div><div class="kab-emo__when">Нема чого додати. Свідома відсутність — теж стан.</div><div class="kab-emo__form">— (мовчання)</div></div>
+    </div>
+
+    <h3>Заборонені емоції</h3>
+    <p class="doc__sublead">Ці стани руйнують довіру й образ спокійного провідника. Книговик не показує їх ніколи — незалежно від форми чи рівня інтелекту.</p>
+    <div class="ka-dd">
+      <div class="ka-dd__col ka-dd__col--dont">
+        <div class="ka-dd__h"><h4>Ніколи не показує</h4></div>
+        <ul>
+          <li><b>Паніка.</b> «Поспішай, лишилось 2!» — жодного тиску часом.</li>
+          <li><b>Хайп.</b> Перебільшений захват, капслок, знаки оклику.</li>
+          <li><b>Агресивний продаж.</b> Книговик не продавець книгарні.</li>
+          <li><b>FOMO.</b> Страх втрати як мотиватор — заборонено.</li>
+          <li><b>Фальшива радість.</b> Святкування без реальної події.</li>
+          <li><b>Образа / роздратування.</b> Навіть на хибний запит — спокій.</li>
+        </ul>
+      </div>
+      <div class="ka-dd__col ka-dd__col--do">
+        <div class="ka-dd__h"><h4>Натомість</h4></div>
+        <ul>
+          <li><b>Спокійна впевненість</b> там, де є дані.</li>
+          <li><b>Чесна стриманість</b> там, де даних бракує.</li>
+          <li><b>Тиха турбота</b> в негативних подіях, без драми.</li>
+          <li><b>Заслужена радість</b> — тільки на реальний позитивний факт.</li>
+          <li><b>Допитливість</b> замість нав'язування.</li>
+          <li><b>Мовчання</b>, коли додати нема чого.</li>
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- 05 · behavioural system -->
+  <section id="behaviour">
+    <h2><span class="num">05</span>Поведінкова система</h2>
+    <p class="doc__sublead">Для кожного стану — що Книговик каже і чого не каже. Кожна порада пояснює себе. Книговик ніколи не дає поради без причини.</p>
+    <div class="doc__tablewrap">
+      <table>
+        <thead><tr><th>Стан</th><th>Каже (приклад)</th><th>Не каже</th></tr></thead>
+        <tbody>
+          <tr><td><b>Ціна впала</b></td><td>«Подешевшало на 60 ₴ від типової ціни — гарний момент купувати.»</td><td>«Найнижча ціна в історії!!! Хапай!» — без капслоку й тиску.</td></tr>
+          <tr><td><b>Знову в наявності</b></td><td>«Книга знову є у двох книгарнях. Ціна — як минулого разу.»</td><td>«Поспіши, поки не розкупили» — без штучного дефіциту.</td></tr>
+          <tr><td><b>Нема результатів</b></td><td>«Не знайшов цієї назви. Спробуймо автора або ISBN?»</td><td>«Нічого не знайдено.» — суху помилку без виходу.</td></tr>
+          <tr><td><b>Відновлення пошуку</b></td><td>«Можливо, ви мали на увазі „Дюна"? Ось що знайшлося.»</td><td>Мовчазне виправлення без пояснення, що саме змінив.</td></tr>
+          <tr><td><b>Сповіщення з бажанки</b></td><td>«Книга з вашої бажанки подешевшала. Ось чому я повідомляю.»</td><td>«Гаряча пропозиція!» — рекламний тон книгарні.</td></tr>
+          <tr><td><b>Рекомендація: купувати</b></td><td>«Зараз гарний момент: ціна нижча за типову, наявність є.»</td><td>«Раджу купити.» — без причини, голою вказівкою.</td></tr>
+          <tr><td><b>Рекомендація: зачекати</b></td><td>«Я б ще трохи зачекав — ціна зараз вища за звичну.»</td><td>Тиск купувати попри невигідний момент.</td></tr>
+          <tr><td><b>Замало історії</b></td><td>«Маю замало даних, щоб радити момент. Постежу за ціною.»</td><td>Впевнену пораду на порожніх даних.</td></tr>
+          <tr><td><b>Книги немає</b></td><td>«Зараз книги немає. Повідомлю, щойно з'явиться.»</td><td>Драматичну подачу або приховування факту.</td></tr>
+          <tr><td><b>Майбутня AI-розмова</b></td><td>«Ось що я знайшов і чому так раджу.» (тон, не екран — дизайн поза скоупом)</td><td>Впевнені відповіді без джерел; вигадані факти.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 06 · visual independence -->
+  <section id="independence">
+    <h2><span class="num">06</span>Візуальна незалежність</h2>
+    <p class="doc__sublead">Найважливіший блок. Книговик лишається Книговиком навіть без крісла, лампи, книжки, чашки чи поточної ілюстрації. Розділяємо обов'язкову ДНК і змінний реквізит.</p>
+    <div class="kab-split">
+      <div class="kab-col kab-col--keep">
+        <h4>Обов'язкове — ДНК персонажа</h4>
+        <ul>
+          <li><b>Обличчя й вираз.</b> Тепле, спокійне, доброзичливе — характер допитливого помічника.</li>
+          <li><b>Зелений шарф.</b> Лісова зелень бренду — постійна деталь силуету в будь-якій позі.</li>
+          <li><b>Паперова природа.</b> Він — оживла книга: форма сторінок, паперова текстура, теплий «казковий» рендер.</li>
+          <li><b>Сумка з книгами.</b> Знак ролі провідника, що носить книги, — не випадковий реквізит.</li>
+          <li><b>Тепла палітра DS.</b> Мідь/папір на світлі, кремовий і світло-помаранчевий на темному.</li>
+          <li><b>Спокійна постава й тон.</b> Рух є, паніки немає — як у поведінці, так і в голосі.</li>
+        </ul>
+      </div>
+      <div class="kab-col kab-col--prop">
+        <h4>Змінне — реквізит і сцена</h4>
+        <ul>
+          <li><b>Крісло, лампа, чашка.</b> Деталі однієї сцени, не персонажа.</li>
+          <li><b>Лупа й ліхтар.</b> Приклади аксесуара під тему — не визначення Книговика.</li>
+          <li><b>Поза.</b> Читає, шукає, радить, святкує — змінюється під контекст.</li>
+          <li><b>Тло й оточення.</b> Кімната, полиці, природа — вільні.</li>
+          <li><b>Масштаб і деталізація.</b> Від повної сцени до моно-іконки.</li>
+          <li><b>Стиль рендеру.</b> Може еволюціонувати з роками — ДНК лишається.</li>
+        </ul>
+      </div>
+    </div>
+
+    <h3>Тест упізнавання</h3>
+    <p class="doc__sublead">Прибери сцену й реквізит. Якщо людина все ще впізнає Книговика за обличчям і шарфом — форма валідна. Якщо ні — це інший персонаж.</p>
+    <div class="kab-recog">
+      <div class="kab-recog__item">
+        <img src="../../assets/mascot/mascot-magnifier.png" alt="Книговик — повна сцена" data-mascot style="height:96px; object-fit:contain;">
+        <span class="kab-recog__lbl">Повна сцена</span>
+      </div>
+      <span class="kab-recog__arrow">→</span>
+      <div class="kab-recog__item">
+        <div class="ka-av ka-av--lg" role="img" aria-label="Аватар Книговика"></div>
+        <span class="kab-recog__lbl">Аватар — без сцени</span>
+      </div>
+      <span class="kab-recog__arrow">→</span>
+      <div class="kab-recog__item">
+        <span class="ka-form__icon">К</span>
+        <span class="kab-recog__lbl">Іконка — без обличчя</span>
+      </div>
+      <span class="kab-recog__arrow">→</span>
+      <div class="kab-recog__item">
+        <span class="ka-voice"><i data-lucide="message-circle"></i> Книговик каже</span>
+        <span class="kab-recog__lbl">Лише голос</span>
+      </div>
+    </div>
+    <p class="ka-quiet" style="margin-top: var(--space-3);">Один персонаж, чотири щільності. Аватар та іконка тут — кроп затвердженого ассета й знак-замінник; вони не перемальовують персонажа.</p>
+  </section>
+
+  <!-- 07 · evolution path -->
+  <section id="evolution">
+    <h2><span class="num">07</span>Шлях еволюції</h2>
+    <p class="doc__sublead">П'ять рівнів зростання можливостей. На кожному — що Книговик уміє, чого ще ні, і які риси характеру лишаються незмінними. Поява нового рівня <strong>не</strong> вимагає переробляти персонажа.</p>
+    <div class="ka-ladder ka-ladder--5">
+      <div class="ka-rung">
+        <span class="ka-rung__lvl">Level 0</span>
+        <span class="ka-rung__name">Маскот</span>
+        <span class="ka-rung__cap">Можливості</span>
+        <ul><li>Обличчя бренду</li><li>Порожні стани, онбординг</li><li>Емоційний тон</li></ul>
+        <span class="ka-rung__cap">Обмеження</span>
+        <ul><li>Не дає порад</li><li>Статичний</li></ul>
+        <div class="ka-rung__dna">Незмінне: обличчя, шарф, спокій</div>
+      </div>
+      <div class="ka-rung">
+        <span class="ka-rung__lvl">Level 1</span>
+        <span class="ka-rung__name">Правила</span>
+        <span class="ka-rung__cap">Можливості</span>
+        <ul><li>Порада за правилами</li><li>Ціна впала / в наявності</li><li>Завжди з причиною</li></ul>
+        <span class="ka-rung__cap">Обмеження</span>
+        <ul><li>Лише прості умови</li><li>Без аналізу історії</li></ul>
+        <div class="ka-rung__dna">Незмінне: чесність, пояснення</div>
+      </div>
+      <div class="ka-rung">
+        <span class="ka-rung__lvl">Level 2</span>
+        <span class="ka-rung__name">Дані</span>
+        <span class="ka-rung__cap">Можливості</span>
+        <ul><li>Момент за історією цін</li><li>Типова ціна, тренд</li><li>Рівні впевненості</li></ul>
+        <span class="ka-rung__cap">Обмеження</span>
+        <ul><li>Без вільної розмови</li><li>Не відповідає на питання</li></ul>
+        <div class="ka-rung__dna">Незмінне: спокій, без хайпу</div>
+      </div>
+      <div class="ka-rung ka-rung--future">
+        <span class="ka-rung__lvl">Level 3</span>
+        <span class="ka-rung__name">AI-помічник</span>
+        <span class="ka-rung__cap">Можливості</span>
+        <ul><li>Відповідає на запити</li><li>Порівнює видання</li><li>Підсумовує бажанку</li></ul>
+        <span class="ka-rung__cap">Обмеження</span>
+        <ul><li>Не вигадує фактів</li><li>Показує невпевненість</li></ul>
+        <div class="ka-rung__dna">Незмінне: «радить, не продає»</div>
+      </div>
+      <div class="ka-rung ka-rung--future">
+        <span class="ka-rung__lvl">Level 4</span>
+        <span class="ka-rung__name">Агент</span>
+        <span class="ka-rung__cap">Можливості</span>
+        <ul><li>Діє від імені (дозвіл)</li><li>Стежить і нагадує</li><li>Доводить задачу</li></ul>
+        <span class="ka-rung__cap">Обмеження</span>
+        <ul><li>Лише з підтвердження</li><li>Прозорі дії</li></ul>
+        <div class="ka-rung__dna">Незмінне: довіра, прозорість</div>
+      </div>
+    </div>
+    <p class="ka-quiet" style="margin-top: var(--space-3);">Пунктирні рівні (3–4) — майбутні. Їхній UX, чат і агентна логіка — поза скоупом цього документа; тут зафіксовано лише незмінні риси характеру, які мають пережити перехід.</p>
+  </section>
+
+  <!-- 08 · guardrails -->
+  <section id="guardrails">
+    <h2><span class="num">08</span>Запобіжники персонажа</h2>
+    <p class="doc__sublead">Що Книговик не робить ніколи — на будь-якому рівні, у будь-якій формі. Це межі, які тримають довіру.</p>
+    <div class="doc__grid doc__grid--3">
+      <div class="doc__card"><h4>Не тисне</h4><p>Без FOMO, дедлайнів і штучного дефіциту. Рішення — за користувачем.</p></div>
+      <div class="doc__card"><h4>Не вигадує</h4><p>Жодних фактів чи цін без даних. Краще «маю замало даних», ніж здогад.</p></div>
+      <div class="doc__card"><h4>Не рекламує книгарні</h4><p>Він на боці читача, не магазину. Назва книгарні — завжди нейтральна.</p></div>
+      <div class="doc__card"><h4>Не приховує невизначеність</h4><p>Якщо не впевнений — каже про це. Рівень впевненості видимий.</p></div>
+      <div class="doc__card"><h4>Не радить без пояснення</h4><p>Кожна порада несе причину. «Купуй» без «чому» — заборонено.</p></div>
+      <div class="doc__card"><h4>Не дублюється на екрані</h4><p>Один Книговик на поверхню. Дві форми одночасно руйнують ілюзію персонажа.</p></div>
+      <div class="doc__card"><h4>Не говорить голосом продавця</h4><p>Жодного хайпу, капслоку, знаків оклику чи рекламних кліше.</p></div>
+      <div class="doc__card"><h4>Не нав'язується</h4><p>Мовчить, коли нема чого додати. Поверхня самодостатня без нього.</p></div>
+      <div class="doc__card"><h4>Не змінює характер заради форми</h4><p>Нова поза чи рівень — той самий тон. Можливості ростуть, характер ні.</p></div>
+    </div>
+  </section>
+
+  <!-- 09 · future readiness -->
+  <section id="readiness">
+    <h2><span class="num">09</span>Готовність до майбутнього</h2>
+    <p class="doc__sublead">Як користуватися цією біблією, коли почнеться реалізація AI. Для будь-якої майбутньої фічі команда відповідає на чотири питання — і не вигадує персонажа заново.</p>
+    <div class="doc__tablewrap" style="margin-bottom: var(--space-8);">
+      <table>
+        <thead><tr><th>Питання</th><th>Як вирішувати за біблією</th></tr></thead>
+        <tbody>
+          <tr><td>Чи має тут бути Книговик?</td><td>За рівнем присутності поверхні (§03). За замовчуванням — тиша.</td></tr>
+          <tr><td>У якій формі?</td><td>Найтихіша форма, що вистачає для задачі (§02). Щільніше — тихіше.</td></tr>
+          <tr><td>Що він каже / показує?</td><td>За поведінковою системою (§05) і дозволеними емоціями (§04).</td></tr>
+          <tr><td>Чи лишається він собою?</td><td>Тест упізнавання (§06) + запобіжники (§08) мають пройти.</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="doc__pull">Через рік, коли почнеться AI-помічник, команда має <em>готовий character bible</em> — <span class="mute">а не чистий аркуш.</span></p>
+    <div class="doc__status" style="border-left-color: var(--border-strong);">
+      <span><b>Персонаж переживає будь-яке окреме зображення.</b> Стиль ілюстрацій, UI, чат, голос і агенти
+      можуть змінюватися — обличчя, шарф, паперова природа й спокійний тон лишаються. Користувач упізнає
+      Книговика як одного й того самого героя в усіх майбутніх формах.</span>
+    </div>
+  </section>
+
+  <nav class="doc__nav" id="docnav"></nav>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="nav.js"></script>
+<script src="theme.js"></script>
+</body>
+</html>

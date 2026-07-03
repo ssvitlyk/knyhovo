@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<!-- @pattern name="Knyhovyk AI Assistant — Presence Map" version="1.0" status="foundation"
+     note="W8. Every surface where Knyhovyk may appear × required/optional/hidden × form × role × level.
+     DS v1.0 tokens only. Does not redesign any surface — maps presence onto frozen screens." -->
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Книговик — W8 · Карта присутності</title>
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+<link rel="stylesheet" href="ka.css">
+</head>
+<body>
+<div class="doc__topbar">
+  <img id="doc-logo" src="../../assets/logo/knyhovo-logo-light.png" alt="Knyhovo">
+  <div class="doc__topbar-r">
+    <span class="doc__w8">W8 · Knyhovyk AI Foundation</span>
+    <button id="theme-btn" class="kn-btn kn-btn--secondary kn-btn--sm" type="button">Темна тема</button>
+  </div>
+</div>
+
+<div class="doc">
+  <p class="doc__eyebrow">W8 · КАРТА ПРИСУТНОСТІ</p>
+  <h1 class="doc__title">Де Книговик <em>з'являється</em> — і де ні</h1>
+  <p class="doc__lead">
+    Для кожної поверхні Knyhovo визначено: чи Книговик обов'язковий, опціональний чи прихований,
+    у якій формі він присутній, що саме робить — і з якого рівня інтелекту ця присутність активна.
+    Менше — краще: тиша за замовчуванням.
+  </p>
+
+  <div class="doc__status">
+    <span><b>Присутність, а не редизайн.</b> Карта накладає Книговика на <strong>заморожені екрани</strong>
+    (Search, Book Details, Price History, Wishlist, Alerts) — їхній layout, типографіка й компоненти
+    не змінюються. Форми — за <a href="Character System.html">Системою персонажа</a>.</span>
+  </div>
+
+  <!-- legend -->
+  <section id="legend" style="margin-bottom: var(--space-10);">
+    <h2><span class="num">01</span>Позначення</h2>
+    <div class="doc__grid doc__grid--3">
+      <div class="doc__card"><span class="ka-tag ka-tag--req">обов'язково</span><p style="margin-top: var(--space-3);">Книговик завжди присутній — поверхня без нього неповна.</p></div>
+      <div class="doc__card"><span class="ka-tag ka-tag--opt">опціонально</span><p style="margin-top: var(--space-3);">З'являється за умовою (є дані / є подія). Інакше — мовчить.</p></div>
+      <div class="doc__card"><span class="ka-tag ka-tag--hide">приховано</span><p style="margin-top: var(--space-3);">Не з'являється. Поверхня самодостатня без поради.</p></div>
+    </div>
+    <p class="doc__sublead" style="margin-top: var(--space-4);">Форми: <span class="ka-tag ka-tag--hide">повна сцена</span> <span class="ka-tag ka-tag--hide">аватар</span> <span class="ka-tag ka-tag--hide">голос</span> <span class="ka-tag ka-tag--hide">іконка</span> — за Системою персонажа. «Рівень» — найраніший рівень інтелекту, з якого присутність активна (див. <a href="AI Readiness.html">Готовність до AI</a>).</p>
+  </section>
+
+  <!-- map -->
+  <section id="map">
+    <h2><span class="num">02</span>Карта поверхонь</h2>
+    <div class="doc__tablewrap">
+      <table>
+        <thead><tr><th>Поверхня</th><th>Присутність</th><th>Форма</th><th>Що робить Книговик</th><th>Рівень</th></tr></thead>
+        <tbody>
+          <tr><td><b>Домівка</b></td><td><span class="ka-tag ka-tag--opt">опц.</span></td><td><span class="ka-tag ka-tag--hide">сцена</span></td><td>Обличчя бренду й привітання. Не радить — задає тон і тепло.</td><td>0</td></tr>
+          <tr><td><b>Пошук · результати</b></td><td><span class="ka-tag ka-tag--hide">прих.</span></td><td>—</td><td>Мовчить. Підказки й відновлення — це інструмент (W7), не голос Книговика.</td><td>—</td></tr>
+          <tr><td><b>Пошук · порожньо / не знайдено</b></td><td><span class="ka-tag ka-tag--req">обов.</span></td><td><span class="ka-tag ka-tag--hide">сцена</span></td><td>Веде з глухого кута: стежити за появою · попросити додати · вказати ISBN.</td><td>0</td></tr>
+          <tr><td><b>Сторінка книги</b></td><td><span class="ka-tag ka-tag--opt">опц.</span></td><td><span class="ka-tag ka-tag--hide">аватар</span></td><td>Порада про момент купівлі, коли є дані: «гарний момент» / «зачекав би» + причина.</td><td>2</td></tr>
+          <tr><td><b>Динаміка ціни</b></td><td><span class="ka-tag ka-tag--opt">опц.</span></td><td><span class="ka-tag ka-tag--hide">голос</span></td><td>Пояснює графік словами: нижче/вище за типову ціну, близько до мінімуму.</td><td>2</td></tr>
+          <tr><td><b>Бажанки</b></td><td><span class="ka-tag ka-tag--req">обов.</span></td><td><span class="ka-tag ka-tag--hide">аватар</span></td><td>Серце персонажа: стежить, підказує момент, виносить знижки нагору, веде по полиці.</td><td>1</td></tr>
+          <tr><td><b>Сповіщення (email / пуш)</b></td><td><span class="ka-tag ka-tag--req">обов.</span></td><td><span class="ka-tag ka-tag--hide">голос</span></td><td>Повідомляє подію з причиною: ціна впала / знову в наявності / ціль досягнута.</td><td>1</td></tr>
+          <tr><td><b>Центр сповіщень</b></td><td><span class="ka-tag ka-tag--opt">опц.</span></td><td><span class="ka-tag ka-tag--hide">аватар</span></td><td>Спокійне зведення «що змінилось у твоїх книгах», без шуму й без дублів.</td><td>1</td></tr>
+          <tr><td><b>Майбутня поверхня помічника</b></td><td><span class="ka-tag ka-tag--opt">опц.</span></td><td><span class="ka-tag ka-tag--hide">аватар · голос</span></td><td>Відповіді на запитання, порівняння видань, поради по бажанці. Поза скоупом W8.</td><td>3</td></tr>
+          <tr><td><b>Оплата · форми · налаштування</b></td><td><span class="ka-tag ka-tag--hide">прих.</span></td><td>—</td><td>Нічого. Книговику тут нема чого додати — він не захаращує транзакції.</td><td>—</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- rules -->
+  <section id="rules">
+    <h2><span class="num">03</span>Глобальні правила присутності</h2>
+    <ul>
+      <li><strong>Тиша за замовчуванням.</strong> Якщо поверхня не в списку «обов'язково» — Книговик з'являється лише за чіткою умовою.</li>
+      <li><strong>Один Книговик на екран.</strong> Ніколи не дві форми чи два блоки поради одночасно. Сцена й аватар не співіснують.</li>
+      <li><strong>Пошук — територія інструмента.</strong> Виправлення, ISBN, серії — голос Knyhovo (W7). Книговик мовчить, доки не з'явиться що порадити.</li>
+      <li><strong>Повна сцена — рідкісна й заслужена.</strong> Лише порожні стани й онбординг. Рутинні поверхні отримують максимум аватар.</li>
+      <li><strong>Присутність росте з рівнем.</strong> На Level 0–1 Книговик присутній, але каже прості, детерміновані речі; судження про ціну з'являються лише з Level 2.</li>
+      <li><strong>Прихована поверхня лишається прихованою.</strong> Поява AI (Level 3) не дає права захаращувати оплату чи налаштування.</li>
+    </ul>
+  </section>
+
+  <!-- future -->
+  <section id="future">
+    <h2><span class="num">04</span>Зарезервована поверхня: помічник</h2>
+    <p class="doc__sublead">W8 не проєктує чат. Але карта резервує для нього місце, щоб поява AI не вимагала редизайну.</p>
+    <div class="doc__grid">
+      <div class="doc__card"><h4>Як входить</h4><p>Як продовження присутніх форм: аватар Книговика, якого вже знають із бажанок і сповіщень, стає точкою входу в розмову. Не новий продукт — нова можливість того самого персонажа.</p></div>
+      <div class="doc__card"><h4>Чого не робить</h4><p>Не перехоплює пошук, не спливає непрошено, не з'являється на транзакційних екранах. Активується на вимогу, говорить тим самим голосом, завжди пояснює й показує впевненість.</p></div>
+    </div>
+    <p class="ka-quiet" style="margin-top: var(--space-3);">Сценарії, які користувач зрештою ставитиме, та їхня класифікація — у <a href="AI Readiness.html">Готовності до AI</a>.</p>
+  </section>
+
+  <nav class="doc__nav" id="docnav"></nav>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="nav.js"></script>
+<script src="theme.js"></script>
+</body>
+</html>

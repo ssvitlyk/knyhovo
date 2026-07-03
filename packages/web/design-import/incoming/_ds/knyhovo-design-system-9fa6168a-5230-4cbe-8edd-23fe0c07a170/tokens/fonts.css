@@ -1,0 +1,6 @@
+/* Knyhovo webfonts
+   Headings & accents: Lora (serif) — Regular / Semibold / Italic
+   Body, UI, buttons:  Inter (sans) — Regular / Medium / Semibold
+   Both are the typefaces specified in the source design system and are
+   served here from Google Fonts. */
+@import url('https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Inter:wght@400;500;600;700&display=swap');

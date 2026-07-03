@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<!-- @pattern name="Knyhovo Magic Link — invalid/expired" surface="Auth · GET /auth/verify?token=… (invalid)"
+     note="Shown after following a magic link whose token is already used or expired. Separate
+           minimal page, same frozen Knyhovo chrome + DS v1.0. Never red (DS rule)." -->
+<html lang="uk" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Knyhovo — Посилання недійсне</title>
+
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+  <link rel="stylesheet" href="design-import/alerts-v1/alerts.css">
+  <style> html, body { margin: 0; background: var(--bg); } </style>
+</head>
+<body>
+  <div id="expired-root"></div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/_ds_bundle.js"></script>
+  <script type="text/babel" src="np-shared.jsx"></script>
+  <script type="text/babel" src="ml-shared.jsx"></script>
+  <script type="text/babel">
+    function ExpiredPage() {
+      const [mobile, setMobile] = React.useState(() => window.matchMedia('(max-width: 767px)').matches);
+      React.useEffect(() => {
+        const mq = window.matchMedia('(max-width: 767px)');
+        const fn = (e) => setMobile(e.matches);
+        mq.addEventListener('change', fn);
+        return () => mq.removeEventListener('change', fn);
+      }, []);
+      const theme = document.documentElement.getAttribute('data-theme') || 'light';
+      return <window.ML_Frame variant="invalid" mobile={mobile} theme={theme} />;
+    }
+    ReactDOM.createRoot(document.getElementById('expired-root')).render(<ExpiredPage />);
+  </script>
+
+  <template id="__bundler_thumbnail">
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80">
+      <rect width="120" height="80" fill="#F9F3ED"/>
+      <path d="M2 2 118 78" stroke="#B56A2D" stroke-width="2" stroke-linecap="round" opacity="0"/>
+      <path d="M50 40a8 8 0 0 1 0-11l4-4a8 8 0 0 1 11 0" fill="none" stroke="#B56A2D" stroke-width="3" stroke-linecap="round"/>
+      <path d="M70 40a8 8 0 0 1 0 11l-4 4a8 8 0 0 1-11 0" fill="none" stroke="#B56A2D" stroke-width="3" stroke-linecap="round"/>
+      <line x1="44" y1="26" x2="76" y2="58" stroke="#9A8C78" stroke-width="3" stroke-linecap="round"/>
+    </svg>
+  </template>
+</body>
+</html>

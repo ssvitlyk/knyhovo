@@ -1,0 +1,1378 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Добірки — Повна продуктова пропозиція · Knyhovo</title>
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:15px;line-height:1.65}
+a{color:var(--accent);text-decoration:none}
+ul,ol{padding-left:1.4em}
+li{margin-bottom:.3em}
+h1,h2,h3,h4{font-family:var(--font-display);text-wrap:balance}
+p,li{text-wrap:pretty}
+p{margin-bottom:.85rem}
+strong{font-weight:700}
+
+/* ── DOC LAYOUT ─────────────────────────────── */
+.doc{box-sizing:border-box;max-width:8.5in;margin:0 auto;background:inherit;padding:48px clamp(24px,5vw,.75in) 96px}
+.doc-frame{width:100%;border-collapse:collapse}
+.doc-frame td{padding:0}
+.running-hdr,.running-ftr,.hdr-space,.ftr-space{display:none}
+
+/* ── COVER ──────────────────────────────────── */
+.cover{padding:3.5rem 0 2.75rem;border-bottom:3px solid var(--accent);margin-bottom:4rem}
+.cover__eye{font-size:11px;letter-spacing:2.5px;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:1.5rem}
+.cover__title{font-size:clamp(2.25rem,4vw,3.25rem);font-weight:700;line-height:1.07;margin-bottom:.7rem}
+.cover__title em{color:var(--accent);font-style:italic}
+.cover__sub{font-size:1.05rem;color:var(--text-muted);margin-bottom:2rem}
+.cover__meta{display:flex;gap:2rem;font-size:13px;color:var(--text-muted);opacity:.7;flex-wrap:wrap}
+
+/* ── TOC ────────────────────────────────────── */
+.toc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem 2rem;margin-bottom:4rem}
+.toc__lbl{font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:1rem;font-family:var(--font-body)}
+.toc__grid{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 2.5rem;list-style:none;padding:0}
+.toc__item{font-size:14px}
+.toc__n{font-family:var(--font-display);font-weight:700;color:var(--accent);opacity:.4;margin-right:.5ch;font-size:12px}
+
+/* ── PART HEADER ────────────────────────────── */
+.part{margin-top:5rem;padding-top:3rem;border-top:2px solid var(--border)}
+.part__row{display:flex;gap:1.5rem;align-items:flex-start;margin-bottom:2rem}
+.part__n{font-family:var(--font-display);font-size:2.25rem;font-weight:700;color:var(--accent);opacity:.18;line-height:1;flex-shrink:0;min-width:2.2ch;text-align:right}
+.part__info{flex:1}
+.part__lbl{font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:.35rem;font-family:var(--font-body)}
+.part__title{font-size:1.6rem;font-weight:700;line-height:1.2}
+
+/* ── HEADINGS IN-BODY ───────────────────────── */
+.h3{font-size:1.1rem;font-weight:700;margin-top:2.25rem;margin-bottom:.6rem}
+.h4{font-size:.84rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--text-muted);margin-top:1.75rem;margin-bottom:.5rem;font-family:var(--font-body)}
+
+/* ── VERDICT ────────────────────────────────── */
+.verdict{background:color-mix(in oklab,var(--accent) 6%,var(--bg));border-left:4px solid var(--accent);border-radius:0 10px 10px 0;padding:1.1rem 1.4rem;margin:1.75rem 0}
+.verdict__lbl{font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:700;color:var(--accent);margin-bottom:.4rem;font-family:var(--font-body)}
+.verdict__text{font-size:15px;font-weight:500;line-height:1.55}
+.verdict__text strong{color:var(--accent)}
+.note{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1rem 1.25rem;margin:1.25rem 0;font-size:14px;color:var(--text)}
+.note strong{display:block;margin-bottom:.3rem;font-size:.95rem}
+
+/* ── OPTION GRID ────────────────────────────── */
+.opt-grid{display:grid;grid-template-columns:1fr 1fr;gap:1rem;margin:1.25rem 0}
+.opt{border:1px solid var(--border);border-radius:10px;padding:1.25rem}
+.opt--win{border-color:var(--accent);border-width:2px;background:color-mix(in oklab,var(--accent) 5%,var(--bg))}
+.opt__letter{font-family:var(--font-display);font-size:1.6rem;font-weight:700;margin-bottom:.2rem}
+.opt--win .opt__letter{color:var(--accent)}
+.opt:not(.opt--win) .opt__letter{color:var(--text-muted);opacity:.4}
+.opt__name{font-size:.975rem;font-weight:700;margin-bottom:.25rem}
+.opt__tag{font-size:13px;color:var(--text-muted);font-style:italic;margin-bottom:.8rem}
+.opt ul{font-size:13px}
+.tag-row{display:flex;flex-wrap:wrap;gap:.35rem;margin-top:.75rem}
+.tag{font-size:10.5px;font-weight:600;padding:2px 8px;border-radius:999px;border:1px solid var(--border);color:var(--text-muted)}
+.tag--hi{background:color-mix(in oklab,#24513E 12%,var(--bg));border-color:#24513E;color:#24513E}
+.tag--md{background:color-mix(in oklab,var(--accent) 10%,var(--bg));border-color:var(--accent);color:var(--accent)}
+
+/* ── COMPARISON TABLE ───────────────────────── */
+.cmp{width:100%;border-collapse:collapse;font-size:13px;margin:1.25rem 0 2rem}
+.cmp th{background:var(--surface);padding:8px 11px;text-align:left;font-weight:700;border-bottom:2px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);white-space:nowrap}
+.cmp td{padding:8px 11px;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.5}
+.cmp tr:last-child td{border-bottom:none}
+.cmp tr.rec td{background:color-mix(in oklab,var(--accent) 5%,var(--bg));font-weight:500}
+.cmp tr.rec td:first-child{font-weight:700;color:var(--accent)}
+.s-hi{color:#24513E;font-weight:700}
+.s-md{color:var(--accent)}
+.s-lo{color:var(--text-muted)}
+
+/* ── IA TREE ─────────────────────────────────── */
+.tree{font-family:'Courier New',monospace;font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.25rem 1.5rem;margin:1rem 0;line-height:2;overflow-x:auto}
+.t1{color:var(--accent);font-weight:700}
+.t2{color:var(--text)}
+.t3{color:var(--text-muted)}
+.tc{color:var(--border-strong);font-size:11.5px;padding-left:.75rem}
+
+/* ── FLOW DIAGRAM ───────────────────────────── */
+.flow-wrap{padding:1rem 1.2rem;background:var(--surface);border:1px solid var(--border);border-radius:10px;margin:.6rem 0 1.25rem}
+.flow-lbl{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:.5rem;font-family:var(--font-body)}
+.flow{display:flex;align-items:center;gap:5px;flex-wrap:wrap}
+.fs{background:var(--bg);border:1px solid var(--border);border-radius:7px;padding:5px 11px;font-size:13px;font-weight:500;white-space:nowrap}
+.fs--e{background:var(--surface-accent)}
+.fs--c{background:color-mix(in oklab,var(--accent) 8%,var(--bg));border-color:var(--accent);color:var(--accent);font-weight:600}
+.fs--end{background:color-mix(in oklab,#24513E 10%,var(--bg));border-color:#24513E;color:#24513E;font-weight:600}
+.fa{color:var(--text-muted);font-size:15px;flex-shrink:0}
+
+/* ── WIREFRAME ──────────────────────────────── */
+.wf{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin:1.5rem 0;font-size:10.5px;font-family:var(--font-body);color:var(--text-muted)}
+.wf--mob{max-width:260px}
+.wf--tab{max-width:440px}
+.wf-nav{background:var(--surface);border-bottom:1px solid var(--border);padding:7px 12px;display:flex;align-items:center;gap:8px}
+.wf-logo-b{width:52px;height:8px;background:var(--border-strong);border-radius:3px;opacity:.55}
+.wf-nav-links{display:flex;gap:12px;margin-left:auto}
+.wf-nl{font-size:9px;color:var(--text-muted)}
+.wf-nl--a{color:var(--accent);font-weight:700}
+.wf-nbtn{background:var(--accent);color:white;font-size:8.5px;font-weight:700;padding:3px 9px;border-radius:5px}
+.wf-body{background:var(--bg);padding:11px 13px;display:flex;flex-direction:column;gap:9px}
+.wf-stag{font-size:8.5px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:3px;padding-bottom:3px;border-bottom:1px solid var(--border)}
+/* hero */
+.wf-hero{background:var(--surface);border-radius:6px;border:1px solid var(--border);padding:12px}
+.wf-eye-b{height:7px;width:48%;background:var(--border-strong);border-radius:3px;margin-bottom:6px;opacity:.4}
+.wf-h1a{height:13px;width:72%;background:var(--text-muted);border-radius:3px;margin-bottom:4px;opacity:.32}
+.wf-h1b{height:13px;width:52%;background:var(--text-muted);border-radius:3px;margin-bottom:7px;opacity:.32}
+.wf-subb{height:7px;width:62%;background:var(--border-strong);border-radius:3px;opacity:.22}
+/* featured */
+.wf-feat{background:var(--surface-accent);border:1px solid var(--border);border-radius:6px;padding:10px;display:flex;align-items:center;gap:9px}
+.wf-fc{width:34px;height:50px;background:var(--border-strong);border-radius:3px;flex-shrink:0;opacity:.38}
+.wf-fb{flex:1}
+.wf-ftag{font-size:8px;letter-spacing:1px;text-transform:uppercase;font-weight:700;color:var(--accent);margin-bottom:4px}
+.wf-ftitle{height:8.5px;width:78%;background:var(--text-muted);border-radius:3px;margin-bottom:4px;opacity:.38}
+.wf-fsub{height:6px;width:52%;background:var(--border-strong);border-radius:3px;opacity:.22}
+.wf-fcta{background:var(--accent);color:white;font-size:8px;font-weight:700;padding:4px 10px;border-radius:5px;flex-shrink:0;white-space:nowrap;opacity:.9}
+/* dynamic row */
+.wf-row{display:flex;gap:6px}
+.wf-dc{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:8px;min-width:0}
+.wf-dc__i{width:15px;height:15px;background:var(--border-strong);border-radius:3px;margin-bottom:5px;opacity:.38}
+.wf-dc__t{height:7px;background:var(--text-muted);border-radius:2px;margin-bottom:3px;opacity:.42}
+.wf-dc__n{height:5px;width:55%;background:var(--border-strong);border-radius:2px;opacity:.22}
+/* genre grid */
+.wf-ggrid{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.wf-ggrid--2{grid-template-columns:repeat(2,1fr)}
+.wf-gc{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:7px 8px;display:flex;align-items:center;gap:5px}
+.wf-gi{width:13px;height:13px;background:var(--border-strong);border-radius:3px;flex-shrink:0;opacity:.38}
+.wf-gn{height:6px;background:var(--text-muted);border-radius:2px;flex:1;opacity:.38}
+/* editorial row */
+.wf-erow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.wf-erow--1{grid-template-columns:1fr}
+.wf-ec{background:var(--surface-accent);border:1px solid var(--border);border-radius:6px;padding:10px}
+.wf-ea{width:22px;height:22px;background:var(--border-strong);border-radius:50%;margin-bottom:5px;opacity:.32}
+.wf-et{height:7px;width:80%;background:var(--text-muted);border-radius:2px;margin-bottom:3px;opacity:.38}
+.wf-es{height:5.5px;width:58%;background:var(--border-strong);border-radius:2px;opacity:.22}
+/* book grid */
+.wf-bgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.wf-bgrid--2{grid-template-columns:repeat(2,1fr)}
+.wf-bc{background:var(--surface);border:1px solid var(--border);border-radius:5px;padding:6px}
+.wf-bcov{width:100%;aspect-ratio:2/3;background:var(--border-strong);border-radius:3px;margin-bottom:5px;opacity:.28}
+.wf-btitle{height:6px;background:var(--text-muted);border-radius:2px;margin-bottom:3px;opacity:.36}
+.wf-bprice{height:7px;width:50%;background:var(--accent);border-radius:2px;opacity:.38}
+/* controls */
+.wf-ctrl{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:7px 9px;display:flex;gap:5px;align-items:center;flex-wrap:wrap}
+.wf-cbtn{font-size:9px;font-weight:600;padding:3px 8px;border:1px solid var(--border);border-radius:5px;background:var(--bg);color:var(--text-muted)}
+.wf-cbtn--a{border-color:var(--accent);color:var(--accent);background:color-mix(in oklab,var(--accent) 7%,var(--bg))}
+.wf-chip-r{display:flex;gap:4px;flex-wrap:wrap}
+.wf-ch{font-size:8.5px;font-weight:500;padding:3px 8px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-muted)}
+.wf-ch--a{border-color:var(--accent);color:var(--accent);background:color-mix(in oklab,var(--accent) 7%,var(--bg))}
+/* breadcrumb */
+.wf-bread{display:flex;gap:4px;align-items:center;margin-bottom:5px}
+.wf-bseg{height:6px;width:40px;background:var(--border-strong);border-radius:2px;opacity:.38}
+.wf-bsep{font-size:8px;opacity:.3}
+/* pagination */
+.wf-pag{display:flex;gap:4px;justify-content:center;padding:6px}
+.wf-pg{width:20px;height:20px;border:1px solid var(--border);border-radius:4px;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:8px;font-weight:600;color:var(--text-muted)}
+.wf-pg--a{background:var(--accent);border-color:var(--accent);color:white}
+/* related */
+.wf-relrow{display:flex;gap:6px}
+.wf-rc{flex:1;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:9px}
+.wf-rt{height:7px;background:var(--text-muted);border-radius:2px;margin-bottom:4px;opacity:.38}
+.wf-rs{height:5.5px;width:58%;background:var(--border-strong);border-radius:2px;opacity:.22}
+/* footer */
+.wf-foot{height:28px;background:var(--surface);border-top:1px solid var(--border);display:flex;align-items:center;padding:0 13px;gap:10px}
+.wf-fl{height:5.5px;width:56px;background:var(--border-strong);border-radius:2px;opacity:.28}
+.wf-fr{height:5.5px;width:36px;background:var(--border-strong);border-radius:2px;opacity:.18;margin-left:auto}
+.wf-cap{font-size:11.5px;color:var(--text-muted);text-align:center;padding:7px;border-top:1px solid var(--border);background:var(--surface)}
+/* collection detail hero */
+.wf-col-hero{background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:11px}
+.wf-ch1{height:14px;width:58%;background:var(--text-muted);border-radius:3px;margin-bottom:5px;opacity:.35}
+.wf-ch2{height:7px;width:72%;background:var(--border-strong);border-radius:3px;margin-bottom:6px;opacity:.22}
+.wf-ctags{display:flex;gap:5px}
+.wf-ctag{height:18px;width:60px;background:var(--surface-accent);border:1px solid var(--border);border-radius:5px}
+.wf-ctag--a{background:color-mix(in oklab,var(--accent) 10%,var(--bg));border-color:var(--accent)}
+
+/* ── URL TREE ────────────────────────────────── */
+.url-tree{font-family:'Courier New',monospace;font-size:13px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1.25rem 1.5rem;margin:1rem 0;line-height:1.95;overflow-x:auto}
+.ur{color:var(--accent);font-weight:700}
+.ud{color:color-mix(in oklab,#24513E 80%,var(--text))}
+.ue{color:var(--accent);opacity:.8}
+.ug{color:var(--text-muted)}
+.uc{color:var(--border-strong);font-size:11.5px;padding-left:.5rem}
+
+/* ── CONCEPT CARDS ──────────────────────────── */
+.concept-row{display:grid;grid-template-columns:repeat(3,1fr);gap:1rem;margin:1.25rem 0}
+.concept{border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.concept--win{border-color:var(--accent);border-width:2px}
+.concept__prev{padding:8px;display:flex;flex-direction:column;gap:4px;aspect-ratio:4/3}
+.cp1{background:var(--surface-accent)}
+.cp2{background:#1C1916}
+.cp3{background:var(--surface)}
+/* concept 1 editorial elements */
+.cp1-hero{height:38%;background:color-mix(in oklab,var(--accent) 18%,var(--surface-accent));border-radius:5px;display:flex;align-items:center;padding:5px 7px;gap:5px}
+.cp1-ht{flex:1;display:flex;flex-direction:column;gap:3px}
+.cp1-hl{height:6px;background:var(--text-muted);border-radius:2px;opacity:.38}
+.cp1-hl2{height:6px;width:65%;background:var(--text-muted);border-radius:2px;opacity:.38}
+.cp1-cover{width:22px;height:32px;background:var(--border-strong);border-radius:2px;flex-shrink:0;opacity:.45}
+.cp1-grid{flex:1;display:grid;grid-template-columns:2fr 1fr;grid-template-rows:1fr 1fr;gap:4px}
+.cp1-cell{background:color-mix(in oklab,var(--accent) 10%,var(--surface-accent));border-radius:3px}
+.cp1-tall{grid-row:span 2}
+/* concept 2 netflix elements */
+.cp2-chips{display:flex;gap:3px;margin-bottom:2px}
+.cp2-chip{height:10px;background:color-mix(in oklab,#F0A34A 22%,#1C1916);border-radius:999px;flex:1}
+.cp2-chip--a{background:#F0A34A;opacity:.7}
+.cp2-row{flex:1;display:flex;flex-direction:column;gap:4px;justify-content:center}
+.cp2-rail{display:flex;gap:3px;align-items:center}
+.cp2-lbl{height:6px;width:35%;background:#443D38;border-radius:2px}
+.cp2-cards{display:flex;gap:3px;flex:1;margin-top:2px}
+.cp2-card{flex:1;background:#2A2521;border-radius:3px;aspect-ratio:2/3}
+/* concept 3 library elements */
+.cp3-tabs{display:flex;gap:3px;margin-bottom:3px}
+.cp3-tab{height:12px;flex:1;background:var(--border);border-radius:3px;opacity:.4}
+.cp3-tab--a{background:var(--accent);opacity:.5}
+.cp3-lib{flex:1;display:grid;grid-template-columns:repeat(4,1fr);gap:3px}
+.cp3-item{background:color-mix(in oklab,var(--text-muted) 12%,var(--surface));border-radius:3px;display:flex;flex-direction:column;justify-content:flex-end;padding:3px}
+.cp3-il{height:5px;background:var(--border-strong);border-radius:2px;opacity:.5}
+.concept__body{padding:.9rem 1rem;border-top:1px solid var(--border)}
+.concept__name{font-size:13px;font-weight:700;margin-bottom:.4rem}
+.concept__verdict{font-size:11px;color:var(--text-muted);margin-bottom:.6rem;line-height:1.5}
+.concept__pro{font-size:12px;margin-bottom:.2rem}
+.concept__con{font-size:12px;color:var(--text-muted)}
+
+/* ── METADATA ROW ───────────────────────────── */
+.meta-row{display:flex;gap:1.5rem;flex-wrap:wrap;margin:1.25rem 0}
+.meta-item{background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:.65rem 1rem;flex:1;min-width:100px}
+.meta-item__val{font-family:var(--font-display);font-size:1.5rem;font-weight:700;color:var(--accent);line-height:1}
+.meta-item__lbl{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:.06em;font-weight:600;margin-top:.3rem;font-family:var(--font-body)}
+
+/* ── PRINT ──────────────────────────────────── */
+@page{size:letter;margin:0}
+@media print{
+  html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  html,body{margin:0;padding:0}
+  .doc{max-width:none!important;margin:0!important;padding:0 .75in!important}
+  .hdr-space,.ftr-space{display:table-cell;height:.75in!important}
+  h1,h2,h3,h4{break-after:avoid}
+  .wf,.opt,.verdict,.concept,.note,table{break-inside:avoid}
+  p,li{orphans:3;widows:3}
+}
+</style>
+</head>
+<body>
+<main class="doc">
+<table class="doc-frame" role="presentation">
+<thead><tr><td class="hdr-space"></td></tr></thead>
+<tbody><tr><td>
+
+<!-- ████ COVER ████ -->
+<div class="cover">
+  <p class="cover__eye">Knyhovo · Продуктова стратегія · Версія 1.0 · Червень 2026</p>
+  <h1 class="cover__title">Добірки.<br><em>Повна продуктова пропозиція.</em></h1>
+  <p class="cover__sub">Архітектура, UX та SEO-стратегія для розділу «Добірки» · /dobirky · Фінальна редакція після продуктового аудиту</p>
+  <div class="cover__meta">
+    <span>Аудит-зводка + 9 частин</span><span>·</span>
+    <span>Повна ІА + SEO + UX + Вайрфреми</span><span>·</span>
+    <span>Статус: затверджено · аудит червень 2026</span>
+  </div>
+</div>
+
+<!-- ████ TOC ████ -->
+<div class="toc">
+  <p class="toc__lbl">Зміст</p>
+  <ol class="toc__grid">
+    <li class="toc__item"><span class="toc__n" style="opacity:.5">00</span>Аудит-зводка</li>
+    <li class="toc__item"><span class="toc__n">01</span>Продуктова стратегія</li>
+    <li class="toc__item"><span class="toc__n">02</span>Інформаційна архітектура</li>
+    <li class="toc__item"><span class="toc__n">03</span>Користувацькі сценарії</li>
+    <li class="toc__item"><span class="toc__n">04</span>Сторінка Добірок (/dobirky)</li>
+    <li class="toc__item"><span class="toc__n">05</span>Сторінка окремої добірки</li>
+    <li class="toc__item"><span class="toc__n">06</span>Інтеграція з головною</li>
+    <li class="toc__item"><span class="toc__n">07</span>SEO-архітектура</li>
+    <li class="toc__item"><span class="toc__n">08</span>Візуальні концепції</li>
+    <li class="toc__item"><span class="toc__n">09</span>Фінальна рекомендація</li>
+  </ol>
+</div>
+
+
+<!-- ████ AUDIT · SECTION 00 ████ -->
+<div class="part" style="border-top-color:var(--accent)">
+  <div class="part__row">
+    <div class="part__n" style="opacity:.3">00</div>
+    <div class="part__info">
+      <p class="part__lbl">Продуктовий аудит · Червень 2026</p>
+      <h2 class="part__title">Зводка фінального аудиту</h2>
+    </div>
+  </div>
+  <p>Критичний аудит із позиції <strong>Product Lead · UX Architect · SEO Strategist · Growth Lead</strong>. Єдиний критерій: чи кожне рішення безпосередньо допомагає користувачу <em>знайти книгу дешевше, відкрити нову, порівняти ціни, додати у бажанки або підписатись на знижку?</em></p>
+  <table class="cmp">
+    <thead>
+      <tr><th style="width:18%">Частина</th><th>Вердикт</th><th style="width:13%">Статус</th><th>Що змінено</th></tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>01 · IA</strong></td>
+        <td>Динамічні: всі 6. Редакційних: 2 для MVP — 4 у V2.</td>
+        <td class="s-md">Скориговано</td>
+        <td>/vybir-redaktsiyi, /chytayemo-razom, /podarunkovi, /lito-2026 → V2</td>
+      </tr>
+      <tr>
+        <td><strong>02 · MVP Scope</strong></td>
+        <td>/avtor/, /vydavnytstvo/, /seriia/ — виключено з MVP.</td>
+        <td class="s-md">Скориговано</td>
+        <td>Авторські, видавничі, серійні сторінки → V2</td>
+      </tr>
+      <tr>
+        <td><strong>03 · SEO</strong></td>
+        <td>/dobirky/fentezi підтверджено. /zhanry — план міграції для V2.</td>
+        <td class="s-lo">Підтверджено</td>
+        <td>Жанри залишаються в /dobirky для MVP</td>
+      </tr>
+      <tr>
+        <td><strong>04 · Landing Page</strong></td>
+        <td>«Популярні автори» — вилучено. Без /avtor/ сторінок = мертві посилання.</td>
+        <td class="s-md">Скориговано</td>
+        <td>6 секцій замість 7</td>
+      </tr>
+      <tr>
+        <td><strong>05 · Details Page</strong></td>
+        <td>Реєстраційний промпт — відсутня точка конверсії SEO-трафіку.</td>
+        <td class="s-md">Доповнено</td>
+        <td>Новий елемент між сіткою та пагінацією</td>
+      </tr>
+      <tr>
+        <td><strong>06 · Homepage</strong></td>
+        <td>«Переглянути всі» — правильно. CTA показує кількість книг.</td>
+        <td class="s-lo">Підтверджено</td>
+        <td>CTA: «Усі N книг →» (динамічний лічильник)</td>
+      </tr>
+      <tr class="rec">
+        <td><strong>07 · Архітектура</strong></td>
+        <td>MVP = 6 динамічних · 2 редакційних · 8 жанрів · хаб · деталі · hp-лінки</td>
+        <td><strong>Зафіксовано</strong></td>
+        <td>Формула 6·2·8 для першого запуску</td>
+      </tr>
+    </tbody>
+  </table>
+  <h3 class="h3">Обґрунтування ключових змін</h3>
+  <div class="note">
+    <strong>01 · Редакційних — 2 для MVP (не 6)</strong>
+    З 6 редакційних добірок MVP отримує 2: <strong>/knyhovyk-radyt</strong> (голос маскота, ключовий диференціатор) і <strong>/pryhovani-skarby</strong> (discovery без ML). У V2: <em>/vybir-redaktsiyi</em> (перетинається з /knyhovyk-radyt — потребує окремого куратора), <em>/chytayemo-razom</em> (community feature — марна без аудиторії), <em>/podarunkovi</em> і <em>/lito-2026</em> (активувати ситуативно як сезонні оверлеї, не вбудовувати в постійну архітектуру).
+  </div>
+  <div class="note">
+    <strong>02 · /avtor/, /vydavnytstvo/, /seriia/ — V2</strong>
+    Авторські сторінки мають сильний SEO-потенціал, але потребують чистих метаданих, окремого дизайну та достатнього каталогу на автора. /seriia/ вже покрита Author Shelf (frozen W9a). /vydavnytstvo/ — низький попит для запуску. Критично: <strong>не включати у навігацію MVP</strong> — не обіцяти сторінки, яких ще немає.
+  </div>
+  <div class="note">
+    <strong>03 · /dobirky/fentezi vs /zhanry/fentezi — рішення для MVP</strong>
+    /dobirky/fentezi: єдиний URL-корінь, простіший sitemap, «добірка фентезі» семантично коректна. /zhanry/fentezi: чіткіша семантика curation vs taxonomy, жанрові сторінки еволюціонують незалежно. <strong>MVP: /dobirky.</strong> V2: мігрувати на /zhanry з 301 редиректами, коли жанрові сторінки отримають власний дизайн та editorial контент. SEO-вагу формує слаг (/fentezi), а не батьківський шлях.
+  </div>
+  <div class="note">
+    <strong>04 · «Популярні автори» вилучено з хабу</strong>
+    Без /avtor/ сторінок цей блок — або мертві посилання, або дубль SearchBar. Жанрова навігація краще задовольняє цей момент і без залежностей від V2. Повернути разом із /avtor/ сторінками у V2.
+  </div>
+  <div class="note">
+    <strong>05 · Реєстраційний промпт — критична точка конверсії</strong>
+    Сторінки добірок — головна точка входу нових SEO-користувачів (Сценарій 5). Для анонімних: після першої сторінки (~24 книги) вбудувати inline-рядок: <em>«Додайте книги у бажанки та отримуйте сповіщення про знижки. Зареєструватись — безкоштовно.»</em> Не popup — вбудований у потік між сіткою і пагінацією. Без цього весь SEO-трафік іде в нікуди.
+  </div>
+  <div class="verdict">
+    <p class="verdict__lbl">Вердикт аудиту</p>
+    <p class="verdict__text">Стратегічна архітектура <strong>правильна</strong>. Три конкретні зміни для MVP: <strong>①</strong> редакційні добірки — 2 (не 6); <strong>②</strong> «Популярні автори» — прибрати з хабу; <strong>③</strong> реєстраційний промпт — додати до сторінки добірки. <strong>Формула першого запуску: 6 динамічних · 2 редакційних · 8 жанрів · хаб · деталі · homepage-лінки.</strong></p>
+  </div>
+</div>
+
+<!-- ████ PART 1 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">01</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина перша</p>
+      <h2 class="part__title">Продуктова стратегія</h2>
+    </div>
+  </div>
+
+  <p>Перш ніж обирати UI-рішення, необхідно відповісти на стратегічне питання: <strong>чим є «Добірки» для Knyhovo?</strong> Навігаційним інструментом? Редакційним медіумом? Двигуном відкриттів? Відповідь визначає кожне подальше рішення — від URL-структури до вигляду картки добірки.</p>
+  <p>Нижче — чесна оцінка чотирьох підходів. Без дипломатії.</p>
+
+  <div class="opt-grid">
+    <!-- Option A -->
+    <div class="opt">
+      <div class="opt__letter">A</div>
+      <div class="opt__name">Добірки як категорії</div>
+      <div class="opt__tag">«Зробимо як в усіх книгарнях»</div>
+      <ul class="opt ul">
+        <li>+ Звична навігація для користувача</li>
+        <li>+ Відмінний SEO-потенціал жанрових сторінок</li>
+        <li>+ Технічно найпростіше</li>
+        <li>+ Масштабується автоматично з каталогом</li>
+        <li>− Жоден онлайн-книгарень так не зробив — але вони всі так зробили</li>
+        <li>− Категорія без інвентарю = фільтрований пошук</li>
+        <li>− Нуль диференціації від Yakaboo, Rozetka, «Є»</li>
+        <li>− Категорії — це інфраструктура навігації, а не продуктова фіча</li>
+      </ul>
+      <div class="tag-row">
+        <span class="tag tag--hi">SEO ★★★★★</span>
+        <span class="tag tag--hi">Масштаб ★★★★★</span>
+        <span class="tag">Цінність ★★★</span>
+        <span class="tag tag--hi">Складність ★</span>
+      </div>
+    </div>
+
+    <!-- Option B -->
+    <div class="opt">
+      <div class="opt__letter">B</div>
+      <div class="opt__name">Добірки як редакція</div>
+      <div class="opt__tag">«Книговик як головний редактор»</div>
+      <ul>
+        <li>+ Максимальна диференціація — жоден агрегатор цін так не робить</li>
+        <li>+ Природна роль для маскота Книговика</li>
+        <li>+ Редакційний контент = органічні посилання та довіра</li>
+        <li>+ Висока цінність для залучених читачів</li>
+        <li>− Не масштабується без команди редакторів</li>
+        <li>− Максимум ~50 активних добірок одночасно</li>
+        <li>− Постійна операційна вартість кураторства</li>
+        <li>− Неможливо вручну охопити 50 000+ книг</li>
+      </ul>
+      <div class="tag-row">
+        <span class="tag tag--md">SEO ★★★★</span>
+        <span class="tag">Масштаб ★★</span>
+        <span class="tag tag--hi">Цінність ★★★★★</span>
+        <span class="tag">Складність ★★★</span>
+      </div>
+    </div>
+
+    <!-- Option C -->
+    <div class="opt">
+      <div class="opt__letter">C</div>
+      <div class="opt__name">Добірки як Discovery Hub</div>
+      <div class="opt__tag">«Персоналізований Netflix для книг»</div>
+      <ul>
+        <li>+ Найвищий потенційний стелю залучення</li>
+        <li>+ Персоналізація = повторні відвідування</li>
+        <li>+ Нескінченна глибина при наявності даних</li>
+        <li>+ Конкурентна перевага на зрілому ринку</li>
+        <li>− Потребує поведінкових даних та ML-рушія</li>
+        <li>− Cold-start проблема: марна при < 50 000 MAU</li>
+        <li>− Провалює користувачів з чіткими намірами</li>
+        <li>− Найвища технічна та продуктова складність</li>
+      </ul>
+      <div class="tag-row">
+        <span class="tag">SEO ★★★</span>
+        <span class="tag tag--hi">Масштаб ★★★★★</span>
+        <span class="tag tag--hi">Цінність ★★★★★</span>
+        <span class="tag">Складність ★★★★★</span>
+      </div>
+    </div>
+
+    <!-- Option D — winner -->
+    <div class="opt opt--win">
+      <div class="opt__letter">D</div>
+      <div class="opt__name">Гібридний підхід</div>
+      <div class="opt__tag">«Таксономічний скелет, редакційна душа»</div>
+      <ul>
+        <li>+ Поєднує переваги A, B, C</li>
+        <li>+ Кожен рівень будується у своєму темпі</li>
+        <li>+ Алгоритми дають свіжість, редакція — довіру</li>
+        <li>+ SEO від таксономії, бренд від редакції</li>
+        <li>± Потребує дисципліни — ризик некогерентності</li>
+        <li>± Три різних власники: продукт, контент, алго</li>
+        <li>Ключ: не «трохи від усього» — а чітка ієрархія пріоритетів</li>
+      </ul>
+      <div class="tag-row">
+        <span class="tag tag--hi">SEO ★★★★★</span>
+        <span class="tag tag--hi">Масштаб ★★★★★</span>
+        <span class="tag tag--hi">Цінність ★★★★★</span>
+        <span class="tag tag--md">Складність ★★★</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Comparison table -->
+  <table class="cmp">
+    <thead>
+      <tr>
+        <th>Критерій</th>
+        <th>A · Категорії</th>
+        <th>B · Редакція</th>
+        <th>C · Discovery</th>
+        <th>D · Гібрид</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td>Диференціація від конкурентів</td><td class="s-lo">Нульова</td><td class="s-hi">Максимальна</td><td class="s-hi">Максимальна</td><td class="s-hi">Висока</td></tr>
+      <tr><td>SEO-потенціал</td><td class="s-hi">★★★★★</td><td class="s-md">★★★★</td><td class="s-lo">★★★</td><td class="s-hi">★★★★★</td></tr>
+      <tr><td>Масштаб до 50 000 книг</td><td class="s-hi">Автоматично</td><td class="s-lo">Вручну, обмежено</td><td class="s-hi">З даними</td><td class="s-hi">Гібридно</td></tr>
+      <tr><td>Цінність без ML/даних</td><td class="s-lo">Низька</td><td class="s-hi">Висока</td><td class="s-lo">Мінімальна</td><td class="s-hi">Висока</td></tr>
+      <tr><td>Придатність для Knyhovo зараз</td><td class="s-md">Часткова</td><td class="s-md">Часткова</td><td class="s-lo">Ні</td><td class="s-hi">Так</td></tr>
+      <tr class="rec"><td>Рекомендація</td><td>—</td><td>—</td><td>—</td><td><strong>✓ Обрати</strong></td></tr>
+    </tbody>
+  </table>
+
+  <div class="verdict">
+    <p class="verdict__lbl">Вердикт · Частина 01</p>
+    <p class="verdict__text"><strong>Варіант D — Гібрид</strong>, але з чіткою ієрархією пріоритетів побудови: <strong>①Таксономія</strong> (скелет для навігації і SEO) → <strong>②Редакція</strong> (душа і довіра) → <strong>③Алгоритми</strong> (свіжість і динаміка) → <strong>④Discovery</strong> (персоналізація — для v2, після накопичення даних). Будувати у цьому порядку. Помилка — намагатись стартувати одразу з четвертого рівня.</p>
+  </div>
+
+  <div class="note">
+    <strong>Принципова позиція</strong>
+    Knyhovo — не книгарня. Добірки Knyhovo повинні виглядати як добірки порадника, а не як категорії магазину. Сторінка «Психологія» на Knyhovo — це не список книг із жанром «психологія». Це <em>куратована добірка найдешевших і найкращих книг із психології</em> з голосом Книговика. Різниця принципова.
+  </div>
+</div>
+
+
+<!-- ████ PART 2 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">02</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина друга</p>
+      <h2 class="part__title">Інформаційна архітектура</h2>
+    </div>
+  </div>
+
+  <p>Три рівні добірок з різними ритмами оновлення, власниками і метою. Кожен будується незалежно і масштабується по-своєму.</p>
+
+  <div class="meta-row">
+    <div class="meta-item"><div class="meta-item__val">3</div><div class="meta-item__lbl">Рівні таксономії</div></div>
+    <div class="meta-item"><div class="meta-item__val">6</div><div class="meta-item__lbl">Динамічних добірок</div></div>
+    <div class="meta-item"><div class="meta-item__val">2</div><div class="meta-item__lbl">Редакційних (MVP)</div></div>
+    <div class="meta-item"><div class="meta-item__val">12+</div><div class="meta-item__lbl">Жанрових добірок</div></div>
+    <div class="meta-item"><div class="meta-item__val">∞</div><div class="meta-item__lbl">Авторів · V2</div></div>
+  </div>
+
+  <div class="tree">
+<span class="t1">/dobirky</span>  <span class="tc">← хаб усіх добірок</span><br>
+│<br>
+<span style="color:var(--text-muted)">├── </span><span class="t2">РІВЕНЬ 1 · ДИНАМІЧНІ</span>  <span class="tc">алгоритм, оновлення щодня</span><br>
+<span style="color:var(--text-muted)">│   ├── </span><span class="t2">/populyarne-zaraz</span>  <span class="tc">↑ переглядів за 7 днів</span><br>
+<span style="color:var(--text-muted)">│   ├── </span><span class="t2">/novynky</span>  <span class="tc">← за датою надходження в каталог</span><br>
+<span style="color:var(--text-muted)">│   ├── </span><span class="t2">/znyzhky</span>  <span class="tc">← найбільший % знижки зараз</span><br>
+<span style="color:var(--text-muted)">│   ├── </span><span class="t2">/ponyzhena-tsina</span>  <span class="tc">← ціна нижча ніж 7 днів тому</span><br>
+<span style="color:var(--text-muted)">│   ├── </span><span class="t2">/najbilsh-bazhani</span>  <span class="tc">← у вішлистах найбільшої кількості</span><br>
+<span style="color:var(--text-muted)">│   └── </span><span class="t2">/rekordno-nyzka-tsina</span>  <span class="tc">← мінімум за всю історію</span><br>
+│<br>
+<span style="color:var(--text-muted)">├── </span><span class="t2">РІВЕНЬ 2 · РЕДАКЦІЙНІ</span>  <span class="tc">людська кураторія, оновлення щотижня</span><br>
+<span style="color:var(--text-muted)">│   ├── </span><span class="t2">/knyhovyk-radyt</span>  <span class="tc">← головний редакційний голос маскота</span><br>
+<span style="color:var(--text-muted)">│   ├── </span><span class="t3">/vybir-redaktsiyi</span>  <span class="tc">← тематичні підбірки редакції · V2</span><br>
+<span style="color:var(--text-muted)">│   ├── </span><span class="t2">/pryhovani-skarby</span>  <span class="tc">← малознані книги з високим рейтингом</span><br>
+<span style="color:var(--text-muted)">│   ├── </span><span class="t3">/chytayemo-razom</span>  <span class="tc">← книга місяця для спільноти · V2</span><br>
+<span style="color:var(--text-muted)">│   ├── </span><span class="t3">/podarunkovi</span>  <span class="tc">← подарункові ідеї · V2 (seasonal overlay)</span><br>
+<span style="color:var(--text-muted)">│   └── </span><span class="t3">/lito-2026</span>  <span class="tc">← сезонна · V2 (activate on demand)</span><br>
+│<br>
+<span style="color:var(--text-muted)">├── </span><span class="t2">РІВЕНЬ 3 · ТАКСОНОМІЧНІ</span>  <span class="tc">авто з метаданих, зростають з каталогом</span><br>
+<span style="color:var(--text-muted)">│   ├── </span><span class="t2">/khudozhnia-proza</span>  <span class="tc">← Художня проза</span><br>
+<span style="color:var(--text-muted)">│   │   ├── </span><span class="t3">/detektyv</span><br>
+<span style="color:var(--text-muted)">│   │   ├── </span><span class="t3">/romantyka</span><br>
+<span style="color:var(--text-muted)">│   │   └── </span><span class="t3">/istorychna-proza</span><br>
+<span style="color:var(--text-muted)">│   ├── </span><span class="t2">/fentezi</span>  <span class="tc">← Фентезі (топ-жанр, власна секція)</span><br>
+<span style="color:var(--text-muted)">│   │   ├── </span><span class="t3">/ukrainska-fentezi</span><br>
+<span style="color:var(--text-muted)">│   │   ├── </span><span class="t3">/epichna-fentezi</span><br>
+<span style="color:var(--text-muted)">│   │   └── </span><span class="t3">/urban-fentezi</span><br>
+<span style="color:var(--text-muted)">│   ├── </span><span class="t2">/naukova-fantastyka</span><br>
+<span style="color:var(--text-muted)">│   ├── </span><span class="t2">/psykholohiia</span><br>
+<span style="color:var(--text-muted)">│   │   ├── </span><span class="t3">/samorozvytok</span><br>
+<span style="color:var(--text-muted)">│   │   └── </span><span class="t3">/vidnosyny</span><br>
+<span style="color:var(--text-muted)">│   ├── </span><span class="t2">/biznes</span><br>
+<span style="color:var(--text-muted)">│   ├── </span><span class="t2">/istoriya</span><br>
+<span style="color:var(--text-muted)">│   ├── </span><span class="t2">/nauka</span><br>
+<span style="color:var(--text-muted)">│   ├── </span><span class="t2">/dytiachi</span><br>
+<span style="color:var(--text-muted)">│   ├── </span><span class="t2">/komiksy</span><br>
+<span style="color:var(--text-muted)">│   └── </span><span class="t2">/poeziya</span><br>
+│<br>
+<span style="color:var(--text-muted)">├── </span><span class="t3">/avtor/[slug]</span>  <span class="tc">← усі книги автора · V2</span><br>
+<span style="color:var(--text-muted)">│   ├── </span><span class="t3">/yuval-noa-kharari</span><br>
+<span style="color:var(--text-muted)">│   └── </span><span class="t3">/serhii-zhadan</span><br>
+<span style="color:var(--text-muted)">├── </span><span class="t3">/vydavnytstvo/[slug]</span>  <span class="tc">← усі книги видавництва · V2</span><br>
+<span style="color:var(--text-muted)">│   ├── </span><span class="t3">/vivat</span><br>
+<span style="color:var(--text-muted)">│   └── </span><span class="t3">/a-ba-ba-ha-la-ma-ha</span><br>
+<span style="color:var(--text-muted)">└── </span><span class="t3">/seriia/[slug]</span>  <span class="tc">← серійні видання · V2</span>
+  </div>
+
+  <h3 class="h3">Масштаб до 50 000+ книг</h3>
+  <p>Динамічні добірки масштабуються нескінченно — вони алгоритмічні. Редакційні — мають жорстке обмеження: максимум 50 активних одночасно, решта архівується (але залишається доступною по URL). Таксономічні зростають автоматично разом із каталогом — <strong>єдиний реальний bottleneck це якість метаданих книги</strong> (жанр, автор, серія). Вирішіть проблему метаданих — і решта масштабується сама.</p>
+
+  <div class="note">
+    <strong>Правило підсторінок</strong>
+    Жанрові підсторінки (/dobirky/fentezi/ukrainska-fentezi) відкриваються лише при досягненні порогу у <strong>30 книг</strong> у жанрі. Порожня або майже порожня сторінка завдає більше шкоди, ніж її відсутність — і в UX, і в SEO.
+  </div>
+</div>
+
+
+<!-- ████ PART 3 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">03</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина третя</p>
+      <h2 class="part__title">Користувацькі сценарії</h2>
+    </div>
+  </div>
+
+  <p>П'ять ключових потоків. Кожен починається з іншої точки входу і приводить до різних взаємодій з Добірками.</p>
+
+  <div class="flow-wrap">
+    <p class="flow-lbl">Сценарій 1 · Відкриття через Головну — Популярне</p>
+    <div class="flow">
+      <span class="fs fs--e">Головна</span><span class="fa">→</span>
+      <span class="fs">Полиця «Популярне»</span><span class="fa">→</span>
+      <span class="fs fs--c">«Переглянути всі»</span><span class="fa">→</span>
+      <span class="fs fs--c">/dobirky/populyarne-zaraz</span><span class="fa">→</span>
+      <span class="fs">Картка книги</span><span class="fa">→</span>
+      <span class="fs">Деталі книги</span><span class="fa">→</span>
+      <span class="fs fs--end">Вішліст</span>
+    </div>
+  </div>
+
+  <div class="flow-wrap">
+    <p class="flow-lbl">Сценарій 2 · Жанровий браузер — через меню</p>
+    <div class="flow">
+      <span class="fs fs--e">Меню → Добірки</span><span class="fa">→</span>
+      <span class="fs fs--c">/dobirky (хаб)</span><span class="fa">→</span>
+      <span class="fs">Жанрова сітка</span><span class="fa">→</span>
+      <span class="fs fs--c">/dobirky/psykholohiia</span><span class="fa">→</span>
+      <span class="fs">Фільтр / Сортування</span><span class="fa">→</span>
+      <span class="fs">Деталі книги</span><span class="fa">→</span>
+      <span class="fs fs--end">Купити</span>
+    </div>
+  </div>
+
+  <div class="flow-wrap">
+    <p class="flow-lbl">Сценарій 3 · Книговик веде читача</p>
+    <div class="flow">
+      <span class="fs fs--e">Головна</span><span class="fa">→</span>
+      <span class="fs">«Книговик радить»</span><span class="fa">→</span>
+      <span class="fs fs--c">«Переглянути всі»</span><span class="fa">→</span>
+      <span class="fs fs--c">/dobirky/knyhovyk-radyt</span><span class="fa">→</span>
+      <span class="fs">Книга → Деталі</span><span class="fa">→</span>
+      <span class="fs fs--end">Вішліст</span>
+    </div>
+  </div>
+
+  <div class="flow-wrap">
+    <p class="flow-lbl">Сценарій 4 · Мисливець за знижками</p>
+    <div class="flow">
+      <span class="fs fs--e">Email-сповіщення</span><span class="fa">→</span>
+      <span class="fs fs--c">/dobirky/ponyzhena-tsina</span><span class="fa">→</span>
+      <span class="fs">Сорт: % знижки ↓</span><span class="fa">→</span>
+      <span class="fs">Деталі книги</span><span class="fa">→</span>
+      <span class="fs fs--end">Перейти до книгарні</span>
+    </div>
+  </div>
+
+  <div class="flow-wrap">
+    <p class="flow-lbl">Сценарій 5 · SEO-вхід нового користувача</p>
+    <div class="flow">
+      <span class="fs fs--e">Google: «купити фентезі»</span><span class="fa">→</span>
+      <span class="fs fs--c">/dobirky/fentezi</span><span class="fa">→</span>
+      <span class="fs">Книги → Деталі</span><span class="fa">→</span>
+      <span class="fs">Порівняння цін</span><span class="fa">→</span>
+      <span class="fs fs--end">Реєстрація</span>
+    </div>
+  </div>
+
+  <div class="flow-wrap">
+    <p class="flow-lbl">Сценарій 6 · Відновлення з порожнього Вішліста</p>
+    <div class="flow">
+      <span class="fs fs--e">Вішліст (порожній)</span><span class="fa">→</span>
+      <span class="fs">CTA «Досліджуйте добірки»</span><span class="fa">→</span>
+      <span class="fs fs--c">/dobirky</span><span class="fa">→</span>
+      <span class="fs">Жанр або Популярне</span><span class="fa">→</span>
+      <span class="fs">Деталі книги</span><span class="fa">→</span>
+      <span class="fs fs--end">Вішліст (перша книга)</span>
+    </div>
+  </div>
+
+  <div class="note">
+    <strong>Ключовий інсайт щодо сценаріїв</strong>
+    Сценарій 5 (SEO-вхід) буде головним джерелом нових користувачів протягом перших 2 років. Жанрові сторінки (/dobirky/psykholohiia, /dobirky/fentezi) є першою точкою контакту з Knyhovo для більшості читачів. Вони мають виглядати бездоганно і конвертувати у реєстрацію. Це не технічні сторінки — це лендінги.
+  </div>
+</div>
+
+
+<!-- ████ PART 4 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">04</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина четверта</p>
+      <h2 class="part__title">Сторінка Добірок · /dobirky</h2>
+    </div>
+  </div>
+
+  <p>Хаб Добірок — це не фільтрований каталог. Це <strong>кураторський путівник</strong> по книгах Knyhovo. Структура сторінки відображає ієрархію цінності: спочатку найактуальніше і редакційне (живе, з голосом), потім таксономічне (навігаційне, системне).</p>
+
+  <h3 class="h3">Ієрархія секцій</h3>
+  <ol>
+    <li><strong>Хедер</strong> — постійний, ідентичний іншим сторінкам. Активна вкладка «Добірки».</li>
+    <li><strong>Герой хабу</strong> — eyebrow + H1 + короткий підзаголовок. Без пошукового рядка (він у хедері).</li>
+    <li><strong>Виділена редакційна добірка</strong> — повноширинна карта (змінюється щотижня). Завжди редакційна або сезонна.</li>
+    <li><strong>Актуальні добірки</strong> — 5–6 карток динамічних добірок у рядку. Свіже і корисне.</li>
+    <li><strong>За жанром</strong> — сітка 2×4 або 4×2. Навігаційна, системна.</li>
+    <li><strong>Редакційний прожектор</strong> — 2 картки MVP: Книговик радить, Приховані скарби. (/vybir-redaktsiyi → V2)</li>
+    <li><strong>Футер</strong> — стандартний.</li>
+  </ol>
+  <div class="note">
+    <strong>«Популярні автори» вилучено з MVP</strong>
+    Блок не входить до MVP: авторські сторінки (/avtor/) — V2. Без них «Популярні автори» — або мертві посилання, або дубль SearchBar. Повернути у V2 разом із /avtor/ сторінками.
+  </div>
+
+  <h4 class="h4">Desktop — 1280px</h4>
+  <figure class="wf">
+    <div class="wf-nav">
+      <div class="wf-logo-b"></div>
+      <div class="wf-nav-links">
+        <span class="wf-nl">Головна</span>
+        <span class="wf-nl wf-nl--a">Добірки</span>
+        <span class="wf-nl">Бажанки</span>
+        <span class="wf-nl">Про нас</span>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;margin-left:auto">
+        <div style="width:80px;height:8px;background:var(--border);border-radius:12px;opacity:.5"></div>
+        <div class="wf-nbtn">Увійти</div>
+      </div>
+    </div>
+    <div class="wf-body">
+      <!-- Hero -->
+      <div class="wf-hero">
+        <div class="wf-eye-b"></div>
+        <div class="wf-h1a"></div>
+        <div class="wf-h1b"></div>
+        <div class="wf-subb"></div>
+      </div>
+      <!-- Featured editorial -->
+      <div>
+        <div class="wf-stag">Виділена добірка · тижнева ротація</div>
+        <div class="wf-feat">
+          <div class="wf-fc"></div>
+          <div class="wf-fc" style="opacity:.25"></div>
+          <div class="wf-fc" style="opacity:.15"></div>
+          <div class="wf-fb">
+            <div class="wf-ftag">Книговик радить · 47 книг</div>
+            <div class="wf-ftitle"></div>
+            <div class="wf-fsub"></div>
+          </div>
+          <div class="wf-fcta">Переглянути →</div>
+        </div>
+      </div>
+      <!-- Dynamic -->
+      <div>
+        <div class="wf-stag">Актуальні добірки · щоденне оновлення</div>
+        <div class="wf-row">
+          <div class="wf-dc"><div class="wf-dc__i"></div><div class="wf-dc__t"></div><div class="wf-dc__n"></div></div>
+          <div class="wf-dc"><div class="wf-dc__i"></div><div class="wf-dc__t"></div><div class="wf-dc__n"></div></div>
+          <div class="wf-dc"><div class="wf-dc__i"></div><div class="wf-dc__t"></div><div class="wf-dc__n"></div></div>
+          <div class="wf-dc"><div class="wf-dc__i"></div><div class="wf-dc__t"></div><div class="wf-dc__n"></div></div>
+          <div class="wf-dc"><div class="wf-dc__i"></div><div class="wf-dc__t"></div><div class="wf-dc__n"></div></div>
+          <div class="wf-dc"><div class="wf-dc__i"></div><div class="wf-dc__t"></div><div class="wf-dc__n"></div></div>
+        </div>
+      </div>
+      <!-- Genre grid -->
+      <div>
+        <div class="wf-stag">За жанром · таксономія</div>
+        <div class="wf-ggrid">
+          <div class="wf-gc"><div class="wf-gi"></div><div class="wf-gn"></div></div>
+          <div class="wf-gc"><div class="wf-gi"></div><div class="wf-gn"></div></div>
+          <div class="wf-gc"><div class="wf-gi"></div><div class="wf-gn"></div></div>
+          <div class="wf-gc"><div class="wf-gi"></div><div class="wf-gn"></div></div>
+          <div class="wf-gc"><div class="wf-gi"></div><div class="wf-gn"></div></div>
+          <div class="wf-gc"><div class="wf-gi"></div><div class="wf-gn"></div></div>
+          <div class="wf-gc"><div class="wf-gi"></div><div class="wf-gn"></div></div>
+          <div class="wf-gc"><div class="wf-gi"></div><div class="wf-gn"></div></div>
+        </div>
+      </div>
+      <!-- Editorial -->
+      <div>
+        <div class="wf-stag">Редакційні добірки</div>
+        <div class="wf-erow">
+          <div class="wf-ec"><div class="wf-ea"></div><div class="wf-et"></div><div class="wf-es"></div></div>
+          <div class="wf-ec"><div class="wf-ea"></div><div class="wf-et"></div><div class="wf-es"></div></div>
+          <div class="wf-ec"><div class="wf-ea"></div><div class="wf-et"></div><div class="wf-es"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-foot"><div class="wf-fl"></div><div class="wf-fr"></div></div>
+    <div class="wf-cap">Desktop · 1280px · /dobirky · Черевик Lora 88px / Inter body</div>
+  </figure>
+
+  <h4 class="h4">Tablet — 768px</h4>
+  <figure class="wf wf--tab">
+    <div class="wf-nav">
+      <div class="wf-logo-b"></div>
+      <div class="wf-nav-links" style="margin-left:auto">
+        <span class="wf-nl wf-nl--a">Добірки</span>
+        <span class="wf-nl">Бажанки</span>
+      </div>
+      <div class="wf-nbtn" style="margin-left:8px">Увійти</div>
+    </div>
+    <div class="wf-body">
+      <div class="wf-hero">
+        <div class="wf-eye-b" style="width:55%"></div>
+        <div class="wf-h1a" style="width:80%"></div>
+        <div class="wf-subb" style="width:70%"></div>
+      </div>
+      <div class="wf-feat">
+        <div class="wf-fc"></div>
+        <div class="wf-fb">
+          <div class="wf-ftag">Книговик радить · 47 книг</div>
+          <div class="wf-ftitle"></div>
+          <div class="wf-fsub"></div>
+        </div>
+        <div class="wf-fcta">Переглянути →</div>
+      </div>
+      <div>
+        <div class="wf-stag">Актуальні</div>
+        <div class="wf-row">
+          <div class="wf-dc"><div class="wf-dc__i"></div><div class="wf-dc__t"></div></div>
+          <div class="wf-dc"><div class="wf-dc__i"></div><div class="wf-dc__t"></div></div>
+          <div class="wf-dc"><div class="wf-dc__i"></div><div class="wf-dc__t"></div></div>
+          <div class="wf-dc"><div class="wf-dc__i"></div><div class="wf-dc__t"></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="wf-stag">За жанром</div>
+        <div class="wf-ggrid" style="grid-template-columns:repeat(3,1fr)">
+          <div class="wf-gc"><div class="wf-gi"></div><div class="wf-gn"></div></div>
+          <div class="wf-gc"><div class="wf-gi"></div><div class="wf-gn"></div></div>
+          <div class="wf-gc"><div class="wf-gi"></div><div class="wf-gn"></div></div>
+          <div class="wf-gc"><div class="wf-gi"></div><div class="wf-gn"></div></div>
+          <div class="wf-gc"><div class="wf-gi"></div><div class="wf-gn"></div></div>
+          <div class="wf-gc"><div class="wf-gi"></div><div class="wf-gn"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-foot"><div class="wf-fl"></div><div class="wf-fr"></div></div>
+    <div class="wf-cap">Tablet · 768px · /dobirky · Жанрова сітка 3 колонки</div>
+  </figure>
+
+  <h4 class="h4">Mobile — 390px</h4>
+  <figure class="wf wf--mob">
+    <div class="wf-nav" style="padding:6px 10px">
+      <div class="wf-logo-b" style="width:40px"></div>
+      <div style="display:flex;gap:5px;margin-left:auto;align-items:center">
+        <div style="width:18px;height:18px;background:var(--border-strong);border-radius:3px;opacity:.4"></div>
+        <div style="width:18px;height:18px;background:var(--border-strong);border-radius:3px;opacity:.4"></div>
+      </div>
+    </div>
+    <div class="wf-body" style="gap:7px">
+      <div class="wf-hero" style="padding:10px">
+        <div class="wf-eye-b" style="width:60%"></div>
+        <div class="wf-h1a" style="width:85%"></div>
+        <div class="wf-h1b" style="width:65%"></div>
+      </div>
+      <div class="wf-feat" style="flex-direction:column;gap:6px">
+        <div class="wf-ftag">Книговик радить</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <div class="wf-fc" style="width:26px;height:38px"></div>
+          <div class="wf-fb"><div class="wf-ftitle"></div><div class="wf-fsub"></div></div>
+        </div>
+        <div class="wf-fcta" style="text-align:center">Переглянути 47 книг →</div>
+      </div>
+      <div>
+        <div class="wf-stag">Актуальні</div>
+        <div class="wf-row" style="overflow-x:auto;padding-bottom:4px">
+          <div class="wf-dc" style="flex:0 0 80px"><div class="wf-dc__i"></div><div class="wf-dc__t"></div></div>
+          <div class="wf-dc" style="flex:0 0 80px"><div class="wf-dc__i"></div><div class="wf-dc__t"></div></div>
+          <div class="wf-dc" style="flex:0 0 80px"><div class="wf-dc__i"></div><div class="wf-dc__t"></div></div>
+          <div class="wf-dc" style="flex:0 0 80px"><div class="wf-dc__i"></div><div class="wf-dc__t"></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="wf-stag">Жанри</div>
+        <div class="wf-ggrid wf-ggrid--2">
+          <div class="wf-gc"><div class="wf-gi"></div><div class="wf-gn"></div></div>
+          <div class="wf-gc"><div class="wf-gi"></div><div class="wf-gn"></div></div>
+          <div class="wf-gc"><div class="wf-gi"></div><div class="wf-gn"></div></div>
+          <div class="wf-gc"><div class="wf-gi"></div><div class="wf-gn"></div></div>
+          <div class="wf-gc"><div class="wf-gi"></div><div class="wf-gn"></div></div>
+          <div class="wf-gc"><div class="wf-gi"></div><div class="wf-gn"></div></div>
+        </div>
+      </div>
+      <div>
+        <div class="wf-stag">Редакційне</div>
+        <div class="wf-erow wf-erow--1">
+          <div class="wf-ec"><div class="wf-ea"></div><div class="wf-et"></div><div class="wf-es"></div></div>
+          <div class="wf-ec"><div class="wf-ea"></div><div class="wf-et"></div><div class="wf-es"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-foot"><div class="wf-fl" style="width:40px"></div><div class="wf-fr" style="width:28px"></div></div>
+    <div class="wf-cap">Mobile · 390px · Вертикальний стек · Горизонтальний рейл для актуального</div>
+  </figure>
+</div>
+
+
+<!-- ████ PART 5 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">05</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина п'ята</p>
+      <h2 class="part__title">Сторінка окремої добірки</h2>
+    </div>
+  </div>
+
+  <p>Приклад: <strong>/dobirky/populyarne-zaraz</strong>. Сторінка добірки — це повноцінний browse-досвід, розширення homepage-полиці. Вона повинна відповідати на питання: <em>«Чому ці книги тут? Скільки їх? Чи є найдешевша?»</em></p>
+
+  <h3 class="h3">Анатомія сторінки</h3>
+  <ol>
+    <li><strong>Breadcrumb</strong>: Головна › Добірки › [Назва добірки]</li>
+    <li><strong>Герой добірки</strong>: назва (велика), опис (1–2 речення), тип добірки, кількість книг, дата оновлення</li>
+    <li><strong>Панель керування</strong>: сортування (релевантність, ціна↑↓, нові, знижка↓) + фільтри-чіпи (жанр, наявність, діапазон цін)</li>
+    <li><strong>Сітка книг</strong>: 4 колонки desktop / 2 колонки mobile. Стандартний BookCard (із wishlist-кнопкою). Без сайдбару.</li>
+    <li><strong>Реєстраційний промпт</strong> (лише для анонімних): inline-рядок між першою та другою сторінками сітки (~24 картки). «Додайте книги у бажанки та отримуйте сповіщення про знижки. Зареєструватись — безкоштовно.» Не popup. Ключова конверсійна точка SEO-трафіку.</li>
+    <li><strong>Пагінація</strong>: за патерном Search Results (заморожений патерн)</li>
+    <li><strong>Схожі добірки</strong>: 3 картки</li>
+    <li><strong>Футер</strong>: стандартний</li>
+  </ol>
+
+  <div class="note">
+    <strong>Важливо: без сайдбару</strong>
+    Жоден сайдбар на жодній сторінці добірки. Повноширинна сітка книг — Knyhovo не є ієрархічною навігаційною системою, де сайдбар допомагає. Фільтри живуть у горизонтальній панелі керування над сіткою.
+  </div>
+
+  <h4 class="h4">Desktop — 1280px</h4>
+  <figure class="wf">
+    <div class="wf-nav">
+      <div class="wf-logo-b"></div>
+      <div class="wf-nav-links">
+        <span class="wf-nl">Головна</span>
+        <span class="wf-nl wf-nl--a">Добірки</span>
+        <span class="wf-nl">Бажанки</span>
+      </div>
+      <div class="wf-nbtn" style="margin-left:auto">Увійти</div>
+    </div>
+    <div class="wf-body">
+      <!-- Breadcrumb + hero -->
+      <div class="wf-col-hero">
+        <div class="wf-bread">
+          <div class="wf-bseg"></div><div class="wf-bsep">›</div>
+          <div class="wf-bseg"></div><div class="wf-bsep">›</div>
+          <div class="wf-bseg" style="width:70px;background:var(--text-muted);opacity:.5"></div>
+        </div>
+        <div class="wf-ch1"></div>
+        <div class="wf-ch2"></div>
+        <div class="wf-ctags">
+          <div class="wf-ctag wf-ctag--a"></div>
+          <div class="wf-ctag"></div>
+          <div class="wf-ctag"></div>
+        </div>
+      </div>
+      <!-- Controls -->
+      <div class="wf-ctrl">
+        <span class="wf-cbtn wf-cbtn--a">Сортувати: Популярне ↓</span>
+        <span class="wf-cbtn">Ціна ↑</span>
+        <span class="wf-cbtn">Нові</span>
+        <div style="margin-left:auto;display:flex;gap:4px">
+          <span class="wf-cbtn">Жанр</span>
+          <span class="wf-cbtn">Ціна</span>
+          <span class="wf-cbtn">Наявність</span>
+        </div>
+      </div>
+      <!-- Book grid -->
+      <div class="wf-bgrid">
+        <div class="wf-bc"><div class="wf-bcov"></div><div class="wf-btitle"></div><div class="wf-bprice"></div></div>
+        <div class="wf-bc"><div class="wf-bcov"></div><div class="wf-btitle"></div><div class="wf-bprice"></div></div>
+        <div class="wf-bc"><div class="wf-bcov"></div><div class="wf-btitle"></div><div class="wf-bprice"></div></div>
+        <div class="wf-bc"><div class="wf-bcov"></div><div class="wf-btitle"></div><div class="wf-bprice"></div></div>
+        <div class="wf-bc"><div class="wf-bcov"></div><div class="wf-btitle"></div><div class="wf-bprice"></div></div>
+        <div class="wf-bc"><div class="wf-bcov"></div><div class="wf-btitle"></div><div class="wf-bprice"></div></div>
+        <div class="wf-bc"><div class="wf-bcov"></div><div class="wf-btitle"></div><div class="wf-bprice"></div></div>
+        <div class="wf-bc"><div class="wf-bcov"></div><div class="wf-btitle"></div><div class="wf-bprice"></div></div>
+      </div>
+      <!-- Pagination -->
+      <div class="wf-pag">
+        <div class="wf-pg">‹</div>
+        <div class="wf-pg wf-pg--a">1</div>
+        <div class="wf-pg">2</div>
+        <div class="wf-pg">3</div>
+        <div class="wf-pg" style="width:auto;padding:0 5px">…</div>
+        <div class="wf-pg">12</div>
+        <div class="wf-pg">›</div>
+      </div>
+      <!-- Related -->
+      <div>
+        <div class="wf-stag">Схожі добірки</div>
+        <div class="wf-relrow">
+          <div class="wf-rc"><div class="wf-rt"></div><div class="wf-rs"></div></div>
+          <div class="wf-rc"><div class="wf-rt"></div><div class="wf-rs"></div></div>
+          <div class="wf-rc"><div class="wf-rt"></div><div class="wf-rs"></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="wf-foot"><div class="wf-fl"></div><div class="wf-fr"></div></div>
+    <div class="wf-cap">Desktop · /dobirky/populyarne-zaraz · 4-col grid · Горизонтальні фільтри · Пагінація</div>
+  </figure>
+
+  <h4 class="h4">Mobile — 390px</h4>
+  <figure class="wf wf--mob">
+    <div class="wf-nav" style="padding:6px 10px">
+      <div class="wf-logo-b" style="width:40px"></div>
+      <div style="display:flex;gap:5px;margin-left:auto">
+        <div style="width:18px;height:18px;background:var(--border-strong);border-radius:3px;opacity:.4"></div>
+      </div>
+    </div>
+    <div class="wf-body" style="gap:7px">
+      <div class="wf-col-hero" style="padding:9px">
+        <div class="wf-bread">
+          <div class="wf-bseg" style="width:28px"></div><div class="wf-bsep">›</div>
+          <div class="wf-bseg" style="width:36px"></div>
+        </div>
+        <div class="wf-ch1" style="width:70%"></div>
+        <div class="wf-ch2" style="width:85%"></div>
+      </div>
+      <div class="wf-ctrl" style="flex-wrap:wrap;gap:4px">
+        <div class="wf-chip-r">
+          <span class="wf-ch wf-ch--a">Популярне ↓</span>
+          <span class="wf-ch">Ціна ↑</span>
+          <span class="wf-ch">Нові</span>
+        </div>
+        <div class="wf-chip-r">
+          <span class="wf-ch">Жанр</span>
+          <span class="wf-ch">Ціна</span>
+        </div>
+      </div>
+      <div class="wf-bgrid wf-bgrid--2">
+        <div class="wf-bc"><div class="wf-bcov"></div><div class="wf-btitle"></div><div class="wf-bprice"></div></div>
+        <div class="wf-bc"><div class="wf-bcov"></div><div class="wf-btitle"></div><div class="wf-bprice"></div></div>
+        <div class="wf-bc"><div class="wf-bcov"></div><div class="wf-btitle"></div><div class="wf-bprice"></div></div>
+        <div class="wf-bc"><div class="wf-bcov"></div><div class="wf-btitle"></div><div class="wf-bprice"></div></div>
+      </div>
+      <div class="wf-pag">
+        <div class="wf-pg">‹</div>
+        <div class="wf-pg wf-pg--a">1</div>
+        <div class="wf-pg">2</div>
+        <div class="wf-pg">3</div>
+        <div class="wf-pg">›</div>
+      </div>
+    </div>
+    <div class="wf-foot"><div class="wf-fl" style="width:40px"></div><div class="wf-fr" style="width:28px"></div></div>
+    <div class="wf-cap">Mobile · 390px · 2-col grid · Чіп-фільтри · 44px touch targets</div>
+  </figure>
+</div>
+
+
+<!-- ████ PART 6 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">06</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина шоста</p>
+      <h2 class="part__title">Інтеграція з Головною сторінкою</h2>
+    </div>
+  </div>
+
+  <p>Головна сторінка Knyhovo вже містить три полиці: «Популярне зараз», «Новинки», «Книговик радить». Усі три мають відповідні сторінки Добірок. Питання: як їх з'єднати?</p>
+
+  <table class="cmp">
+    <thead>
+      <tr>
+        <th>Варіант</th><th>Що зміниться</th><th>Зусилля</th><th>Ризик</th><th>Оцінка</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr><td><strong>A · Залишити як є</strong></td><td>Нічого. Полиці — тільки на Головній.</td><td>0</td><td>Тупики. Жодного глибшого explore.</td><td class="s-lo">Ні</td></tr>
+      <tr class="rec"><td><strong>B · Точки входу</strong></td><td>«Переглянути всі N книг →» → /dobirky/[slug]</td><td>Мінімальні</td><td>Мінімальний</td><td class="s-hi">✓ Так</td></tr>
+      <tr><td><strong>C · Реструктуризація</strong></td><td>Переробити Homepage. Нові компоненти.</td><td>Значні</td><td>Порушення заморожених патернів</td><td class="s-lo">Ні</td></tr>
+    </tbody>
+  </table>
+
+  <div class="verdict">
+    <p class="verdict__lbl">Вердикт · Частина 06</p>
+    <p class="verdict__text"><strong>Варіант B — точки входу.</strong> Кожна полиця Головної отримує лінк «Переглянути всі N книг →» → відповідна сторінка Добірки. Нуль перероблення Головної. Нуль нових компонентів. Максимальна когерентність: Головна = кращі 6–8 книг з добірки; сторінка добірки = повний список. Це не ведення користувача кудись — це завершення наявного патерну.</p>
+  </div>
+
+  <h3 class="h3">Конкретна реалізація</h3>
+  <ul>
+    <li>Полиця «Популярне зараз» → лінк <strong>«Переглянути всі → Популярне зараз»</strong> до <code>/dobirky/populyarne-zaraz</code></li>
+    <li>Полиця «Новинки» → <strong>«Переглянути всі новинки»</strong> до <code>/dobirky/novynky</code></li>
+    <li>Полиця «Книговик радить» → <strong>«Вся добірка Книговика»</strong> до <code>/dobirky/knyhovyk-radyt</code></li>
+    <li>Текст лінків: динамічний з кількістю книг (<code>«→ 147 книг»</code>)</li>
+    <li>Вигляд лінку: вже затверджений шаблон hp-shelf__head (кнопка/лінк поруч з назвою полиці)</li>
+  </ul>
+</div>
+
+
+<!-- ████ PART 7 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">07</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина сьома</p>
+      <h2 class="part__title">SEO-архітектура</h2>
+    </div>
+  </div>
+
+  <p>URL-стратегія Knyhovo ґрунтується на трьох принципах: <strong>①</strong> Українські слаги скрізь — бренд і пошукові запити відповідають одній мові. <strong>②</strong> Плоска ієрархія де можливо — /dobirky/fentezi, не /dobirky/zhanry/khudozhnia/fentezi. <strong>③</strong> Семантичні URL — за назвою жанру, а не за ID або технічним кодом.</p>
+
+  <div class="url-tree">
+<span class="ur">/dobirky</span>  <span class="uc">← хаб · CollectionPage schema</span><br>
+│<br>
+├─ <span class="ud">/populyarne-zaraz</span>  <span class="uc">Популярне зараз · оновлюється</span><br>
+├─ <span class="ud">/novynky</span>  <span class="uc">Новинки · date metadata</span><br>
+├─ <span class="ud">/znyzhky</span>  <span class="uc">Найбільші знижки</span><br>
+├─ <span class="ud">/ponyzhena-tsina</span>  <span class="uc">Ціна знизилась · 7-денний дельта</span><br>
+├─ <span class="ud">/najbilsh-bazhani</span>  <span class="uc">Найбільш бажані</span><br>
+├─ <span class="ud">/rekordno-nyzka-tsina</span>  <span class="uc">Рекордна ціна</span><br>
+│<br>
+├─ <span class="ue">/knyhovyk-radyt</span>  <span class="uc">Книговик радить · редакційна</span><br>
+├─ <span class="ue">/vybir-redaktsiyi</span>  <span class="uc">Вибір редакції</span><br>
+├─ <span class="ue">/pryhovani-skarby</span>  <span class="uc">Приховані скарби</span><br>
+├─ <span class="ue">/podarunkovi</span>  <span class="uc">Подарункові книги · сезонна активація</span><br>
+├─ <span class="ue">/lito-2026</span>  <span class="uc">Літо 2026 · noindex після сезону → redirect</span><br>
+│<br>
+├─ <span class="ug">/fentezi</span>  <span class="uc">Фентезі · ItemList schema · 12k+ queries/mo</span><br>
+│   ├─ <span class="ug">/ukrainska-fentezi</span>  <span class="uc">мін. 30 книг для відкриття</span><br>
+│   └─ <span class="ug">/epichna-fentezi</span><br>
+├─ <span class="ug">/psykholohiia</span>  <span class="uc">Психологія · high-intent keyword</span><br>
+│   ├─ <span class="ug">/samorozvytok</span><br>
+│   └─ <span class="ug">/vidnosyny</span><br>
+├─ <span class="ug">/khudozhnia-proza</span><br>
+├─ <span class="ug">/naukova-fantastyka</span><br>
+├─ <span class="ug">/biznes</span><br>
+├─ <span class="ug">/istoriya</span><br>
+├─ <span class="ug">/dytiachi</span><br>
+│<br>
+├─ <span class="ug">/avtor/yuval-noa-kharari</span>  <span class="uc">авторська сторінка · усі книги в Knyhovo</span><br>
+├─ <span class="ug">/avtor/serhii-zhadan</span><br>
+├─ <span class="ug">/vydavnytstvo/vivat</span>  <span class="uc">видавничі добірки</span><br>
+└─ <span class="ug">/seriia/akademiia-pryvydiv</span>  <span class="uc">серійні добірки</span>
+  </div>
+
+  <h3 class="h3">/dobirky/[жанр] проти /zhanry/[жанр] — фінальне рішення</h3>
+  <p>Аудитне питання: чи повинні жанрові сторінки залишатись у /dobirky або переїхати у власний /zhanry неймспейс?</p>
+  <div class="opt-grid">
+    <div class="opt opt--win">
+      <div class="opt__letter">A</div>
+      <div class="opt__name">/dobirky/fentezi</div>
+      <div class="opt__tag">MVP: залишити як є</div>
+      <ul>
+        <li>+ Єдиний URL-корінь, простіший sitemap та internal linking</li>
+        <li>+ «Добірка фентезі» семантично прийнятна</li>
+        <li>+ Нуль зайвої роботи для MVP</li>
+        <li>+ SEO-вага у слагу, не в батьківському шляху</li>
+        <li>± Легке змішання curation і taxonomy сигналів</li>
+      </ul>
+      <div class="tag-row">
+        <span class="tag tag--hi">MVP ★★★★★</span>
+        <span class="tag tag--md">SEO ★★★★</span>
+        <span class="tag">Семантика ★★★</span>
+      </div>
+    </div>
+    <div class="opt">
+      <div class="opt__letter">B</div>
+      <div class="opt__name">/zhanry/fentezi</div>
+      <div class="opt__tag">V2: після накопичення editorial контенту</div>
+      <ul>
+        <li>+ /dobirky чистий лише для editorial + dynamic</li>
+        <li>+ Жанрові сторінки еволюціонують незалежно</li>
+        <li>+ Чіткий семантичний сигнал taxonomy vs curation</li>
+        <li>− Два URL-кореня: складніший sitemap та internal linking</li>
+        <li>− Зайва складність без суттєвої SEO-вигоди на старті</li>
+      </ul>
+      <div class="tag-row">
+        <span class="tag">MVP ★★★</span>
+        <span class="tag tag--hi">SEO ★★★★★</span>
+        <span class="tag tag--hi">Семантика ★★★★★</span>
+      </div>
+    </div>
+  </div>
+  <div class="verdict">
+    <p class="verdict__lbl">SEO-рішення · Аудит</p>
+    <p class="verdict__text"><strong>MVP: /dobirky/[жанр].</strong> Семантична різниця між «добірка» і «жанр» існує — але не виправдовує два URL-кореня на старті. <strong>V2: мігрувати на /zhanry з 301 редиректами</strong>, коли жанрові сторінки отримають власний дизайн, описи жанрів та editorial матеріали, що перетворять їх на окремий продуктовий розділ. Ключ: SEO-вага формується слагом (<code>/fentezi</code>), а не батьківським шляхом.</p>
+  </div>
+
+  <h3 class="h3">Метаданні та Schema.org</h3>
+  <table class="cmp">
+    <thead><tr><th>Елемент</th><th>Патерн</th></tr></thead>
+    <tbody>
+      <tr><td><code>&lt;title&gt;</code></td><td>[Назва добірки] · Порівняти ціни · Knyhovo</td></tr>
+      <tr><td><code>&lt;description&gt;</code></td><td>N книг у добірці «[Назва]». Порівняйте ціни у 5 книгарнях та знайдіть найкращу пропозицію.</td></tr>
+      <tr><td><code>&lt;h1&gt;</code></td><td>= назва добірки, не «Добірки | Фентезі»</td></tr>
+      <tr><td>Schema: хаб</td><td><code>CollectionPage</code> + <code>BreadcrumbList</code></td></tr>
+      <tr><td>Schema: добірки</td><td><code>ItemList</code> де кожна книга = <code>ListItem</code> → <code>Book</code></td></tr>
+      <tr><td>Schema: авторська</td><td><code>Person</code> + <code>ItemList</code></td></tr>
+      <tr><td>Canonical</td><td>Self-canonical на всіх сторінках. Динамічні — canonical на першу сторінку пагінації.</td></tr>
+      <tr><td>Індексування</td><td>INDEX: таксономічні, редакційні, динамічні (вони ранжуються). NOINDEX після сезону → 301 redirect: сезонні.</td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>Чому українські слаги — єдиний правильний вибір</strong>
+    Користувачі Knyhovo шукають «купити книгу фентезі», «книги з психології», «нові книги 2026» — в українській мові. Слаг /fentezi відповідає пошуковому наміру напряму. Слаг /fantasy або /genres/fantasy — ні. Технічний аргумент для англійських слагів відсутній: URL-кодування UTF-8 підтримується всіма сучасними браузерами.
+  </div>
+</div>
+
+
+<!-- ████ PART 8 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">08</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина восьма</p>
+      <h2 class="part__title">Візуальні концепції</h2>
+    </div>
+  </div>
+
+  <p>Три чесно оцінені напрями. Жоден не є «правильним» у чистому вигляді — рекомендований підхід буде гібридом.</p>
+
+  <div class="concept-row">
+    <!-- Concept 1 -->
+    <div class="concept">
+      <div class="concept__prev cp1">
+        <div class="cp1-hero">
+          <div class="cp1-ht">
+            <div class="cp1-hl"></div>
+            <div class="cp1-hl2"></div>
+          </div>
+          <div class="cp1-cover"></div>
+          <div class="cp1-cover" style="opacity:.3;width:16px;height:23px"></div>
+        </div>
+        <div class="cp1-grid">
+          <div class="cp1-cell cp1-tall"></div>
+          <div class="cp1-cell"></div>
+          <div class="cp1-cell"></div>
+        </div>
+      </div>
+      <div class="concept__body">
+        <div class="concept__name">Концепт 1 · Editorial Magazine</div>
+        <div class="concept__verdict">Великий редакційний герой, нерівномірна сітка, editorial copy для кожної добірки.</div>
+        <div class="concept__pro">✓ Максимальна диференціація, бренд-відповідність, natural link magnet</div>
+        <div class="concept__con">✗ Потребує art direction для кожного оновлення. Не масштабується без команди.</div>
+      </div>
+    </div>
+
+    <!-- Concept 2 -->
+    <div class="concept">
+      <div class="concept__prev cp2">
+        <div class="cp2-chips">
+          <div class="cp2-chip cp2-chip--a"></div>
+          <div class="cp2-chip"></div>
+          <div class="cp2-chip"></div>
+          <div class="cp2-chip"></div>
+        </div>
+        <div class="cp2-row">
+          <div class="cp2-rail">
+            <div class="cp2-lbl"></div>
+          </div>
+          <div class="cp2-cards">
+            <div class="cp2-card"></div>
+            <div class="cp2-card"></div>
+            <div class="cp2-card"></div>
+            <div class="cp2-card"></div>
+          </div>
+          <div class="cp2-cards" style="margin-top:2px">
+            <div class="cp2-card"></div>
+            <div class="cp2-card"></div>
+            <div class="cp2-card"></div>
+            <div class="cp2-card"></div>
+          </div>
+        </div>
+      </div>
+      <div class="concept__body">
+        <div class="concept__name">Концепт 2 · Netflix Discovery</div>
+        <div class="concept__verdict">Горизонтальні рейли по типах добірок, жанрові чіпи зверху, темний або світлий.</div>
+        <div class="concept__pro">✓ Знайомий шаблон, зручний скролінг, сучасний вигляд</div>
+        <div class="concept__con">✗ Не відповідає редакційному бренду. Рейли приховують ІА. Всі виглядають однаково.</div>
+      </div>
+    </div>
+
+    <!-- Concept 3 -->
+    <div class="concept">
+      <div class="concept__prev cp3">
+        <div class="cp3-tabs">
+          <div class="cp3-tab cp3-tab--a"></div>
+          <div class="cp3-tab"></div>
+          <div class="cp3-tab"></div>
+          <div class="cp3-tab"></div>
+        </div>
+        <div class="cp3-lib">
+          <div class="cp3-item"><div class="cp3-il"></div></div>
+          <div class="cp3-item"><div class="cp3-il"></div></div>
+          <div class="cp3-item"><div class="cp3-il"></div></div>
+          <div class="cp3-item"><div class="cp3-il"></div></div>
+          <div class="cp3-item"><div class="cp3-il"></div></div>
+          <div class="cp3-item"><div class="cp3-il"></div></div>
+          <div class="cp3-item"><div class="cp3-il"></div></div>
+          <div class="cp3-item"><div class="cp3-il"></div></div>
+          <div class="cp3-item"><div class="cp3-il"></div></div>
+          <div class="cp3-item"><div class="cp3-il"></div></div>
+          <div class="cp3-item"><div class="cp3-il"></div></div>
+          <div class="cp3-item"><div class="cp3-il"></div></div>
+        </div>
+      </div>
+      <div class="concept__body">
+        <div class="concept__name">Концепт 3 · Premium Library</div>
+        <div class="concept__verdict">Чиста систематична сітка, вкладки за типом, мінімальний editorial copy.</div>
+        <div class="concept__pro">✓ Чітка ІА, ідеально масштабується, легко реалізувати</div>
+        <div class="concept__con">✗ Холодний, безликий. Perish the thought — Knyhovo може бути warm library, не cool SaaS.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="verdict">
+    <p class="verdict__lbl">Вердикт · Частина 08</p>
+    <p class="verdict__text">Жоден із трьох концептів не є відповіддю сам по собі. Правильне рішення — <strong>редакційний герой (Концепт 1) + системна навігація (Концепт 3) + горизонтальний рейл тільки для динамічного блоку (один елемент Концепту 2)</strong>. Кожна секція хабу виконує різну функцію — і має відповідний візуальний режим. Це когерентна гібридизація, а не еклектика.</p>
+  </div>
+</div>
+
+
+<!-- ████ PART 9 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">09</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина дев'ята</p>
+      <h2 class="part__title">Фінальна рекомендація</h2>
+    </div>
+  </div>
+
+  <p>Це не «один із варіантів». Це <strong>єдино вірне рішення</strong> для Knyhovo на поточному етапі розвитку. Аргументи, що змінили б відповідь, будуть названі явно.</p>
+
+  <h3 class="h3">Рішення</h3>
+
+  <table class="cmp">
+    <thead><tr><th>Вимір</th><th>Рішення</th><th>Обґрунтування</th></tr></thead>
+    <tbody>
+      <tr><td>Назва</td><td><strong>Добірки</strong> (не «Collections»)</td><td>Ukrainomовний бренд. «Добірки» = кураторія. «Collections» = магазин.</td></tr>
+      <tr><td>URL</td><td><strong>/dobirky</strong> + українські слаги</td><td>Відповідність пошуковим намірам. SEO + brand alignment.</td></tr>
+      <tr><td>IA-модель</td><td><strong>3-рівневий гібрид</strong></td><td>Таксономія → Редакція → Динаміка. Будувати у цьому порядку.</td></tr>
+      <tr><td>Пріоритет v1</td><td><strong>Таксономічні + Редакційні</strong></td><td>Не потребують ML. Дають SEO і бренд одразу.</td></tr>
+      <tr><td>Пріоритет v2</td><td><strong>Динамічні алгоритми</strong></td><td>Popular, New, Price Drop — прості сигнали, велике UX-значення.</td></tr>
+      <tr><td>Пріоритет v3</td><td><strong>Discovery (персоналізація)</strong></td><td>Після накопичення даних. Не раніше 50k MAU.</td></tr>
+      <tr><td>Homepage</td><td><strong>Точки входу до добірок</strong></td><td>Мінімальні зусилля, максимальна когерентність.</td></tr>
+      <tr><td>Візуальний стиль</td><td><strong>Редакційний герой + Систем. сітка</strong></td><td>Концепт 1 для hero, Концепт 3 для navigation body.</td></tr>
+      <tr><td>Сайдбар</td><td><strong>Жодного</strong></td><td>Горизонтальні фільтри. Knyhovo не є ієрархічним каталогом.</td></tr>
+      <tr><td>Редакційних (MVP)</td><td><strong>2 добірки</strong>: /knyhovyk-radyt + /pryhovani-skarby</td><td>Решта 4 — V2. Максимум без постійного редактора.</td></tr>
+      <tr><td>Жанри (URL)</td><td><strong>/dobirky/[жанр]</strong> → /zhanry у V2 + 301</td><td>SEO-вага у слагу. Мігрувати після появи editorial контенту.</td></tr>
+      <tr><td>Конверсія (SEO)</td><td><strong>Реєстраційний промпт</strong> на сторінці добірки</td><td>Inline між сіткою і пагінацією. Єдина точка конверсії нових SEO-відвідувачів.</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="h3">Принципові позиції — що заборонено</h3>
+  <ul>
+    <li><strong>Порожні жанрові сторінки.</strong> /dobirky/mystetsvo з 4 книгами — це провал. Поріг: 30 книг мінімум. Відкривати жанровий URL лише після досягнення порогу.</li>
+    <li><strong>Горизонтальні рейли для жанрової навігації.</strong> Рейли приховують ІА. Жанрова сітка — завжди видима сітка, не скролл.</li>
+    <li><strong>Книговик на кожній сторінці добірки.</strong> Маскот живе на хабі /dobirky і на власній добірці /dobirky/knyhovyk-radyt. На сторінці /dobirky/fentezi він — шум. Вилучити.</li>
+    <li><strong>«Мої добірки» / «Створити добірку».</strong> Це Goodreads. Knyhovo — price oracle, не бібліотечний менеджер. Stay focused.</li>
+    <li><strong>CTA «Купити» на сторінках добірок.</strong> CTA — «Порівняти ціни» або «Знайти найдешевше». Knyhovo не продає — Knyhovo показує де купити.</li>
+    <li><strong>«Популярні автори» у MVP без /avtor/ сторінок.</strong> Мертві посилання або дубль SearchBar. Включати лише одночасно з авторськими сторінками у V2.</li>
+    <li><strong>Discovery Hub і персоналізація у MVP.</strong> Cold-start проблема гарантована до 50k MAU. Будувати лише після накопичення поведінкових даних.</li>
+  </ul>
+
+  <h3 class="h3">Що змінило б рекомендацію</h3>
+  <ul>
+    <li>Якщо Knyhovo матиме <strong>штатного редактора</strong> — збільшити частку редакційних добірок, Концепт 1 стає основним.</li>
+    <li>Якщо буде <strong>50k+ MAU</strong> з поведінковими даними — розпочати Discovery Hub (персоналізація). Не раніше.</li>
+    <li>Якщо конкурент запустить аналогічний продукт — прискорити editorial layer як ключовий диференціатор.</li>
+  </ul>
+
+  <div class="verdict">
+    <p class="verdict__lbl">Фінальний вердикт · після аудиту</p>
+    <p class="verdict__text">Knyhovo — це <strong>цінова оракул, а не книгарня</strong>. Добірки мають говорити голосом знаючого друга — Книговика — а не виглядати як відфільтрований каталог. Правильний порядок: спочатку дати людям структуру (таксономія), потім дати причину довіряти (редакція), потім дати свіжість і динаміку (алгоритми). Все разом, з єдиним візуальним голосом і українськими URL — це і є <strong>«Добірки»</strong>. Формула запуску після аудиту: <strong>6 динамічних · 2 редакційних · 8 жанрів.</strong></p>
+  </div>
+
+</div>
+
+</td></tr></tbody>
+<tfoot><tr><td class="ftr-space"></td></tr></tfoot>
+</table>
+</main>
+</body>
+</html>

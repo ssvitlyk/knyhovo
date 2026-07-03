@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<!-- @pattern name="Discovery & Browsing — W9" version="0.1" status="ux-specification"
+     note="W9 Discovery & Browsing UX Specification. Helps readers discover books without an exact
+     title: browse, genres, new releases, trending, popular books & authors, editorial recommends.
+     Composes the FROZEN Knyhovo foundations only — Search Results v1.0 grid, Book Details v1.1 nav,
+     Wishlist v1.0, and the frozen W8 Knyhovyk rules (W8b Character Bible / W8c Product Catalog).
+     Designs NO APIs, NO PRDs, NO implementation, NO recommendation engine / AI personalisation /
+     semantic ranking / author intelligence. Knyhovyk is NOT the feature. Output is detailed enough
+     to become the basis for a future W9 PRD. MVP split grounded in the real Knyhovo codebase. -->
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Discovery &amp; Browsing — W9 · UX-специфікація</title>
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+<link rel="stylesheet" href="w9.css">
+</head>
+<body>
+<div class="doc__topbar">
+  <img id="doc-logo" src="../../assets/logo/knyhovo-logo-light.png" alt="Knyhovo">
+  <div class="doc__topbar-r">
+    <span class="doc__w8">W9 · Discovery &amp; Browsing</span>
+    <button id="theme-btn" class="kn-btn kn-btn--secondary kn-btn--sm" type="button">Темна тема</button>
+  </div>
+</div>
+
+<div class="doc">
+  <p class="doc__eyebrow">W9 · UX-СПЕЦИФІКАЦІЯ · ОСНОВА ДЛЯ МАЙБУТНЬОГО PRD</p>
+  <h1 class="doc__title">Пошук — для тих, хто знає назву. <em>Огляд — для решти.</em></h1>
+  <p class="doc__lead">
+    Search v1.0 чудово відповідає на «де купити <i>цю</i> книгу». W9 відповідає на інше питання —
+    «що мені почитати?». Це специфікація поверхонь, де читач знаходить книги <b>без точного
+    запиту</b>: переглядає каталог, заходить через жанр, новинки, популярне, автора чи редакційну
+    добірку. W9 розширює Knyhovo з «пошук + бажанки» у повноцінне відкриття.
+  </p>
+
+  <div class="doc__status">
+    <span><b>W9 — це Discovery, не AI.</b> Документ компонує лише заморожені основи: сітку
+    <a href="../../Search Results Page.html">Search Results v1.0</a>, навігацію
+    <a href="../../Book Details - Exploration.html">Book Details v1.1</a>, систему Бажанок і правила
+    <a href="../knyhovyk-ai-assistant-v1/Knyhovyk in Product - W8c.html">W8 Книговика (W8b/W8c)</a>.
+    Книговик <b>не є фічею</b> — він з'являється лише там, де це дозволено W8c. Тут немає дизайну API,
+    PRD, реалізації, рушіїв рекомендацій, AI-персоналізації, семантичного ранжування чи author-intelligence.</span>
+  </div>
+
+  <div class="doc__toc">
+    <a href="#goals">01 Цілі</a>
+    <a href="#ia">02 Інформаційна архітектура</a>
+    <a href="#entry">03 Точки входу</a>
+    <a href="#home">04 Інтеграція в головну</a>
+    <a href="#nav">05 Навігаційна модель</a>
+    <a href="#screens">06 Ієрархія екранів</a>
+    <a href="#landing">07 Discovery Landing</a>
+    <a href="#genres">08 Жанри</a>
+    <a href="#new">09 Новинки</a>
+    <a href="#trending">10 Trending</a>
+    <a href="#popular">11 Популярні книги</a>
+    <a href="#authors">12 Популярні автори</a>
+    <a href="#recommends">13 Knyhovo радить</a>
+    <a href="#components">14 Інвентар компонентів</a>
+    <a href="#flows">15 Browse-флоу</a>
+    <a href="#mvp">16 MVP vs Future</a>
+    <a href="#questions">17 Відкриті питання</a>
+  </div>
+
+  <!-- 01 · USER GOALS -->
+  <section id="goals">
+    <h2><span class="num">01</span>Цілі користувача</h2>
+    <p class="doc__sublead">W9 обслуговує читача в режимі «ще не вирішив». Пошук вимагає наміру — назви, автора чи ISBN. Discovery дає вхід тим, у кого наміру ще немає. Кожна ціль нижче — реальна задача, яку сьогодні Knyhovo вирішити не може.</p>
+    <div class="doc__grid doc__grid--3">
+      <div class="doc__card"><div class="n">01</div><h4>«Не знаю, що шукати»</h4><p>Порожнє поле пошуку — глухий кут для читача без конкретної книги. W9 дає що оглядати замість порожнечі.</p></div>
+      <div class="doc__card"><div class="n">02</div><h4>«Що нового?»</h4><p>Читач хоче бачити, що нещодавно з'явилось у Knyhovo, без полювання за окремими назвами.</p></div>
+      <div class="doc__card"><div class="n">03</div><h4>«Що зараз цікаве?»</h4><p>Соціальний доказ — популярне й трендове — допомагає обрати, але <b>без штучної терміновості</b>.</p></div>
+      <div class="doc__card"><div class="n">04</div><h4>«Хочу за темою / настроєм»</h4><p>Вхід через жанр чи добірку, коли читач знає <i>тему</i>, але не назву.</p></div>
+      <div class="doc__card"><div class="n">05</div><h4>«Люблю цього автора»</h4><p>Від однієї книги — до всіх книг автора. Природне продовження пошуку, а не окремий продукт.</p></div>
+      <div class="doc__card"><div class="n">06</div><h4>«Підкажіть»</h4><p>Редакційна добірка від Knyhovo. Курована людиною порада — не алгоритм, не персоналізація.</p></div>
+    </div>
+    <p class="ka-quiet" style="margin-top: var(--space-4);">Принцип: discovery доповнює пошук, не замінює його. Хедер лишається search-first; огляд — це другий, рівноправний вхід.</p>
+  </section>
+
+  <!-- 02 · IA -->
+  <section id="ia">
+    <h2><span class="num">02</span>Інформаційна архітектура</h2>
+    <p class="doc__sublead">Discovery — це новий рівень між головною та сторінкою книги. Кожен шлях завершується на замороженій <b>Book Details v1.1</b>; кожен список — на сітці <b>Search Results v1.0</b>. Нові тільки рівні-агрегатори, не leaf-екрани.</p>
+    <div class="w9-ia">
+      <div class="w9-ia__row"><span class="w9-ia__name">Головна</span><span class="w9-ia__desc">search-first · кілька discovery-тизерів</span></div>
+      <div class="w9-ia__row w9-ia__row--l2"><span class="w9-ia__name">Discovery Landing — «Огляд»</span><span class="w9-ia__desc">хаб усіх секцій відкриття</span></div>
+      <div class="w9-ia__row w9-ia__row--l3"><span class="w9-ia__name">Жанри · Новинки · Trending · Популярне · Автори · Knyhovo радить</span><span class="w9-ia__desc">секційні списки → сітка Search Results v1.0</span></div>
+      <div class="w9-ia__row w9-ia__row--l3"><span class="w9-ia__name">Сторінка автора · Сторінка жанру · Добірка</span><span class="w9-ia__desc">відфільтрований список → сітка Search Results v1.0</span></div>
+      <div class="w9-ia__row w9-ia__row--l2" style="margin-left: var(--space-12);"><span class="w9-ia__name">Book Details v1.1</span><span class="w9-ia__desc">leaf · заморожено · не змінюється</span></div>
+    </div>
+    <p class="ka-quiet" style="margin-top: var(--space-4);">Глибина шляху — максимум 3 кліки до книги: Головна → секція → книга. Discovery Landing — необов'язковий проміжний хаб, не примусовий крок.</p>
+  </section>
+
+  <!-- 03 · ENTRY POINTS -->
+  <section id="entry">
+    <h2><span class="num">03</span>Точки входу в Discovery</h2>
+    <p class="doc__sublead">Discovery має кілька входів різної ваги. Жоден не змагається з пошуком — вони дають альтернативу, коли пошук не підходить.</p>
+    <div class="doc__tablewrap">
+      <table>
+        <thead><tr><th>Точка входу</th><th>Звідки</th><th>Веде на</th><th>Вага</th></tr></thead>
+        <tbody>
+          <tr><td><b>«Огляд» у хедері</b></td><td>Глобальна навігація, кожен екран</td><td>Discovery Landing</td><td>Первинна</td></tr>
+          <tr><td><b>Discovery-тизери на головній</b></td><td>Під hero/пошуком: Новинки, Популярне, Knyhovo радить</td><td>Відповідна секція</td><td>Первинна</td></tr>
+          <tr><td><b>«Усі →» на тизер-рядках</b></td><td>Заголовок кожного рейлу</td><td>Повний список секції</td><td>Вторинна</td></tr>
+          <tr><td><b>Жанрові чіпи</b></td><td>Discovery Landing, низ результатів пошуку</td><td>Сторінка жанру / добірки</td><td>Вторинна</td></tr>
+          <tr><td><b>Ім'я автора</b></td><td>Картка книги, Book Details, рядок результату пошуку</td><td>Сторінка автора</td><td>Вторинна · реюз W8c «перехід до автора»</td></tr>
+          <tr><td><b>Порожній стан пошуку</b></td><td>«Нічого не знайдено» (Search Results v1.0)</td><td>Discovery Landing / популярні запити</td><td>Реактивна</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 04 · HOMEPAGE INTEGRATION -->
+  <section id="home">
+    <h2><span class="num">04</span>Інтеграція в головну</h2>
+    <p class="doc__sublead">Головна лишається <b>search-first</b>: hero + пошук — недоторканні (frozen DS). Discovery з'являється під ними як <b>кілька тизерів-рейлів</b>, не як повний хаб. Більшість секцій живуть лише на Discovery Landing — головну не перевантажуємо.</p>
+    <div class="w9-zones">
+      <div class="w9-zone">
+        <div class="w9-zone__bar w9-zone__bar--no"></div>
+        <div class="w9-zone__main"><div class="w9-zone__name">Hero + пошук</div><div class="w9-zone__desc">Заморожено. Обличчя бренду й головний вхід. W9 нічого тут не змінює.</div></div>
+        <div class="w9-zone__tags"><span class="w9-tag w9-tag--c">frozen</span></div>
+      </div>
+      <div class="w9-zone">
+        <div class="w9-zone__bar w9-zone__bar--home"></div>
+        <div class="w9-zone__main"><div class="w9-zone__name">Популярні книги</div><div class="w9-zone__desc">Уже існує в DS-сайті. Лишається першим discovery-рейлом під пошуком.</div></div>
+        <div class="w9-zone__tags"><span class="w9-tag w9-tag--mvp">на головній</span></div>
+      </div>
+      <div class="w9-zone">
+        <div class="w9-zone__bar w9-zone__bar--home"></div>
+        <div class="w9-zone__main"><div class="w9-zone__name">Новинки · рейл</div><div class="w9-zone__desc">Горизонтальний рейл нещодавно доданих книг + «усі →». Легкий тизер, не повна сітка.</div></div>
+        <div class="w9-zone__tags"><span class="w9-tag w9-tag--mvp">на головній</span></div>
+      </div>
+      <div class="w9-zone">
+        <div class="w9-zone__bar w9-zone__bar--home"></div>
+        <div class="w9-zone__main"><div class="w9-zone__name">Knyhovo радить · один рядок</div><div class="w9-zone__desc">Рівно одна редакційна порада. Книговик — середня присутність (W8c): аватар + причина, або тиша.</div></div>
+        <div class="w9-zone__tags"><span class="w9-tag w9-tag--mvp">на головній</span><span class="w9-tag w9-tag--reuse">W8c</span></div>
+      </div>
+      <div class="w9-zone">
+        <div class="w9-zone__bar w9-zone__bar--disc"></div>
+        <div class="w9-zone__main"><div class="w9-zone__name">Жанри · Trending · Популярні автори</div><div class="w9-zone__desc">Тільки на Discovery Landing. На головній — максимум посилання «Огляд», не повні блоки.</div></div>
+        <div class="w9-zone__tags"><span class="w9-tag w9-tag--b">лише Discovery</span></div>
+      </div>
+    </div>
+    <p class="ka-quiet" style="margin-top: var(--space-4);"><b>Правило проти перевантаження:</b> під пошуком — максимум 3–4 discovery-рейли, кожен ≤ один екран заввишки. Глибину дає «Огляд», а не нескінченна головна. Один Книговик на сторінку (W8c) — на головній це рядок «Knyhovo радить», ніде більше.</p>
+  </section>
+
+  <!-- 05 · NAVIGATION MODEL -->
+  <section id="nav">
+    <h2><span class="num">05</span>Навігаційна модель</h2>
+    <p class="doc__sublead">Два рівні навігації. Первинна веде <i>у</i> Discovery; вторинна рухає <i>всередині</i> нього. Обидва будуються з наявних DS-примітивів — нових елементів навігації не вводимо.</p>
+    <div class="doc__grid">
+      <div class="doc__card">
+        <h4>Первинна — глобальний хедер</h4>
+        <p>До хедера додається пункт <b>«Огляд»</b> поруч із логотипом і пошуком. Один новий пункт, не мега-меню. На мобільному — у тому ж компактному хедері (44px ціль), пошук лишається пріоритетним.</p>
+      </div>
+      <div class="doc__card">
+        <h4>Вторинна — секційна навігація Discovery</h4>
+        <p>На Discovery Landing — горизонтальний ряд <b>чіпів-якорів</b> (DS <code>.kn-chip</code>): Новинки · Популярне · Жанри · Автори · Knyhovo радить. Скрол до секції або перехід на повний список. На мобільному — горизонтальний скрол чіпів.</p>
+      </div>
+    </div>
+    <div class="w9-chips" style="margin-top: var(--space-5);">
+      <span class="kn-chip" data-selected="true">Огляд усього</span>
+      <span class="kn-chip">Новинки</span>
+      <span class="kn-chip">Популярне</span>
+      <span class="kn-chip">Жанри</span>
+      <span class="kn-chip">Автори</span>
+      <span class="kn-chip">Knyhovo радить</span>
+    </div>
+    <p class="ka-quiet" style="margin-top: var(--space-4);">Хлібні крихти Book Details v1.1 розширюються природно: «Огляд → Жанр → Книга», «Автор → Книга». Жодного нового патерну крихт — реюз наявного.</p>
+  </section>
+
+  <!-- 06 · SCREEN HIERARCHY -->
+  <section id="screens">
+    <h2><span class="num">06</span>Ієрархія екранів W9</h2>
+    <p class="doc__sublead">Усі нові екрани — агрегатори. Кожен список рендериться сіткою Search Results v1.0; кожен leaf — це Book Details v1.1. Нового leaf-екрана W9 <b>не вводить</b>.</p>
+    <div class="doc__tablewrap">
+      <table>
+        <thead><tr><th>Екран</th><th>Роль</th><th>Будується з</th><th>Етап</th></tr></thead>
+        <tbody>
+          <tr><td><b>Discovery Landing</b></td><td>Хаб усіх секцій («Огляд»)</td><td>Рейли + секційна навігація</td><td><span class="w9-tag w9-tag--mvp">W9a</span></td></tr>
+          <tr><td><b>Новинки — список</b></td><td>Повний список нещодавно доданих</td><td>Сітка Search Results v1.0</td><td><span class="w9-tag w9-tag--mvp">W9a</span></td></tr>
+          <tr><td><b>Популярні книги — список</b></td><td>Рейтинг за популярністю</td><td>Сітка / ранжований список</td><td><span class="w9-tag w9-tag--mvp">W9a</span></td></tr>
+          <tr><td><b>Сторінка автора</b></td><td>Усі книги автора</td><td>Сітка Search Results v1.0 (фільтр)</td><td><span class="w9-tag w9-tag--mvp">W9a</span></td></tr>
+          <tr><td><b>Добірка / Knyhovo радить</b></td><td>Курований редакційний список</td><td>Сітка + опційний рядок Книговика</td><td><span class="w9-tag w9-tag--mvp">W9a</span></td></tr>
+          <tr><td><b>Колекція (тег-добірка)</b></td><td>Жанр-замінник на MVP без таксономії</td><td>Сітка Search Results v1.0 (фільтр за тегом)</td><td><span class="w9-tag w9-tag--mvp">W9a</span></td></tr>
+          <tr><td><b>Індекс жанрів</b></td><td>Сітка всіх жанрів</td><td>Тайли жанрів</td><td><span class="w9-tag w9-tag--b">W9b</span></td></tr>
+          <tr><td><b>Сторінка жанру</b></td><td>Книги одного жанру</td><td>Сітка Search Results v1.0 (фільтр)</td><td><span class="w9-tag w9-tag--b">W9b</span></td></tr>
+          <tr><td><b>Trending — список</b></td><td>Що зараз набирає популярність</td><td>Сітка Search Results v1.0</td><td><span class="w9-tag w9-tag--b">W9b</span></td></tr>
+          <tr><td><b>Індекс авторів</b></td><td>Сітка популярних авторів</td><td>Тайли авторів</td><td><span class="w9-tag w9-tag--b">W9b</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 07 · DISCOVERY LANDING -->
+  <section id="landing">
+    <h2><span class="num">07</span>Discovery Landing</h2>
+    <p class="doc__sublead">Головний пункт призначення відкриття. <b>Без другого hero-маскота</b> (один Книговик на сторінку, W8c) — вхід легкий, редакційний, одразу веде в контент. Щільність контролюється рейлами: кожна секція показує 6–10 обкладинок і «усі →».</p>
+    <div class="w9-frame">
+      <div class="w9-frame__bar">
+        <img id="frame-logo" src="../../assets/logo/knyhovo-logo-light.png" alt="Knyhovo">
+        <div class="w9-frame__nav"><span>Головна</span><span class="on">Огляд</span><span>Бажанки</span></div>
+      </div>
+      <div class="w9-frame__body">
+        <div class="w9-frame__search"><i data-lucide="search"></i><span>Назва, автор або ISBN…</span></div>
+        <div class="w9-chips">
+          <span class="kn-chip" data-selected="true">Огляд усього</span>
+          <span class="kn-chip">Новинки</span>
+          <span class="kn-chip">Популярне</span>
+          <span class="kn-chip">Жанри</span>
+          <span class="kn-chip">Автори</span>
+        </div>
+
+        <div class="w9-sec">
+          <div class="w9-sechd"><div class="w9-sechd__t"><span class="pre">Нещодавно з'явились</span>Новинки в Knyhovo</div><span class="w9-sechd__all">усі →</span></div>
+          <div class="w9-rail w9-rail--cut">
+            <div class="w9-bk"><div class="w9-bk__cover"></div><div class="w9-bk__title">Книга</div><div class="w9-bk__price">245 ₴</div></div>
+            <div class="w9-bk"><div class="w9-bk__cover"></div><div class="w9-bk__title">Книга</div><div class="w9-bk__price">312 ₴</div></div>
+            <div class="w9-bk"><div class="w9-bk__cover"></div><div class="w9-bk__title">Книга</div><div class="w9-bk__price">189 ₴</div></div>
+            <div class="w9-bk"><div class="w9-bk__cover"></div><div class="w9-bk__title">Книга</div><div class="w9-bk__price">420 ₴</div></div>
+            <div class="w9-bk"><div class="w9-bk__cover"></div><div class="w9-bk__title">Книга</div><div class="w9-bk__price">260 ₴</div></div>
+            <div class="w9-bk"><div class="w9-bk__cover"></div><div class="w9-bk__title">Книга</div><div class="w9-bk__price">355 ₴</div></div>
+          </div>
+        </div>
+
+        <div class="w9-sec">
+          <div class="w9-sechd"><div class="w9-sechd__t"><span class="pre">Радить Книговик</span>Варто глянути цього тижня</div><span class="w9-sechd__all">усі →</span></div>
+          <div class="w9-rec">
+            <div class="w9-rec__av" role="img" aria-label="Книговик радить"></div>
+            <div class="w9-rec__t"><span class="who">Книговик каже</span><q>Зібрав кілька книжок, що подешевшали від типової ціни. Гарний момент придивитися.</q></div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <h3>Скануваність і щільність</h3>
+    <ul>
+      <li><b>Рейли, не стіни сіток.</b> Кожна секція — один горизонтальний рейл; обрізаний край (mask) натякає на скрол. Повна сітка — лише на сторінці секції.</li>
+      <li><b>Ритм заголовків.</b> Eyebrow (звідки/чому) + серифний заголовок. Однаковий патерн у всіх секціях — око звикає й сканує швидше.</li>
+      <li><b>Один акцент на екран.</b> Книговик — рівно в одному рядку «радить». Решта секцій — чистий контент.</li>
+    </ul>
+    <h3>Мобільна поведінка</h3>
+    <ul>
+      <li>Секційні чіпи — горизонтальний скрол, sticky під компактним хедером.</li>
+      <li>Рейли лишаються горизонтальними (свайп); «усі →» веде на вертикальну сітку в один стовпець (реюз Search Results &lt;768px).</li>
+      <li>44px ціль на всіх інтерактивних елементах (інхерит з Search Results v1.0).</li>
+    </ul>
+  </section>
+
+  <!-- 08 · GENRES -->
+  <section id="genres">
+    <h2><span class="num">08</span>Жанри</h2>
+    <p class="doc__sublead">Вхід за темою/настроєм. <b>Реальність даних:</b> у каталозі сьогодні немає поля жанру. Тому MVP-форма жанрів — <b>редакційні колекції (тег-добірки)</b>, куровані вручну; справжня жанрова таксономія приходить пізніше.</p>
+    <div class="w9-reality">
+      <h4><i data-lucide="database"></i> Чому колекції, а не таксономія</h4>
+      <p><code>canonical_books</code> має лише <code>title</code>, <code>author</code>, <code>isbn</code>. Поля жанру/категорії немає, скрапери його не збирають. Жанрову навігацію без backend-роботи можна дати тільки як <b>куровані списки</b> (редактор вручну прив'язує книги до колекції). Автоматичні жанри = нове поле + маппінг у скраперах + сторінки жанрів — це <span class="w9-tag w9-tag--b">W9b</span>.</p>
+    </div>
+    <div class="doc__grid">
+      <div class="doc__card">
+        <h4>Навігація жанрів</h4>
+        <p>Ряд чіпів на Discovery Landing + сітка тайлів на «усі жанри». Тайл = назва + лічильник книг. Перехід → сторінка жанру.</p>
+      </div>
+      <div class="doc__card">
+        <h4>Сторінка жанру</h4>
+        <p>Заголовок жанру + сітка Search Results v1.0 із книгами цього жанру. Жодного нового layout — фільтрований список.</p>
+      </div>
+    </div>
+    <div class="w9-tiles" style="margin-top: var(--space-5);">
+      <div class="w9-tile"><span class="w9-tile__n">Проза</span><span class="w9-tile__c">128 книг</span></div>
+      <div class="w9-tile"><span class="w9-tile__n">Нон-фікшн</span><span class="w9-tile__c">94 книги</span></div>
+      <div class="w9-tile"><span class="w9-tile__n">Фентезі</span><span class="w9-tile__c">61 книга</span></div>
+      <div class="w9-tile"><span class="w9-tile__n">Дитяче</span><span class="w9-tile__c">73 книги</span></div>
+    </div>
+    <h3>Порожній стан жанру</h3>
+    <p>Якщо в колекції тимчасово немає книг у наявності — реюз порожнього стану Search Results v1.0: спокійне повідомлення + популярні жанри як вихід. Книговик — лише голос або тиша (W8c: щільна поверхня → тиха форма). Без вигаданого контенту.</p>
+    <h3>Мобільна поведінка</h3>
+    <p>Чіпи жанрів — горизонтальний скрол; сітка тайлів — один–два стовпці; сторінка жанру наслідує Search Results &lt;768px.</p>
+  </section>
+
+  <!-- 09 · NEW RELEASES -->
+  <section id="new">
+    <h2><span class="num">09</span>Новинки</h2>
+    <p class="doc__sublead">Ціль: показати, що нового, без полювання. <b>Чесність формулювання:</b> у нас немає дати видання — є лише дата появи книги в Knyhovo. Тому секція називається «нещодавно з'явились у Knyhovo», а не «видано цього тижня».</p>
+    <div class="w9-reality">
+      <h4><i data-lucide="database"></i> Сортування</h4>
+      <p>Доступне сьогодні: <code>canonical_books.created_at DESC</code> — порядок появи книги в каталозі. Це backend-легко (новий read-only список). Справжня дата публікації — окреме поле, якого немає → <span class="w9-tag w9-tag--b">W9b</span>.</p>
+    </div>
+    <div class="doc__grid">
+      <div class="doc__card"><h4>Поведінка картки</h4><p>Стандартна BookCard з Search Results v1.0. Жодних «NEW!»-бейджів-крику — поява в секції вже означає новизну. Бейдж «Новинка» (accent) — лише якщо потрібен, максимум один на картку.</p></div>
+      <div class="doc__card"><h4>Рейл vs список</h4><p>На головній — рейл (6–8 обкладинок). На сторінці «усі новинки» — повна сітка Search Results v1.0 з пагінацією.</p></div>
+    </div>
+    <h3>Мобільна адаптація</h3>
+    <p>Рейл — свайп; повний список — один стовпець, вертикальні картки (інхерит Search Results &lt;768px). Пагінація — повна, 44px цілі.</p>
+  </section>
+
+  <!-- 10 · TRENDING -->
+  <section id="trending">
+    <h2><span class="num">10</span>Trending — зараз цікавить</h2>
+    <p class="doc__sublead">Користувач очікує «що зараз популярне в інших». Найбільший ризик секції — <b>фейкова терміновість</b>. Trending у Knyhovo спокійний: інхерит анти-патерни W8c — без «поспіши», лічильників, вогників і дедлайнів.</p>
+    <div class="doc__grid">
+      <div class="doc__card"><h4>Що показуємо</h4><p>«Зараз цікавить читачів» — спокійний рейл/сітка. Соціальний доказ через факт («часто додають до бажанок»), не через тиск.</p></div>
+      <div class="doc__card"><h4>Чого ніколи</h4><p>Жодних «🔥 гаряче», «лишилось N», таймерів, «не пропусти». Це прямо порушує заморожені правила Книговика й тон бренду.</p></div>
+    </div>
+    <div class="w9-reality">
+      <h4><i data-lucide="database"></i> Сигнал тренду</h4>
+      <p>Справжній trending = подія в часовому вікні (перегляди/додавання за N днів) → потребує логування подій + time-decay, яких немає сьогодні. Це <span class="w9-tag w9-tag--b">W9b</span>. На MVP «популярне зараз» = курована редакційна добірка або проста агрегація бажанок без часового вікна (див. §11).</p>
+    </div>
+    <h3>Стратегія розміщення</h3>
+    <p>Trending живе на Discovery Landing, не на головній (щоб не дублювати «Популярні книги» під пошуком). Один із входів вторинної навігації.</p>
+  </section>
+
+  <!-- 11 · POPULAR BOOKS -->
+  <section id="popular">
+    <h2><span class="num">11</span>Популярні книги</h2>
+    <p class="doc__sublead">Рейтинг за популярністю. Презентація спокійна: порядковий номер серифом, без «вибухових» візуалів. Список читається як добірка, не як таблиця лідерів із гонкою.</p>
+    <div class="w9-reality">
+      <h4><i data-lucide="database"></i> Звідки популярність</h4>
+      <p>Backend-легкий сигнал, доступний сьогодні: <b>кількість додавань у бажанки</b> на <code>canonical_book</code> (агрегація наявної таблиці <code>wishlist_items</code>). Це чесний проксі без нової інфраструктури. Альтернатива на старті — <b>редакційний</b> список. Популярність за переглядами/кліками = логування подій → <span class="w9-tag w9-tag--b">W9b</span>.</p>
+    </div>
+    <div class="doc__grid">
+      <div class="doc__card">
+        <h4>Список vs сітка</h4>
+        <p><b>Ранжований список</b> для топ-N (номер читається краще в рядку); <b>сітка</b> для подальшого огляду без акценту на місці. На головній — рейл топ-обкладинок.</p>
+      </div>
+      <div class="doc__card">
+        <h4>Презентація рангу</h4>
+        <p>Серифний номер (1, 2, 3…) як тиха мітка біля обкладинки — не золоті медалі, не «🏆». Без зміни самої BookCard.</p>
+      </div>
+    </div>
+    <div class="w9-rail" style="margin-top: var(--space-5);">
+      <div class="w9-bk"><div class="w9-bk__cover"><span class="w9-bk__rank">1</span></div><div class="w9-bk__title">Книга</div><div class="w9-bk__price">245 ₴</div></div>
+      <div class="w9-bk"><div class="w9-bk__cover"><span class="w9-bk__rank">2</span></div><div class="w9-bk__title">Книга</div><div class="w9-bk__price">312 ₴</div></div>
+      <div class="w9-bk"><div class="w9-bk__cover"><span class="w9-bk__rank">3</span></div><div class="w9-bk__title">Книга</div><div class="w9-bk__price">189 ₴</div></div>
+      <div class="w9-bk"><div class="w9-bk__cover"><span class="w9-bk__rank">4</span></div><div class="w9-bk__title">Книга</div><div class="w9-bk__price">420 ₴</div></div>
+    </div>
+    <h3>Мобільна адаптація</h3>
+    <p>Топ-список — один стовпець із рангом зліва від картки; рейл — свайп. Номер не зменшується нижче читабельного (інхерит мінімальні розміри тексту).</p>
+  </section>
+
+  <!-- 12 · POPULAR AUTHORS -->
+  <section id="authors">
+    <h2><span class="num">12</span>Популярні автори</h2>
+    <p class="doc__sublead">Відкриття через автора — природне продовження пошуку (W8c вже має «перехід до автора»). Модель навігації: ім'я автора будь-де → сторінка автора з усіма його книгами.</p>
+    <div class="w9-reality">
+      <h4><i data-lucide="database"></i> MVP-безпечні припущення</h4>
+      <p>Автор сьогодні — це <b>текстове поле</b> <code>canonical_books.author</code>, без сутності, ID чи дедуплікації. Тому на MVP «сторінка автора» = <b>відфільтрований список</b> книг із цим рядком автора (реюз сітки Search Results v1.0). Сутність автора (ID, дедуп, біо, фото) = <span class="w9-tag w9-tag--b">W9b</span>; будь-яка author-intelligence — поза скоупом.</p>
+    </div>
+    <div class="doc__grid">
+      <div class="doc__card"><h4>Модель навігації</h4><p>Ім'я автора — клікабельне на картці книги, у Book Details та в рядку результату пошуку. Веде на сторінку автора. Зв'язок із пошуком, не окремий продукт.</p></div>
+      <div class="doc__card"><h4>Сторінка автора</h4><p>Заголовок (ім'я) + сітка книг автора. Без вигаданого біо/фото на MVP — лише те, що є в даних. Аватар-плейсхолдер = ініціали.</p></div>
+    </div>
+    <div class="w9-tiles" style="margin-top: var(--space-5);">
+      <div class="w9-tile w9-authortile"><div class="w9-authortile__av">ТШ</div><div><div class="w9-tile__n">Тарас Шевченко</div><div class="w9-tile__c">7 книг</div></div></div>
+      <div class="w9-tile w9-authortile"><div class="w9-authortile__av">ЛК</div><div><div class="w9-tile__n">Ліна Костенко</div><div class="w9-tile__c">5 книг</div></div></div>
+      <div class="w9-tile w9-authortile"><div class="w9-authortile__av">СЖ</div><div><div class="w9-tile__n">Сергій Жадан</div><div class="w9-tile__c">9 книг</div></div></div>
+      <div class="w9-tile w9-authortile"><div class="w9-authortile__av">ОЗ</div><div><div class="w9-tile__n">Оксана Забужко</div><div class="w9-tile__c">6 книг</div></div></div>
+    </div>
+    <h3>Популярність авторів</h3>
+    <p>На MVP — за кількістю книг або сумарними додаваннями в бажанки (агрегація наявних даних). Без часового вікна й без рейтингу-гонки.</p>
+  </section>
+
+  <!-- 13 · KNYHOVO RECOMMENDS -->
+  <section id="recommends">
+    <h2><span class="num">13</span>Knyhovo радить</h2>
+    <p class="doc__sublead">Використовує наявні правила Книговика (W8b/W8c) — <b>жодної нової AI-поведінки</b>. Це курована редакційна добірка, а не алгоритм. Книговик — провідник, який пояснює <i>чому</i>, коли є реальна причина; інакше блок — тихий контент.</p>
+    <div class="doc__tablewrap">
+      <table>
+        <thead><tr><th>Питання</th><th>Відповідь W9</th></tr></thead>
+        <tbody>
+          <tr><td><b>Розміщення</b></td><td>Один рядок на головній + секція на Discovery Landing. Сторінка добірки — сітка Search Results v1.0.</td></tr>
+          <tr><td><b>Призначення</b></td><td>Курована людиною порада «що варто глянути». Не персоналізація, не рушій рекомендацій.</td></tr>
+          <tr><td><b>Очікування користувача</b></td><td>«Редакція Knyhovo / Книговик відібрав це для всіх» — не «підібрано саме для мене».</td></tr>
+          <tr><td><b>Коли Книговик з'являється</b></td><td>Середня присутність (W8c), <code>avatarAtention</code> + причина — <b>лише</b> коли є реальний привід: книги подешевшали, тематична добірка з висновком.</td></tr>
+          <tr><td><b>Коли блок мовчить (без маскота)</b></td><td>Проста добірка без вердикту («Нові надходження тижня») — лише заголовок «Добірка від Knyhovo» + сітка. Без причини Книговик не з'являється (W8c анти-патерн «поява без причини»).</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="doc__grid" style="margin-top: var(--space-5);">
+      <div class="doc__card">
+        <span class="w9-lbl">З Книговиком — є причина</span>
+        <div class="w9-rec" style="margin-top: var(--space-3);">
+          <div class="w9-rec__av" role="img" aria-label="Книговик радить"></div>
+          <div class="w9-rec__t"><span class="who">Книговик каже</span><q>Кілька книжок із цієї добірки подешевшали від типової ціни.</q></div>
+        </div>
+      </div>
+      <div class="doc__card">
+        <span class="w9-lbl">Без причини — тиша</span>
+        <div style="margin-top: var(--space-3);">
+          <div class="w9-sechd"><div class="w9-sechd__t" style="font-size: var(--fs-body);">Добірка від Knyhovo</div><span class="w9-sechd__all">усі →</span></div>
+          <div class="w9-silent"><i data-lucide="check" style="width:14px;height:14px;"></i> Книговик не з'являється — нема вердикту</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 14 · COMPONENT INVENTORY -->
+  <section id="components">
+    <h2><span class="num">14</span>Інвентар компонентів</h2>
+    <p class="doc__sublead">Нові компоненти — це <b>композиції</b> наявних DS-елементів (BookCard, Chip, Badge, Button, SearchBar), не нова візуальна мова. Для кожного: призначення · вхідні · варіанти · адаптив.</p>
+    <div class="w9-comp">
+      <div class="w9-compcard">
+        <div class="w9-compcard__h"><span class="w9-compcard__n">SectionRail</span><span class="w9-tag w9-tag--reuse">BookCard ×N</span></div>
+        <div class="w9-compcard__grid">
+          <div><span class="w9-lbl">Призначення</span><p>Горизонтальний рейл обкладинок із заголовком і «усі →». Тизер секції.</p></div>
+          <div><span class="w9-lbl">Вхідні</span><p>title, eyebrow, items[], hrefAll, optional rank.</p></div>
+          <div><span class="w9-lbl">Варіанти</span><p>Звичайний · ранжований · обрізаний край (cut).</p></div>
+          <div><span class="w9-lbl">Адаптив</span><p>Свайп на мобільному; обрізаний край натякає на скрол.</p></div>
+        </div>
+      </div>
+      <div class="w9-compcard">
+        <div class="w9-compcard__h"><span class="w9-compcard__n">SectionGrid</span><span class="w9-tag w9-tag--reuse">Search Results v1.0</span></div>
+        <div class="w9-compcard__grid">
+          <div><span class="w9-lbl">Призначення</span><p>Повна сітка списку секції. <b>Це і є</b> сітка Search Results — не редизайн.</p></div>
+          <div><span class="w9-lbl">Вхідні</span><p>items[], sort, page (інхерит контракт Search Results).</p></div>
+          <div><span class="w9-lbl">Варіанти</span><p>Grid View (єдиний у v1.0).</p></div>
+          <div><span class="w9-lbl">Адаптив</span><p>2 стовпці ≥768px · 1 стовпець &lt;768px (заморожено).</p></div>
+        </div>
+      </div>
+      <div class="w9-compcard">
+        <div class="w9-compcard__h"><span class="w9-compcard__n">SectionHeader</span><span class="w9-tag w9-tag--reuse">Type tokens</span></div>
+        <div class="w9-compcard__grid">
+          <div><span class="w9-lbl">Призначення</span><p>Eyebrow (звідки/чому) + серифний заголовок + «усі →».</p></div>
+          <div><span class="w9-lbl">Вхідні</span><p>eyebrow, title, hrefAll?.</p></div>
+          <div><span class="w9-lbl">Варіанти</span><p>З посиланням · без посилання.</p></div>
+          <div><span class="w9-lbl">Адаптив</span><p>«усі →» лишається в рядку; заголовок переноситься.</p></div>
+        </div>
+      </div>
+      <div class="w9-compcard">
+        <div class="w9-compcard__h"><span class="w9-compcard__n">GenreTile / GenreChip</span><span class="w9-tag w9-tag--reuse">Chip</span></div>
+        <div class="w9-compcard__grid">
+          <div><span class="w9-lbl">Призначення</span><p>Вхід у жанр/колекцію. Чіп — у навігації, тайл — у сітці жанрів.</p></div>
+          <div><span class="w9-lbl">Вхідні</span><p>name, count?, href.</p></div>
+          <div><span class="w9-lbl">Варіанти</span><p>Чіп (DS) · тайл із лічильником.</p></div>
+          <div><span class="w9-lbl">Адаптив</span><p>Чіпи — скрол; тайли — 1–2 стовпці.</p></div>
+        </div>
+      </div>
+      <div class="w9-compcard">
+        <div class="w9-compcard__h"><span class="w9-compcard__n">AuthorTile</span><span class="w9-tag w9-tag--reuse">Avatar fallback</span></div>
+        <div class="w9-compcard__grid">
+          <div><span class="w9-lbl">Призначення</span><p>Вхід на сторінку автора з індексу/рейлу авторів.</p></div>
+          <div><span class="w9-lbl">Вхідні</span><p>authorName, bookCount, href. (ініціали як аватар).</p></div>
+          <div><span class="w9-lbl">Варіанти</span><p>Тайл · інлайн-посилання (на картці/в Details).</p></div>
+          <div><span class="w9-lbl">Адаптив</span><p>Сітка → один стовпець; 44px ціль.</p></div>
+        </div>
+      </div>
+      <div class="w9-compcard">
+        <div class="w9-compcard__h"><span class="w9-compcard__n">RecommendsRow</span><span class="w9-tag w9-tag--reuse">W8c · ka-advice</span></div>
+        <div class="w9-compcard__grid">
+          <div><span class="w9-lbl">Призначення</span><p>Рядок «Knyhovo радить». Книговик з причиною — або тиша.</p></div>
+          <div><span class="w9-lbl">Вхідні</span><p>items[], reason?, withMascot (derived: є причина?).</p></div>
+          <div><span class="w9-lbl">Варіанти</span><p>З аватаром+причиною (W8c medium) · мовчазний контент.</p></div>
+          <div><span class="w9-lbl">Адаптив</span><p>Аватар над текстом на вузьких екранах.</p></div>
+        </div>
+      </div>
+      <div class="w9-compcard">
+        <div class="w9-compcard__h"><span class="w9-compcard__n">RankMark</span><span class="w9-tag w9-tag--reuse">Type tokens</span></div>
+        <div class="w9-compcard__grid">
+          <div><span class="w9-lbl">Призначення</span><p>Тиха порядкова мітка для популярного. Без медалей і вогників.</p></div>
+          <div><span class="w9-lbl">Вхідні</span><p>position (1…N).</p></div>
+          <div><span class="w9-lbl">Варіанти</span><p>Над обкладинкою (рейл) · зліва (список).</p></div>
+          <div><span class="w9-lbl">Адаптив</span><p>Не зменшується нижче читабельного.</p></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 15 · BROWSE FLOWS -->
+  <section id="flows">
+    <h2><span class="num">15</span>Browse-флоу</h2>
+    <p class="doc__sublead">П'ять шляхів відкриття. Кожен починається без точного запиту й завершується на Book Details v1.1. Мітки знизу показують, який заморожений патерн рендерить крок.</p>
+    <div class="w9-flows">
+      <div class="w9-flow">
+        <div class="w9-flow__name">Головна → Жанр → Книга</div>
+        <div class="w9-flow__steps">
+          <span class="w9-step"><b>Головна</b></span><span class="w9-arrow">→</span>
+          <span class="w9-step">Огляд / чіп жанру</span><span class="w9-arrow">→</span>
+          <span class="w9-step">Сторінка жанру <span class="w9-step__reuse">Search v1.0</span></span><span class="w9-arrow">→</span>
+          <span class="w9-step"><b>Book Details</b> <span class="w9-step__reuse">v1.1</span></span>
+        </div>
+      </div>
+      <div class="w9-flow">
+        <div class="w9-flow__name">Головна → Trending → Книга</div>
+        <div class="w9-flow__steps">
+          <span class="w9-step"><b>Головна</b></span><span class="w9-arrow">→</span>
+          <span class="w9-step">Огляд → Популярне/Trending</span><span class="w9-arrow">→</span>
+          <span class="w9-step">Список <span class="w9-step__reuse">Search v1.0</span></span><span class="w9-arrow">→</span>
+          <span class="w9-step"><b>Book Details</b> <span class="w9-step__reuse">v1.1</span></span>
+        </div>
+      </div>
+      <div class="w9-flow">
+        <div class="w9-flow__name">Головна → Автор → Книги автора</div>
+        <div class="w9-flow__steps">
+          <span class="w9-step"><b>Головна</b> / результат пошуку</span><span class="w9-arrow">→</span>
+          <span class="w9-step">Ім'я автора <span class="w9-step__reuse">W8c</span></span><span class="w9-arrow">→</span>
+          <span class="w9-step">Сторінка автора <span class="w9-step__reuse">Search v1.0</span></span><span class="w9-arrow">→</span>
+          <span class="w9-step"><b>Book Details</b> <span class="w9-step__reuse">v1.1</span></span>
+        </div>
+      </div>
+      <div class="w9-flow">
+        <div class="w9-flow__name">Головна → Рекомендація → Книга</div>
+        <div class="w9-flow__steps">
+          <span class="w9-step"><b>Головна</b></span><span class="w9-arrow">→</span>
+          <span class="w9-step">Knyhovo радить <span class="w9-step__reuse">W8c</span></span><span class="w9-arrow">→</span>
+          <span class="w9-step">Добірка <span class="w9-step__reuse">Search v1.0</span></span><span class="w9-arrow">→</span>
+          <span class="w9-step"><b>Book Details</b> <span class="w9-step__reuse">v1.1</span></span>
+        </div>
+      </div>
+      <div class="w9-flow">
+        <div class="w9-flow__name">Discovery Landing → Секція → Book Details</div>
+        <div class="w9-flow__steps">
+          <span class="w9-step"><b>Огляд</b></span><span class="w9-arrow">→</span>
+          <span class="w9-step">Секційний чіп / «усі →»</span><span class="w9-arrow">→</span>
+          <span class="w9-step">Список секції <span class="w9-step__reuse">Search v1.0</span></span><span class="w9-arrow">→</span>
+          <span class="w9-step"><b>Book Details</b> <span class="w9-step__reuse">v1.1</span></span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- 16 · MVP vs FUTURE -->
+  <section id="mvp">
+    <h2><span class="num">16</span>MVP vs Future</h2>
+    <p class="doc__sublead">Класифікація заземлена на <b>реальну архітектуру Knyhovo</b>: <code>canonical_books</code> (title/author/isbn/created_at), <code>provider_listings</code>, append-only <code>price_history</code>, <code>wishlist_items</code>. W9a будуємо без нової інфраструктури — реюз компонентів, контент-driven, backend-легко.</p>
+    <div class="w9-tiers">
+      <div class="w9-tier w9-tier--mvp">
+        <div class="w9-tier__h"><span class="w9-tier__code">W9a · MVP</span></div>
+        <div class="w9-tier__sub">Реалізовно на наявній архітектурі. Backend-легко, контент-driven, реюзні компоненти.</div>
+        <ul>
+          <li><b>Discovery Landing</b> з наявних списків + редакційний конфіг</li>
+          <li><b>Новинки</b> через <code>created_at DESC</code> (новий read-only список)</li>
+          <li><b>Популярні книги</b> через агрегацію <code>wishlist_items</code> або редакційний список</li>
+          <li><b>Сторінка автора</b> = фільтр за рядком автора (реюз сітки)</li>
+          <li><b>Knyhovo радить</b> = курована добірка (W8c-правила, без AI)</li>
+          <li><b>Колекції</b> (тег-добірки) як жанр-замінник</li>
+          <li>Вторинна навігація + тизери на головній</li>
+        </ul>
+      </div>
+      <div class="w9-tier w9-tier--b">
+        <div class="w9-tier__h"><span class="w9-tier__code">W9b · Future</span></div>
+        <div class="w9-tier__sub">Потребує помірної додаткової інфраструктури (нові поля, логування, сутності).</div>
+        <ul>
+          <li><b>Справжня жанрова таксономія</b>: поле жанру + маппінг у скраперах + сторінки жанрів</li>
+          <li><b>Справжній Trending</b>: логування подій + часове вікно / decay</li>
+          <li><b>Популярність за переглядами/кліками</b> (event tracking)</li>
+          <li><b>Сутність автора</b>: ID, дедуплікація, метадані, повноцінні сторінки авторів</li>
+          <li><b>Дата публікації</b> як окреме поле (точні «новинки»)</li>
+        </ul>
+      </div>
+      <div class="w9-tier w9-tier--c">
+        <div class="w9-tier__h"><span class="w9-tier__code">W9c · Future</span></div>
+        <div class="w9-tier__sub">Потребує складних систем рекомендацій/відкриття. Поза скоупом цієї специфікації.</div>
+        <ul>
+          <li><b>Персоналізовані рекомендації</b> / collaborative filtering</li>
+          <li><b>Семантична схожість</b> / «схожі книги» за змістом</li>
+          <li><b>AI-driven відкриття</b> та ранжування</li>
+          <li><b>Author-intelligence</b> (зв'язки, впливи, графи)</li>
+        </ul>
+      </div>
+    </div>
+    <p class="ka-quiet" style="margin-top: var(--space-4);">Принцип розбиття: якщо фічу можна зібрати з наявних даних + реюзних компонентів — це W9a. Якщо потрібне нове поле/логування/сутність — W9b. Якщо потрібен рушій рекомендацій чи семантика — W9c (і поза скоупом нинішніх обмежень).</p>
+  </section>
+
+  <!-- 17 · OPEN QUESTIONS -->
+  <section id="questions">
+    <h2><span class="num">17</span>Відкриті продуктові питання</h2>
+    <p class="doc__sublead">Нерозв'язані рішення, які має закрити майбутній W9 PRD. Найважливіше — перше: discovery візуальний, а обкладинок у нас поки немає.</p>
+    <ol>
+      <li><b>Обкладинки.</b> <code>coverUrl</code> сьогодні <code>null</code>. Discovery — найвізуальніша поверхня продукту; без обкладинок рейли виглядають як плейсхолдери. Звідки беремо обкладинки і чи це блокер W9a?</li>
+      <li><b>Джерело жанрів.</b> Куратор вручну (колекції) чи маппінг зі скраперів? Хто власник таксономії?</li>
+      <li><b>Визначення популярності.</b> Бажанки, перегляди чи продажі — що є source of truth? Чи прийнятний проксі «додавання в бажанки» на старті?</li>
+      <li><b>Вікно та поріг Trending.</b> Який період і який анти-FOMO-поріг, щоб уникнути фейкової терміновості?</li>
+      <li><b>Дедуплікація авторів.</b> Текстове поле → варіації написання («Т. Шевченко» / «Тарас Шевченко»). Коли потрібна сутність автора?</li>
+      <li><b>Дата публікації.</b> Чи отримуємо її колись від скраперів? Це визначає, чи «новинки» — справжні, чи «нові в Knyhovo».</li>
+      <li><b>Маршрут Discovery.</b> Окремий route «Огляд» чи розширення головної? Впливає на навігацію й SEO.</li>
+      <li><b>Ємність кураторської команди.</b> Скільки редакційних добірок реально оновлювати щотижня?</li>
+      <li><b>Книговик радить.</b> Хто пише причину (редактор) і за яким правилом блок стає мовчазним?</li>
+    </ol>
+    <div class="doc__pull">W9 будує відкриття на <em>тому, що вже є.</em> <span class="mute">Усе інше — чесно винесено у Future.</span></div>
+  </section>
+
+  <nav class="doc__nav" id="docnav">
+    <a href="../../Search Results Page.html">Search Results v1.0</a>
+    <a href="../../Book Details - Exploration.html">Book Details v1.1</a>
+    <a href="../../Wishlist - Exploration.html">Бажанки v1.0</a>
+    <a href="../knyhovyk-ai-assistant-v1/Knyhovyk in Product - W8c.html">Книговик у продукті · W8c</a>
+    <a aria-current="page">Discovery &amp; Browsing · W9</a>
+  </nav>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script>
+  (function () {
+    var root = document.documentElement;
+    var btn = document.getElementById('theme-btn');
+    var logos = [document.getElementById('doc-logo'), document.getElementById('frame-logo')];
+    function apply(t) {
+      root.setAttribute('data-theme', t);
+      if (btn) btn.textContent = t === 'dark' ? 'Світла тема' : 'Темна тема';
+      logos.forEach(function (l) {
+        if (l) l.src = t === 'dark'
+          ? '../../assets/logo/knyhovo-logo-dark.png'
+          : '../../assets/logo/knyhovo-logo-light.png';
+      });
+    }
+    apply(localStorage.getItem('kn-theme') || 'light');
+    if (btn) btn.addEventListener('click', function () {
+      var t = root.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
+      localStorage.setItem('kn-theme', t);
+      apply(t);
+    });
+    if (window.lucide) lucide.createIcons();
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,510 @@
+/* Knyhovo web — Catalog v1.0 (curated navigation landing).
+   Ported 1:1 from the frozen `design-import/incoming/Collections Landing Page.html`
+   — the collections-owned selectors only. Site chrome (.site-header/.site-footer/
+   .page) is intentionally NOT ported: the app owns that frozen chrome. New
+   styles use DS tokens only; no inline styles beyond the design's seeded
+   gradients / icon backgrounds. */
+
+/* ---------- Collections hero (.col-hero) ---------- */
+.col-hero {
+  padding: 56px 0 48px;
+}
+.col-hero__eye {
+  font-size: 12px;
+  letter-spacing: 2.5px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text-muted);
+  margin: 0 0 20px;
+}
+.col-hero__title {
+  font-family: var(--font-display);
+  font-size: clamp(2.5rem, 5vw, 4rem);
+  font-weight: 700;
+  line-height: 1.07;
+  letter-spacing: -0.02em;
+  margin: 0 0 16px;
+}
+.col-hero__title em {
+  color: var(--accent);
+  font-style: italic;
+}
+.col-hero__sub {
+  font-size: 18px;
+  color: var(--text-muted);
+  max-width: 56ch;
+  line-height: 1.6;
+  margin: 0;
+}
+
+/* ---------- Section header (.sec-head) ---------- */
+.sec-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+.sec-head__left {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.sec-eyebrow {
+  font-size: 11px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--text-muted);
+}
+.sec-title {
+  font-family: var(--font-display);
+  font-size: 1.75rem;
+  font-weight: 700;
+  margin: 0;
+}
+.sec-all {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--accent);
+  text-decoration: none;
+  white-space: nowrap;
+  transition: opacity var(--dur-fast) var(--ease-out);
+}
+.sec-all:hover {
+  opacity: 0.7;
+}
+
+/* ---------- Featured editorial card (.feat-card) ---------- */
+.feat-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 28px;
+  padding: 28px 32px;
+  background: var(--surface-accent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 56px;
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+}
+.feat-card:hover {
+  box-shadow: var(--shadow-lg);
+  transform: translateY(-2px);
+}
+.feat-covers {
+  display: flex;
+  align-items: center;
+}
+.feat-cover {
+  width: 76px;
+  height: 110px;
+  background: var(--border-strong);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
+  overflow: hidden;
+  transition: transform var(--dur-base) var(--ease-out);
+}
+.feat-cover:nth-child(2) {
+  transform: translateX(-16px) rotate(-2deg);
+  opacity: 0.7;
+  z-index: -1;
+}
+.feat-cover:nth-child(3) {
+  transform: translateX(-28px) rotate(-4deg);
+  opacity: 0.45;
+  z-index: -2;
+}
+.feat-cover__art {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-xs);
+}
+.feat-body {
+  flex: 1;
+}
+.feat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+.feat-badge::before {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--accent);
+  flex-shrink: 0;
+}
+.feat-title {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  margin-bottom: 8px;
+  line-height: 1.2;
+}
+.feat-desc {
+  font-size: 15px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  max-width: 52ch;
+}
+.feat-meta {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+  flex-shrink: 0;
+}
+.feat-count {
+  font-family: var(--font-display);
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--accent);
+  line-height: 1;
+}
+.feat-count-lbl {
+  font-size: 12px;
+  color: var(--text-muted);
+  font-weight: 600;
+  text-align: right;
+}
+.feat-cta {
+  margin-top: 8px;
+}
+
+/* ---------- Dynamic collection cards (.dyn-card) ---------- */
+.dynamic-section {
+  margin-bottom: 56px;
+}
+.dynamic-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14px;
+}
+.dyn-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 20px 22px;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out);
+}
+.dyn-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  border-color: color-mix(in oklab, var(--accent) 35%, var(--border));
+}
+.dyn-card__icon {
+  width: 38px;
+  height: 38px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dyn-card__glyph {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--accent);
+}
+.dyn-card__name {
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.dyn-card__meta {
+  font-size: 13px;
+  color: var(--text-muted);
+}
+.dyn-card__count {
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--accent);
+  margin-top: auto;
+}
+.dyn-card__count-lbl {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 600;
+}
+
+/* ---------- Genre grid (.genre-card) ---------- */
+.genre-section {
+  margin-bottom: 56px;
+}
+.genre-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+}
+.genre-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 16px 18px;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  /* Allow the grid item to shrink below its content's min-content width so the
+     2-col grid fits ≤768/375 without horizontal overflow. The frozen file masks
+     this via body{overflow-x:hidden}; the app chrome does not, so we fix it at
+     the source instead of clipping. */
+  min-width: 0;
+  transition: box-shadow var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out),
+    background var(--dur-fast) var(--ease-out);
+}
+.genre-card:hover {
+  background: color-mix(in oklab, var(--accent) 5%, var(--surface));
+  border-color: color-mix(in oklab, var(--accent) 30%, var(--border));
+  box-shadow: var(--shadow-sm);
+}
+.genre-card__icon {
+  width: 36px;
+  height: 36px;
+  border-radius: var(--radius-sm);
+  background: var(--surface-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+.genre-card__body {
+  flex: 1;
+  min-width: 0;
+}
+.genre-card__name {
+  font-size: 14px;
+  font-weight: 700;
+  margin-bottom: 2px;
+}
+.genre-card__count {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.genre-card__arrow {
+  color: var(--text-muted);
+  font-size: 14px;
+  opacity: 0.5;
+}
+
+/* ---------- Editorial spotlight (.ed-card) ---------- */
+.editorial-section {
+  margin-bottom: 56px;
+}
+.editorial-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+}
+.ed-card {
+  background: var(--surface-accent);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 24px;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: box-shadow var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.ed-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+}
+.ed-card__top {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.ed-card__avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background: var(--border-strong);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.ed-card__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.ed-card__glyph {
+  font-size: 20px;
+  color: var(--accent);
+}
+.ed-card__type {
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 2px;
+}
+.ed-card__name {
+  font-size: 15px;
+  font-weight: 700;
+  line-height: 1.2;
+}
+.ed-card__desc {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.6;
+  flex: 1;
+}
+.ed-card__footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.ed-card__count {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.ed-card__link {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-muted);
+}
+
+/* ---------- Author chips (.author-chip) ---------- */
+.authors-section {
+  margin-bottom: 64px;
+}
+.authors-cloud {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.author-chip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: 8px 16px;
+  text-decoration: none;
+  color: inherit;
+  font-size: 14px;
+  font-weight: 500;
+  transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+.author-chip:hover {
+  border-color: var(--accent);
+  background: color-mix(in oklab, var(--accent) 5%, var(--surface));
+}
+.author-chip__count {
+  font-size: 12px;
+  color: var(--text-muted);
+}
+
+/* ---------- Focus ring ----------
+   Cards that declare their own base box-shadow (.dyn-card) otherwise override
+   the DS `:focus-visible` ring at equal specificity. Re-assert the DS
+   `--focus-ring` on every interactive card so keyboard focus is always visible
+   (a11y) — same token as the rest of the app, no new visual language. */
+.feat-card:focus-visible,
+.dyn-card:focus-visible,
+.genre-card:focus-visible,
+.ed-card:focus-visible,
+.author-chip:focus-visible,
+.sec-all:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+/* ---------- Divider ---------- */
+.page-divider {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 0 0 56px;
+}
+
+/* ---------- Responsive (mirrors the frozen breakpoints) ---------- */
+@media (max-width: 1024px) {
+  .dynamic-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .genre-grid {
+    grid-template-columns: repeat(3, 1fr);
+  }
+}
+@media (max-width: 768px) {
+  .col-hero {
+    padding: 32px 0 36px;
+  }
+  .col-hero__title {
+    font-size: 2rem;
+  }
+  .col-hero__sub {
+    font-size: 15px;
+  }
+  .feat-card {
+    grid-template-columns: 1fr;
+    gap: 16px;
+    padding: 20px;
+  }
+  .feat-covers {
+    justify-content: center;
+  }
+  .feat-meta {
+    flex-direction: row;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .dynamic-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+  }
+  .genre-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .editorial-grid {
+    grid-template-columns: 1fr;
+  }
+  /* 44px touch targets on small screens. */
+  .author-chip {
+    min-height: 44px;
+  }
+  .sec-all {
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+  }
+}
+@media (max-width: 480px) {
+  .dynamic-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+}

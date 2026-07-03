@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<!-- Knyhovo Collections Landing v1.0 — APPROVED & FROZEN 2026-07-02.
+     Implementation source of truth for the «Добірки» page. Do not redesign; bug fixes + backend
+     integration only. Composes DS v1.0 tokens/components + frozen NP-style chrome. Line icons only
+     (inline Lucide-style <DynIcon>) — no emoji/unicode glyphs. Featured «Книговик радить» block first,
+     then «Актуальні добірки» → «За жанром» → «Популярні автори». Footer logo uses the transparent
+     lockups (assets/logo/knyhovo-logo-*-trans.png). See CLAUDE.md for the full freeze spec. -->
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Добірки — Knyhovo</title>
+
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/_ds_bundle.js"></script>
+
+<style>
+/* ── LAYOUT ─────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-body); overflow-x: hidden; }
+.page { max-width: 1320px; margin: 0 auto; padding: 0 48px; }
+
+/* ── HEADER (matches homepage frozen pattern) ── */
+.site-header { display: flex; align-items: center; gap: var(--space-8); height: 72px; }
+.site-brand { display: flex; align-items: center; }
+.site-logo { height: 64px; display: block; margin-left: -9px; }
+.site-nav { display: flex; gap: 32px; margin-left: auto; }
+.nav-link { font-size: 16px; font-weight: 500; color: var(--text-body); transition: color 140ms ease-out; text-decoration: none; }
+.nav-link:hover { color: var(--accent); }
+.nav-link--active { color: var(--accent); font-weight: 600; }
+.site-actions { display: flex; align-items: center; gap: var(--space-5); margin-left: var(--space-8); margin-right: -9px; }
+.site-actions .kn-btn { height: 40px; padding: 0 20px; font-size: 14px; font-weight: 600; border-radius: 10px; }
+
+/* ── COLLECTIONS HERO ───────────────────────── */
+.col-hero { padding: 56px 0 48px; }
+.col-hero__eye { font-size: 12px; letter-spacing: 2.5px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); margin-bottom: 20px; }
+.col-hero__title { font-family: var(--font-display); font-size: clamp(2.5rem, 5vw, 4rem); font-weight: 700; line-height: 1.07; letter-spacing: -0.02em; margin-bottom: 16px; }
+.col-hero__title em { color: var(--accent); font-style: italic; }
+.col-hero__sub { font-size: 18px; color: var(--text-muted); max-width: 56ch; line-height: 1.6; }
+
+/* ── SECTION HEADER ─────────────────────────── */
+.sec-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 16px; margin-bottom: 24px; }
+.sec-head__left { display: flex; flex-direction: column; gap: 4px; }
+.sec-eyebrow { font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); }
+.sec-title { font-family: var(--font-display); font-size: 1.75rem; font-weight: 700; }
+.sec-all { font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; white-space: nowrap; transition: opacity 140ms; }
+.sec-all:hover { opacity: .7; }
+
+/* ── FEATURED EDITORIAL CARD ────────────────── */
+.feat-card {
+  display: grid;
+  grid-template-columns: auto 1fr auto;
+  align-items: center;
+  gap: 28px;
+  padding: 18px 32px;
+  height: 204px;
+  overflow: hidden;
+  background: var(--surface-accent);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+  margin-bottom: 56px;
+  margin-top: 56px;
+  text-decoration: none;
+  color: inherit;
+  transition: box-shadow 200ms ease-out, transform 200ms ease-out;
+}
+.feat-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+[data-theme="dark"] .feat-card { background: #0a0909; }
+[data-theme="light"] .feat-card { background: #f2dbc1; }
+.feat-mascot {
+  width: 236px; height: 163px;
+  object-fit: cover;
+  flex-shrink: 0;
+  display: block;
+  -webkit-mask-image: radial-gradient(ellipse 60% 66% at 50% 50%, #000 46%, transparent 78%);
+  mask-image: radial-gradient(ellipse 60% 66% at 50% 50%, #000 46%, transparent 78%);
+}
+.feat-body { flex: 1; }
+.feat-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  font-weight: 700;
+  color: var(--accent);
+  margin-bottom: 10px;
+}
+.feat-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.feat-title { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; line-height: 1.2; }
+.feat-desc { font-size: 15px; color: var(--text-muted); line-height: 1.6; max-width: 52ch; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.feat-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+.feat-count { font-family: var(--font-display); font-size: 2rem; font-weight: 700; color: var(--accent); line-height: 1; }
+.feat-count-lbl { font-size: 12px; color: var(--text-muted); font-weight: 600; text-align: right; }
+
+/* ── DYNAMIC COLLECTION CARDS ───────────────── */
+.dynamic-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 56px; }
+.dyn-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 20px 22px;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  transition: box-shadow 180ms ease-out, transform 180ms ease-out, border-color 180ms;
+  box-shadow: var(--shadow-sm);
+}
+.dyn-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); border-color: color-mix(in oklab, var(--accent) 35%, var(--border)); }
+.dyn-card__icon {
+  width: 38px; height: 38px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.dyn-card__name { font-size: 1rem; font-weight: 700; line-height: 1.2; }
+.dyn-card__meta { font-size: 13px; color: var(--text-muted); }
+.dyn-card__count { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; color: var(--accent); }
+.dyn-card__foot { margin-top: auto; }
+.dyn-card__count-lbl { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+
+/* ── GENRE GRID ─────────────────────────────── */
+.genre-section { margin-bottom: 56px; }
+.genre-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+.genre-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 16px 18px;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  transition: box-shadow 160ms ease-out, border-color 160ms, background 160ms;
+}
+.genre-card:hover {
+  background: color-mix(in oklab, var(--accent) 5%, var(--surface));
+  border-color: color-mix(in oklab, var(--accent) 30%, var(--border));
+  box-shadow: var(--shadow-sm);
+}
+.genre-card__icon {
+  width: 36px; height: 36px;
+  border-radius: 8px;
+  background: var(--surface-accent);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  font-size: 18px;
+}
+.genre-card__body { flex: 1; min-width: 0; }
+.genre-card__name { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
+.genre-card__count { font-size: 12px; color: var(--text-muted); }
+.genre-card__arrow { color: var(--text-muted); font-size: 14px; opacity: .5; }
+.genre-all-wrap { text-align: center; margin-top: 16px; }
+
+/* ── EDITORIAL SPOTLIGHT ────────────────────── */
+.editorial-section { margin-bottom: 56px; }
+.editorial-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.ed-card {
+  background: var(--surface-accent);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  padding: 24px;
+  text-decoration: none;
+  color: inherit;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  transition: box-shadow 180ms ease-out, transform 180ms ease-out;
+}
+.ed-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.ed-card__top { display: flex; align-items: center; gap: 12px; }
+.ed-card__avatar {
+  width: 44px; height: 44px;
+  border-radius: 50%;
+  background: var(--border-strong);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 20px;
+  flex-shrink: 0;
+  overflow: hidden;
+}
+.ed-card__avatar img { width: 100%; height: 100%; object-fit: cover; }
+.ed-card__type { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; color: var(--accent); margin-bottom: 2px; }
+.ed-card__name { font-size: 15px; font-weight: 700; line-height: 1.2; }
+.ed-card__desc { font-size: 14px; color: var(--text-muted); line-height: 1.6; flex: 1; }
+.ed-card__footer { display: flex; align-items: center; justify-content: space-between; }
+.ed-card__count { font-size: 13px; font-weight: 600; color: var(--accent); }
+.ed-card__link { font-size: 13px; font-weight: 600; color: var(--text-muted); }
+
+/* ── AUTHOR CHIPS ───────────────────────────── */
+.authors-section { margin-bottom: 64px; }
+.authors-cloud { display: flex; flex-wrap: wrap; gap: 8px; }
+.author-chip {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 999px; padding: 8px 16px;
+  text-decoration: none; color: inherit;
+  font-size: 14px; font-weight: 500;
+  transition: border-color 160ms, background 160ms;
+}
+.author-chip:hover { border-color: var(--accent); background: color-mix(in oklab, var(--accent) 5%, var(--surface)); }
+.author-chip__count { font-size: 12px; color: var(--text-muted); }
+
+/* ── FOOTER ─────────────────────────────────── */
+.site-footer { border-top: 1px solid var(--border); padding: 48px 0 32px; }
+.footer-inner { display: flex; align-items: flex-start; gap: 48px; }
+.footer-brand { flex-shrink: 0; }
+.footer-logo { height: 44px; margin-left: -6px; }
+.footer-tagline { font-size: 13px; color: var(--text-muted); margin-top: 10px; max-width: 220px; line-height: 1.5; }
+.footer-links { display: flex; gap: 48px; margin-left: auto; flex-wrap: wrap; }
+.footer-col__title { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); margin-bottom: 12px; }
+.footer-col ul { list-style: none; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.footer-col a { font-size: 14px; color: var(--text-body); text-decoration: none; transition: color 140ms; }
+.footer-col a:hover { color: var(--accent); }
+.footer-bottom { display: flex; align-items: center; justify-content: space-between; margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border); font-size: 13px; color: var(--text-muted); }
+
+/* ── DIVIDER ─────────────────────────────────── */
+.page-divider { border: none; border-top: 1px solid var(--border); margin: 0 0 56px; }
+
+/* ── RESPONSIVE ─────────────────────────────── */
+@media (max-width: 1024px) {
+  .dynamic-grid { grid-template-columns: repeat(2, 1fr); }
+  .genre-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 768px) {
+  .page { padding: 0 20px; }
+  .site-nav { display: none; }
+  .site-actions .kn-btn:not(.kn-btn--icon) { display: none; }
+  .col-hero { padding: 32px 0 36px; }
+  .col-hero__title { font-size: 2rem; }
+  .col-hero__sub { font-size: 15px; }
+  .feat-card { grid-template-columns: 1fr; gap: 16px; padding: 20px; height: auto; overflow: visible; margin-top: 32px; margin-bottom: 40px; }
+  .feat-mascot { margin: 0 auto; }
+  .feat-meta { flex-direction: row; align-items: center; }
+  .feat-meta .kn-btn { margin-left: auto; }
+  .dynamic-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
+  .genre-grid { grid-template-columns: repeat(2, 1fr); }
+  .editorial-grid { grid-template-columns: 1fr; }
+  .footer-inner { flex-direction: column; gap: 32px; }
+  .footer-links { gap: 28px; }
+}
+@media (max-width: 480px) {
+  .dynamic-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div id="root"></div>
+
+<script type="text/babel">
+const { SearchBar, BookCard, Badge, Chip, Button, ThemeToggle } = window.KnyhovoDesignSystem_9fa616;
+
+/* ── DATA ───────────────────────────────────── */
+const DYNAMIC_COLLECTIONS = [
+  { slug: 'populyarne-zaraz', name: 'Популярне зараз', desc: 'Оновлюється щодня', count: 147, icon: 'flame', iconBg: 'color-mix(in oklab, #B56A2D 12%, var(--bg))' },
+  { slug: 'novynky',          name: 'Новинки',          desc: 'З\'явились цього місяця', count: 43, icon: 'sparkles', iconBg: 'color-mix(in oklab, #243C7A 12%, var(--bg))' },
+  { slug: 'znyzhky',          name: 'Найбільші знижки', desc: 'Актуальні пропозиції', count: 62, icon: 'badge-percent', iconBg: 'color-mix(in oklab, #24513E 12%, var(--bg))' },
+  { slug: 'ponyzhena-tsina',  name: 'Ціна знизилась',  desc: 'За останні 7 днів', count: 31, icon: 'trending-down', iconBg: 'color-mix(in oklab, #24513E 12%, var(--bg))' },
+  { slug: 'najbilsh-bazhani', name: 'Найбільш бажані', desc: 'У вішлистах читачів', count: 89, icon: 'bookmark', iconBg: 'color-mix(in oklab, #B56A2D 12%, var(--bg))' },
+  { slug: 'rekordno-nyzka-tsina', name: 'Рекордна ціна', desc: 'Мінімум за всю історію', count: 18, icon: 'arrow-down-to-line', iconBg: 'color-mix(in oklab, #243C7A 12%, var(--bg))' },
+];
+
+const GENRES = [
+  { slug: 'fentezi',           name: 'Фентезі',          count: 612,  icon: 'swords' },
+  { slug: 'psykholohiia',      name: 'Психологія',        count: 438,  icon: 'brain' },
+  { slug: 'khudozhnia-proza',  name: 'Художня проза',     count: 1840, icon: 'book-open' },
+  { slug: 'biznes',            name: 'Бізнес',            count: 327,  icon: 'chart-column' },
+  { slug: 'naukova-fantastyka',name: 'Наукова фантастика',count: 289,  icon: 'rocket' },
+  { slug: 'istoriya',          name: 'Історія',           count: 514,  icon: 'landmark' },
+  { slug: 'dytiachi',          name: 'Дитячі',            count: 921,  icon: 'palette' },
+  { slug: 'nauka',             name: 'Наука',             count: 196,  icon: 'microscope' },
+];
+
+const EDITORIAL = [
+  {
+    slug: 'knyhovyk-radyt',
+    type: 'Книговик радить',
+    name: 'Книги, що варто прочитати',
+    desc: 'Особиста добірка Книговика — книги, які він перечитував, думав про них довго і нарешті рекомендує вголос.',
+    count: 47,
+    avatar: '_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/assets/avatar/knyhovyk-avatar-light.png',
+  },
+  {
+    slug: 'vybir-redaktsiyi',
+    type: 'Вибір редакції',
+    name: 'Тема тижня: самотність і ті, хто поряд',
+    desc: 'Редакція Knyhovo обирає тему і збирає книги, що говорять про неї найчесніше. Цього тижня — про зв\'язок.',
+    count: 12,
+    avatar: null,
+    avatarLetter: '✦',
+  },
+  {
+    slug: 'pryhovani-skarby',
+    type: 'Приховані скарби',
+    name: 'Малознані книги з великим серцем',
+    desc: 'Книги з рейтингом 4.5+ і менш ніж 200 оцінками. Те, що гідне уваги, але ще не знайшло свого читача.',
+    count: 28,
+    avatar: null,
+    avatarLetter: '◈',
+  },
+];
+
+const BOOKS = [
+  { title: 'Атомні звички', author: 'Джеймс Клір', price: '285 ₴', oldPrice: '380 ₴', store: 'Yakaboo', badge: { tone: 'green', text: 'Найкраща ціна' } },
+  { title: 'Sapiens', author: 'Юваль Нoa Гарарі', price: '320 ₴', store: 'BookChef', badge: { tone: 'solid', text: '-15%' } },
+  { title: 'Дюна', author: 'Френк Герберт', price: '410 ₴', store: 'Книгарня «Є»', badge: null },
+  { title: 'Майстер і Маргарита', author: 'Михайло Булгаков', price: '195 ₴', oldPrice: '260 ₴', store: 'Nash Format', badge: { tone: 'solid', text: '-25%' } },
+  { title: 'Гарри Поттер і Філософський Камінь', author: 'Дж. К. Роулінг', price: '340 ₴', store: 'Rozetka', badge: null },
+  { title: 'Тіні забутих предків', author: 'Михайло Коцюбинський', price: '110 ₴', store: 'Nash Format', badge: null },
+];
+
+const AUTHORS = [
+  { name: 'Юваль Ноа Гарарі', slug: 'yuval-noa-kharari', count: 4 },
+  { name: 'Сергій Жадан', slug: 'serhii-zhadan', count: 12 },
+  { name: 'Оксана Забужко', slug: 'oksana-zabuzhko', count: 8 },
+  { name: 'Джеймс Клір', slug: 'james-clear', count: 3 },
+  { name: 'Люко Дашвар', slug: 'liuko-dashvar', count: 7 },
+  { name: 'Артем Чех', slug: 'artem-chekh', count: 5 },
+  { name: 'Марина Гримич', slug: 'maryna-hrymych', count: 6 },
+  { name: 'Джордж Оруелл', slug: 'george-orwell', count: 5 },
+];
+
+/* ── COMPONENTS ─────────────────────────────── */
+
+function BookCover({ seed = 0 }) {
+  const hues = [28, 220, 145, 200, 320, 42, 170, 260];
+  const hue = hues[seed % hues.length];
+  const h = `oklch(65% 0.12 ${hue})`;
+  const hl = `oklch(75% 0.09 ${hue})`;
+  return (
+    <div style={{
+      width: '100%', height: '100%',
+      background: `linear-gradient(145deg, ${h} 0%, ${hl} 100%)`,
+      display: 'flex', alignItems: 'center', justifyContent: 'center',
+      borderRadius: 6,
+    }}>
+      <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" strokeWidth="1.5">
+        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+      </svg>
+    </div>
+  );
+}
+
+function DynIcon({ name, size = 20 }) {
+  const paths = {
+    'flame': <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" />,
+    'sparkles': <React.Fragment><path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .962 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.962 0z" /><path d="M20 3v4" /><path d="M22 5h-4" /><path d="M4 17v2" /><path d="M5 18H3" /></React.Fragment>,
+    'badge-percent': <React.Fragment><path d="M3.85 8.62a4 4 0 0 1 4.78-4.77 4 4 0 0 1 6.74 0 4 4 0 0 1 4.78 4.78 4 4 0 0 1 0 6.74 4 4 0 0 1-4.77 4.78 4 4 0 0 1-6.75 0 4 4 0 0 1-4.78-4.77 4 4 0 0 1 0-6.76Z" /><path d="m15 9-6 6" /><path d="M9 9h.01" /><path d="M15 15h.01" /></React.Fragment>,
+    'trending-down': <React.Fragment><path d="M16 17h6v-6" /><path d="m22 17-8.5-8.5-5 5L2 7" /></React.Fragment>,
+    'bookmark': <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z" />,
+    'arrow-down-to-line': <React.Fragment><path d="M12 17V3" /><path d="m6 11 6 6 6-6" /><path d="M19 21H5" /></React.Fragment>,
+    'swords': <React.Fragment><polyline points="14.5 17.5 3 6 3 3 6 3 17.5 14.5" /><line x1="13" x2="19" y1="19" y2="13" /><line x1="16" x2="20" y1="16" y2="20" /><line x1="19" x2="21" y1="21" y2="19" /><polyline points="14.5 6.5 18 3 21 3 21 6 17.5 9.5" /><line x1="5" x2="9" y1="14" y2="18" /><line x1="7" x2="4" y1="17" y2="20" /><line x1="3" x2="5" y1="19" y2="21" /></React.Fragment>,
+    'brain': <React.Fragment><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z" /><path d="M12 5a3 3 0 1 1 5.997.125 4 4 0 0 1 2.526 5.77 4 4 0 0 1-.556 6.588A4 4 0 1 1 12 18Z" /><path d="M15 13a4.5 4.5 0 0 1-3-4 4.5 4.5 0 0 1-3 4" /><path d="M6 18a4 4 0 0 1-1.967-.516" /><path d="M19.967 17.484A4 4 0 0 1 18 18" /></React.Fragment>,
+    'book-open': <React.Fragment><path d="M12 7v14" /><path d="M3 18a1 1 0 0 1-1-1V4a1 1 0 0 1 1-1h5a4 4 0 0 1 4 4 4 4 0 0 1 4-4h5a1 1 0 0 1 1 1v13a1 1 0 0 1-1 1h-6a3 3 0 0 0-3 3 3 3 0 0 0-3-3z" /></React.Fragment>,
+    'chart-column': <React.Fragment><path d="M3 3v16a2 2 0 0 0 2 2h16" /><path d="M18 17V9" /><path d="M13 17V5" /><path d="M8 17v-3" /></React.Fragment>,
+    'rocket': <React.Fragment><path d="M4.5 16.5c-1.5 1.26-2 5-2 5s3.74-.5 5-2c.71-.84.7-2.13-.09-2.91a2.18 2.18 0 0 0-2.91-.09z" /><path d="m12 15-3-3a22 22 0 0 1 2-3.95A12.88 12.88 0 0 1 22 2c0 2.72-.78 7.5-6 11a22.35 22.35 0 0 1-4 2z" /><path d="M9 12H4s.55-3.03 2-4c1.62-1.08 5 0 5 0" /><path d="M12 15v5s3.03-.55 4-2c1.08-1.62 0-5 0-5" /></React.Fragment>,
+    'landmark': <React.Fragment><line x1="3" x2="21" y1="22" y2="22" /><line x1="6" x2="6" y1="18" y2="11" /><line x1="10" x2="10" y1="18" y2="11" /><line x1="14" x2="14" y1="18" y2="11" /><line x1="18" x2="18" y1="18" y2="11" /><polygon points="12 2 20 7 4 7" /></React.Fragment>,
+    'palette': <React.Fragment><path d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z" /><circle cx="13.5" cy="6.5" r=".5" fill="currentColor" /><circle cx="17.5" cy="10.5" r=".5" fill="currentColor" /><circle cx="6.5" cy="12.5" r=".5" fill="currentColor" /><circle cx="8.5" cy="7.5" r=".5" fill="currentColor" /></React.Fragment>,
+    'microscope': <React.Fragment><path d="M6 18h8" /><path d="M3 22h18" /><path d="M14 22a7 7 0 1 0 0-14h-1" /><path d="M9 14h2" /><path d="M9 12a2 2 0 0 1-2-2V6h6v4a2 2 0 0 1-2 2Z" /><path d="M12 6V3a1 1 0 0 0-1-1H9a1 1 0 0 0-1 1v3" /></React.Fragment>,
+  };
+  return (
+    <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor"
+      strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      {paths[name] || null}
+    </svg>
+  );
+}
+
+function FeaturedCard({ theme }) {
+  const mascotSrc = theme === 'dark'
+    ? 'assets/mascot/mascot-reading-chair-dark-final.png'
+    : 'assets/mascot/mascot-reading-chair-light-hybrid.png';
+  return (
+    <a href="#" className="feat-card">
+      <img className="feat-mascot" src={mascotSrc} alt="Книговик" />
+      <div className="feat-body">
+        <div className="feat-badge">Книговик радить</div>
+        <div className="feat-title">Книги, що варто прочитати цього літа</div>
+        <div className="feat-desc">Особиста підбірка Книговика — книги, які він перечитував, думав про них довго і нарешті рекомендує вголос.</div>
+      </div>
+      <div className="feat-meta">
+        <div className="feat-count">47</div>
+        <div className="feat-count-lbl">книг<br />у добірці</div>
+        <div className="kn-btn kn-btn--primary" style={{ marginTop: 8, fontSize: 14, padding: '8px 18px', borderRadius: 10 }}>Переглянути →</div>
+      </div>
+    </a>
+  );
+}
+
+function DynamicSection() {
+  return (
+    <div style={{ marginBottom: 56 }}>
+      <div className="sec-head">
+        <div className="sec-head__left">
+          <div className="sec-eyebrow">Актуальні добірки</div>
+          <div className="sec-title">Щодня оновлюється</div>
+        </div>
+      </div>
+      <div className="dynamic-grid">
+        {DYNAMIC_COLLECTIONS.map(col => (
+          <a key={col.slug} href={`#/dobirky/${col.slug}`} className="dyn-card">
+            <div className="dyn-card__icon" style={{ background: 'var(--surface-accent)', color: 'var(--accent)' }}>
+              <DynIcon name={col.icon} />
+            </div>
+            <div className="dyn-card__name">{col.name}</div>
+            <div className="dyn-card__meta">{col.desc}</div>
+            <div className="dyn-card__foot">
+              <div className="dyn-card__count">{col.count}</div>
+              <div className="dyn-card__count-lbl">книг зараз</div>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function GenreSection() {
+  return (
+    <div className="genre-section">
+      <div className="sec-head">
+        <div className="sec-head__left">
+          <div className="sec-eyebrow">Навігація</div>
+          <div className="sec-title">За жанром</div>
+        </div>
+        <a href="#/dobirky/zhanry" className="sec-all">Усі жанри →</a>
+      </div>
+      <div className="genre-grid">
+        {GENRES.map(g => (
+          <a key={g.slug} href={`#/dobirky/${g.slug}`} className="genre-card">
+            <div className="genre-card__icon" style={{ color: 'var(--accent)' }}><DynIcon name={g.icon} size={20} /></div>
+            <div className="genre-card__body">
+              <div className="genre-card__name">{g.name}</div>
+              <div className="genre-card__count">{g.count.toLocaleString('uk-UA')} книг</div>
+            </div>
+            <div className="genre-card__arrow">›</div>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function EditorialSection() {
+  return (
+    <div className="editorial-section">
+      <div className="sec-head">
+        <div className="sec-head__left">
+          <div className="sec-eyebrow">Редакційне</div>
+          <div className="sec-title">Curated</div>
+        </div>
+      </div>
+      <div className="editorial-grid">
+        {EDITORIAL.map(ed => (
+          <a key={ed.slug} href={`#/dobirky/${ed.slug}`} className="ed-card">
+            <div className="ed-card__top">
+              <div className="ed-card__avatar">
+                {ed.avatar
+                  ? <img src={ed.avatar} alt={ed.type} />
+                  : <span style={{ fontSize: 20, color: 'var(--accent)' }}>{ed.avatarLetter}</span>
+                }
+              </div>
+              <div>
+                <div className="ed-card__type">{ed.type}</div>
+                <div className="ed-card__name">{ed.name}</div>
+              </div>
+            </div>
+            <div className="ed-card__desc">{ed.desc}</div>
+            <div className="ed-card__footer">
+              <span className="ed-card__count">{ed.count} книг</span>
+              <span className="ed-card__link">Переглянути →</span>
+            </div>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function AuthorsSection() {
+  return (
+    <div className="authors-section">
+      <div className="sec-head">
+        <div className="sec-head__left">
+          <div className="sec-eyebrow">Авторські добірки</div>
+          <div className="sec-title">Популярні автори</div>
+        </div>
+        <a href="#/dobirky/avtory" className="sec-all">Усі автори →</a>
+      </div>
+      <div className="authors-cloud">
+        {AUTHORS.map(a => (
+          <a key={a.slug} href={`#/dobirky/avtor/${a.slug}`} className="author-chip">
+            {a.name}
+            <span className="author-chip__count">{a.count}</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function SiteHeader({ theme, onToggleTheme }) {
+  const logoSrc = theme === 'dark'
+    ? '_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/assets/logo/knyhovo-logo-dark.png'
+    : '_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/assets/logo/knyhovo-logo-light.png';
+
+  return (
+    <header style={{ borderBottom: '1px solid var(--border)', position: 'sticky', top: 0, background: 'var(--bg)', zIndex: 100 }}>
+      <div className="page">
+        <nav className="site-header">
+          <div className="site-brand">
+            <img src={logoSrc} className="site-logo" alt="Knyhovo" />
+          </div>
+          <div className="site-nav">
+            <a href="#" className="nav-link">Головна</a>
+            <a href="#" className="nav-link nav-link--active">Добірки</a>
+            <a href="#" className="nav-link">Бажанки</a>
+            <a href="#" className="nav-link">Про нас</a>
+          </div>
+          <div className="site-actions">
+            <ThemeToggle onChange={onToggleTheme} />
+            <button className="kn-btn kn-btn--secondary">Увійти</button>
+          </div>
+        </nav>
+      </div>
+    </header>
+  );
+}
+
+function SiteFooter({ theme }) {
+  const logoSrc = theme === 'dark'
+    ? 'assets/logo/knyhovo-logo-dark-trans.png'
+    : 'assets/logo/knyhovo-logo-light-trans.png';
+
+  return (
+    <footer className="site-footer" style={{ background: 'var(--surface)', marginTop: 48 }}>
+      <div className="page">
+        <div className="footer-inner">
+          <div className="footer-brand">
+            <img src={logoSrc} className="footer-logo" alt="Knyhovo" />
+            <div className="footer-tagline">Порівнюємо ціни у 5 книгарнях.<br />Щодня знаходимо найнижчу.</div>
+          </div>
+          <div className="footer-links">
+            <div className="footer-col">
+              <div className="footer-col__title">Добірки</div>
+              <ul>
+                <li><a href="#">Популярне зараз</a></li>
+                <li><a href="#">Новинки</a></li>
+                <li><a href="#">Найбільші знижки</a></li>
+                <li><a href="#">Книговик радить</a></li>
+              </ul>
+            </div>
+            <div className="footer-col">
+              <div className="footer-col__title">Жанри</div>
+              <ul>
+                <li><a href="#">Фентезі</a></li>
+                <li><a href="#">Психологія</a></li>
+                <li><a href="#">Бізнес</a></li>
+                <li><a href="#">Дитячі</a></li>
+              </ul>
+            </div>
+            <div className="footer-col">
+              <div className="footer-col__title">Knyhovo</div>
+              <ul>
+                <li><a href="#">Про нас</a></li>
+                <li><a href="#">Книгарні</a></li>
+                <li><a href="#">API</a></li>
+                <li><a href="#">Контакти</a></li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div className="footer-bottom">
+          <span>© 2026 Knyhovo · Порівняння цін на книги</span>
+          <span style={{ display: 'flex', gap: 16 }}>
+            <a href="#" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Конфіденційність</a>
+            <a href="#" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Умови</a>
+          </span>
+        </div>
+      </div>
+    </footer>
+  );
+}
+
+/* ── PAGE ───────────────────────────────────── */
+function CollectionsPage() {
+  const [theme, setTheme] = React.useState(() => {
+    return document.documentElement.getAttribute('data-theme') || 'light';
+  });
+
+  function handleToggleTheme(t) {
+    setTheme(t);
+    document.documentElement.setAttribute('data-theme', t);
+  }
+
+  return (
+    <div>
+      <SiteHeader theme={theme} onToggleTheme={handleToggleTheme} />
+
+      <main>
+        <div className="page">
+          {/* Featured */}
+          <FeaturedCard theme={theme} />
+
+          {/* Dynamic */}
+          <DynamicSection />
+
+          {/* Divider */}
+          <hr className="page-divider" />
+
+          {/* Genre */}
+          <GenreSection />
+
+          {/* Divider */}
+          <hr className="page-divider" />
+
+          {/* Authors */}
+          <AuthorsSection />
+        </div>
+      </main>
+
+      <SiteFooter theme={theme} />
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(<CollectionsPage />);
+</script>
+</body>
+</html>

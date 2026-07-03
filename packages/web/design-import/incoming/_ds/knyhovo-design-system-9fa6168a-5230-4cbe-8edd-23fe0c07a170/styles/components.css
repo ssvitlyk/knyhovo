@@ -1,0 +1,156 @@
+/* ============================================================
+   KNYHOVO · COMPONENT CLASSES
+   Styling layer for the React primitives. Hover / active /
+   disabled states live here so they work with real CSS.
+   Themed automatically via the semantic tokens.
+   ============================================================ */
+
+/* ---------- Button ---------- */
+.kn-btn {
+  font-family: var(--font-body);
+  font-weight: var(--fw-semibold);
+  font-size: var(--fs-sm);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  height: var(--control-md);
+  padding: 0 var(--space-5);
+  border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background var(--dur-fast) var(--ease-out),
+              color var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out),
+              transform var(--dur-fast) var(--ease-out),
+              box-shadow var(--dur-fast) var(--ease-out);
+}
+.kn-btn:active { transform: translateY(1px); }
+.kn-btn:disabled { opacity: 0.45; cursor: not-allowed; transform: none; box-shadow: none; }
+.kn-btn--sm { height: var(--control-sm); padding: 0 var(--space-4); font-size: var(--fs-xs); }
+.kn-btn--lg { height: var(--control-lg); padding: 0 var(--space-8); font-size: var(--fs-body); }
+.kn-btn svg { width: 1.15em; height: 1.15em; }
+
+.kn-btn--primary { background: var(--accent); color: var(--text-on-accent); box-shadow: var(--shadow-accent); }
+.kn-btn--primary:hover:not(:disabled) { background: var(--accent-hover); }
+.kn-btn--primary:active:not(:disabled) { background: var(--accent-press); }
+
+.kn-btn--secondary { background: transparent; color: var(--text); border-color: var(--border-strong); }
+.kn-btn--secondary:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+
+.kn-btn--ghost { background: transparent; color: var(--text-body); }
+.kn-btn--ghost:hover:not(:disabled) { background: var(--accent-weak); color: var(--accent); }
+
+/* ---------- Chip / Tag ---------- */
+.kn-chip {
+  font-family: var(--font-body);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--text-body);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-pill);
+  padding: var(--space-2) var(--space-4);
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-2);
+  cursor: pointer;
+  transition: all var(--dur-fast) var(--ease-out);
+}
+.kn-chip:hover { border-color: var(--accent); color: var(--accent); }
+.kn-chip[data-selected="true"] { background: var(--accent); color: var(--text-on-accent); border-color: var(--accent); }
+
+/* ---------- Input & field ---------- */
+.kn-input {
+  font-family: var(--font-body);
+  font-size: var(--fs-body);
+  color: var(--text);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  height: var(--control-md);
+  padding: 0 var(--space-4);
+  width: 100%;
+  transition: border-color var(--dur-fast) var(--ease-out), box-shadow var(--dur-fast) var(--ease-out);
+}
+.kn-input::placeholder { color: var(--text-faint); }
+.kn-input:focus { outline: none; border-color: var(--accent); box-shadow: var(--focus-ring); }
+
+/* Search field — input + button capsule (hero signature) */
+.kn-field {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-5);
+  box-shadow: var(--shadow-md);
+}
+.kn-field__icon { color: var(--icon-muted); display: flex; flex: none; }
+.kn-field__icon svg { width: 20px; height: 20px; }
+.kn-field input {
+  flex: 1; border: none; background: transparent; outline: none;
+  font-family: var(--font-body); font-size: var(--fs-lead); color: var(--text); min-width: 0;
+}
+.kn-field input::placeholder { color: var(--text-faint); }
+
+/* ---------- Avatar ---------- */
+.kn-avatar { border-radius: var(--radius-pill); object-fit: cover; box-shadow: var(--shadow-sm); display: block; background: var(--surface-accent); }
+
+/* ---------- Badge ---------- */
+.kn-badge {
+  font-family: var(--font-body);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px var(--space-2);
+  border-radius: var(--radius-xs);
+  line-height: 1.4;
+}
+.kn-badge--accent { background: var(--accent-weak); color: var(--accent); }
+.kn-badge--green  { background: color-mix(in oklab, var(--brand-green) 16%, transparent); color: var(--brand-green); }
+.kn-badge--blue   { background: color-mix(in oklab, var(--brand-blue) 16%, transparent); color: var(--brand-blue); }
+.kn-badge--neutral{ background: var(--surface-accent); color: var(--text-muted); }
+.kn-badge--solid  { background: var(--accent); color: var(--text-on-accent); }
+
+/* ---------- Book card ---------- */
+.kn-book {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: var(--space-4);
+  box-shadow: var(--shadow-sm);
+  display: flex;
+  gap: var(--space-4);
+  transition: box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+}
+.kn-book:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+.kn-book__cover {
+  width: 84px; height: 122px; flex: none; border-radius: var(--radius-sm);
+  background: linear-gradient(135deg, var(--surface-accent), var(--surface-sunk));
+  border: 1px solid var(--border); object-fit: cover; display: block;
+}
+.kn-book__title { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-title); color: var(--text); line-height: 1.2; }
+.kn-book__author { font-size: var(--fs-sm); color: var(--text-muted); margin-top: 2px; }
+.kn-book__price { font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; color: var(--accent); }
+.kn-book__store { font-size: var(--fs-xs); color: var(--text-muted); }
+
+/* ---------- Theme toggle ---------- */
+.kn-theme-toggle {
+  display: inline-flex; align-items: center; gap: 0;
+  background: var(--surface-accent); border: 1px solid var(--border);
+  border-radius: var(--radius-pill); padding: 3px;
+}
+.kn-theme-toggle button {
+  border: none; background: transparent; cursor: pointer;
+  width: 34px; height: 30px; border-radius: var(--radius-pill);
+  display: inline-flex; align-items: center; justify-content: center;
+  color: var(--icon-muted); transition: all var(--dur-fast) var(--ease-out);
+}
+.kn-theme-toggle button[data-active="true"] { background: var(--surface); color: var(--accent); box-shadow: var(--shadow-xs); }
+.kn-theme-toggle svg { width: 16px; height: 16px; }

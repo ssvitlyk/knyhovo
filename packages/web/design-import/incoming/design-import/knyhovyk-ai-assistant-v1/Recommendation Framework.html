@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<!-- @pattern name="Knyhovyk AI Assistant — Recommendation Framework" version="1.0" status="foundation"
+     note="W8. 9 recommendation patterns (trigger/verdict/reason/confidence/tone), anatomy, colour rules,
+     desktop + mobile examples placed on frozen surfaces. DS v1.0 tokens only. Every recommendation
+     explains itself. Green only for positive value; never red. Does not redesign frozen screens." -->
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Книговик — W8 · Рекомендації</title>
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+<link rel="stylesheet" href="ka.css">
+</head>
+<body>
+<div class="doc__topbar">
+  <img id="doc-logo" src="../../assets/logo/knyhovo-logo-light.png" alt="Knyhovo">
+  <div class="doc__topbar-r">
+    <span class="doc__w8">W8 · Knyhovyk AI Foundation</span>
+    <button id="theme-btn" class="kn-btn kn-btn--secondary kn-btn--sm" type="button">Темна тема</button>
+  </div>
+</div>
+
+<div class="doc">
+  <p class="doc__eyebrow">W8 · РЕКОМЕНДАЦІЇ</p>
+  <h1 class="doc__title">Кожна порада <em>пояснює себе</em></h1>
+  <p class="doc__lead">
+    Дев'ять патернів рекомендацій — від «купувати зараз» до «книги немає». Усі мають одну будову:
+    вердикт, причину й рівень впевненості. Книговик ніколи не дає поради без доказу.
+  </p>
+
+  <div class="doc__status">
+    <span><b>Зелений — лише для позитивної цінності.</b> Падіння ціни, вигідний момент, економія,
+    ціль досягнута. Нейтральні стани лишаються приглушеними; <strong>червоного не буває ніколи</strong>
+    (зростання ціни — спокійним сірим). Максимум один бейдж на блок. Усе — токени DS v1.0.</span>
+  </div>
+
+  <div class="doc__toc">
+    <a href="#anatomy">Анатомія</a>
+    <a href="#patterns">9 патернів</a>
+    <a href="#colour">Колір і тон</a>
+    <a href="#desktop">Desktop-приклади</a>
+    <a href="#mobile">Mobile-приклади</a>
+  </div>
+
+  <!-- anatomy -->
+  <section id="anatomy">
+    <h2><span class="num">01</span>Анатомія поради</h2>
+    <p class="doc__sublead">Чотири частини. Перші три — обов'язкові завжди; дія — опціональна.</p>
+    <div class="ka-advice ka-advice--good">
+      <div class="ka-av ka-av--md" role="img" aria-label="Книговик"></div>
+      <div class="ka-advice__body">
+        <div class="ka-advice__verdict">Зараз гарний момент купувати</div>
+        <div class="ka-advice__reason">Ціна <b>240 ₴</b> — на 18% нижча за типову й близька до історичного мінімуму.</div>
+        <div class="ka-advice__foot">
+          <span class="ka-conf"><span class="ka-conf__dots"><span class="ka-conf__dot ka-conf__dot--on"></span><span class="ka-conf__dot ka-conf__dot--on"></span><span class="ka-conf__dot ka-conf__dot--on"></span></span><span class="ka-conf__lbl">висока впевненість</span></span>
+        </div>
+      </div>
+      <button class="kn-btn kn-btn--primary kn-btn--sm ka-advice__cta" type="button">До книгарні</button>
+    </div>
+    <div class="doc__grid" style="margin-top: var(--space-5);">
+      <div class="doc__card"><span class="n">1</span><h4>Форма «від кого»</h4><p>Аватар або голос Книговика — порада має автора. Ніколи не безлике системне повідомлення.</p></div>
+      <div class="doc__card"><span class="n">2</span><h4>Вердикт</h4><p>Одна коротка фраза серифом. Те, що Книговик радить — спокійно й по суті.</p></div>
+      <div class="doc__card"><span class="n">3</span><h4>Причина</h4><p>Один рядок чому, з фактом (ціна, %, історія). Обов'язково — без неї поради не існує.</p></div>
+      <div class="doc__card"><span class="n">4</span><h4>Впевненість + дія</h4><p>Нейтральний індикатор рівня впевненості; за потреби — акцентна кнопка DS.</p></div>
+    </div>
+  </section>
+
+  <!-- patterns -->
+  <section id="patterns">
+    <h2><span class="num">02</span>Дев'ять патернів</h2>
+    <div class="doc__tablewrap">
+      <table>
+        <thead><tr><th>Патерн</th><th>Тригер</th><th>Вердикт</th><th>Тон</th><th>Впевненість</th></tr></thead>
+        <tbody>
+          <tr><td><b>Купувати зараз</b></td><td>Ціна ≤ цілі або помітно нижча за типову й близько до мінімуму</td><td>«Зараз гарний момент купувати»</td><td><span class="ka-tag ka-tag--good">позитивний</span></td><td>висока</td></tr>
+          <tr><td><b>Зачекати</b></td><td>Ціна вище за типову; історія показує регулярні падіння</td><td>«Я б ще трохи зачекав»</td><td><span class="ka-tag ka-tag--hide">нейтральний</span></td><td>середня</td></tr>
+          <tr><td><b>Ціна висока</b></td><td>Поточна ціна помітно вища за типову</td><td>«Ціна зараз висока»</td><td><span class="ka-tag ka-tag--hide">нейтральний</span></td><td>середня</td></tr>
+          <tr><td><b>Замало історії</b></td><td>Точок ціни замало для судження</td><td>«Маю замало даних, щоб радити»</td><td><span class="ka-tag ka-tag--hide">нейтральний</span></td><td>без поради</td></tr>
+          <tr><td><b>Ціна впала</b></td><td>Подія зниження ціни від попередньої перевірки</td><td>«Ціна впала»</td><td><span class="ka-tag ka-tag--good">позитивний</span></td><td>висока (факт)</td></tr>
+          <tr><td><b>Знову в наявності</b></td><td>Книга повернулася в продаж</td><td>«Знову в наявності»</td><td><span class="ka-tag ka-tag--good">позитивний</span></td><td>висока (факт)</td></tr>
+          <tr><td><b>Нове видання</b></td><td>З'явилося нове канонічне видання твору</td><td>«З'явилося нове видання»</td><td><span class="ka-tag ka-tag--hide">нейтральний</span></td><td>середня</td></tr>
+          <tr><td><b>Краща пропозиція</b></td><td>З'явилася дешевша книгарня за збережену</td><td>«Знайшлася краща ціна»</td><td><span class="ka-tag ka-tag--good">позитивний</span></td><td>висока (факт)</td></tr>
+          <tr><td><b>Книги немає</b></td><td>Немає в наявності в усіх книгарнях</td><td>«Наразі книги немає в наявності»</td><td><span class="ka-tag ka-tag--hide">нейтральний</span></td><td>без поради</td></tr>
+        </tbody>
+      </table>
+    </div>
+
+    <p class="doc__sublead" style="margin-top: var(--space-8);">Як звучать чотири характерні тони:</p>
+    <div class="ka-ex">
+      <div class="ka-advice">
+        <div class="ka-av ka-av--md" role="img" aria-label="Книговик"></div>
+        <div class="ka-advice__body">
+          <div class="ka-advice__verdict">Я б ще трохи зачекав</div>
+          <div class="ka-advice__reason">Зараз <b>320 ₴</b> — вище за типову. За останні 90 днів книга була дешевшою чотири рази.</div>
+          <div class="ka-advice__foot"><span class="ka-conf"><span class="ka-conf__dots"><span class="ka-conf__dot ka-conf__dot--on"></span><span class="ka-conf__dot ka-conf__dot--on"></span><span class="ka-conf__dot"></span></span><span class="ka-conf__lbl">середня впевненість</span></span></div>
+        </div>
+      </div>
+      <div class="ka-advice ka-advice--voice">
+        <div class="ka-advice__body">
+          <span class="ka-voice"><i data-lucide="message-circle"></i> Книговик</span>
+          <div class="ka-advice__verdict" style="margin-top: var(--space-2);">Маю замало даних, щоб радити</div>
+          <div class="ka-advice__reason">Стежу за ціною — підкажу, щойно побачу динаміку.</div>
+          <div class="ka-advice__foot"><span class="ka-conf"><span class="ka-conf__dots"><span class="ka-conf__dot"></span><span class="ka-conf__dot"></span><span class="ka-conf__dot"></span></span><span class="ka-conf__lbl">без рекомендації</span></span></div>
+        </div>
+      </div>
+      <div class="ka-advice">
+        <div class="ka-advice__body">
+          <div class="ka-advice__verdict">Наразі книги немає в наявності</div>
+          <div class="ka-advice__reason">Я повідомлю, щойно вона з'явиться в будь-якій книгарні.</div>
+          <div class="ka-advice__foot">
+            <button class="kn-btn kn-btn--secondary kn-btn--sm" type="button">Повідомити мене</button>
+            <button class="kn-btn kn-btn--ghost kn-btn--sm" type="button">Знайти схожі</button>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="ka-quiet" style="margin-top: var(--space-3);">«Книги немає» — утилітарний стан без мускота (успадковано з Wishlist v1.0): факт, причина, дві дії.</p>
+  </section>
+
+  <!-- colour -->
+  <section id="colour">
+    <h2><span class="num">03</span>Колір і тон поради</h2>
+    <ul>
+      <li><strong>Зелений — лише позитивна цінність.</strong> Купувати зараз, ціна впала, краща ціна, ціль досягнута, економія. Зелена рамка + ледь тонований фон + зелений вердикт.</li>
+      <li><strong>Нейтральний — усе інше.</strong> Зачекати, ціна висока, нове видання, немає в наявності — звичайна поверхня, приглушений текст.</li>
+      <li><strong>Червоного не буває.</strong> Зростання ціни — спокійним сірим, не тривожним червоним. Книговик не лякає.</li>
+      <li><strong>Максимум один бейдж на блок.</strong> Не нагромаджуємо «−20%» + «найкраща ціна» + «новинка» разом.</li>
+      <li><strong>Інтенсивність = вигода.</strong> Сильніша вигода — більше зеленого (рамка + фон + ціна); слабка — лише зелена дельта.</li>
+      <li><strong>Ціна — <code>240 ₴</code></strong>, серифом, акцентом; стара ціна — приглушено закреслено; книгарня — завжди приглушено.</li>
+    </ul>
+  </section>
+
+  <!-- desktop examples -->
+  <section id="desktop">
+    <h2><span class="num">04</span>Desktop-приклади</h2>
+    <p class="doc__sublead">Порада Книговика на трьох заморожених поверхнях. Він додається <em class="u">над</em> ними, нічого не перемальовуючи.</p>
+
+    <div class="ka-ex" style="margin-top: var(--space-4);">
+      <div>
+        <div class="ka-ex__cap">Сторінка книги · панель пропозицій</div>
+        <div class="ka-surface">
+          <div class="ka-advice ka-advice--good" style="margin-bottom: var(--space-5);">
+            <div class="ka-av ka-av--md" role="img" aria-label="Книговик"></div>
+            <div class="ka-advice__body">
+              <div class="ka-advice__verdict">Зараз гарний момент купувати</div>
+              <div class="ka-advice__reason">Ціна <b>240 ₴</b> — на 18% нижча за типову й близька до мінімуму за рік.</div>
+              <div class="ka-advice__foot"><span class="ka-conf"><span class="ka-conf__dots"><span class="ka-conf__dot ka-conf__dot--on"></span><span class="ka-conf__dot ka-conf__dot--on"></span><span class="ka-conf__dot ka-conf__dot--on"></span></span><span class="ka-conf__lbl">висока впевненість</span></span></div>
+            </div>
+          </div>
+          <div class="ka-offer">
+            <span class="kn-badge kn-badge--green">Найкраща ціна</span>
+            <span class="ka-offer__store">Yakaboo · в наявності</span>
+            <span class="ka-offer__price">240 ₴</span>
+            <button class="kn-btn kn-btn--primary kn-btn--sm" type="button">До книгарні</button>
+          </div>
+          <div class="ka-offer"><span class="ka-offer__store" style="flex:none; width:auto;">Книгарня «Є»</span><span class="ka-offer__store"></span><span class="ka-offer__price" style="color: var(--text-body);">265 ₴</span><button class="kn-btn kn-btn--secondary kn-btn--sm" type="button">До книгарні</button></div>
+        </div>
+      </div>
+
+      <div>
+        <div class="ka-ex__cap">Бажанки · рядок із вигодою</div>
+        <div class="ka-surface">
+          <div class="ka-row">
+            <div class="ka-cover ka-cover--sm"></div>
+            <div style="flex:1; min-width:0;">
+              <div style="font-family: var(--font-display); font-weight:600; font-size: var(--fs-title); color: var(--text);">Тіні забутих предків</div>
+              <div style="font-size: var(--fs-sm); color: var(--text-muted); margin-top:2px;">Михайло Коцюбинський</div>
+              <div class="ka-advice ka-advice--good ka-advice--inline" style="margin-top: var(--space-3); padding: var(--space-3) var(--space-4);">
+                <div class="ka-av ka-av--sm" role="img" aria-label="Книговик"></div>
+                <div class="ka-advice__body">
+                  <div class="ka-advice__verdict" style="font-size: var(--fs-body);">Ціна досягла твоєї цілі</div>
+                  <div class="ka-advice__reason">Економія <b>60 ₴</b> від збереженої · 180 ₴ у Yakaboo.</div>
+                </div>
+              </div>
+            </div>
+            <div style="text-align:right; flex:none;">
+              <div class="ka-price-lg">180 ₴</div>
+              <div class="ka-price-old">240 ₴</div>
+              <button class="kn-btn kn-btn--primary kn-btn--sm" type="button" style="margin-top: var(--space-2);">До книгарні</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="ka-ex__cap">Динаміка ціни · пояснення голосом</div>
+        <div class="ka-surface">
+          <div class="ka-surface__title">Динаміка ціни</div>
+          <div class="ka-surface__sub">90 днів · оновлено сьогодні о 08:00</div>
+          <div class="ka-advice ka-advice--voice">
+            <div class="ka-advice__body">
+              <span class="ka-voice"><i data-lucide="message-circle"></i> Книговик</span>
+              <div class="ka-advice__reason" style="margin-top: var(--space-2); font-size: var(--fs-body); color: var(--text-body);">Зараз <b>240 ₴</b> — нижче за типову ціну (≈290 ₴) і близько до мінімуму за рік. Непоганий момент, якщо чекаєш цю книгу.</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- mobile examples -->
+  <section id="mobile">
+    <h2><span class="num">05</span>Mobile-приклади</h2>
+    <p class="doc__sublead">Та сама порада в <code>&lt;768px</code> макеті: повна ширина, аватар лишається, 44px дотик.</p>
+    <div class="ka-mobgrid" style="margin-top: var(--space-4);">
+      <div>
+        <div class="ka-ex__cap" style="text-align:center;">Сторінка книги</div>
+        <div class="ka-phone">
+          <div class="ka-phone__screen">
+            <div class="ka-phone__bar"><img id="m-logo-1" src="../../assets/logo/knyhovo-logo-light.png" alt="Knyhovo"></div>
+            <div class="ka-phone__body">
+              <div class="ka-row" style="gap: var(--space-4); margin-bottom: var(--space-4);">
+                <div class="ka-cover"></div>
+                <div>
+                  <div style="font-family: var(--font-display); font-weight:600; font-size: var(--fs-title); color: var(--text); line-height:1.15;">Місто</div>
+                  <div style="font-size: var(--fs-sm); color: var(--text-muted); margin-top:2px;">Валер'ян Підмогильний</div>
+                  <div class="ka-price-lg" style="margin-top: var(--space-2); font-size: var(--fs-h3);">240 ₴</div>
+                  <div class="ka-price-old">290 ₴ · Yakaboo</div>
+                </div>
+              </div>
+              <div class="ka-advice ka-advice--good" style="padding: var(--space-3) var(--space-4);">
+                <div class="ka-av ka-av--sm" role="img" aria-label="Книговик"></div>
+                <div class="ka-advice__body">
+                  <div class="ka-advice__verdict" style="font-size: var(--fs-body);">Гарний момент купувати</div>
+                  <div class="ka-advice__reason">На 18% нижче за типову, близько до мінімуму.</div>
+                </div>
+              </div>
+              <button class="kn-btn kn-btn--primary" type="button" style="width:100%; margin-top: var(--space-4);">До книгарні · 240 ₴</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div>
+        <div class="ka-ex__cap" style="text-align:center;">Сповіщення</div>
+        <div class="ka-phone">
+          <div class="ka-phone__screen">
+            <div class="ka-phone__bar"><img id="m-logo-2" src="../../assets/logo/knyhovo-logo-light.png" alt="Knyhovo"><span style="margin-left:auto; font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted);">Сповіщення</span></div>
+            <div class="ka-phone__body">
+              <div class="ka-advice ka-advice--good" style="padding: var(--space-3) var(--space-4); margin-bottom: var(--space-3);">
+                <div class="ka-av ka-av--sm" role="img" aria-label="Книговик"></div>
+                <div class="ka-advice__body">
+                  <div class="ka-advice__verdict" style="font-size: var(--fs-body);">Ціна впала</div>
+                  <div class="ka-advice__reason"><b>«Тигролови»</b> — тепер 190 ₴ (−50 ₴) у Книгарні «Є».</div>
+                </div>
+              </div>
+              <div class="ka-advice" style="padding: var(--space-3) var(--space-4);">
+                <div class="ka-av ka-av--sm" role="img" aria-label="Книговик"></div>
+                <div class="ka-advice__body">
+                  <div class="ka-advice__verdict" style="font-size: var(--fs-body);">Знову в наявності</div>
+                  <div class="ka-advice__reason"><b>«Інтернат»</b> — з'явилась у двох книгарнях, від 260 ₴.</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+    <p class="ka-quiet" style="margin-top: var(--space-4); text-align:center;">Приклади демонструють розміщення поради; самі заморожені екрани не змінюються.</p>
+  </section>
+
+  <nav class="doc__nav" id="docnav"></nav>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="nav.js"></script>
+<script src="theme.js"></script>
+<script>
+  /* keep the mini phone-frame logos in sync with the theme */
+  (function () {
+    var obs = new MutationObserver(function () {
+      var d = document.documentElement.getAttribute('data-theme') === 'dark';
+      ['m-logo-1','m-logo-2'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) el.src = d ? '../../assets/logo/knyhovo-logo-dark.png' : '../../assets/logo/knyhovo-logo-light.png';
+      });
+    });
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  })();
+</script>
+</body>
+</html>

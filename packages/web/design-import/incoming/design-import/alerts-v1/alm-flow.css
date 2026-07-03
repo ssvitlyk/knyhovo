@@ -1,0 +1,206 @@
+/* ================================================================
+   Knyhovo · Price Alerts (W4) — Mobile Alert Configuration flow.
+   Doc scaffolding ONLY: the 375px device frame, step chrome, flow
+   arrows. Composes DS v1.0 tokens; reuses the frozen Book Details
+   mobile chassis (bdm-*) + alert styles (alerts.css). No new visual
+   language, colours, radii or shadows.
+   ================================================================ */
+
+/* ── 375px device frame ───────────────────────────────────────────────── */
+.alm-phone {
+  position: relative; width: 100%; height: 100%; overflow: hidden;
+  background: var(--bg); border-radius: var(--radius-lg);
+  border: 1px solid var(--border); box-shadow: var(--shadow-md);
+  display: flex; flex-direction: column;
+}
+.alm-statusbar {
+  flex: none; height: 30px; display: flex; align-items: center; justify-content: space-between;
+  padding: 0 var(--space-5); background: var(--bg);
+  font-family: var(--font-body); font-size: var(--fs-xs); font-weight: var(--fw-semibold);
+  color: var(--text); position: relative; z-index: 2;
+}
+.alm-statusbar__dots { display: flex; align-items: center; gap: 5px; }
+.alm-statusbar__dots i { width: 5px; height: 5px; border-radius: var(--radius-pill); background: var(--text-muted); display: inline-block; }
+.alm-statusbar__batt { width: 22px; height: 11px; border: 1.4px solid var(--text-muted); border-radius: 3px; position: relative; }
+.alm-statusbar__batt::after { content: ""; position: absolute; inset: 1.5px; right: 6px; background: var(--text-muted); border-radius: 1px; }
+.alm-statusbar__batt::before { content: ""; position: absolute; right: -3px; top: 3px; width: 2px; height: 5px; background: var(--text-muted); border-radius: 0 1px 1px 0; }
+
+/* the scrollable screen body (clipped by the phone) */
+.alm-screen { position: absolute; inset: 30px 0 0; overflow: hidden; }
+.alm-screen .bdm-wrap { padding: 0 var(--space-4) var(--space-8); }
+
+/* ── Adaptive search (W4 polish) ──────────────────────────────────────────
+   Search button = content-sized CTA (auto width + horizontal padding), never
+   the dominant fixed block — so the input keeps the lion's share of the row
+   and user-entered text always stays visible. Placeholder text is swapped to
+   a width-appropriate variant by alm-flow.jsx (data-ph-* + ResizeObserver);
+   if it still overflows it may clip (placeholder only), never the typed query. */
+.bdm-search .kn-field { gap: var(--space-2); padding-right: var(--space-2); }
+.bdm-search .kn-field .kn-btn {
+  flex: 0 0 auto;            /* content-sized — never grows to fill the row */
+  width: auto; min-width: 0;
+  padding-inline: var(--space-4);
+}
+.bdm-search .kn-field input { min-width: 0; }   /* input may shrink so the field never overflows */
+/* Deterministic, fitting mobile search text. --fs-lead is a clamp(…+0.4vw…) that
+   balloons to ~19.7px in a wide preview window (and the hero's signature size),
+   which overflows the 375px field. The utility search on Book Details mobile
+   uses a fixed 16px (--fs-body): the md placeholder «Назва, автор або ISBN…»
+   then fits with margin, 16px avoids iOS focus-zoom, and it never depends on
+   the rendering viewport. Hierarchy & layout unchanged. */
+.bdm-search .kn-field input { font-size: var(--fs-body); }
+
+/* ── Mobile breadcrumbs (W4 polish) ───────────────────────────────────────
+   Always preserve «Головна · Каталог · » — only the book title truncates,
+   on a single line, no wrap, no second row, no layout shift. */
+.bdm-crumbs {
+  display: flex; align-items: baseline; gap: 0;
+  white-space: nowrap; overflow: hidden; text-overflow: clip;
+}
+.bdm-crumbs .bdm-crumbs__path { flex: 0 0 auto; white-space: nowrap; }
+.bdm-crumbs .bdm-crumbs__title {
+  flex: 0 1 auto; min-width: 0;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  color: var(--text);
+}
+
+/* ── Mobile hero spacing (W4 polish — Issue 2) ────────────────────────────
+   Restore the cover → title → author hierarchy: the cover gets real breathing
+   room beneath it so multi-line titles never read as one dense block with the
+   cover. Per-breakpoint via a container query on the phone frame (375 vs 320),
+   so light/dark stay identical (tokens are theme-independent) and no extra
+   scroll is introduced. Title→author stays tight on purpose. */
+.alm-phone { container-type: inline-size; }
+.alm-screen .bdm-crumbs { margin-bottom: var(--space-5); }   /* breadcrumbs → cover */
+.alm-screen .bdm-hero { margin-bottom: var(--space-6); }
+.alm-screen .bdm-hero .alm-cover { margin-bottom: var(--space-5); }  /* ≥375px → 20px */
+.alm-screen .bdm-hero .bd-h1 { margin-bottom: var(--space-1); }      /* title → author tight */
+@container (max-width: 360px) {
+  .alm-screen .bdm-hero .alm-cover { margin-bottom: var(--space-4); } /* 320–359px → 16px */
+}
+
+/* ── Desktop search specimen (responsive proof artboard) ──────────────────── */
+.alm-deskspec { background: var(--bg); min-height: 100%; color: var(--text-body); font-family: var(--font-body); }
+.alm-deskspec__wrap { padding: var(--space-8); display: flex; flex-direction: column; gap: var(--space-4); }
+.alm-deskspec .kn-field { max-width: 560px; }
+.alm-deskspec .kn-field .kn-btn { flex: 0 0 auto; width: auto; }
+.alm-deskspec .alm-spec-crumbs { display: flex; align-items: baseline; white-space: nowrap; overflow: hidden; font-size: var(--fs-sm); color: var(--text-muted); max-width: 560px; }
+.alm-deskspec .alm-spec-crumbs .bdm-crumbs__path { flex: 0 0 auto; }
+.alm-deskspec .alm-spec-crumbs .bdm-crumbs__title { flex: 0 1 auto; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.alm-deskspec .alm-spec-cap { font-size: var(--fs-xs); color: var(--text-muted); margin: 0; }
+
+/* hero cover placeholder — warm paper, matches frozen .bd-cover language */
+.alm-cover {
+  width: 132px; height: 192px; border-radius: var(--radius-md);
+  background: var(--surface-accent); border: 1px solid var(--border);
+  box-shadow: var(--shadow-md); flex: none;
+  display: flex; align-items: flex-end; padding: var(--space-3);
+}
+.alm-cover span { font-family: var(--font-display); font-size: var(--fs-xs); color: var(--text-faint); line-height: 1.3; }
+
+/* ── Bottom-sheet overlay (docks over the screen; not full-screen) ───────── */
+.alm-overlay { position: absolute; inset: 0; z-index: 5; }
+.alm-scrim {
+  position: absolute; inset: 0; background: color-mix(in oklab, var(--kn-ink) 40%, transparent);
+  animation: alm-fade var(--dur-base, .22s) var(--ease-out);
+}
+.alm-overlay .al-sheet { animation: alm-rise .26s var(--ease-out); }
+@keyframes alm-fade { from { opacity: 0; } to { opacity: 1; } }
+@keyframes alm-rise { from { transform: translateY(16px); opacity: .4; } to { transform: translateY(0); opacity: 1; } }
+@media (prefers-reduced-motion: reduce) {
+  .alm-scrim, .alm-overlay .al-sheet { animation: none; }
+}
+
+/* sheet body sub-heads + result note inside the sheet */
+.al-sheet .al-note { margin-top: calc(-1 * var(--space-1)); }
+
+/* floating quiet confirmation — pinned just above the safe area */
+.alm-toast-wrap {
+  position: absolute; left: 0; right: 0; bottom: calc(var(--space-6) + env(safe-area-inset-bottom));
+  display: flex; justify-content: center; padding: 0 var(--space-4); z-index: 6;
+  animation: alm-rise .26s var(--ease-out);
+}
+.alm-toast-wrap .al-toast { max-width: 100%; }
+@media (prefers-reduced-motion: reduce) { .alm-toast-wrap { animation: none; } }
+
+/* ── Flow doc chrome (the canvas page around the phones) ─────────────────── */
+.alm-doc { background: var(--bg); color: var(--text-body); min-height: 100%; font-family: var(--font-body); }
+.alm-doc-wrap { padding: var(--space-8) var(--space-8) var(--space-10); }
+.alm-eyebrow { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); margin: 0 0 var(--space-2); font-weight: var(--fw-semibold); }
+.alm-doc-h1 { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--fs-h3); line-height: var(--lh-tight); letter-spacing: var(--ls-tight); color: var(--text); margin: 0; }
+.alm-doc-lead { font-size: var(--fs-sm); color: var(--text-muted); max-width: 74ch; margin: var(--space-2) 0 0; text-wrap: pretty; }
+
+/* step caption above each phone */
+.alm-step { display: flex; flex-direction: column; gap: var(--space-2); }
+.alm-step__cap { display: flex; align-items: baseline; gap: var(--space-3); }
+.alm-step__num {
+  flex: none; width: 26px; height: 26px; border-radius: var(--radius-pill);
+  background: var(--accent-weak); color: var(--accent);
+  font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--fs-sm);
+  display: inline-flex; align-items: center; justify-content: center;
+}
+.alm-step__name { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--text); }
+.alm-step__note { font-size: var(--fs-xs); color: var(--text-muted); text-wrap: pretty; margin: 0; }
+
+/* freeze stamp (matches alerts.css .al-stamp) */
+.alm-stamp { background: color-mix(in oklab, var(--brand-green) 8%, var(--surface)); border: 1px solid color-mix(in oklab, var(--brand-green) 28%, var(--border)); border-radius: var(--radius-md); padding: var(--space-5); margin-top: var(--space-8); font-size: var(--fs-sm); color: var(--text-body); text-wrap: pretty; }
+.alm-stamp b { color: var(--text); }
+
+/* compact handoff note list */
+.alm-notes { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: var(--space-6); margin-top: var(--space-6); }
+.alm-notes h3 { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--fs-title); color: var(--text); margin: 0 0 var(--space-3); }
+.alm-notes ul { margin: 0; padding-left: 1.1em; display: flex; flex-direction: column; gap: var(--space-2); }
+.alm-notes li { font-size: var(--fs-sm); color: var(--text-body); text-wrap: pretty; }
+.alm-notes li b { color: var(--text); font-weight: var(--fw-semibold); }
+.alm-notes code { background: var(--surface-sunk); border-radius: 3px; padding: 1px 5px; font-size: 12px; }
+
+/* ════════════════════════════════════════════════════════════════════════
+   Button consistency audit — Before → After comparison + DS rules card.
+   The .almcmp cards live OUTSIDE .al-sheet, so the live .al-sheet button
+   system does not apply here; instead .almcmp-before re-creates the old
+   inconsistent state and .almcmp-after mirrors the new unified system, so
+   the two can be read side-by-side. Demo scaffolding only.
+   ════════════════════════════════════════════════════════════════════════ */
+.almcmp { background: var(--bg); min-height: 100%; color: var(--text-body); font-family: var(--font-body); }
+.almcmp__wrap { padding: var(--space-8); }
+.almcmp__grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); margin-top: var(--space-5); }
+.almcmp__col { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-5); }
+.almcmp__col--after { border-color: color-mix(in oklab, var(--brand-green) 32%, var(--border)); }
+.almcmp__tag { display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--fs-xs); font-weight: var(--fw-semibold); letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-muted); }
+.almcmp__tag--after { color: var(--brand-green); }
+.almcmp__case { display: flex; flex-direction: column; gap: var(--space-2); }
+.almcmp__case-name { font-size: var(--fs-xs); color: var(--text-muted); }
+.almcmp__errrow { display: flex; align-items: center; gap: var(--space-3); }
+.almcmp__errtext { flex: 1; min-width: 0; font-size: var(--fs-sm); color: var(--text-body); }
+
+/* shared: the demo action rows reuse the real .al-config__actions class */
+.almcmp .al-config__actions { display: flex; gap: var(--space-3); align-items: stretch; }
+
+/* BEFORE — the inconsistent state being fixed */
+.almcmp-before .al-config__actions { gap: var(--space-2); align-items: center; }
+.almcmp-before .al-config__actions .kn-btn { height: 36px; min-height: 36px; font-size: var(--fs-xs); padding-inline: var(--space-4); }
+.almcmp-before .al-config__actions > .kn-btn { flex: 0 0 auto; width: auto; min-width: 0; }
+.almcmp-before .al-config__actions .al-grow { flex: 1 1 auto; display: flex; }
+.almcmp-before .al-config__actions .al-grow .kn-btn { width: 100%; }
+.almcmp-before .al-config__actions .kn-btn--ghost { border-color: transparent; box-shadow: none; }   /* bare text link */
+.almcmp-before .almcmp-retry .kn-btn { height: 28px; min-height: 28px; min-width: 0; font-size: var(--fs-xs); padding-inline: var(--space-3); }
+
+/* AFTER — the unified system (mirrors the .al-sheet rules) */
+.almcmp-after .al-config__actions { gap: var(--space-3); align-items: stretch; }
+.almcmp-after .al-config__actions .kn-btn { height: 44px; min-height: 44px; font-size: var(--fs-sm); }
+.almcmp-after .al-config__actions > .kn-btn { flex: 0 0 auto; width: auto; min-width: 120px; }
+.almcmp-after .al-config__actions .al-grow { flex: 1 1 auto; display: flex; min-width: 120px; }
+.almcmp-after .al-config__actions .al-grow .kn-btn { width: 100%; }
+.almcmp-after .al-config__actions .kn-btn--ghost { border-color: var(--border-strong); color: var(--text); box-shadow: none; }
+.almcmp-after .almcmp-retry .kn-btn { height: 44px; min-height: 44px; min-width: 120px; font-size: var(--fs-sm); }
+
+/* DS button-rules card */
+.almrules { background: var(--bg); min-height: 100%; color: var(--text-body); font-family: var(--font-body); }
+.almrules__wrap { padding: var(--space-8); }
+.almrules__grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-4); margin-top: var(--space-5); }
+.almrules__card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: var(--space-5); display: flex; flex-direction: column; gap: var(--space-2); }
+.almrules__k { display: inline-flex; align-items: center; gap: var(--space-2); font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--fs-title); color: var(--text); }
+.almrules__chip { font-size: var(--fs-xs); font-weight: var(--fw-semibold); color: var(--accent); background: var(--accent-weak); border-radius: var(--radius-pill); padding: 2px var(--space-2); }
+.almrules__card p { margin: 0; font-size: var(--fs-sm); color: var(--text-body); text-wrap: pretty; }
+.almrules__card code { background: var(--surface-sunk); border-radius: 3px; padding: 1px 5px; font-size: 12px; }
+.almrules__card--full { grid-column: 1 / -1; }

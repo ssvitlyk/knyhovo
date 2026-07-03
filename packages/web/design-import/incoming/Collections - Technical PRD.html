@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Добірки — Технічний PRD · Knyhovo</title>
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--text);font-family:var(--font-body);font-size:15px;line-height:1.65}
+a{color:var(--accent);text-decoration:none}
+ul,ol{padding-left:1.4em}
+li{margin-bottom:.3em}
+h1,h2,h3,h4{font-family:var(--font-display);text-wrap:balance}
+p,li{text-wrap:pretty}
+p{margin-bottom:.85rem}
+strong{font-weight:700}
+code{font-family:'Courier New',monospace;font-size:12.5px;background:var(--surface);border:1px solid var(--border);border-radius:4px;padding:1px 5px}
+
+.doc{box-sizing:border-box;max-width:8.5in;margin:0 auto;background:inherit;padding:48px clamp(24px,5vw,.75in) 96px}
+
+/* ── COVER ──────────────────────────────────── */
+.cover{padding:3.5rem 0 2.75rem;border-bottom:3px solid var(--accent);margin-bottom:4rem}
+.cover__eye{font-size:11px;letter-spacing:2.5px;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:1.5rem}
+.cover__title{font-size:clamp(2rem,4vw,3rem);font-weight:700;line-height:1.07;margin-bottom:.7rem}
+.cover__title em{color:var(--accent);font-style:italic}
+.cover__sub{font-size:1rem;color:var(--text-muted);margin-bottom:2rem}
+.cover__meta{display:flex;gap:2rem;font-size:13px;color:var(--text-muted);opacity:.7;flex-wrap:wrap}
+
+/* ── TOC ────────────────────────────────────── */
+.toc{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:1.5rem 2rem;margin-bottom:4rem}
+.toc__lbl{font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:1rem;font-family:var(--font-body)}
+.toc__grid{display:grid;grid-template-columns:1fr 1fr;gap:.35rem 2.5rem;list-style:none;padding:0}
+.toc__item{font-size:14px}
+.toc__n{font-family:var(--font-display);font-weight:700;color:var(--accent);opacity:.4;margin-right:.5ch;font-size:12px}
+
+/* ── PART HEADER ────────────────────────────── */
+.part{margin-top:5rem;padding-top:3rem;border-top:2px solid var(--border)}
+.part__row{display:flex;gap:1.5rem;align-items:flex-start;margin-bottom:2rem}
+.part__n{font-family:var(--font-display);font-size:2.25rem;font-weight:700;color:var(--accent);opacity:.18;line-height:1;flex-shrink:0;min-width:2.2ch;text-align:right}
+.part__info{flex:1}
+.part__lbl{font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-bottom:.35rem;font-family:var(--font-body)}
+.part__title{font-size:1.6rem;font-weight:700;line-height:1.2}
+
+/* ── HEADINGS ───────────────────────────────── */
+.h3{font-size:1.1rem;font-weight:700;margin-top:2.25rem;margin-bottom:.6rem}
+.h4{font-size:.84rem;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--text-muted);margin-top:1.75rem;margin-bottom:.5rem;font-family:var(--font-body)}
+
+/* ── VERDICT / NOTE ─────────────────────────── */
+.verdict{background:color-mix(in oklab,var(--accent) 6%,var(--bg));border-left:4px solid var(--accent);border-radius:0 10px 10px 0;padding:1.1rem 1.4rem;margin:1.75rem 0}
+.verdict__lbl{font-size:10px;letter-spacing:2px;text-transform:uppercase;font-weight:700;color:var(--accent);margin-bottom:.4rem;font-family:var(--font-body)}
+.verdict__text{font-size:15px;font-weight:500;line-height:1.55}
+.verdict__text strong{color:var(--accent)}
+.note{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:1rem 1.25rem;margin:1.25rem 0;font-size:14px}
+.note strong{display:block;margin-bottom:.3rem}
+
+/* ── TABLES ─────────────────────────────────── */
+.cmp{width:100%;border-collapse:collapse;font-size:13px;margin:1.25rem 0 2rem}
+.cmp th{background:var(--surface);padding:8px 11px;text-align:left;font-weight:700;border-bottom:2px solid var(--border);font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:var(--text-muted);white-space:nowrap}
+.cmp td{padding:8px 11px;border-bottom:1px solid var(--border);vertical-align:top;line-height:1.5}
+.cmp tr:last-child td{border-bottom:none}
+.cmp tr.hi td{background:color-mix(in oklab,var(--accent) 4%,var(--bg))}
+.cmp tr.hi td:first-child{font-weight:700;color:var(--accent)}
+.s-hi{color:#24513E;font-weight:700}
+.s-md{color:var(--accent)}
+.s-lo{color:var(--text-muted)}
+
+/* ── CODE BLOCKS ────────────────────────────── */
+.code-block{background:var(--surface-sunk,var(--surface));border:1px solid var(--border);border-radius:10px;padding:1.1rem 1.4rem;margin:1rem 0;font-family:'Courier New',monospace;font-size:12.5px;line-height:1.7;overflow-x:auto;white-space:pre}
+.code-block .ck{color:var(--text-muted)}
+.code-block .cv{color:var(--accent)}
+.code-block .cs{color:#24513E}
+.code-block .ct{color:var(--text)}
+.cb-lbl{font-size:10px;letter-spacing:1.5px;text-transform:uppercase;font-weight:700;color:var(--text-muted);margin-top:1.25rem;margin-bottom:.25rem;font-family:var(--font-body)}
+
+/* ── CHECKLIST ──────────────────────────────── */
+.chklist{list-style:none;padding:0;margin:1rem 0}
+.chklist li{display:flex;gap:.65rem;align-items:flex-start;font-size:14px;padding:.35rem 0;border-bottom:1px solid var(--border)}
+.chklist li:last-child{border-bottom:none}
+.chk{width:15px;height:15px;flex-shrink:0;border:1.5px solid var(--border-strong);border-radius:3px;margin-top:.2rem}
+.chk--done{background:var(--accent);border-color:var(--accent)}
+
+/* ── PHASE / ROADMAP ────────────────────────── */
+.phase{margin:1.5rem 0;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.phase__head{background:var(--surface);padding:.75rem 1.25rem;display:flex;align-items:center;gap:1rem;border-bottom:1px solid var(--border)}
+.phase__label{font-family:var(--font-display);font-weight:700;font-size:1.05rem}
+.phase__sub{font-size:12px;color:var(--text-muted)}
+.phase__badge{font-size:10px;font-weight:700;padding:2px 9px;border-radius:999px;background:color-mix(in oklab,var(--accent) 10%,var(--bg));border:1px solid var(--accent);color:var(--accent);margin-left:auto;white-space:nowrap}
+.phase__body{padding:.75rem 1.25rem}
+.phase__tasks{display:grid;grid-template-columns:1fr 1fr;gap:.15rem 1.5rem;list-style:none;padding:0;margin:0}
+.phase__tasks li{font-size:13px;padding:.2rem 0;display:flex;gap:.5rem;align-items:flex-start;color:var(--text)}
+.phase__tasks li::before{content:'·';color:var(--text-muted);flex-shrink:0}
+.phase__tasks li strong{color:var(--accent);font-weight:600}
+
+/* ── FR GRID ────────────────────────────────── */
+.fr-grid{display:grid;grid-template-columns:80px 1fr;gap:0;margin:1rem 0;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+.fr-id{background:var(--surface);font-family:'Courier New',monospace;font-size:11.5px;font-weight:700;color:var(--accent);padding:8px 11px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start}
+.fr-id:last-of-type{border-bottom:none}
+.fr-body{font-size:13.5px;padding:8px 13px;border-bottom:1px solid var(--border);line-height:1.55}
+.fr-body:last-child{border-bottom:none}
+
+/* ── RISK TABLE ─────────────────────────────── */
+.risk-hi td:nth-child(2){color:#c0392b;font-weight:700}
+.risk-md td:nth-child(2){color:var(--accent)}
+.risk-lo td:nth-child(2){color:var(--text-muted)}
+
+/* ── PRINT ──────────────────────────────────── */
+@page{size:letter;margin:0}
+@media print{
+  html{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .doc{max-width:none!important;margin:0!important;padding:.5in .75in!important}
+  h1,h2,h3,h4{break-after:avoid}
+  .phase,.cmp,.note,.verdict,.code-block{break-inside:avoid}
+}
+</style>
+</head>
+<body>
+<main class="doc">
+
+<!-- COVER -->
+<div class="cover">
+  <p class="cover__eye">Knyhovo · Технічний PRD · Версія 1.0 · Червень 2026</p>
+  <h1 class="cover__title">Добірки /dobirky.<br><em>Технічна специфікація.</em></h1>
+  <p class="cover__sub">Технічний PRD для інженерної реалізації розділу «Добірки» · MVP</p>
+  <div class="cover__meta">
+    <span>13 розділів</span><span>·</span>
+    <span>FR · API · Data Model · SEO · Analytics · A11y · Roadmap</span><span>·</span>
+    <span>Статус: готово до розробки</span><span>·</span>
+    <span>Джерело: UX Strategy v1.0 (затверджено 23.06.2026)</span>
+  </div>
+</div>
+
+<!-- TOC -->
+<div class="toc">
+  <p class="toc__lbl">Зміст</p>
+  <ol class="toc__grid">
+    <li class="toc__item"><span class="toc__n">01</span>Executive Summary</li>
+    <li class="toc__item"><span class="toc__n">08</span>State Management</li>
+    <li class="toc__item"><span class="toc__n">02</span>Functional Requirements</li>
+    <li class="toc__item"><span class="toc__n">09</span>SEO Implementation</li>
+    <li class="toc__item"><span class="toc__n">03</span>Non-Functional Requirements</li>
+    <li class="toc__item"><span class="toc__n">10</span>Analytics Events</li>
+    <li class="toc__item"><span class="toc__n">04</span>Component Inventory</li>
+    <li class="toc__item"><span class="toc__n">11</span>Accessibility</li>
+    <li class="toc__item"><span class="toc__n">05</span>Data Model</li>
+    <li class="toc__item"><span class="toc__n">12</span>Development Roadmap</li>
+    <li class="toc__item"><span class="toc__n">06</span>API Contracts</li>
+    <li class="toc__item"><span class="toc__n">13</span>Risks &amp; Open Questions</li>
+    <li class="toc__item"><span class="toc__n">07</span>CMS &amp; Editorial</li>
+    <li class="toc__item"></li>
+  </ol>
+</div>
+
+
+<!-- ████ PART 01 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">01</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина перша</p>
+      <h2 class="part__title">Executive Summary</h2>
+    </div>
+  </div>
+
+  <p>Цей документ є технічною специфікацією для MVP-реалізації розділу «Добірки» на Knyhovo. Архітектура, IA, UX, SEO та обсяг затверджені в <em>Collections — UX Strategy v1.0 (23.06.2026)</em>. PRD не переглядає рішення — він транслює їх у інженерні вимоги.</p>
+
+  <h3 class="h3">Scope</h3>
+  <table class="cmp">
+    <thead><tr><th>В обсязі MVP</th><th>Поза обсягом (V2+)</th></tr></thead>
+    <tbody>
+      <tr><td>Хаб /dobirky (6 секцій)</td><td>/avtor/, /vydavnytstvo/, /seriia/ сторінки</td></tr>
+      <tr><td>6 динамічних добірок (алгоритмічні)</td><td>Персоналізація та Discovery Hub</td></tr>
+      <tr><td>2 редакційні добірки (CMS)</td><td>/vybir-redaktsiyi, /chytayemo-razom</td></tr>
+      <tr><td>8 жанрових добірок (з метаданих)</td><td>Субжанрові сторінки (/dobirky/fentezi/ukrainska)</td></tr>
+      <tr><td>Сторінка добірки (universal template)</td><td>Соціальні та UGC функції</td></tr>
+      <tr><td>Homepage see-all link для 3 полиць</td><td>Міграція /dobirky → /zhanry</td></tr>
+      <tr><td>Реєстраційний промпт (anonymous)</td><td>Recommendation engine (ML)</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="h3">Залежності</h3>
+  <table class="cmp">
+    <thead><tr><th>Система</th><th>Версія / статус</th><th>Використання</th></tr></thead>
+    <tbody>
+      <tr><td>Knyhovo Design System</td><td>v1.0 (frozen)</td><td>BookCard, Button, Chip, Badge, SearchBar, ThemeToggle</td></tr>
+      <tr><td>Search Results Pattern</td><td>v1.0 (frozen)</td><td>Pagination, Breadcrumb, BookCard grid, Filter chips</td></tr>
+      <tr><td>Book Details Pattern</td><td>v1.1 (frozen)</td><td>Breadcrumb pattern, error state rules</td></tr>
+      <tr><td>Price History (W5)</td><td>v1.2.1 (frozen)</td><td>price_history table для /ponyzhena-tsina та /rekordno-nyzka-tsina</td></tr>
+      <tr><td>Author Shelf (W9a)</td><td>v1.0 (frozen)</td><td>Series shelf деdup logic (reference, не reuse)</td></tr>
+      <tr><td>Wishlist (Бажанки)</td><td>v1.0 (frozen)</td><td>wishlist_count для /najbilsh-bazhani; Footer компонент</td></tr>
+    </tbody>
+  </table>
+
+  <div class="verdict">
+    <p class="verdict__lbl">MVP формула</p>
+    <p class="verdict__text">Продукт для запуску: <strong>6 динамічних · 2 редакційних · 8 жанрів · хаб · деталі · 3 homepage-лінки.</strong> Усі 16 колекційних URL (хаб + 15 добірок) + sitemap + Schema.org повинні бути готові до першого запуску.</p>
+  </div>
+</div>
+
+
+<!-- ████ PART 02 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">02</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина друга</p>
+      <h2 class="part__title">Functional Requirements</h2>
+    </div>
+  </div>
+
+  <h3 class="h3">FR-HUB · Хаб /dobirky</h3>
+  <table class="cmp">
+    <thead><tr><th style="width:90px">ID</th><th>Вимога</th><th style="width:80px">Пріоритет</th></tr></thead>
+    <tbody>
+      <tr><td>FR-HUB-01</td><td>Сторінка рендериться за URL /dobirky. SSR обов'язковий для SEO.</td><td class="s-hi">MUST</td></tr>
+      <tr><td>FR-HUB-02</td><td>FeaturedCollectionBanner відображає одну активну редакційну або сезонну добірку з 3 preview-обкладинками. Контент керується CMS.</td><td class="s-hi">MUST</td></tr>
+      <tr><td>FR-HUB-03</td><td>DynamicCollectionRow — 6 карток з іконкою, назвою, кількістю книг. Кожна — посилання на /dobirky/[slug]. Кількість оновлюється щогодини.</td><td class="s-hi">MUST</td></tr>
+      <tr><td>FR-HUB-04</td><td>GenreGrid — 8 жанрових карток у сітці 4×2 (desktop), 3 cols (tablet), 2 cols (mobile). Жанр відображається лише якщо ≥ 30 книг. Менше 30 — не рендерити картку.</td><td class="s-hi">MUST</td></tr>
+      <tr><td>FR-HUB-05</td><td>EditorialSpotlight — 2 картки MVP: /knyhovyk-radyt та /pryhovani-skarby. Статичний порядок.</td><td class="s-hi">MUST</td></tr>
+      <tr><td>FR-HUB-06</td><td>Хаб має власний loading skeleton (warm --surface-accent). Жодних cold greys (frozen rule).</td><td class="s-hi">MUST</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="h3">FR-DET · Сторінка добірки /dobirky/:slug</h3>
+  <table class="cmp">
+    <thead><tr><th style="width:90px">ID</th><th>Вимога</th><th style="width:80px">Пріоритет</th></tr></thead>
+    <tbody>
+      <tr><td>FR-DET-01</td><td>CollectionHero: назва добірки (H1), опис (1–2 речення), тип (badge), кількість книг, дата оновлення. SSR.</td><td class="s-hi">MUST</td></tr>
+      <tr><td>FR-DET-02</td><td>Breadcrumb: Головна › Добірки › [Назва]. Відповідає BreadcrumbList schema.</td><td class="s-hi">MUST</td></tr>
+      <tr><td>FR-DET-03</td><td>Sort control: 5 опцій — Популярне (default для dynamic), Ціна ↑, Ціна ↓, Новинки, Знижка ↓. Жанрові сторінки — default «Ціна ↑». Стан зберігається в URL (?sort=).</td><td class="s-hi">MUST</td></tr>
+      <tr><td>FR-DET-04</td><td>Filter chips: жанр (для dynamic/editorial), наявність (в наявності), діапазон цін (min/max). Стан в URL (?in_stock=1&amp;price_min=&amp;price_max=). Sort change скидає page до 1.</td><td class="s-hi">MUST</td></tr>
+      <tr><td>FR-DET-05</td><td>BookGrid: 4 cols desktop / 3 cols tablet / 2 cols mobile. Стандартний BookCard (frozen DS). Без сайдбару.</td><td class="s-hi">MUST</td></tr>
+      <tr><td>FR-DET-06</td><td>Pagination: frozen Search Results v1.0 pattern. 24 книги per page. URL-persisted (?page=N). Sort/filter change → reset to page 1.</td><td class="s-hi">MUST</td></tr>
+      <tr><td>FR-DET-07</td><td>RegistrationPrompt: показується лише анонімним користувачам, між першою та другою сторінкою сітки (~після 24 книг). Inline рядок, не popup. Зберігати dismissed стан у sessionStorage.</td><td class="s-hi">MUST</td></tr>
+      <tr><td>FR-DET-08</td><td>RelatedCollectionsRow: 3 картки. Алгоритм: same-type → same-genre → popular. Статичні для MVP (pre-computed).</td><td class="s-md">SHOULD</td></tr>
+      <tr><td>FR-DET-09</td><td>Empty state (filter yields 0): «Жодної книги за обраними фільтрами» + «Скинути фільтри» ghost CTA.</td><td class="s-hi">MUST</td></tr>
+      <tr><td>FR-DET-10</td><td>Невідомий slug → 404. Жанрова сторінка з &lt;30 книг → redirect /dobirky (301).</td><td class="s-hi">MUST</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="h3">FR-HP · Homepage Integration</h3>
+  <table class="cmp">
+    <thead><tr><th style="width:90px">ID</th><th>Вимога</th><th style="width:80px">Пріоритет</th></tr></thead>
+    <tbody>
+      <tr><td>FR-HP-01</td><td>Полиця «Популярне зараз» → CTA «Усі N книг →» → /dobirky/populyarne-zaraz. N — динамічна кількість з API.</td><td class="s-hi">MUST</td></tr>
+      <tr><td>FR-HP-02</td><td>Полиця «Новинки» → CTA «Усі N книг →» → /dobirky/novynky.</td><td class="s-hi">MUST</td></tr>
+      <tr><td>FR-HP-03</td><td>Полиця «Книговик радить» → CTA «Вся добірка Книговика →» → /dobirky/knyhovyk-radyt.</td><td class="s-hi">MUST</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="h3">FR-DYN · Алгоритми динамічних добірок</h3>
+  <table class="cmp">
+    <thead><tr><th>Slug</th><th>Сигнал / SQL-логіка</th><th>Refresh</th></tr></thead>
+    <tbody>
+      <tr><td><code>/populyarne-zaraz</code></td><td><code>ORDER BY page_view_count_7d DESC</code></td><td>1 год</td></tr>
+      <tr><td><code>/novynky</code></td><td><code>ORDER BY catalog_added_at DESC WHERE catalog_added_at &gt; NOW() - 90d</code></td><td>1 год</td></tr>
+      <tr><td><code>/znyzhky</code></td><td><code>WHERE has_discount = true ORDER BY discount_percent DESC</code></td><td>1 год</td></tr>
+      <tr><td><code>/ponyzhena-tsina</code></td><td><code>WHERE price_current &lt; price_7d_ago ORDER BY (price_7d_ago - price_current) DESC</code>. Потребує price_history (W5).</td><td>1 год</td></tr>
+      <tr><td><code>/najbilsh-bazhani</code></td><td><code>ORDER BY wishlist_count DESC WHERE wishlist_count &gt; 0</code></td><td>1 год</td></tr>
+      <tr><td><code>/rekordno-nyzka-tsina</code></td><td><code>WHERE price_current = price_historical_min ORDER BY wishlist_count DESC</code>. Потребує price_history (W5).</td><td>1 год</td></tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ████ PART 03 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">03</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина третя</p>
+      <h2 class="part__title">Non-Functional Requirements</h2>
+    </div>
+  </div>
+
+  <h3 class="h3">Performance</h3>
+  <table class="cmp">
+    <thead><tr><th>Метрика</th><th>Ціль</th><th>Сторінки</th></tr></thead>
+    <tbody>
+      <tr><td>LCP (Largest Contentful Paint)</td><td class="s-hi">&lt; 2.5s</td><td>Hub, Details (мобільний 3G)</td></tr>
+      <tr><td>CLS (Cumulative Layout Shift)</td><td class="s-hi">&lt; 0.1</td><td>Всі. Скелети запобігають зсуву.</td></tr>
+      <tr><td>FID / INP</td><td class="s-hi">&lt; 200ms</td><td>Sort, Filter interactions</td></tr>
+      <tr><td>API response (collections/hub)</td><td>&lt; 300ms (p95)</td><td>Server-side, кешований</td></tr>
+      <tr><td>API response (books paginated)</td><td>&lt; 500ms (p95)</td><td>З sort/filter</td></tr>
+      <tr><td>SSR Time to First Byte</td><td>&lt; 800ms</td><td>Hub, Details</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="h3">Браузери та пристрої</h3>
+  <table class="cmp">
+    <thead><tr><th>Браузер / ОС</th><th>Підтримка</th></tr></thead>
+    <tbody>
+      <tr><td>Chrome/Edge ≥ 110, Firefox ≥ 115, Safari ≥ 16.4</td><td class="s-hi">Повна</td></tr>
+      <tr><td>Safari iOS ≥ 16 (iPhone SE та новіші)</td><td class="s-hi">Повна</td></tr>
+      <tr><td>Chrome Android ≥ 110</td><td class="s-hi">Повна</td></tr>
+      <tr><td>IE 11</td><td class="s-lo">Не підтримується</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="h3">Responsive Breakpoints</h3>
+  <table class="cmp">
+    <thead><tr><th>Компонент</th><th>≥1280px (desktop)</th><th>768–1279px (tablet)</th><th>&lt;768px (mobile)</th></tr></thead>
+    <tbody>
+      <tr><td>BookGrid</td><td>4 cols</td><td>3 cols</td><td>2 cols</td></tr>
+      <tr><td>GenreGrid</td><td>4×2</td><td>3 cols</td><td>2 cols</td></tr>
+      <tr><td>DynamicCollectionRow</td><td>6 cards, 1 row</td><td>4 visible + scroll</td><td>Horizontal scroll rail</td></tr>
+      <tr><td>EditorialSpotlight</td><td>2 side-by-side</td><td>2 side-by-side</td><td>1 col stack</td></tr>
+      <tr><td>FeaturedCollectionBanner</td><td>Horizontal</td><td>Horizontal</td><td>Vertical stack</td></tr>
+      <tr><td>Sort + Filter row</td><td>1 row</td><td>1 row wrap</td><td>2 rows</td></tr>
+      <tr><td>FilterChips</td><td>Visible inline</td><td>Visible inline</td><td>Horizontal scroll</td></tr>
+      <tr><td>RelatedCollectionsRow</td><td>3 cols</td><td>3 cols</td><td>Horizontal scroll</td></tr>
+      <tr><td>RegistrationPrompt</td><td>max-width 680px, centered</td><td>Full width</td><td>Full width</td></tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ████ PART 04 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">04</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина четверта</p>
+      <h2 class="part__title">Component Inventory</h2>
+    </div>
+  </div>
+
+  <h3 class="h3">Нові компоненти (потрібно побудувати)</h3>
+  <table class="cmp">
+    <thead><tr><th>Компонент</th><th>Тип</th><th>Ключові пропси / поведінка</th><th>Сторінки</th></tr></thead>
+    <tbody>
+      <tr><td><code>CollectionHubPage</code></td><td>Page</td><td>SSR. Отримує hub data. Оркеструє секції.</td><td>Hub</td></tr>
+      <tr><td><code>CollectionHubHero</code></td><td>Display</td><td><code>title, description</code>. Статичний eyebrow + H1 + підзаголовок.</td><td>Hub</td></tr>
+      <tr><td><code>FeaturedCollectionBanner</code></td><td>Display</td><td><code>collection, previewBooks[3]</code>. Full-width. CMS-driven.</td><td>Hub</td></tr>
+      <tr><td><code>DynamicCollectionCard</code></td><td>Display</td><td><code>slug, name, bookCount, icon</code>. Lucide icon. Link → /dobirky/[slug].</td><td>Hub</td></tr>
+      <tr><td><code>DynamicCollectionRow</code></td><td>Layout</td><td><code>collections[6]</code>. Horizontal row. Mobile: scroll rail.</td><td>Hub</td></tr>
+      <tr><td><code>GenreCard</code></td><td>Display</td><td><code>slug, name, bookCount, icon</code>. Render only if bookCount ≥ 30.</td><td>Hub</td></tr>
+      <tr><td><code>GenreGrid</code></td><td>Layout</td><td><code>genres[]</code>. CSS grid, responsive cols. Renders only active genres.</td><td>Hub</td></tr>
+      <tr><td><code>EditorialCard</code></td><td>Display</td><td><code>collection, showAvatar</code>. Avatar = Knyhovyk для /knyhovyk-radyt.</td><td>Hub</td></tr>
+      <tr><td><code>EditorialSpotlight</code></td><td>Layout</td><td><code>collections[2]</code>. Side-by-side cards.</td><td>Hub</td></tr>
+      <tr><td><code>CollectionDetailsPage</code></td><td>Page</td><td>SSR. Slug param → fetch collection + books. Orchestrates all details sections.</td><td>Details</td></tr>
+      <tr><td><code>CollectionHero</code></td><td>Display</td><td><code>collection: {name, description, type, bookCount, updatedAt}</code></td><td>Details</td></tr>
+      <tr><td><code>CollectionControls</code></td><td>Interactive</td><td><code>sort, filters, onChange</code>. Writes to URL. Dispatches analytics event.</td><td>Details</td></tr>
+      <tr><td><code>SortControl</code></td><td>Interactive</td><td><code>value, options[], onChange</code>. <code>select</code> або button group. URL-persisted.</td><td>Details</td></tr>
+      <tr><td><code>FilterChipRow</code></td><td>Interactive</td><td><code>activeFilters, onToggle</code>. genre / in_stock / price_range chips.</td><td>Details</td></tr>
+      <tr><td><code>BookGrid</code></td><td>Layout</td><td><code>books[], columns</code>. CSS grid. Reuses frozen BookCard.</td><td>Details</td></tr>
+      <tr><td><code>RegistrationPrompt</code></td><td>Conversion</td><td>Показується між page 1 і 2 сітки. Лише anonymous. sessionStorage dismiss. ESC close.</td><td>Details</td></tr>
+      <tr><td><code>RelatedCollectionCard</code></td><td>Display</td><td><code>slug, name, type, bookCount</code>. Compact card.</td><td>Details</td></tr>
+      <tr><td><code>RelatedCollectionsRow</code></td><td>Layout</td><td><code>collections[3]</code>. Heading + 3 cards. Mobile: scroll.</td><td>Details</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="h3">Frozen / DS компоненти (reuse без змін)</h3>
+  <table class="cmp">
+    <thead><tr><th>Компонент</th><th>Джерело (frozen)</th><th>Використання</th></tr></thead>
+    <tbody>
+      <tr><td><code>BookCard</code> (<code>.kn-book</code>)</td><td>DS v1.0 + Search Results v1.0</td><td>BookGrid на Details; Preview в Featured banner</td></tr>
+      <tr><td><code>BookCard</code> skeleton</td><td>Search Results v1.0</td><td>Details loading state (24 placeholders)</td></tr>
+      <tr><td><code>Pagination</code></td><td>Search Results v1.0 (frozen algorithm)</td><td>Details page</td></tr>
+      <tr><td><code>Breadcrumb</code></td><td>Search Results v1.0 pattern</td><td>Details page</td></tr>
+      <tr><td><code>SearchBar</code> / <code>.kn-field</code></td><td>DS v1.0</td><td>Header; Hub hero area skeleton</td></tr>
+      <tr><td><code>Button</code></td><td>DS v1.0</td><td>Featured CTA; Filter clear; Registration prompt CTA</td></tr>
+      <tr><td><code>Chip</code></td><td>DS v1.0</td><td>Genre chips, filter chips</td></tr>
+      <tr><td><code>Badge</code></td><td>DS v1.0</td><td>Collection type badge (Dynamic / Editorial / Genre)</td></tr>
+      <tr><td><code>ThemeToggle</code></td><td>DS v1.0</td><td>Header</td></tr>
+      <tr><td><code>KnyhovoFooter</code></td><td>Wishlist v1.0 (frozen)</td><td>All collection pages</td></tr>
+      <tr><td><code>KnyhovoHeader</code></td><td>Homepage v1.0 (frozen)</td><td>All collection pages. Active: «Добірки».</td></tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ████ PART 05 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">05</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина п'ята</p>
+      <h2 class="part__title">Data Model</h2>
+    </div>
+  </div>
+
+  <p class="cb-lbl">Інтерфейси TypeScript</p>
+  <div class="code-block"><span class="ck">// Базова модель для всіх типів добірок</span>
+<span class="cs">interface</span> <span class="cv">Collection</span> {
+  <span class="ct">id</span>:          <span class="cv">string</span>         <span class="ck">// UUID</span>
+  <span class="ct">slug</span>:        <span class="cv">string</span>         <span class="ck">// e.g. "populyarne-zaraz", "fentezi"</span>
+  <span class="ct">type</span>:        <span class="cv">'dynamic'</span> | <span class="cv">'editorial'</span> | <span class="cv">'taxonomic'</span>
+  <span class="ct">name</span>:        <span class="cv">string</span>         <span class="ck">// Локалізована назва (UK)</span>
+  <span class="ct">description</span>: <span class="cv">string</span>         <span class="ck">// 1–2 речення (UK)</span>
+  <span class="ct">bookCount</span>:   <span class="cv">number</span>         <span class="ck">// Поточна кількість книг (кешована)</span>
+  <span class="ct">updatedAt</span>:   <span class="cv">string</span>         <span class="ck">// ISO 8601</span>
+  <span class="ct">isActive</span>:    <span class="cv">boolean</span>
+  <span class="ct">icon</span>?:       <span class="cv">string</span>         <span class="ck">// Lucide icon name</span>
+}
+
+<span class="cs">interface</span> <span class="cv">DynamicCollectionConfig</span> {
+  <span class="ct">algorithm</span>:       <span class="cv">'popular' | 'new' | 'discounts' | 'price-drop' | 'most-wishlisted' | 'record-low'</span>
+  <span class="ct">refreshIntervalH</span>: <span class="cv">number</span>        <span class="ck">// Hours. Default: 1</span>
+  <span class="ct">maxBooks</span>:         <span class="cv">number</span>        <span class="ck">// Max results. Default: 500</span>
+}
+
+<span class="cs">interface</span> <span class="cv">EditorialCollectionConfig</span> {
+  <span class="ct">bookIds</span>:         <span class="cv">string[]</span>      <span class="ck">// Ordered list of book UUIDs</span>
+  <span class="ct">curatorNote</span>?:    <span class="cv">string</span>        <span class="ck">// Internal, not shown in UI</span>
+  <span class="ct">featuredFrom</span>?:   <span class="cv">string</span>        <span class="ck">// ISO date — for featured banner</span>
+  <span class="ct">featuredUntil</span>?:  <span class="cv">string</span>        <span class="ck">// ISO date — null = indefinite</span>
+  <span class="ct">status</span>:          <span class="cv">'draft' | 'active' | 'archived'</span>
+}
+
+<span class="cs">interface</span> <span class="cv">TaxonomicCollectionConfig</span> {
+  <span class="ct">genreCode</span>:       <span class="cv">string</span>        <span class="ck">// Internal genre code from book metadata</span>
+  <span class="ct">parentGenreCode</span>?: <span class="cv">string</span>       <span class="ck">// For sub-genres (V2)</span>
+  <span class="ct">minBookThreshold</span>: <span class="cv">number</span>       <span class="ck">// Default: 30. Below → collection not published.</span>
+}
+
+<span class="cs">interface</span> <span class="cv">BookCardData</span> {
+  <span class="ct">id</span>:          <span class="cv">string</span>
+  <span class="ct">title</span>:       <span class="cv">string</span>
+  <span class="ct">author</span>:      <span class="cv">string</span>
+  <span class="ct">coverUrl</span>:    <span class="cv">string</span>
+  <span class="ct">price</span>:       <span class="cv">number</span>         <span class="ck">// Kopecks (e.g. 24500 = 245 ₴)</span>
+  <span class="ct">oldPrice</span>?:   <span class="cv">number</span>         <span class="ck">// Kopecks</span>
+  <span class="ct">storeName</span>:   <span class="cv">string</span>
+  <span class="ct">badge</span>?:      <span class="cv">'best-price' | 'discount' | 'new'</span>
+  <span class="ct">discountPct</span>?: <span class="cv">number</span>
+  <span class="ct">inStock</span>:     <span class="cv">boolean</span>
+  <span class="ct">url</span>:         <span class="cv">string</span>         <span class="ck">// /books/[slug]</span>
+  <span class="ct">catalogAddedAt</span>: <span class="cv">string</span>      <span class="ck">// ISO 8601</span>
+}
+
+<span class="cs">type</span> <span class="cv">SortOption</span> = <span class="cv">'relevance' | 'price_asc' | 'price_desc' | 'newest' | 'discount_desc'</span>
+<span class="ck">// Default for dynamic/editorial: 'relevance'. For taxonomic: 'price_asc'.</span></div>
+
+  <h3 class="h3">DB Schema — нові таблиці</h3>
+  <table class="cmp">
+    <thead><tr><th>Таблиця</th><th>Ключові поля</th><th>Примітка</th></tr></thead>
+    <tbody>
+      <tr><td><code>collections</code></td><td>id, slug, type, name, description, is_active, icon, created_at, updated_at</td><td>Base table для всіх типів</td></tr>
+      <tr><td><code>dynamic_collection_configs</code></td><td>collection_id FK, algorithm, refresh_interval_h, max_books</td><td>1:1 з collections WHERE type='dynamic'</td></tr>
+      <tr><td><code>editorial_collections</code></td><td>collection_id FK, status, curator_note, featured_from, featured_until</td><td>1:1 з collections WHERE type='editorial'</td></tr>
+      <tr><td><code>editorial_collection_books</code></td><td>editorial_collection_id FK, book_id FK, sort_order</td><td>Ordered list</td></tr>
+      <tr><td><code>taxonomic_collection_configs</code></td><td>collection_id FK, genre_code, parent_genre_code, min_book_threshold</td><td>1:1 з collections WHERE type='taxonomic'</td></tr>
+      <tr><td><code>collection_book_count_cache</code></td><td>collection_id FK, book_count, cached_at</td><td>TTL: 1 год. Для всіх типів.</td></tr>
+    </tbody>
+  </table>
+</div>
+
+
+<!-- ████ PART 06 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">06</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина шоста</p>
+      <h2 class="part__title">API Contracts</h2>
+    </div>
+  </div>
+
+  <h4 class="h4">GET /api/collections/hub</h4>
+  <p>SSR endpoint. Повертає всі дані для хабу в одному запиті. Кешується на сервері (5 хв).</p>
+  <div class="code-block"><span class="ck">// Request: GET /api/collections/hub
+// Response 200:</span>
+{
+  <span class="cv">"featured"</span>: {
+    <span class="cv">"collection"</span>: <span class="cs">Collection</span>,
+    <span class="cv">"previewBooks"</span>: <span class="cs">BookCardData</span>[3]
+  },
+  <span class="cv">"dynamic"</span>:   <span class="cs">Collection</span>[6],    <span class="ck">// ordered by display priority</span>
+  <span class="cv">"editorial"</span>: <span class="cs">Collection</span>[2],    <span class="ck">// knyhovyk-radyt, pryhovani-skarby</span>
+  <span class="cv">"genres"</span>:    <span class="cs">Collection</span>[]      <span class="ck">// only collections where bookCount >= 30</span>
+}</div>
+
+  <h4 class="h4">GET /api/collections/:slug</h4>
+  <p>Метадані добірки. Для SSR-рендеру hero, breadcrumb, SEO тегів.</p>
+  <div class="code-block"><span class="ck">// Response 200:</span>
+{
+  <span class="cv">"collection"</span>: <span class="cs">Collection</span>    <span class="ck">// includes type-specific config fields</span>
+}
+<span class="ck">// Response 404: { "error": "not_found" }
+// Response 301: genres with bookCount &lt; 30 → Location: /dobirky</span></div>
+
+  <h4 class="h4">GET /api/collections/:slug/books</h4>
+  <p>Пагінований список книг з сортуванням та фільтрами. Використовується client-side після SSR initial load.</p>
+  <div class="code-block"><span class="ck">// Query params:</span>
+page:       <span class="cv">number</span>   <span class="ck">// Default: 1</span>
+per_page:   <span class="cv">number</span>   <span class="ck">// Default: 24 (4×6). Fixed for MVP.</span>
+sort:       <span class="cv">SortOption</span>  <span class="ck">// Default: per collection type</span>
+genre:      <span class="cv">string</span>   <span class="ck">// genre_code filter (for non-taxonomic collections)</span>
+price_min:  <span class="cv">number</span>   <span class="ck">// Kopecks</span>
+price_max:  <span class="cv">number</span>   <span class="ck">// Kopecks</span>
+in_stock:   <span class="cv">0 | 1</span>    <span class="ck">// Default: 0 (all)</span>
+
+<span class="ck">// Response 200:</span>
+{
+  <span class="cv">"books"</span>:        <span class="cs">BookCardData</span>[],
+  <span class="cv">"total"</span>:        <span class="cv">number</span>,
+  <span class="cv">"page"</span>:         <span class="cv">number</span>,
+  <span class="cv">"per_page"</span>:     <span class="cv">number</span>,
+  <span class="cv">"total_pages"</span>:  <span class="cv">number</span>
+}
+<span class="ck">// Response 200 (no results): { "books": [], "total": 0, ... }</span></div>
+
+  <h4 class="h4">GET /api/collections</h4>
+  <div class="code-block"><span class="ck">// Used for sitemap generation and admin.
+// Response 200:</span>
+{
+  <span class="cv">"collections"</span>: <span class="cs">Collection</span>[]   <span class="ck">// all active, sorted by type then priority</span>
+}</div>
+
+  <div class="note">
+    <strong>Кешування</strong>
+    /api/collections/hub — server cache 5 хв. /api/collections/:slug/books — server cache 60 хв для taxonomic і editorial; 5 хв для dynamic. Cache invalidation при зміні в CMS або оновленні алгоритму.
+  </div>
+</div>
+
+
+<!-- ████ PART 07 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">07</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина сьома</p>
+      <h2 class="part__title">CMS &amp; Editorial Requirements</h2>
+    </div>
+  </div>
+
+  <p>Для MVP редакційні добірки керуються через мінімальний адмін-інтерфейс або прямий DB-доступ. Повноцінна CMS — V2.</p>
+
+  <h3 class="h3">Поля редакційної добірки</h3>
+  <table class="cmp">
+    <thead><tr><th>Поле</th><th>Тип</th><th>Обов'язкове</th><th>Примітка</th></tr></thead>
+    <tbody>
+      <tr><td><code>slug</code></td><td>string</td><td class="s-hi">Так</td><td>Унікальний. Валідація: <code>/^[a-z-]+$/</code>. Незмінний після публікації.</td></tr>
+      <tr><td><code>name</code></td><td>string</td><td class="s-hi">Так</td><td>Відображається в UI</td></tr>
+      <tr><td><code>description</code></td><td>text</td><td class="s-hi">Так</td><td>1–2 речення. Відображається в Hero.</td></tr>
+      <tr><td><code>status</code></td><td>enum</td><td class="s-hi">Так</td><td><code>draft</code> → <code>active</code> → <code>archived</code>. Archived = noindex + not in sitemap.</td></tr>
+      <tr><td><code>book_ids</code></td><td>string[] (ordered)</td><td class="s-hi">Так</td><td>Ordered list. UI: drag-reorder, add/remove. Max 500 для MVP.</td></tr>
+      <tr><td><code>curator_note</code></td><td>text</td><td>Ні</td><td>Внутрішній. Не відображається в UI.</td></tr>
+      <tr><td><code>featured_from</code></td><td>date</td><td>Ні</td><td>Якщо заповнено — добірка стає Featured Collection з цієї дати.</td></tr>
+      <tr><td><code>featured_until</code></td><td>date | null</td><td>Ні</td><td>null = показувати до ручної зміни</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="h3">Featured Collection — логіка вибору</h3>
+  <ol>
+    <li>Активна editorial collection з <code>featured_from ≤ TODAY ≤ featured_until</code> — пріоритет 1.</li>
+    <li>Якщо кілька — з найвищим <code>featured_priority</code> (ціле число, більше = вище).</li>
+    <li>Якщо жодної — показати /dobirky/knyhovyk-radyt (fallback).</li>
+    <li>Featured Collection оновлюється без редеплою — зміна в CMS/DB + cache invalidation.</li>
+  </ol>
+
+  <h3 class="h3">Необхідні CMS-операції (MVP)</h3>
+  <ul>
+    <li>Створити / редагувати редакційну добірку (поля вище)</li>
+    <li>Додавати / видаляти книги за ISBN або title-пошуком</li>
+    <li>Змінювати порядок книг (drag-to-reorder або sort_order поле)</li>
+    <li>Публікувати / архівувати добірку</li>
+    <li>Встановлювати Featured Collection (дати та пріоритет)</li>
+    <li>Перегляд preview перед публікацією</li>
+  </ul>
+
+  <div class="note">
+    <strong>MVP реалізація без CMS</strong>
+    Якщо CMS недоступна до запуску: сeedити editorial_collections та editorial_collection_books через SQL migration + expose простий /admin/collections CRUD endpoint. Мінімальний UI: JSON editor або форма з textarea для book_ids.
+  </div>
+</div>
+
+
+<!-- ████ PART 08 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">08</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина восьма</p>
+      <h2 class="part__title">State Management</h2>
+    </div>
+  </div>
+
+  <h3 class="h3">Стани сторінок</h3>
+  <table class="cmp">
+    <thead><tr><th>Сторінка / Компонент</th><th>Стан</th><th>Поведінка</th></tr></thead>
+    <tbody>
+      <tr><td rowspan="3">Collection Hub</td><td>Loading</td><td>Skeleton: warm --surface-accent. Відповідає розміщенню секцій. Стаггер 280ms/50ms cascade (frozen rule).</td></tr>
+      <tr><td>Loaded</td><td>Всі секції рендеруються. Featured banner, Dynamic row, Genre grid, Editorial cards.</td></tr>
+      <tr><td>Error</td><td>Full-page error block: «Щось пішло не так» + «Спробувати ще раз» primary button.</td></tr>
+      <tr><td rowspan="4">Collection Details</td><td>Loading</td><td>Hero skeleton + Controls skeleton + 24× BookCard skeleton. Pagination не рендерується під час loading.</td></tr>
+      <tr><td>Loaded</td><td>Повний render. Registration prompt видно після page 1 scroll (якщо anonymous).</td></tr>
+      <tr><td>Empty (filter)</td><td>BookGrid замінюється empty-state блоком. Controls залишаються активними.</td></tr>
+      <tr><td>Error (API)</td><td>Тільки BookGrid замінюється error block (frozen rule: решта сторінки — footer, header, hero — залишаються). «Спробувати ще раз» — локальний retry.</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="h3">URL State — Sort &amp; Filter</h3>
+  <p>Весь стан сортування, фільтрації та пагінації відображається в URL query params. Це дозволяє: shareable URLs, browser back/forward, SSR на сервері.</p>
+  <div class="code-block"><span class="ck">// URL schema для /dobirky/:slug</span>
+?<span class="cv">sort</span>=price_asc          <span class="ck">// SortOption. Default omitted from URL.</span>
+&amp;<span class="cv">in_stock</span>=1            <span class="ck">// Omit if false (default)</span>
+&amp;<span class="cv">price_min</span>=10000       <span class="ck">// Kopecks. Omit if not set.</span>
+&amp;<span class="cv">price_max</span>=50000       <span class="ck">// Kopecks. Omit if not set.</span>
+&amp;<span class="cv">genre</span>=fentezi         <span class="ck">// For non-taxonomic collections only.</span>
+&amp;<span class="cv">page</span>=3                <span class="ck">// Omit if page=1 (default).</span>
+
+<span class="ck">// Examples:</span>
+/dobirky/znyzhky?sort=discount_desc&amp;in_stock=1&amp;page=2
+/dobirky/fentezi?sort=price_asc&amp;price_max=20000
+/dobirky/knyhovyk-radyt?sort=newest</div>
+
+  <h3 class="h3">Registration Prompt — State Logic</h3>
+  <table class="cmp">
+    <thead><tr><th>Умова</th><th>Дія</th></tr></thead>
+    <tbody>
+      <tr><td>Користувач авторизований</td><td>Не показувати промпт взагалі</td></tr>
+      <tr><td>Анонімний + page = 1 (перші 24 книги)</td><td>Не показувати</td></tr>
+      <tr><td>Анонімний + page ≥ 2 + <code>sessionStorage['reg_prompt_dismissed']</code> = true</td><td>Не показувати</td></tr>
+      <tr><td>Анонімний + page ≥ 2 + не dismissed</td><td>Показати inline між BookGrid та Pagination</td></tr>
+      <tr><td>Клік «×» або ESC</td><td>Сховати + <code>sessionStorage.setItem('reg_prompt_dismissed', 'true')</code></td></tr>
+      <tr><td>Клік CTA «Зареєструватись»</td><td>Navigate до /register?from=collection&amp;slug=[slug]</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="h3">Loading Skeleton Spec</h3>
+  <ul>
+    <li><strong>Колір:</strong> warm <code>--surface-accent</code> блоки. Ніяких cold greys (frozen rule).</li>
+    <li><strong>Анімація:</strong> One-shot fade-in 280ms ease-out, stagger 50ms per card. <code>@media (prefers-reduced-motion)</code> — статичні блоки, без анімації.</li>
+    <li><strong>SearchBar skeleton:</strong> reuses <code>.kn-field</code> capsule (exact dims, 16px radius, border preserved — frozen rule).</li>
+    <li><strong>BookCard skeleton:</strong> cover 104×150 + title рядок + author рядок + price — min-height 156px (frozen rule, no layout shift).</li>
+    <li><strong>DynamicCollectionCard skeleton:</strong> 16×16 icon placeholder + 2 text lines.</li>
+    <li><strong>GenreCard skeleton:</strong> icon + name рядок.</li>
+  </ul>
+</div>
+
+
+<!-- ████ PART 09 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">09</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина дев'ята</p>
+      <h2 class="part__title">SEO Implementation Checklist</h2>
+    </div>
+  </div>
+
+  <h3 class="h3">Meta Tags</h3>
+  <ul class="chklist">
+    <li><div class="chk"></div><div><code>&lt;title&gt;</code> pattern: <strong>[Назва добірки] · Порівняти ціни · Knyhovo</strong>. Hub: «Добірки книг · Порівняти ціни · Knyhovo».</div></li>
+    <li><div class="chk"></div><div><code>&lt;meta name="description"&gt;</code> pattern: <strong>«N книг у добірці "[Назва]". Порівняйте ціни у 5 книгарнях та знайдіть найкращу пропозицію.»</strong></div></li>
+    <li><div class="chk"></div><div><code>og:title</code>, <code>og:description</code>, <code>og:url</code> на всіх сторінках.</div></li>
+    <li><div class="chk"></div><div><code>og:image</code> — обкладинка Featured книги або дефолтний Knyhovo OG image.</div></li>
+    <li><div class="chk"></div><div><code>&lt;link rel="canonical"&gt;</code> self-canonical на всіх сторінках.</div></li>
+    <li><div class="chk"></div><div>Динамічні добірки (page &gt; 1): canonical → page 1 (<code>?page=</code> відсутній у canonical URL).</div></li>
+    <li><div class="chk"></div><div>Archived seasonal collections: <code>&lt;meta name="robots" content="noindex, nofollow"&gt;</code> → потім 301 redirect до /dobirky.</div></li>
+    <li><div class="chk"></div><div><code>hreflang="uk"</code> на всіх сторінках (тільки Ukrainian для MVP).</div></li>
+  </ul>
+
+  <h3 class="h3">Schema.org</h3>
+  <ul class="chklist">
+    <li><div class="chk"></div><div>Hub /dobirky: <code>CollectionPage</code> + <code>BreadcrumbList</code>.</div></li>
+    <li><div class="chk"></div><div>Кожна сторінка добірки: <code>ItemList</code> (numberOfItems = bookCount) + <code>BreadcrumbList</code>.</div></li>
+    <li><div class="chk"></div><div>Кожна ListItem: <code>ListItem</code> → <code>Book</code> (name, author.name, offers.price, offers.priceCurrency: "UAH").</div></li>
+    <li><div class="chk"></div><div>ListItem лише для першої сторінки (24 книги). Не генерувати для всіх сторінок пагінації.</div></li>
+    <li><div class="chk"></div><div>JSON-LD inline у <code>&lt;script type="application/ld+json"&gt;</code> в <code>&lt;head&gt;</code>. SSR-rendered.</div></li>
+  </ul>
+
+  <h3 class="h3">Sitemap &amp; Crawling</h3>
+  <ul class="chklist">
+    <li><div class="chk"></div><div>sitemap.xml: 16 URLs при запуску (хаб + 6 dynamic + 2 editorial + 8 genre). Автоматичне додавання при publish нової добірки.</div></li>
+    <li><div class="chk"></div><div>Dynamic collections: <code>changefreq="daily"</code>, <code>lastmod</code> = час останнього refresh алгоритму.</div></li>
+    <li><div class="chk"></div><div>Editorial collections: <code>changefreq="weekly"</code>, <code>lastmod</code> = updated_at.</div></li>
+    <li><div class="chk"></div><div>Genre collections: <code>changefreq="daily"</code>, <code>lastmod</code> = daily.</div></li>
+    <li><div class="chk"></div><div>Archived seasonal: видалити з sitemap + 301 redirect → /dobirky.</div></li>
+    <li><div class="chk"></div><div>robots.txt: <code>Allow: /dobirky/</code>. Query params (?sort=, ?page=, фільтри) — <code>Disallow</code> або <code>noindex</code>.</div></li>
+    <li><div class="chk"></div><div>Pagination: <code>&lt;link rel="next"&gt;</code> / <code>&lt;link rel="prev"&gt;</code> на сторінках &gt; 1.</div></li>
+    <li><div class="chk"></div><div>Internal linking: Genre hub card → /dobirky/[genre]. FeaturedBanner → /dobirky/[slug]. RelatedCollections → /dobirky/[slug].</div></li>
+  </ul>
+
+  <h3 class="h3">URL Rules (frozen)</h3>
+  <ul class="chklist">
+    <li><div class="chk"></div><div>Всі slugs — українська транслітерація. Ніяких англійських еквівалентів.</div></li>
+    <li><div class="chk"></div><div>Slug незмінний після першої публікації (301 redirect при необхідності зміни).</div></li>
+    <li><div class="chk"></div><div>Жанрова сторінка з &lt;30 книг → 301 → /dobirky. Не рендерити порожню сторінку.</div></li>
+    <li><div class="chk"></div><div>URL query params не індексуються: <code>noindex</code> на filtered/sorted URLs або canonical до base URL.</div></li>
+  </ul>
+</div>
+
+
+<!-- ████ PART 10 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">10</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина десята</p>
+      <h2 class="part__title">Analytics Events</h2>
+    </div>
+  </div>
+
+  <p>Конвенція іменування: <code>collections_[object]_[action]</code>. 14 подій для MVP.</p>
+  <table class="cmp">
+    <thead><tr><th>Event name</th><th>Тригер</th><th>Properties</th></tr></thead>
+    <tbody>
+      <tr><td><code>collections_hub_viewed</code></td><td>Hub page load</td><td><code>{ theme, source: 'nav'|'direct' }</code></td></tr>
+      <tr><td><code>collections_page_viewed</code></td><td>Details page load</td><td><code>{ slug, type, book_count, sort_by, page, has_active_filters }</code></td></tr>
+      <tr><td><code>collections_book_clicked</code></td><td>Click on BookCard</td><td><code>{ collection_slug, book_id, book_position, sort_by, page }</code></td></tr>
+      <tr><td><code>collections_sort_changed</code></td><td>Sort selection change</td><td><code>{ collection_slug, sort_from, sort_to }</code></td></tr>
+      <tr><td><code>collections_filter_toggled</code></td><td>Filter chip click</td><td><code>{ collection_slug, filter_key, filter_value, action: 'apply'|'clear' }</code></td></tr>
+      <tr><td><code>collections_filter_cleared</code></td><td>«Скинути фільтри» click</td><td><code>{ collection_slug, filters_count }</code></td></tr>
+      <tr><td><code>collections_page_changed</code></td><td>Pagination click</td><td><code>{ collection_slug, page_from, page_to }</code></td></tr>
+      <tr><td><code>collections_see_all_clicked</code></td><td>HP shelf see-all CTA</td><td><code>{ source: 'homepage', collection_slug, book_count_shown }</code></td></tr>
+      <tr><td><code>collections_hub_card_clicked</code></td><td>Dynamic / Genre / Editorial card</td><td><code>{ collection_slug, card_type: 'dynamic'|'genre'|'editorial'|'featured' }</code></td></tr>
+      <tr><td><code>collections_registration_prompt_shown</code></td><td>Prompt enters viewport</td><td><code>{ collection_slug, page }</code></td></tr>
+      <tr><td><code>collections_registration_prompt_cta_clicked</code></td><td>«Зареєструватись» click</td><td><code>{ collection_slug }</code></td></tr>
+      <tr><td><code>collections_registration_prompt_dismissed</code></td><td>Dismiss (× або ESC)</td><td><code>{ collection_slug }</code></td></tr>
+      <tr><td><code>collections_related_clicked</code></td><td>Related collection click</td><td><code>{ from_slug, to_slug, position: 1|2|3 }</code></td></tr>
+      <tr><td><code>collections_wishlist_added</code></td><td>Wishlist button on BookCard</td><td><code>{ collection_slug, book_id, book_position }</code></td></tr>
+    </tbody>
+  </table>
+
+  <div class="note">
+    <strong>Ключові conversion funnels для моніторингу</strong>
+    1) SEO вхід → book click → registration: <code>page_viewed (source=direct) → book_clicked → registration_prompt_cta_clicked</code>. 
+    2) Homepage → collection → purchase intent: <code>see_all_clicked → book_clicked</code>. 
+    3) Registration prompt conversion rate: <code>prompt_shown / prompt_cta_clicked</code>.
+  </div>
+</div>
+
+
+<!-- ████ PART 11 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">11</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина одинадцята</p>
+      <h2 class="part__title">Accessibility Checklist</h2>
+    </div>
+  </div>
+
+  <p>Стандарт: WCAG 2.1 AA. Успадковані заморожені правила від Search Results v1.0 залишаються в силі.</p>
+
+  <h3 class="h3">Структура та навігація</h3>
+  <ul class="chklist">
+    <li><div class="chk"></div><div>Skip link: <code>&lt;a href="#main-content" class="skip-link"&gt;Перейти до вмісту&lt;/a&gt;</code> — перший елемент у DOM, видимий при фокусі.</div></li>
+    <li><div class="chk"></div><div><code>&lt;main id="main-content"&gt;</code> landmark на кожній сторінці.</div></li>
+    <li><div class="chk"></div><div>Breadcrumb: <code>&lt;nav aria-label="Хліб крихти"&gt;</code> з <code>&lt;ol&gt;</code>. Frozen pattern.</div></li>
+    <li><div class="chk"></div><div>Pagination: <code>&lt;nav aria-label="Пагінація"&gt;</code>. Active page: <code>aria-current="page"</code>. Frozen rule.</div></li>
+    <li><div class="chk"></div><div>Genre grid: <code>&lt;nav aria-label="Жанри"&gt;</code> або <code>role="list"</code> + <code>role="listitem"</code>.</div></li>
+    <li><div class="chk"></div><div>H1 = назва добірки. Один H1 per page. Hierarchy: H1 → H2 (sections) → H3.</div></li>
+  </ul>
+
+  <h3 class="h3">Інтерактивні елементи</h3>
+  <ul class="chklist">
+    <li><div class="chk"></div><div>Filter chips: <code>role="group" aria-label="Фільтри"</code>, кожен chip: <code>aria-pressed="true|false"</code>.</div></li>
+    <li><div class="chk"></div><div>Sort control: <code>&lt;select&gt;</code> з <code>&lt;label&gt;</code> або button group з <code>aria-pressed</code>.</div></li>
+    <li><div class="chk"></div><div>BookCard: keyboard focusable. Enter/Space activates. Frozen DS rule.</div></li>
+    <li><div class="chk"></div><div>Registration prompt: dismissible via <code>Escape</code>. Focus trap утримувати <strong>не</strong> потрібно (inline, не modal).</div></li>
+    <li><div class="chk"></div><div>Touch targets: мінімум 44×44px на всіх кнопках та посиланнях. Frozen rule (Search Results v1.0).</div></li>
+    <li><div class="chk"></div><div>Focus indicator: 3px soft accent ring <code>--focus-ring</code> на всіх focusable elements. Frozen DS rule.</div></li>
+  </ul>
+
+  <h3 class="h3">Динамічні оновлення</h3>
+  <ul class="chklist">
+    <li><div class="chk"></div><div>При зміні sort/filter: <code>aria-busy="true"</code> на BookGrid, потім <code>false</code> після update.</div></li>
+    <li><div class="chk"></div><div>Кількість результатів після фільтрації: <code>aria-live="polite"</code> region з «Знайдено N книг».</div></li>
+    <li><div class="chk"></div><div>Skeleton стани: <code>aria-hidden="true"</code> на skeleton blocks (не читати screen readers).</div></li>
+  </ul>
+
+  <h3 class="h3">Контент</h3>
+  <ul class="chklist">
+    <li><div class="chk"></div><div>Book cover images: <code>alt="[Назва] — [Автор]"</code>. Не <code>alt=""</code>.</div></li>
+    <li><div class="chk"></div><div>Decorative icons (Lucide): <code>aria-hidden="true"</code>.</div></li>
+    <li><div class="chk"></div><div>Collection type badge: <code>aria-label="Тип: Динамічна добірка"</code>.</div></li>
+    <li><div class="chk"></div><div>Color contrast: всі текстові елементи ≥ 4.5:1 (AAA рекомендований для заголовків). Frozen DS tokens забезпечують це.</div></li>
+    <li><div class="chk"></div><div>Інформація не передається тільки через колір (badges мають текст).</div></li>
+  </ul>
+</div>
+
+
+<!-- ████ PART 12 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">12</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина дванадцята</p>
+      <h2 class="part__title">Development Roadmap</h2>
+    </div>
+  </div>
+
+  <p>4 спринти · ~7 тижнів. Паралельна розробка frontend + backend з'єднується наприкінці Sprint 1.</p>
+
+  <div class="phase">
+    <div class="phase__head">
+      <div class="phase__label">Sprint 1 · Foundation</div>
+      <div class="phase__sub">DB schema · Dynamic algorithms · API foundation · Hub page</div>
+      <div class="phase__badge">2 тижні</div>
+    </div>
+    <div class="phase__body">
+      <ul class="phase__tasks">
+        <li><strong>BE</strong> DB schema: collections, dynamic/editorial/taxonomic configs, book_count_cache</li>
+        <li><strong>BE</strong> Seed 6 dynamic collection configs</li>
+        <li><strong>BE</strong> Seed 8 genre collection records (з threshold guard)</li>
+        <li><strong>BE</strong> Algorithm: populyarne-zaraz, novynky, znyzhky</li>
+        <li><strong>BE</strong> Algorithm: ponyzhena-tsina, najbilsh-bazhani, rekordno-nyzka-tsina</li>
+        <li><strong>BE</strong> API: GET /api/collections/hub</li>
+        <li><strong>BE</strong> API: GET /api/collections/:slug</li>
+        <li><strong>BE</strong> API: GET /api/collections/:slug/books (no filters)</li>
+        <li><strong>FE</strong> /dobirky route + CollectionHubPage (SSR)</li>
+        <li><strong>FE</strong> CollectionHubHero component</li>
+        <li><strong>FE</strong> DynamicCollectionCard + DynamicCollectionRow</li>
+        <li><strong>FE</strong> GenreCard + GenreGrid (threshold guard)</li>
+        <li><strong>FE</strong> Hub loading skeleton</li>
+        <li><strong>FE</strong> Hub error state</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase__head">
+      <div class="phase__label">Sprint 2 · Details + Controls</div>
+      <div class="phase__sub">Collection details page · Sort/filter · Pagination · States</div>
+      <div class="phase__badge">2 тижні</div>
+    </div>
+    <div class="phase__body">
+      <ul class="phase__tasks">
+        <li><strong>BE</strong> Sort + filter support in /api/collections/:slug/books</li>
+        <li><strong>BE</strong> Price range filter (kopecks min/max)</li>
+        <li><strong>BE</strong> In-stock filter</li>
+        <li><strong>BE</strong> Genre filter (for non-taxonomic)</li>
+        <li><strong>FE</strong> /dobirky/:slug route + CollectionDetailsPage (SSR)</li>
+        <li><strong>FE</strong> CollectionHero + Breadcrumb</li>
+        <li><strong>FE</strong> SortControl (URL-persisted, ?sort=)</li>
+        <li><strong>FE</strong> FilterChipRow (URL-persisted)</li>
+        <li><strong>FE</strong> BookGrid (reuse frozen BookCard)</li>
+        <li><strong>FE</strong> Pagination (frozen Search Results pattern)</li>
+        <li><strong>FE</strong> Details loading skeleton (all components)</li>
+        <li><strong>FE</strong> Empty state (filter = 0 results)</li>
+        <li><strong>FE</strong> Error state (books API failure, local retry)</li>
+        <li><strong>FE</strong> 404 for unknown slug; 301 for genre &lt;30 books</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase__head">
+      <div class="phase__label">Sprint 3 · Editorial + SEO</div>
+      <div class="phase__sub">CMS · Featured banner · Registration prompt · Full SEO layer</div>
+      <div class="phase__badge">2 тижні</div>
+    </div>
+    <div class="phase__body">
+      <ul class="phase__tasks">
+        <li><strong>BE</strong> editorial_collections + editorial_collection_books tables</li>
+        <li><strong>BE</strong> CMS admin form (або SQL seed + simple CRUD endpoint)</li>
+        <li><strong>BE</strong> Featured collection selection logic</li>
+        <li><strong>BE</strong> RelatedCollections algorithm (pre-computed)</li>
+        <li><strong>FE</strong> FeaturedCollectionBanner component</li>
+        <li><strong>FE</strong> EditorialCard + EditorialSpotlight (2 cards)</li>
+        <li><strong>FE</strong> RegistrationPrompt (anonymous, sessionStorage)</li>
+        <li><strong>FE</strong> RelatedCollectionCard + RelatedCollectionsRow</li>
+        <li><strong>SEO</strong> &lt;title&gt; + &lt;meta description&gt; per collection (SSR)</li>
+        <li><strong>SEO</strong> Schema.org CollectionPage (hub) + ItemList (details)</li>
+        <li><strong>SEO</strong> BreadcrumbList schema on details</li>
+        <li><strong>SEO</strong> Canonical links + og:tags</li>
+        <li><strong>SEO</strong> sitemap.xml integration (16 initial URLs)</li>
+        <li><strong>SEO</strong> noindex for archived seasonal collections</li>
+      </ul>
+    </div>
+  </div>
+
+  <div class="phase">
+    <div class="phase__head">
+      <div class="phase__label">Sprint 4 · Integration + QA</div>
+      <div class="phase__sub">Homepage links · Analytics · A11y audit · Performance · QA</div>
+      <div class="phase__badge">1 тиждень</div>
+    </div>
+    <div class="phase__body">
+      <ul class="phase__tasks">
+        <li><strong>FE</strong> Homepage: «Усі N книг →» на 3 полицях</li>
+        <li><strong>Analytics</strong> Instrument всі 14 events</li>
+        <li><strong>A11y</strong> aria-labels, keyboard nav, focus management</li>
+        <li><strong>A11y</strong> Screen reader testing (VoiceOver + NVDA)</li>
+        <li><strong>QA</strong> Dark mode: verify all components</li>
+        <li><strong>QA</strong> Cross-browser: Chrome, Firefox, Safari, mobile</li>
+        <li><strong>QA</strong> Pagination frozen algorithm verification</li>
+        <li><strong>QA</strong> Genre 30-book threshold guard</li>
+        <li><strong>Perf</strong> LCP/CLS/INP measurement + optimization</li>
+        <li><strong>SEO</strong> robots.txt правила для query params</li>
+        <li><strong>SEO</strong> Schema validation (Google Rich Results Test)</li>
+        <li><strong>Deploy</strong> Staging → Production</li>
+      </ul>
+    </div>
+  </div>
+</div>
+
+
+<!-- ████ PART 13 ████ -->
+<div class="part">
+  <div class="part__row">
+    <div class="part__n">13</div>
+    <div class="part__info">
+      <p class="part__lbl">Частина тринадцята</p>
+      <h2 class="part__title">Risks &amp; Open Questions</h2>
+    </div>
+  </div>
+
+  <h3 class="h3">Risk Register</h3>
+  <table class="cmp">
+    <thead><tr><th style="width:50px">#</th><th>Ризик</th><th style="width:80px">Ймовірність</th><th style="width:80px">Вплив</th><th>Міtigація</th></tr></thead>
+    <tbody>
+      <tr class="risk-hi"><td>R-01</td><td><strong>Неповні метадані книг (жанр)</strong> — таксономічні добірки будуть пустими або з малою кількістю книг.</td><td class="s-hi">ВИСОКА</td><td class="s-hi">ВИСОКА</td><td>Аудит genre coverage перед запуском. 30-book threshold guard запобігає порожнім сторінкам. Пріоритизувати жанри з найбільшим покриттям.</td></tr>
+      <tr class="risk-hi"><td>R-02</td><td><strong>price_history таблиця недоступна</strong> для /ponyzhena-tsina та /rekordno-nyzka-tsina алгоритмів.</td><td class="s-md">СЕРЕДНЯ</td><td class="s-hi">ВИСОКА</td><td>Підтверджено: W5 Price History (frozen) вже вимагає price_history таблицю. Cross-check з W5 team. Fallback: показувати лише 4 dynamic collections якщо price_history недоступна.</td></tr>
+      <tr><td>R-03</td><td><strong>CMS для editorial не готовий до Sprint 3</strong> — knyhovyk-radyt та pryhovani-skarby не можна наповнити.</td><td class="s-md">СЕРЕДНЯ</td><td class="s-md">СЕРЕДНЯ</td><td>SQL seed script: заздалегідь підготовлені book_ids для обох колекцій. CMS-агностичний fallback.</td></tr>
+      <tr><td>R-04</td><td><strong>SEO cannibalization</strong> між /dobirky/fentezi та пошуком за жанром «фентезі».</td><td class="s-lo">НИЗЬКА</td><td class="s-md">СЕРЕДНЯ</td><td>Унікальний editorial контент (curator note в description). Різні meta descriptions. Canonical правила.</td></tr>
+      <tr><td>R-05</td><td><strong>Performance</strong> — першочерговий SSR рендер великої кількості BookCard skeleton може повільно завантажуватись на мобільних.</td><td class="s-lo">НИЗЬКА</td><td class="s-lo">НИЗЬКА</td><td>Pagination 24 books = керована кількість. Skeleton lightweight (CSS only). LCP target &lt;2.5s.</td></tr>
+    </tbody>
+  </table>
+
+  <h3 class="h3">Open Questions</h3>
+  <p>Потребують відповіді від Product / Tech Lead перед початком Sprint 1:</p>
+  <ol>
+    <li><strong>CMS для editorial у MVP:</strong> Прямий SQL seed (migration) або мінімальний admin CRUD endpoint? Хто відповідає за наповнення?</li>
+    <li><strong>Refresh interval:</strong> Динамічні колекції — кожну годину підтверджено? Або on-demand при відвідуванні сторінки (stale-while-revalidate)?</li>
+    <li><strong>Lookback для /ponyzhena-tsina:</strong> 7 днів підтверджено, чи має бути конфігурованим через DynamicCollectionConfig?</li>
+    <li><strong>Featured Collection у MVP:</strong> Ручний вибір (CMS) або автоматичний (за wishlist_count / views)?</li>
+    <li><strong>Registration prompt — session scope:</strong> Один раз per session (sessionStorage) або one-time ever (localStorage)?</li>
+    <li><strong>Book count caching TTL:</strong> 1 год підходить для hub card? Або потрібно real-time для точних «N книг» цифр?</li>
+    <li><strong>Sub-genre URLs у MVP:</strong> /dobirky/fentezi/ukrainska-fentezi — в scope чи V2? (Потребує рішення для sitemap.)</li>
+    <li><strong>Default sort per type:</strong> Genre → price_asc; Dynamic → relevance; Editorial → curator order (без sort?) — підтвердити.</li>
+    <li><strong>/najbilsh-bazhani сигнал:</strong> Тільки Knyhovo wishlist_count чи включати зовнішні сигнали (наприклад, product views)?</li>
+    <li><strong>Per_page = 24:</strong> Підтверджено для BookGrid 4×6? Або 20 (4×5)?</li>
+  </ol>
+
+  <div class="verdict">
+    <p class="verdict__lbl">Готовність до розробки</p>
+    <p class="verdict__text">Документ покриває <strong>всі інженерні вимоги для MVP-реалізації</strong>. Відповіді на 10 Open Questions потрібні до початку Sprint 1 (R-01, R-02, Q-01 є критичними). Після підтвердження — розробка може стартувати одразу за двома треками: BE (DB + API) і FE (components + pages) паралельно.</p>
+  </div>
+</div>
+
+</main>
+</body>
+</html>

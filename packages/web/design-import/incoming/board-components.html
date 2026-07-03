@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="uk" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Knyhovo — Components</title>
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+  <link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+  <style>
+    body { background: var(--bg); color: var(--text); font-family: var(--font-body); margin: 0; }
+    .cwrap { max-width: 1180px; margin: 0 auto; padding: var(--space-10) var(--space-8) var(--space-16); }
+    .ceyebrow { font-size: var(--fs-xs); letter-spacing: .14em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 var(--space-2); }
+    h1.ctitle { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h2); letter-spacing: -.02em; margin: 0 0 var(--space-2); color: var(--text); }
+    .clead { font-size: var(--fs-lead); color: var(--text-body); margin: 0 0 var(--space-10); max-width: 64ch; }
+    .cspec { margin-bottom: var(--space-10); }
+    .cspec > h2 { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-h3); color: var(--text); margin: 0 0 var(--space-1); }
+    .cspec > p.sub { font-size: var(--fs-sm); color: var(--text-muted); margin: 0 0 var(--space-4); }
+    .stage { border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--surface-sunk); box-shadow: var(--shadow-sm); padding: var(--space-6); display: flex; gap: var(--space-5); align-items: center; flex-wrap: wrap; }
+  </style>
+</head>
+<body>
+  <div class="cwrap">
+    <p class="ceyebrow">Knyhovo Design System · v1.0 · Frozen</p>
+    <h1 class="ctitle">02 · Components</h1>
+    <p class="clead">Реальні компоненти дизайн-системи, інстанційовані з бандла <code>KnyhovoDesignSystem_9fa616</code> — ті самі, з яких зібрані всі екрани. Нічого не відтворено вручну.</p>
+
+    <section class="cspec"><h2>Button</h2><p class="sub">Accent CTA · мідне/бурштинове сяйво · primary / secondary / ghost · sm / md</p><div class="stage" id="s-btn"></div></section>
+    <section class="cspec"><h2>Badge</h2><p class="sub">Tone: accent · green (найкраща ціна) · neutral</p><div class="stage" id="s-badge"></div></section>
+    <section class="cspec"><h2>Chip</h2><p class="sub">Pill · популярні запити, фільтри · selected стан</p><div class="stage" id="s-chip"></div></section>
+    <section class="cspec"><h2>SearchBar</h2><p class="sub">Hero-капсула пошуку · іконка + CTA «Знайти»</p><div class="stage" id="s-search"></div></section>
+    <section class="cspec"><h2>BookCard</h2><p class="sub">Книга + найкраща ціна · бейдж · стара ціна · книгарня</p><div class="stage" id="s-book"></div></section>
+    <section class="cspec"><h2>ThemeToggle</h2><p class="sub">Світла ↔ темна · перемикає <code>data-theme</code></p><div class="stage" id="s-toggle"></div></section>
+  </div>
+
+  <script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+  <script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+  <script src="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/_ds_bundle.js"></script>
+  <script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+  <script type="text/babel">
+    const { Button, Badge, Chip, SearchBar, BookCard, ThemeToggle } = window.KnyhovoDesignSystem_9fa616;
+    const mount = (id, node) => ReactDOM.createRoot(document.getElementById(id)).render(node);
+
+    mount('s-btn', <>
+      <Button variant="primary">Знайти</Button>
+      <Button variant="secondary">Увійти</Button>
+      <Button variant="ghost">Детальніше</Button>
+      <Button variant="primary" size="sm">До книгарні</Button>
+    </>);
+    mount('s-badge', <>
+      <Badge tone="green">Найкраща ціна</Badge>
+      <Badge tone="accent">−25%</Badge>
+      <Badge tone="neutral">Новинка</Badge>
+    </>);
+    mount('s-chip', <>
+      <Chip>Фентезі</Chip>
+      <Chip selected>Нонфікшн</Chip>
+      <Chip>Класика</Chip>
+    </>);
+    mount('s-search', <div style={{ width: '100%', maxWidth: 640 }}><SearchBar /></div>);
+    mount('s-book', <div style={{ width: 420 }}>
+      <BookCard title="Відьмак. Останнє бажання" author="Анджей Сапковський"
+        price="240 ₴" oldPrice="320 ₴" store="Yakaboo"
+        badge={<Badge tone="green">Найкраща ціна</Badge>} />
+    </div>);
+    mount('s-toggle', <ThemeToggle />);
+
+    setTimeout(() => window.lucide && window.lucide.createIcons(), 100);
+  </script>
+</body>
+</html>

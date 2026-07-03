@@ -1,0 +1,104 @@
+/* ================================================================
+   Knyhovo · Book Details frozen subset — copied VERBATIM from
+   "Book Details v1.1 (Variant C Balanced)" so the Price-History
+   block sits inside the real, unmodified page chassis.
+   DO NOT edit these rules — they belong to the frozen pattern.
+   ================================================================ */
+
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: #f0eee9; }
+a { text-decoration: none; }
+button, input { font-family: inherit; }
+
+.bd-page { background: var(--bg); color: var(--text-body); font-family: var(--font-body); font-size: var(--fs-body); line-height: var(--lh-normal); min-height: 100%; }
+.bd-wrap { max-width: 1320px; margin: 0 auto; padding: 0 48px; }
+
+/* Header / footer */
+.bd-page .site-header { display: flex; align-items: center; gap: var(--space-8); padding: var(--space-5) 0; }
+.bd-page .site-logo { height: 44px; display: block; }
+.bd-page .site-nav { display: flex; gap: var(--space-6); margin-left: auto; }
+.bd-page .nav-link { font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--text-body); transition: color var(--dur-fast) var(--ease-out); }
+.bd-page .nav-link:hover { color: var(--accent); }
+.bd-page .nav-link--active { color: var(--accent); font-weight: var(--fw-semibold); }
+.bd-page .site-actions { display: flex; align-items: center; gap: var(--space-4); }
+.bd-page .site-footer { border-top: 1px solid var(--border); margin-top: var(--space-12); padding: var(--space-10) 0 var(--space-12); display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); }
+.bd-page .footer-logo { height: 36px; }
+.bd-page .footer-line { font-size: var(--fs-sm); color: var(--text-body); }
+.bd-page .footer-copy { font-size: var(--fs-xs); color: var(--text-muted); }
+
+/* Top bar: persistent search + breadcrumbs */
+.bd-topbar { display: flex; align-items: center; gap: var(--space-6); margin: var(--space-2) 0 var(--space-5); }
+.bd-search { flex: 1; max-width: 640px; }
+.bd-crumbs { font-size: var(--fs-sm); color: var(--text-muted); margin-bottom: var(--space-8); }
+.bd-crumbs span { color: var(--text); }
+
+/* Shared blocks */
+.bd-eyebrow { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); margin-bottom: var(--space-3); }
+.bd-h1 { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--fs-h2); line-height: var(--lh-tight); letter-spacing: var(--ls-tight); color: var(--text); margin-bottom: var(--space-2); text-wrap: pretty; }
+.bd-h2 { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--fs-h3); line-height: var(--lh-snug); color: var(--text); margin-bottom: var(--space-5); }
+.bd-author { font-size: var(--fs-lead); color: var(--text-body); margin-bottom: var(--space-5); }
+.bd-cover { border: 1px solid var(--border); border-radius: var(--radius-md); background: linear-gradient(135deg, var(--surface-accent), var(--surface-sunk)); box-shadow: var(--shadow-md); display: flex; align-items: center; justify-content: center; flex: none; }
+.bd-cover span { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-faint); }
+.bd-cover--md { width: 220px; height: 320px; }
+.bd-cover--sm { width: 120px; height: 174px; border-radius: var(--radius-sm); box-shadow: var(--shadow-sm); }
+.bd-desc p { margin: 0 0 var(--space-4); max-width: 66ch; text-wrap: pretty; }
+.bd-desc p:last-child { margin-bottom: 0; }
+.bd-section { margin: var(--space-12) 0 0; }
+.bd-summary { font-size: var(--fs-sm); color: var(--text-muted); margin: calc(-1 * var(--space-3)) 0 var(--space-5); }
+.bd-updated { font-size: var(--fs-xs); color: var(--text-muted); margin-top: var(--space-3); }
+
+.bd-wish { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+
+/* Metadata grid */
+.bd-meta { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5) var(--space-10); max-width: 720px; margin: 0; }
+.bd-meta dt { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); margin-bottom: 2px; }
+.bd-meta dd { margin: 0; color: var(--text); font-weight: var(--fw-medium); }
+
+/* Offer availability colours */
+.bd-offer__avail--in { color: var(--brand-green); }
+.bd-offer__avail--low { color: var(--accent); }
+.bd-offer__avail--out { color: var(--text-faint); }
+
+/* Variant C — two-pane */
+.bdc-grid { display: grid; grid-template-columns: minmax(0, 1fr) 460px; gap: var(--space-12); align-items: start; }
+.bdc-idrow { display: flex; gap: var(--space-8); margin-bottom: var(--space-8); }
+.bdc-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); padding: var(--space-6); }
+.bdc-best { background: var(--accent-weak); border-radius: var(--radius-md); padding: var(--space-5); margin: var(--space-4) 0 var(--space-2); }
+.bdc-best__pricerow { display: flex; align-items: baseline; gap: var(--space-3); margin: var(--space-2) 0 var(--space-1); }
+.bdc-best__price { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: 2.25rem; line-height: 1; color: var(--accent); }
+.bdc-best__old { font-size: var(--fs-body); color: var(--text-muted); text-decoration: line-through; }
+.bdc-best__store { font-size: var(--fs-sm); color: var(--text-body); margin-bottom: var(--space-4); }
+.bdc-best__store b { color: var(--text); }
+.bdc-row { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) 0; border-top: 1px solid var(--border); }
+.bdc-row:first-of-type { border-top: none; }
+.bdc-row__store { font-weight: var(--fw-medium); color: var(--text); flex: 1; min-width: 0; }
+.bdc-row__avail { font-size: var(--fs-xs); white-space: nowrap; }
+.bdc-row__price { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: 1.25rem; color: var(--accent); white-space: nowrap; }
+.bdc-row__old { font-size: var(--fs-xs); color: var(--text-muted); text-decoration: line-through; white-space: nowrap; }
+.bdc-row--out { opacity: 0.66; }
+.bdc-row--out .bdc-row__price { color: var(--text-faint); }
+.bdc-panel .bd-wish { margin-top: var(--space-4); padding-top: var(--space-4); border-top: 1px solid var(--border); }
+
+/* ============================================================
+   MOBILE ADAPTATION — Variant C · <768px composition (subset)
+   ============================================================ */
+.bdm-wrap { padding: 0 var(--space-4); max-width: none; margin: 0 auto; }
+.bdm .kn-btn { min-height: 44px; }
+.bdm-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) 0; }
+.bdm-header .site-logo { height: 36px; }
+.bdm-header__actions { display: flex; align-items: center; gap: var(--space-2); }
+.bdm-iconbtn { width: 44px; height: 44px; flex: none; display: flex; align-items: center; justify-content: center; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); color: var(--icon); transition: border-color var(--dur-fast) var(--ease-out); }
+.bdm-iconbtn:hover { border-color: var(--accent); }
+.bdm-search { margin-bottom: var(--space-3); }
+.bdm-crumbs { font-size: var(--fs-xs); color: var(--text-muted); margin-bottom: var(--space-5); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bdm-crumbs span { color: var(--text); }
+.bdm-hero { display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: var(--space-6); }
+.bdm-hero .bd-cover--md { width: 150px; height: 218px; margin-bottom: var(--space-4); }
+.bdm-hero .bd-h1 { font-size: var(--fs-h3); margin-bottom: var(--space-1); }
+.bdm-hero .bd-author { font-size: var(--fs-body); margin-bottom: 0; }
+.bdm .bd-section { margin-top: var(--space-8); }
+.bdm .bd-h2 { font-size: var(--fs-title); margin-bottom: var(--space-4); }
+.bdm .site-footer { margin-top: var(--space-8); padding: var(--space-8) 0 var(--space-10); }
+.bdm-panel { padding: var(--space-5); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-md); }
+.bdm-panel .bdc-best { margin-top: 0; }
+.bdm-panel .bdc-best__price { font-size: 2rem; }

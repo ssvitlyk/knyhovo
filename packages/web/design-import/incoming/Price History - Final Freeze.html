@@ -1,0 +1,553 @@
+<!DOCTYPE html>
+<!-- @pattern name="Knyhovo Price History" surface="Book Details v1.2.1 · Динаміка ціни · API Integration" version="1.2.1"
+     status="frozen" approved="2026-06-14"
+     note="Book Details v1.2.1 — Price History API Integration (amends v1.2 FINAL FREEZE). The «Динаміка ціни» block is approved
+           and frozen for implementation. Future iterations may extend Price-History functionality
+           but must not redesign the established visual foundations. Sits directly below OffersPanel
+           inside frozen Book Details v1.1 (Variant C). Composes DS v1.0 tokens + frozen chassis only."
+     reuse="Stable Knyhovo pattern for direct reuse in Claude Code implementations.
+            Compose only from window.KnyhovoDesignSystem_9fa616 + window.PHChart/window.PHData. See CLAUDE.md."
+     machine-readable-json-spec='{"pattern":"price-history","of":"book-details","version":"1.2.1","approved":"2026-06-14",
+       "placement":"directly-below-offers-panel","desktop_chart_px":"760x244","mobile_chart_px":"340x168",
+       "period_order":["30","90","365","all"],"period_default":"90","period_labels":["30 днів","90 днів","Рік","Весь час"],
+       "stats":["Зараз","Найнижча","Типова ціна","Зміна"],
+       "states":["filled","loading","empty","error","out-of-stock"],
+       "breakpoints":{"desktop":">=1024","tablet":"768-1023","mobile":"<768"},
+       "high_price_color":"neutral-muted-never-red","good_moment_color":"brand-green","api":"GET /api/books/:id/price-history?period=30d|90d|1y|all","money":"копійки-to-uah",
+       "skeleton_surfaces":"warm-only","skeleton_anim":"ph-pulse-1.4s","chart_interaction":"display-only-no-tooltips",
+       "frozen_components":["Badge","Button","ThemeToggle","SearchBar"],
+       "files":["Price History - Desktop.html","Price History - Mobile.html","Price History - Empty States.html",
+                "Price History - Loading States.html","ph-chart.jsx","ph-data.jsx","ph-chart.css","ph-bd.css"]}' -->
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Knyhovo DS — Book Details v1.2.1 · Price History API Integration</title>
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+<link rel="stylesheet" href="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+<link rel="stylesheet" href="design-import/price-history-v1/ph-bd.css">
+<link rel="stylesheet" href="design-import/price-history-v1/ph-chart.css">
+<style>
+  body { background: var(--bg); }
+  .doc { max-width: 980px; margin: 0 auto; padding: var(--space-12) var(--gutter) var(--space-20); }
+
+  .doc__eyebrow { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); margin-bottom: var(--space-3); }
+  .doc h1 { font-family: var(--font-display); font-size: var(--fs-h1); line-height: var(--lh-tight); letter-spacing: var(--ls-tight); margin-bottom: var(--space-2); }
+  .doc h1 em { font-style: italic; color: var(--accent); }
+  .doc__lead { font-size: var(--fs-lead); color: var(--text-body); max-width: 64ch; margin-bottom: var(--space-4); text-wrap: pretty; }
+  .doc__frozen {
+    display: inline-flex; align-items: center; gap: var(--space-2);
+    background: color-mix(in oklab, var(--brand-green) 12%, var(--surface));
+    border: 1px solid color-mix(in oklab, var(--brand-green) 35%, var(--border));
+    border-radius: var(--radius-pill); padding: var(--space-1) var(--space-4);
+    font-size: var(--fs-xs); font-weight: var(--fw-semibold);
+    color: var(--brand-green); margin-bottom: var(--space-10); text-wrap: pretty;
+  }
+  .doc h2 { font-family: var(--font-display); font-size: var(--fs-h3); margin: var(--space-12) 0 var(--space-4); padding-top: var(--space-6); border-top: 1px solid var(--border); }
+  .doc h3 { font-family: var(--font-body); font-size: var(--fs-body); font-weight: var(--fw-semibold); color: var(--text); margin: var(--space-6) 0 var(--space-2); }
+  .doc p, .doc li { font-size: var(--fs-body); color: var(--text-body); line-height: var(--lh-normal); }
+  .doc ul, .doc ol { padding-left: 1.2em; display: flex; flex-direction: column; gap: var(--space-2); margin: var(--space-3) 0; }
+  .doc strong { color: var(--text); }
+  .doc code { font-family: ui-monospace, 'SF Mono', Menlo, monospace; font-size: 0.85em; background: var(--surface-accent); border: 1px solid var(--border); border-radius: var(--radius-xs); padding: 1px 5px; color: var(--text); }
+  .doc pre { background: var(--surface-sunk); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-5); overflow-x: auto; margin: var(--space-4) 0; }
+  .doc pre code { background: none; border: none; padding: 0; font-size: 0.8125rem; line-height: 1.6; display: block; white-space: pre; }
+  .back-link { font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--accent); display: inline-block; margin-bottom: var(--space-8); }
+  .back-link:hover { color: var(--accent-hover); }
+
+  table { width: 100%; border-collapse: collapse; margin: var(--space-4) 0; font-size: var(--fs-sm); }
+  th { text-align: left; font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); font-weight: var(--fw-semibold); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border-strong); }
+  td { padding: var(--space-3); border-bottom: 1px solid var(--border); color: var(--text-body); vertical-align: top; }
+  td:first-child { color: var(--text); font-weight: var(--fw-medium); }
+  td code { white-space: nowrap; }
+
+  /* anatomy wireframes */
+  .anatomy { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-md); box-shadow: var(--shadow-sm); padding: var(--space-6); margin: var(--space-5) 0; display: flex; flex-direction: column; gap: var(--space-2); }
+  .wf { border: 1px dashed var(--border-strong); border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4); display: flex; align-items: center; gap: var(--space-3); font-size: var(--fs-sm); color: var(--text-body); background: var(--surface-sunk); min-height: 40px; }
+  .wf--hot { background: var(--accent-weak); border-color: color-mix(in oklab, var(--accent) 50%, var(--border-strong)); color: var(--accent); font-weight: var(--fw-medium); }
+  .wf--dim { background: var(--surface); color: var(--text-faint); border-style: dotted; }
+  .wf--col { flex-direction: column; align-items: stretch; gap: var(--space-2); }
+  .wf__num { flex: none; width: 22px; height: 22px; border-radius: var(--radius-pill); background: var(--accent); color: var(--text-on-accent); font-size: var(--fs-xs); font-weight: var(--fw-semibold); display: inline-flex; align-items: center; justify-content: center; }
+  .wf__row { display: flex; gap: var(--space-2); }
+  .wf__row > .wf { flex: 1; }
+
+  .anat-label { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); margin: var(--space-6) 0 var(--space-2); font-weight: var(--fw-semibold); }
+
+  /* live specimen frame */
+  .spec { border: 1px solid var(--border); border-radius: var(--radius-md); overflow: hidden; margin: var(--space-4) 0; }
+  .spec__cap { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-muted); font-weight: var(--fw-semibold); padding: var(--space-3) var(--space-4); background: var(--surface-sunk); border-bottom: 1px solid var(--border); }
+  .spec__body { background: var(--bg); padding: var(--space-6); }
+  .spec__body--mob { display: flex; justify-content: center; }
+  .spec__body--mob > div { width: 390px; max-width: 100%; }
+  .spec-grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
+
+  /* breakpoint chips */
+  .bp { display: inline-block; font-size: var(--fs-xs); font-weight: var(--fw-medium); padding: 2px 10px; border-radius: var(--radius-pill); white-space: nowrap; }
+  .bp--d { background: var(--surface-accent); color: var(--text-muted); border: 1px solid var(--border); }
+  .bp--t { background: color-mix(in oklab, var(--accent) 10%, var(--surface)); color: var(--accent); border: 1px solid color-mix(in oklab, var(--accent) 30%, var(--border)); }
+  .bp--m { background: color-mix(in oklab, var(--brand-green) 10%, var(--surface)); color: var(--brand-green); border: 1px solid color-mix(in oklab, var(--brand-green) 30%, var(--border)); }
+
+  /* tone swatch chips for state matrix */
+  .tone { display: inline-flex; align-items: center; gap: 6px; font-size: var(--fs-xs); font-weight: var(--fw-medium); }
+  .tone::before { content: ""; width: 10px; height: 10px; border-radius: var(--radius-pill); flex: none; }
+  .tone--green::before { background: var(--brand-green); }
+  .tone--blue::before { background: var(--brand-blue); }
+  .tone--accent::before { background: var(--accent); }
+  .tone--muted::before { background: var(--text-faint); }
+
+  .dnm { background: color-mix(in oklab, var(--accent) 6%, var(--surface-sunk)); border: 1px solid color-mix(in oklab, var(--accent) 25%, var(--border)); border-radius: var(--radius-md); padding: var(--space-5) var(--space-6); }
+  .dnm ul { margin: 0; }
+  .dnm li { font-size: var(--fs-sm); }
+
+  .toc { columns: 2; column-gap: var(--space-10); margin: var(--space-4) 0 0; }
+  .toc a { color: var(--accent); font-size: var(--fs-sm); }
+
+  @media (max-width: 760px) { .spec-grid, .toc { grid-template-columns: 1fr; columns: 1; } }
+  @media print { .back-link { display: none; } .doc h2 { break-after: avoid; } .anatomy, .spec, pre, table { break-inside: avoid; } }
+</style>
+</head>
+<body>
+<main class="doc">
+  <a class="back-link" href="design-import/price-history-v1/Book Details — Price History (W5 API).html">← Жива інтеграція W5 (усі стани · обидві теми)</a>
+  <p class="doc__eyebrow">KNYHOVO DESIGN SYSTEM · BOOK DETAILS · PRICE HISTORY · v1.2.1 · API INTEGRATION</p>
+  <h1>Book Details <em>v1.2.1</em> — Price History API Integration</h1>
+  <p class="doc__lead">Офіційна, заморожена специфікація блоку «Динаміка ціни» для імплементації. Це <strong>не редизайн</strong> — це перетворення затвердженого дослідження (Book Details v1.1, Variant C) на фінальний контракт для розробки. Складено виключно з токенів DS v1.0 та замороженого каркасу сторінки. Жоден захищений актив не змінено.</p>
+  <div class="doc__frozen">✦ Book Details v1.2.1 — Price History API Integration · амендмент до v1.2 FINAL FREEZE · затверджено 14.06.2026 · змінює лише явно перелічене (W5); решта foundations лишаються замороженими.</div>
+
+  <nav class="toc" aria-label="Зміст">
+    <a href="#changelog">0 · Зміни у v1.2.1 (W5)</a>
+    <a href="#purpose">1 · Призначення та принцип</a>
+    <a href="#files">2 · Файли</a>
+    <a href="#placement">3 · Розміщення в Book Details</a>
+    <a href="#hierarchy">4 · Ієрархія компонентів</a>
+    <a href="#desktop">5 · Десктоп-розкладка</a>
+    <a href="#mobile">6 · Мобільна розкладка</a>
+    <a href="#themes">7 · Теми (світла / темна)</a>
+    <a href="#matrix">8 · Матриця станів</a>
+    <a href="#loading">9 · Завантаження</a>
+    <a href="#empty">10 · Немає історії</a>
+    <a href="#error">11 · Помилка</a>
+    <a href="#oos">12 · Out-of-stock в історії</a>
+    <a href="#period">13 · Перемикач періоду</a>
+    <a href="#stats">14 · Блок статистики</a>
+    <a href="#responsive">15 · Адаптивні правила</a>
+    <a href="#copy">16 · Copy deck</a>
+    <a href="#interaction">17 · Правила взаємодії</a>
+    <a href="#impl">18 · Нотатки імплементації</a>
+    <a href="#dnm">19 · Не змінювати</a>
+    <a href="#json">20 · Machine-readable note</a>
+  </nav>
+
+  <!-- 0 ─────────────────────────────────────────────── -->
+  <h2 id="changelog">0 · Зміни у версії v1.2.1 (W5 · API Integration)</h2>
+  <p>Амендмент до v1.2 FINAL FREEZE. Змінює <strong>лише</strong> перелічене нижче (затверджено для W5); решта foundations лишаються замороженими.</p>
+  <ul>
+    <li>Термін <strong>«типова ціна»</strong> замість «звичайна ціна» — скрізь (підпис смуги, стат-лейбл, advisory).</li>
+    <li>Стат-лейбли: <strong>Зараз · Найнижча · Типова ціна · Зміна</strong>.</li>
+    <li>Графік <strong>не показує «найвищу»</strong> — анотацію піка прибрано (<code>highest</code> лишається внутрішнім полем API).</li>
+    <li>Синій для високої ціни / зростання <strong>скасовано</strong> → нейтральний/muted. Зелений — лише позитивна вигода.</li>
+    <li>Скорочена копія Empty · мобільна висота графіку <strong>~168px</strong> · чипи <strong>44px</strong>.</li>
+    <li>Дані: <code>GET /api/books/:id/price-history?period=30d|90d|1y|all</code> (default <code>90d</code>). Суми у відповіді — <strong>копійки</strong>, UI форматує у ₴.</li>
+    <li>Нові файли: <code>ph-section.jsx · ph-api.jsx · ph-format.jsx</code> + сторінка <code>Book Details — Price History (W5 API).html</code>.</li>
+  </ul>
+  <h3>Контракт API (W5)</h3>
+  <pre><code>GET /api/books/:id/price-history?period=30d|90d|1y|all   // default 90d
+response: { bookId, period, currency:"UAH", current, lowest, highest,
+            typicalRange:{min,max}, change:{amount,percent},
+            points:[ { amount, currency, availability, recordedAt } ] }
+// amount — integer копійки; recordedAt — ISO; availability ∈ in-stock|out-of-stock|unknown
+// UI: копійки→₴ · «найвища» не показується · out-of-stock зберігає ціну (ніколи 0)</code></pre>
+
+  <!-- 1 ─────────────────────────────────────────────── -->
+  <h2 id="purpose">1 · Призначення та принцип</h2>
+  <p>Блок «Динаміка ціни» відповідає на одне читацьке питання: <strong>«Зараз вдалий час купувати цю книгу, чи варто зачекати?»</strong> Він показує, як рухалася ціна, та де вона стоїть відносно <em>звичайного діапазону</em> цієї книги.</p>
+  <ul>
+    <li><strong>Спокій, не біржа.</strong> Calm, advisory, readable. Жодної трейдерської естетики: без червоного, без тіків, без миготіння, без нескінченних анімацій.</li>
+    <li><strong>Історія викладає факти; вона не виносить вердикт.</strong> Пояснювальний рядок описує <em>об'єктивні</em> спостереження («нижче за типовий діапазон», «−25%»). Жодного «Книговик радить / вважає» — судження залишається за майбутніми AI-функціями Книговика.</li>
+    <li><strong>Зелена ієрархія.</strong> Найсильніший зелений — лише «вдалий момент» (ціна нижча за звичайну). Висока ціна — <em>інформативний синій</em> (<code>--brand-blue</code>), <strong>ніколи червоний</strong>, без тривоги.</li>
+    <li><strong>Backend готовий:</strong> append-only снапшоти, наявність зберігається в історії, снапшот створюється при зміні ціни <em>або</em> наявності, підтримуються запити мінімальної ціни. UI лише відображає ці дані.</li>
+  </ul>
+
+  <!-- 2 ─────────────────────────────────────────────── -->
+  <h2 id="files">2 · Файли</h2>
+  <table>
+    <thead><tr><th>Файл</th><th>Роль</th></tr></thead>
+    <tbody>
+      <tr><td><code>ph-data.jsx</code></td><td>Дані серій, іконки (Lucide-path), хелпери (<code>uah</code>, <code>range</code>, <code>advisory</code>). → <code>window.PHData</code>. Джерело правди для копірайту й чисел.</td></tr>
+      <tr><td><code>ph-chart.jsx</code></td><td>Компоненти: <code>PriceChart · PeriodSelector · Advisory · PriceStats · PriceHistory · PriceHistoryMobile · PriceHistoryEmpty · PriceHistoryLoading</code>. → <code>window.PHChart</code>.</td></tr>
+      <tr><td><code>ph-chart.css</code></td><td>Усі стилі блоку. Композує лише токени DS v1.0 — без нових кольорів, типу, радіусів, тіней.</td></tr>
+      <tr><td><code>ph-bd.css</code></td><td>Заморожений підмножина-каркас Book Details v1.1 (Variant C). НЕ редагувати.</td></tr>
+      <tr><td><code>Price History - Desktop.html</code></td><td>Живий патерн — блок у контексті сторінки + заповнений стан, обидві теми.</td></tr>
+      <tr><td><code>Price History - Mobile.html</code></td><td>Живий патерн — мобільна адаптація.</td></tr>
+      <tr><td><code>Price History - Empty States.html</code> · <code>Loading States.html</code></td><td>Живі стани «немає історії» та «завантаження», десктоп + мобільний, обидві теми.</td></tr>
+      <tr><td><code>ph-format.jsx</code></td><td>W5 · копійки→₴, формат зміни/діапазону (priceHistoryFormatters).</td></tr>
+      <tr><td><code>ph-api.jsx</code></td><td>W5 · контракт GET …/price-history, mock + toViewModel + маппінг періодів (priceHistoryApi).</td></tr>
+      <tr><td><code>ph-section.jsx</code></td><td>W5 · стейтовий оркестратор: loading/filled/empty/error + перемикач + retry (PriceHistorySection).</td></tr>
+      <tr><td><code>Book Details — Price History (W5 API).html</code></td><td>W5 · жива інтеграція — блок під OffersPanel, усі стани, обидві теми, десктоп + мобільний.</td></tr>
+      <tr><td><strong>Price History - Final Freeze.html</strong></td><td>Цей документ (v1.2.1) — анатомія, матриця станів, copy deck, контракт API.</td></tr>
+    </tbody>
+  </table>
+
+  <!-- 3 ─────────────────────────────────────────────── -->
+  <h2 id="placement">3 · Розміщення в Book Details</h2>
+  <p>Блок «Динаміка ціни» розміщується <strong>безпосередньо під <code>OffersPanel</code></strong> — і на десктопі, і на мобільному. Порядок заморожений:</p>
+  <div class="anatomy">
+    <div class="wf wf--dim">Хедер · персистентний пошук · хлібні крихти</div>
+    <div class="wf wf--dim">Hero — обкладинка · заголовок · автор · опис</div>
+    <div class="wf wf--hot"><span class="wf__num">A</span> OffersPanel — «Де купити» (найкраща ціна + усі пропозиції)</div>
+    <div class="wf"><span class="wf__num">B</span> <strong>«Динаміка ціни»</strong> — цей блок, одразу під пропозиціями</div>
+    <div class="wf wf--dim">Решта Book Details — опис (повний) · про видання · полиці</div>
+    <div class="wf wf--dim">Футер (завжди присутній у всіх станах)</div>
+  </div>
+  <p>Логіка: спершу читач бачить <em>скільки коштує і де</em> (рішення), одразу нижче — <em>чи це вдала ціна історично</em> (контекст рішення). Блок ніколи не піднімається над панеллю пропозицій і ніколи не стає окремою сторінкою.</p>
+
+  <!-- 4 ─────────────────────────────────────────────── -->
+  <h2 id="hierarchy">4 · Точна ієрархія компонентів</h2>
+  <p>Заповнений стан (<code>PriceHistory</code> / <code>PriceHistoryMobile</code>). Класи — заморожені.</p>
+  <pre><code>section.ph-section[data-screen-label]
+├─ div.ph-head                         (desktop: title ↔ chips в один рядок)
+│  ├─ h2.ph-h2 ["Динаміка ціни"]       (mobile: h2.ph-h2--sm, окремий рядок)
+│  └─ PeriodSelector .ph-periods[role=tablist]
+│     └─ button.ph-period[role=tab][data-on][aria-selected] × 4
+├─ Advisory  p.ph-advisory--{good|calm|high}   (об'єктивний факт-рядок)
+└─ div.ph-card
+   ├─ div.ph-chartwrap
+   │  └─ svg.ph-chart[role=img][aria-label]
+   │     ├─ rect.ph-band + 2×line.ph-band-edge   ("типова ціна" діапазон)
+   │     ├─ text.ph-bandlabel ["типова ціна · 285–318 ₴"]
+   │     ├─ path (area, градієнт curColor) + path (line, curColor)
+   │     ├─ line guide(dashed) + circle current + 2×text  ["зараз" / "240 ₴"]
+   │     └─ text.ph-axislabel × N                          (розріджені)
+   └─ PriceStats .ph-stats                                 (mobile: .ph-stats--mob 2×2)
+      └─ div.ph-stat × 4  [Зараз · Найнижча · Типова ціна · Зміна]</code></pre>
+  <p><code>curColor</code> = <code>--brand-green</code>, якщо <code>current ≤ usualLow</code> (нижче за типове → вдалий момент), інакше <code>--accent</code>. Один колір керує лінією, поточною точкою, заливкою-градієнтом і акцентами «зараз».</p>
+
+  <div class="anat-label">Жива анатомія · заповнено · десктоп</div>
+  <div class="spec"><div class="spec__cap">PriceHistory · світла</div><div class="spec__body"><div id="spec-d-light"></div></div></div>
+
+  <!-- 5 ─────────────────────────────────────────────── -->
+  <h2 id="desktop">5 · Десктоп-розкладка <span class="bp bp--d">≥1024px</span></h2>
+  <ul>
+    <li><strong>Заголовок-рядок (<code>.ph-head</code>):</strong> <code>h2</code> «Динаміка ціни» зліва, перемикач періоду справа, вирівняні по baseline, <code>justify-content: space-between</code>.</li>
+    <li><strong>Графік:</strong> <code>viewBox 760×244</code>, padding <code>{L:14, R:92, T:26, B:30}</code> (правий відступ — місце для підпису «зараз»). SVG масштабується <code>width:100%</code>.</li>
+    <li><strong>Картка (<code>.ph-card</code>):</strong> <code>--surface</code> + 1px <code>--border</code> + <code>--radius-md</code> + <code>--shadow-sm</code>, padding <code>--space-6</code>.</li>
+    <li><strong>Статистика:</strong> один горизонтальний flex-рядок з 4 елементів, <code>gap --space-8</code>, відділений <code>border-top</code> + <code>--space-5</code>.</li>
+    <li>Відступ зверху блоку — <code>--space-16</code> від попереднього контенту (в контексті повної сторінки).</li>
+  </ul>
+
+  <!-- 6 ─────────────────────────────────────────────── -->
+  <h2 id="mobile">6 · Мобільна розкладка <span class="bp bp--m">&lt;768px</span></h2>
+  <ul>
+    <li><strong>Вертикальний ритм (W3.2, заморожено):</strong> заголовок → чипи <code>--space-4</code>; чипи → текст <code>--space-4</code>; текст → картка-графік <code>--space-5</code>. Однаковий у світлій і темній.</li>
+    <li><code>h2.ph-h2--sm</code> на окремому рядку (не ділить рядок з чипами).</li>
+    <li><strong>Перемикач:</strong> <code>.ph-periods--mob</code> — чипи по центру, переносяться, висота <strong>44px</strong> (правило дотику).</li>
+    <li><strong>Графік:</strong> <code>viewBox 340×168</code>, padding <code>{L:10, R:60, T:24, B:28}</code>; лінія 2.25px, поточна точка r5. Без горизонтального скролу аж до 320px.</li>
+    <li><strong>Статистика:</strong> <code>.ph-stats--mob</code> — сітка <strong>2×2</strong>, <code>gap --space-5 / --space-4</code>; значення <code>1.3125rem</code>.</li>
+    <li><code>Advisory</code> — <code>--fs-sm</code>, <code>max-width:none</code>, переноситься без обрізання.</li>
+    <li>Картка padding <code>--space-5</code>.</li>
+  </ul>
+  <div class="spec spec__body--mob" style="padding:0"><div class="spec__cap">PriceHistoryMobile · світла</div><div class="spec__body spec__body--mob"><div id="spec-m-light"></div></div></div>
+
+  <!-- 7 ─────────────────────────────────────────────── -->
+  <h2 id="themes">7 · Теми (світла / темна)</h2>
+  <p>Тема перемикається через <code>data-theme="light|dark"</code> на <code>&lt;html&gt;</code> (або будь-якому предку блоку). Усе ре-темиться через токени — однакові метрики, інші лише кольори. <strong>Жодного хардкоду кольору в блоці немає.</strong></p>
+  <table>
+    <thead><tr><th>Елемент</th><th>Токен</th><th>Світла</th><th>Темна</th></tr></thead>
+    <tbody>
+      <tr><td>Лінія / поточна точка (звичайна)</td><td><code>--accent</code></td><td>мідь</td><td>світло-помаранч</td></tr>
+      <tr><td>Лінія / точка (вдалий момент)</td><td><code>--brand-green</code></td><td colspan="2">зелений — однаковий семантично в обох темах</td></tr>
+      <tr><td>Смуга «типова ціна»</td><td><code>--surface-accent</code> @ .8</td><td>тепле паперове</td><td>тепле чорнило</td></tr>
+      <tr><td>Висока ціна / зростання (акцент тексту/зміни)</td><td><code>--text-muted</code></td><td colspan="2">нейтральний/muted — НЕ синій, НЕ червоний (v1.2.1)</td></tr>
+      <tr><td>Картка / межі / тінь</td><td><code>--surface · --border · --shadow-sm</code></td><td colspan="2">паперова картка ↔ чорнильна картка</td></tr>
+    </tbody>
+  </table>
+  <div class="spec"><div class="spec__cap">PriceHistory · темна</div><div class="spec__body" style="background:var(--bg)"><div id="spec-d-dark" data-theme="dark"></div></div></div>
+
+  <!-- 8 ─────────────────────────────────────────────── -->
+  <h2 id="matrix">8 · Матриця станів</h2>
+  <table>
+    <thead><tr><th>Стан</th><th>Тригер</th><th>Компонент</th><th>Графік</th><th>Тон / колір</th><th>Футер</th></tr></thead>
+    <tbody>
+      <tr><td>Filled (заповнено)</td><td>є ≥ кілька тижнів історії</td><td><code>PriceHistory[Mobile]</code></td><td>лінія + смуга + 4 стат</td><td><span class="tone tone--green">good</span> / <span class="tone tone--accent">accent</span> / <span class="tone tone--blue">high</span></td><td>так</td></tr>
+      <tr><td>Loading</td><td>дані вантажаться</td><td><code>PriceHistoryLoading</code></td><td>скелет дзеркалить структуру</td><td>теплі <code>--surface-*</code> only</td><td>так</td></tr>
+      <tr><td>Empty (немає історії)</td><td>снапшотів ще замало</td><td><code>PriceHistoryEmpty</code></td><td>немає — пояснення</td><td>нейтральний, чесний</td><td>так</td></tr>
+      <tr><td>Error (помилка)</td><td>запит історії впав</td><td><code>PriceHistoryError</code> *</td><td>немає — повтор</td><td>нейтральний, без тривоги</td><td>так</td></tr>
+      <tr><td>Out-of-stock</td><td>книги зараз немає</td><td><code>PriceHistory</code> + oos-режим</td><td>лінія з розривами + остання відома</td><td><span class="tone tone--muted">muted</span> поточна точка</td><td>так</td></tr>
+    </tbody>
+  </table>
+  <p style="font-size:var(--fs-sm);color:var(--text-muted)">* <code>PriceHistoryError</code> — новий стан, заморожений цим документом (див. §11). Решта чотирьох вже реалізовані в дослідженні.</p>
+  <p><strong>Інваріанти всіх станів:</strong> заголовок «Динаміка ціни» присутній завжди; блок ніколи не зникає (collapse), а замінює лише свій <em>внутрішній</em> вміст; <code>OffersPanel</code> та решта сторінки залишаються доступними; футер присутній завжди.</p>
+
+  <!-- 9 ─────────────────────────────────────────────── -->
+  <h2 id="loading">9 · Стан завантаження</h2>
+  <ul>
+    <li><strong>Дзеркалить фінальну структуру:</strong> блок-заголовок · 4 чипи-плейсхолдери · два рядки тексту · картка з графіком-скелетом (зі смугою-натяком на «звичайну ціну») · рядок з 4 стат-плейсхолдерів. Користувач упізнає, що вантажиться саме історія цін, і layout shift мінімальний.</li>
+    <li><strong>Тільки теплі поверхні:</strong> <code>--surface-accent</code> (блоки) та <code>--surface-sunk</code> (поле графіку). <strong>Ніколи холодний сірий.</strong> (Успадковано із замороженого правила Search Results / Book Details.)</li>
+    <li>Висота скелета-графіку: <strong>188px</strong> десктоп / <strong>140px</strong> мобільний — близько до реального, щоб уникнути стрибка.</li>
+    <li>Анімація <code>ph-pulse</code> 1.4s ease-in-out infinite (пульс прозорості .7↔.35). <code>aria-busy="true"</code>.</li>
+    <li><strong>Reduced motion:</strong> <code>@media (prefers-reduced-motion: reduce)</code> вимикає анімацію — статичні теплі блоки.</li>
+  </ul>
+  <div class="spec"><div class="spec__cap">PriceHistoryLoading · світла</div><div class="spec__body"><div id="spec-loading"></div></div></div>
+
+  <!-- 10 ─────────────────────────────────────────────── -->
+  <h2 id="empty">10 · Стан «немає історії»</h2>
+  <ul>
+    <li>Чесний і спокійний — <strong>ніколи не вибачається й ніколи не імітує</strong> заповнений вигляд.</li>
+    <li><code>.ph-empty</code>: <code>--surface-sunk</code> + межа, іконка <code>chart-line</code> 44×44, заголовок «Ще збираємо історію» + <code>&lt;Badge tone="neutral"&gt;Збираємо дані&lt;/Badge&gt;</code>, пояснювальний рядок. <code>min-height:140px</code>.</li>
+    <li>Копія прив'язує до факту щоденної перевірки о 08:00 та до ролі Книговика-порадника (без обіцянок ціни).</li>
+  </ul>
+  <div class="spec"><div class="spec__cap">PriceHistoryEmpty · світла</div><div class="spec__body"><div id="spec-empty"></div></div></div>
+
+  <!-- 11 ─────────────────────────────────────────────── -->
+  <h2 id="error">11 · Стан помилки <span class="bp bp--t">новий · заморожено тут</span></h2>
+  <p>Запит історії може впасти, тоді як решта сторінки (пропозиції, опис) завантажилась успішно. Стан помилки <strong>локальний для блоку</strong> — він не блокує сторінку і не показує модалку.</p>
+  <ul>
+    <li><strong>Перевикористовує каркас <code>.ph-empty</code></strong> — жодної нової візуальної мови. Іконка <code>info</code> (<code>--icon-muted</code>), заголовок «Не вдалося завантажити динаміку», нейтральний бейдж «Тимчасова помилка».</li>
+    <li><strong>Спокій, не тривога:</strong> нейтральні/приглушені токени, <strong>без червоного</strong>, без знаків оклику. Помилка історії — не критична: ціни й кнопка купівлі вже доступні вище.</li>
+    <li><strong>Дія повтору:</strong> <code>&lt;Button variant="secondary" size="sm"&gt;Спробувати ще раз&lt;/Button&gt;</code> під текстом. Повтор перезапитує лише історію цього блоку.</li>
+    <li>Заголовок «Динаміка ціни» і футер присутні. <code>role="alert"</code> на тілі повідомлення для асистивних технологій.</li>
+  </ul>
+  <div class="spec"><div class="spec__cap">PriceHistoryError · світла (заморожена композиція)</div><div class="spec__body"><div id="spec-error"></div></div></div>
+
+  <!-- 12 ─────────────────────────────────────────────── -->
+  <h2 id="oos">12 · Поведінка історії при out-of-stock</h2>
+  <p>Backend зберігає наявність у кожному снапшоті й створює снапшот при зміні наявності. Тому історія знає періоди, коли книги <em>не було</em>. Заморожені правила відображення:</p>
+  <ul>
+    <li><strong>Розрив, а не нуль.</strong> Лінія з'єднує лише снапшоти «в наявності». Інтервал відсутності — <strong>розрив лінії</strong> над приглушеною заштрихованою зоною з підписом «<em>не було в наявності</em>». <strong>Ніколи не малювати 0 ₴</strong> — відсутність ≠ ціна нуль.</li>
+    <li><strong>Якщо книги немає <u>зараз</u>:</strong> лінія завершується на <em>останній відомій</em> ціні; поточна точка приглушена (<code>--text-faint</code>), без зеленого/акценту. Advisory переходить на факт: «Зараз книги немає в наявності. Остання відома ціна — <b>{N} ₴</b> ({store}, {дата}).»</li>
+    <li><strong>Статистика в режимі oos:</strong> «Зараз» = «—» (або «Немає в наявності»); «Найнижча» і «Типова ціна» рахуються лише з in-stock-снапшотів і показуються як завжди; «Зміна за період» — від останньої відомої ціни (приглушено).</li>
+    <li>Узгоджено із замороженим <code>unavailable</code>-станом Book Details v1.1: мітка наявності в пропозиціях лишається <code>--text-faint</code>, ряди-пропозиції видимі як доказ перевірки.</li>
+  </ul>
+  <div class="spec"><div class="spec__cap">Схема: розрив «не було в наявності» + приглушена поточна точка</div><div class="spec__body">
+    <svg viewBox="0 0 760 220" style="width:100%;height:auto;display:block" role="img" aria-label="Схема історії з періодом відсутності: лінія розривається над приглушеною зоною, поточна точка приглушена.">
+      <rect x="14" y="70" width="654" height="46" rx="5" fill="var(--surface-accent)" opacity="0.8"></rect>
+      <text x="662" y="93" text-anchor="end" fill="var(--text-faint)" font-size="11" font-family="var(--font-body)">типова ціна · 285–318 ₴</text>
+      <!-- in-stock segment 1 -->
+      <path d="M14 60 C 120 60 150 78 210 96 C 250 108 270 116 300 120" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"></path>
+      <!-- out-of-stock gap zone -->
+      <rect x="300" y="40" width="150" height="150" fill="var(--text-faint)" opacity="0.07"></rect>
+      <path d="M300 190 L450 40 M330 190 L450 80 M360 190 L450 120 M390 190 L450 160" stroke="var(--text-faint)" stroke-width="1" opacity="0.28"></path>
+      <text x="375" y="180" text-anchor="middle" fill="var(--text-faint)" font-size="11" font-family="var(--font-body)">не було в наявності</text>
+      <!-- in-stock segment 2 -->
+      <path d="M450 120 C 500 120 540 122 580 124 C 620 126 650 128 686 130" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round"></path>
+      <!-- current point, muted (back in stock here for illustration) -->
+      <circle cx="686" cy="130" r="6" fill="var(--text-faint)" stroke="var(--surface)" stroke-width="3"></circle>
+      <text x="700" y="126" fill="var(--text-faint)" font-size="11.5" font-family="var(--font-body)" font-weight="600">остання</text>
+      <text x="700" y="141" fill="var(--text-faint)" font-size="11.5" font-family="var(--font-body)" font-weight="600">відома</text>
+    </svg>
+  </div></div>
+
+  <!-- 13 ─────────────────────────────────────────────── -->
+  <h2 id="period">13 · Поведінка перемикача періоду</h2>
+  <ul>
+    <li><strong>Порядок (заморожено):</strong> <code>['30','90','365','all']</code> → «30 днів» · «90 днів» · «Рік» · «Весь час». <strong>За замовчуванням «90 днів».</strong></li>
+    <li>Це <strong>не DS-<code>Chip</code></strong>, а власний контрол <code>.ph-period</code>, стилізований під чипи DS через токени (pill, <code>--surface</code>, <code>--border</code>). <code>role="tablist"</code> / <code>role="tab"</code>, <code>aria-selected</code>.</li>
+    <li><strong>Стани чипа:</strong> idle — <code>--surface</code> + <code>--border</code>; hover — межа й текст <code>--accent</code>; active (<code>data-on="true"</code>) — заливка <code>--accent</code> + текст <code>--text-on-accent</code>.</li>
+    <li><strong>Перемикання — миттєве</strong> (calm, без переходів графіку). Змінюються: лінія, смуга, advisory, всі 4 стат, <code>aria-label</code> графіку. Стан локальний (<code>React.useState</code>); інший контент сторінки не зачіпається.</li>
+    <li>Якщо для періоду замало даних — показати ту ж копію, що й Empty, у межах картки (не ламати макет).</li>
+  </ul>
+
+  <!-- 14 ─────────────────────────────────────────────── -->
+  <h2 id="stats">14 · Поведінка блоку статистики</h2>
+  <table>
+    <thead><tr><th>#</th><th>Лейбл</th><th>Значення</th><th>Колір</th><th>Правило</th></tr></thead>
+    <tbody>
+      <tr><td>1</td><td>Зараз</td><td><code>uah(current)</code></td><td><span class="tone tone--green">green</span> якщо <code>≤ usualLow</code>, інакше <span class="tone tone--accent">accent</span></td><td>поточна ціна = головна точка відліку</td></tr>
+      <tr><td>2</td><td>Найнижча</td><td><code>uah(low)</code></td><td><span class="tone tone--green">green</span></td><td>історичний мінімум обраного періоду</td></tr>
+      <tr><td>3</td><td>Типова ціна</td><td><code>usualLow–usualHigh ₴</code></td><td><span class="tone tone--muted">text-body</span></td><td>типовий діапазон (en-dash, один ₴)</td></tr>
+      <tr><td>4</td><td>Зміна</td><td>іконка + <code>±N%</code></td><td>↓ <span class="tone tone--green">green</span> · ↑ <span class="tone tone--muted">muted</span> · = muted</td><td>дешевше = добре = зелений; дорожче = нейтральний/muted (не синій, не червоний)</td></tr>
+    </tbody>
+  </table>
+  <ul>
+    <li>Значення — <code>--font-display</code> (serif), <code>1.5rem</code> десктоп / <code>1.3125rem</code> мобільний; лейбли — uppercase <code>--fs-xs</code> з <code>--ls-eyebrow</code>.</li>
+    <li>Іконки зміни — <code>trending-down · trending-up · minus</code> (Lucide-path, 2px stroke).</li>
+    <li>Десктоп — flex-рядок із <code>border-top</code>; мобільний — 2×2 сітка. Порядок 1→4 заморожений.</li>
+  </ul>
+
+  <!-- 15 ─────────────────────────────────────────────── -->
+  <h2 id="responsive">15 · Адаптивні правила</h2>
+  <table>
+    <thead><tr><th>Брейкпоінт</th><th>Заголовок ↔ чипи</th><th>Графік</th><th>Статистика</th><th>Картка</th></tr></thead>
+    <tbody>
+      <tr><td><span class="bp bp--d">Desktop ≥1024</span></td><td>один рядок, baseline, space-between</td><td><code>760×244</code></td><td>flex-рядок ×4, border-top</td><td>padding <code>--space-6</code></td></tr>
+      <tr><td><span class="bp bp--t">Tablet 768–1023</span></td><td>успадковує десктоп; чипи можуть переноситись</td><td>SVG <code>width:100%</code> масштабується</td><td>flex переноситься</td><td>padding <code>--space-6</code></td></tr>
+      <tr><td><span class="bp bp--m">Mobile &lt;768</span></td><td>стек: заголовок над чипами, чипи по центру 44px</td><td><code>340×168</code></td><td>сітка 2×2</td><td>padding <code>--space-5</code></td></tr>
+    </tbody>
+  </table>
+  <p>Графік — <code>width:100%; height:auto</code> з <code>viewBox</code>: масштабується плавно, <strong>без горизонтального скролу аж до 320px</strong>. Жодного фіксованого піксельного графіку в потоці.</p>
+
+  <!-- 16 ─────────────────────────────────────────────── -->
+  <h2 id="copy">16 · Copy deck</h2>
+  <p>Уся копія — українською; «Knyhovo» латиницею. Knyhovo <em>шукає/перевіряє ціни</em> (інструмент); Книговик <em>радить/підкаже</em> (порадник). Історія — лише факти.</p>
+  <table>
+    <thead><tr><th>Ключ</th><th>Рядок</th></tr></thead>
+    <tbody>
+      <tr><td>Заголовок секції</td><td>Динаміка ціни</td></tr>
+      <tr><td>Періоди</td><td>30 днів · 90 днів · Рік · Весь час</td></tr>
+      <tr><td>Стат-лейбли</td><td>Зараз · Найнижча · Типова ціна · Зміна</td></tr>
+      <tr><td>Підпис смуги</td><td>типова ціна · 285–318 ₴</td></tr>
+      <tr><td>Анотації графіку</td><td>зараз · {current} ₴ <span style="color:var(--text-muted)">(«найвища» не показується)</span></td></tr>
+      <tr><td>Advisory · нижче діапазону</td><td>Зараз <b>240 ₴</b> — <b>нижче за типовий діапазон</b> цієї книги (285–318 ₴). За 90 днів ціна знизилася на 25%. Поточна ціна близька до історичного мінімуму.</td></tr>
+      <tr><td>Advisory · у межах</td><td>Зараз <b>{N} ₴</b> — у межах типового діапазону цієї книги ({діапазон}). За {період} ціна {знизилася / зросла / майже не змінилася} на {N}%.</td></tr>
+      <tr><td>Advisory · вище діапазону</td><td>Зараз <b>{N} ₴</b> — <b>вище за типовий діапазон</b> цієї книги ({діапазон}). За {період} ціна зросла на {N}%.</td></tr>
+      <tr><td>Empty · заголовок + бейдж</td><td>Ще збираємо історію · <em>Збираємо дані</em></td></tr>
+      <tr><td>Empty · текст</td><td>Knyhovo перевіряє ціни у 5 книгарнях щодня о 08:00. Графік з'явиться, щойно назбираємо кілька тижнів спостережень — тоді Книговик підкаже, коли настане вдалий момент купувати.</td></tr>
+      <tr><td>Error · заголовок + бейдж</td><td>Не вдалося завантажити динаміку · <em>Тимчасова помилка</em></td></tr>
+      <tr><td>Error · текст + CTA</td><td>Не змогли отримати історію цін просто зараз. Решта інформації про книгу доступна вище. · <em>Спробувати ще раз</em></td></tr>
+      <tr><td>Out-of-stock · підпис розриву</td><td>не було в наявності</td></tr>
+      <tr><td>Out-of-stock · advisory</td><td>Зараз книги немає в наявності. Остання відома ціна — <b>{N} ₴</b> ({store}, {дата}).</td></tr>
+      <tr><td>Формат ціни / діапазону</td><td>240 ₴ (пробіл перед ₴) · 285–318 ₴ (en-dash, один ₴)</td></tr>
+    </tbody>
+  </table>
+
+  <!-- 17 ─────────────────────────────────────────────── -->
+  <h2 id="interaction">17 · Правила взаємодії</h2>
+  <ul>
+    <li><strong>Перемикач періоду</strong> — єдиний інтерактив. Клік → миттєва зміна серії; <code>aria-selected</code> оновлюється; hover → акцент. Без анімації переходу графіку.</li>
+    <li><strong>Графік — display-only.</strong> <code>role="img"</code> з повним <code>aria-label</code> (період, зараз, мінімум, типовий діапазон). У v1.2.1 <strong>немає tooltip/crosshair/scrub</strong> — це навмисно (спокій, не біржа). Майбутній hover-read — окреме розширення, не цей реліз.</li>
+    <li><strong>Анімація:</strong> лише calm — поява/скелет-пульс 1.4s. Жодних bounce та нескінченних декоративних циклів на контенті. <code>prefers-reduced-motion: reduce</code> → статика.</li>
+    <li><strong>Дотик:</strong> кнопки сторінки (<code>kn-btn</code>) — 44px; чипи періоду — <strong>44px</strong> заввишки (заморожене мобільне правило дотику).</li>
+    <li><strong>Фокус:</strong> 3px м'яке акцентне кільце (<code>--focus-ring</code>) на чипах і кнопці повтору; навігація з клавіатури по табах періоду.</li>
+    <li><strong>Error retry</strong> перезапитує лише історію блоку, не перезавантажує сторінку.</li>
+  </ul>
+
+  <!-- 18 ─────────────────────────────────────────────── -->
+  <h2 id="impl">18 · Нотатки імплементації</h2>
+  <ul>
+    <li><strong>Композиція:</strong> рендерити з <code>window.PHChart</code> (<code>PriceHistory</code> / <code>PriceHistoryMobile</code> / <code>...Empty</code> / <code>...Loading</code>) + новий <code>...Error</code>. Дані/копія — з <code>window.PHData</code>. DS-примітиви (<code>Badge · Button · SearchBar · ThemeToggle</code>) — з <code>window.KnyhovoDesignSystem_9fa616</code>.</li>
+    <li><strong>Без Tailwind.</strong> Тільки <code>ph-chart.css</code> + токени DS. Жодних нових кольорів, типу, радіусів, тіней — усе через <code>var(--*)</code>.</li>
+    <li><strong>Прив'язка до backend:</strong> серія = впорядковані снапшоти <code>{date, price, inStock, store}</code>. <code>low</code> = min(price) серед in-stock; <code>usualLow/usualHigh</code> = типовий діапазон (напр. 25–75 перцентиль); <code>change</code> = % від першого до останнього in-stock снапшоту. Мок-серії в <code>ph-data.jsx</code> демонструють формат.</li>
+    <li><code>curColor</code>-розгалуження (<code>current ≤ usualLow</code>) — єдине джерело «вдалого моменту»; не дублювати логіку в кількох місцях.</li>
+    <li>Геометрія графіку — м'який кубічний сплайн через середини точок (органічно, спокійно), <code>headroom = span × 0.12</code>. Не міняти на «трейдерські» гострі піки.</li>
+    <li>SVG-текст бере токени напряму (<code>fill: var(--…)</code>); за межами SVG усе — <code>currentColor</code>/класи.</li>
+    <li>Усі стани зберігають заголовок і футер; блок ніколи не схлопується, лише міняє внутрішній вміст.</li>
+  </ul>
+
+  <!-- 19 ─────────────────────────────────────────────── -->
+  <h2 id="dnm">19 · Не змінювати</h2>
+  <div class="dnm"><ul>
+    <li>Розміщення — завжди безпосередньо під <code>OffersPanel</code>.</li>
+    <li>Порядок і лейбли періодів (<code>30 / 90 / Рік / Весь час</code>), дефолт «90 днів».</li>
+    <li>Набір і порядок 4 статистик; ієрархія кольорів (good=green, high=нейтральний/muted, типова=muted).</li>
+    <li>Концепт смуги «типова ціна» (діапазон, не одна референс-лінія).</li>
+    <li>Принцип «історія = факти», без вердиктів Книговика в advisory.</li>
+    <li>Теплі поверхні скелета; дзеркальна структура завантаження; reduced-motion статика.</li>
+    <li>Чесність Empty; нейтральність Error (без червоного, без модалки); розрив (не нуль) для out-of-stock.</li>
+    <li>Спокійна, display-only природа графіку (без tooltip/scrub у v1.2.1).</li>
+    <li>Токени, типографіка, радіуси, тіні DS v1.0 та всі захищені бренд-активи (лого, маскот).</li>
+  </ul></div>
+
+  <!-- 20 ─────────────────────────────────────────────── -->
+  <h2 id="json">20 · Machine-readable note (для майбутніх сесій Claude)</h2>
+  <pre><code>{
+  "pattern": "price-history",
+  "of": "book-details",
+  "version": "1.2.1",
+  "status": "API INTEGRATION (amends v1.2 FINAL FREEZE)",
+  "approved": "2026-06-14",
+  "placement": "directly-below-offers-panel",
+  "components": ["PriceHistory","PriceHistoryMobile","PriceHistoryEmpty",
+                 "PriceHistoryLoading","PriceHistoryError"],
+  "exports": { "data": "window.PHData", "ui": "window.PHChart" },
+  "ds_primitives": ["Badge","Button","SearchBar","ThemeToggle"],
+  "chart": { "desktop_px": [760,244], "mobile_px": [340,152],
+             "interaction": "display-only", "tooltips": false,
+             "smoothing": "soft-cubic-midpoint", "headroom": 0.12, "mobile_px_v121": [340,168] },
+  "period": { "order": ["30","90","365","all"], "default": "90",
+              "labels": ["30 днів","90 днів","Рік","Весь час"], "role": "tablist" },
+  "stats": ["Зараз","Найнижча","Типова ціна","Зміна"],
+  "color_rules": { "good_moment": "--brand-green when current<=usualLow",
+                   "high_price": "--text-muted neutral (blue retired; never red)",
+                   "ordinary": "--accent" },
+  "states": {
+    "filled": "PriceHistory[Mobile]",
+    "loading": "skeleton mirrors structure, warm surfaces only, aria-busy",
+    "empty": "ph-empty, honest, never faked",
+    "error": "ph-empty chassis + retry Button, neutral, role=alert, no red",
+    "out_of_stock": "line breaks over hatched zone, never 0 UAH, muted current, last-known price"
+  },
+  "responsive": { "desktop": ">=1024", "tablet": "768-1023", "mobile": "<768",
+                  "no_horizontal_scroll_min_px": 320 },
+  "invariants": ["title always present","footer always present",
+                 "block never collapses","offers + page stay usable",
+                 "history states facts, never verdicts","no Tailwind",
+                 "tokens only — no new color/type/radius/shadow"],
+  "api": { "endpoint": "GET /api/books/:id/price-history?period=30d|90d|1y|all",
+           "default": "90d", "money": "integer копійки → ₴",
+           "point": ["amount","currency","availability","recordedAt"],
+           "change": ["amount","percent"],
+           "availability": ["in-stock","out-of-stock","unknown"],
+           "ui_never_shows": "highest" },
+  "modules": ["ph-section.jsx","ph-api.jsx","ph-format.jsx","ph-chart.jsx","ph-data.jsx","ph-chart.css","ph-bd.css"],
+  "files": ["Book Details — Price History (W5 API).html",
+            "Price History - Desktop.html","Price History - Mobile.html",
+            "Price History - Empty States.html","Price History - Loading States.html",
+            "Price History - Final Freeze.html"]
+}</code></pre>
+
+  <p style="margin-top:var(--space-12);padding-top:var(--space-6);border-top:1px solid var(--border);color:var(--text-muted);font-size:var(--fs-sm)">Book Details v1.2.1 — Price History API Integration · амендмент до v1.2 FINAL FREEZE · Knyhovo Design System · 14.06.2026. Production-ready, approved for implementation handoff.</p>
+</main>
+
+<template id="__bundler_thumbnail">
+  <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 80">
+    <rect width="120" height="80" fill="#f9f3ed"></rect>
+    <rect x="16" y="44" width="88" height="24" rx="4" fill="#fff" stroke="#ece1d2" stroke-width="1.2"></rect>
+    <path d="M20 30 L40 26 L56 32 L74 20 L92 16" fill="none" stroke="#24513e" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"></path>
+    <circle cx="92" cy="16" r="3" fill="#24513e" stroke="#fff" stroke-width="1.4"></circle>
+    <rect x="20" y="52" width="14" height="8" rx="2" fill="#f4e7d3"></rect>
+    <rect x="40" y="52" width="14" height="8" rx="2" fill="#f4e7d3"></rect>
+  </svg>
+</template>
+
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/_ds_bundle.js"></script>
+<script type="text/babel" src="design-import/price-history-v1/ph-data.jsx"></script>
+<script type="text/babel" src="design-import/price-history-v1/ph-chart.jsx"></script>
+<script type="text/babel">
+  // Live specimens for the freeze doc. Reuses window.PHChart + window.PHData only.
+  const { PriceHistory, PriceHistoryMobile, PriceHistoryEmpty, PriceHistoryLoading } = window.PHChart;
+  const FDS = window.KnyhovoDesignSystem_9fa616;
+
+  // Frozen Error state — reuses the .ph-empty chassis (no new visual language).
+  function PriceHistoryError() {
+    const { Badge, Button } = FDS;
+    return (
+      <section className="ph-section" data-screen-label="Price history · error">
+        <h2 className="ph-h2" style={{ marginBottom: 'var(--space-3)' }}>Динаміка ціни</h2>
+        <div className="ph-empty" role="alert">
+          <div className="ph-empty__icon"><window.PHData.Icon name="info" size={20} /></div>
+          <div>
+            <div className="ph-empty__titlerow">
+              <span className="ph-empty__title">Не вдалося завантажити динаміку</span>
+              <Badge tone="neutral">Тимчасова помилка</Badge>
+            </div>
+            <p>Не змогли отримати історію цін просто зараз. Решта інформації про книгу доступна вище. Спробуйте оновити за кілька секунд.</p>
+            <div style={{ marginTop: 'var(--space-4)' }}>
+              <Button variant="secondary" size="sm">Спробувати ще раз</Button>
+            </div>
+          </div>
+        </div>
+      </section>
+    );
+  }
+
+  function mount(id, node) {
+    const el = document.getElementById(id);
+    if (el) ReactDOM.createRoot(el).render(<div className="bd-page ph-frame">{node}</div>);
+  }
+  mount('spec-d-light', <PriceHistory initial="90" />);
+  mount('spec-d-dark', <PriceHistory initial="90" />);
+  mount('spec-m-light', <div className="bdm"><PriceHistoryMobile initial="90" /></div>);
+  mount('spec-empty', <PriceHistoryEmpty />);
+  mount('spec-loading', <PriceHistoryLoading />);
+  mount('spec-error', <PriceHistoryError />);
+</script>
+</body>
+</html>

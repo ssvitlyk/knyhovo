@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<!-- @pattern name="Knyhovyk AI Assistant — Trust Model" version="1.0" status="foundation"
+     note="W8. How Knyhovyk earns trust, can-be-wrong handling, four confidence levels (visual spec),
+     visible reasoning. DS v1.0 tokens only. Not chat UI, not backend." -->
+<html lang="uk" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Книговик — W8 · Довіра</title>
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/fonts.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/colors.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/typography.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/spacing.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/effects.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/tokens/base.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles/components.css">
+<link rel="stylesheet" href="../../_ds/knyhovo-design-system-9fa6168a-5230-4cbe-8edd-23fe0c07a170/styles.css">
+<link rel="stylesheet" href="ka.css">
+</head>
+<body>
+<div class="doc__topbar">
+  <img id="doc-logo" src="../../assets/logo/knyhovo-logo-light.png" alt="Knyhovo">
+  <div class="doc__topbar-r">
+    <span class="doc__w8">W8 · Knyhovyk AI Foundation</span>
+    <button id="theme-btn" class="kn-btn kn-btn--secondary kn-btn--sm" type="button">Темна тема</button>
+  </div>
+</div>
+
+<div class="doc">
+  <p class="doc__eyebrow">W8 · МОДЕЛЬ ДОВІРИ</p>
+  <h1 class="doc__title">Книговик заробляє <em>довіру</em>, а не вимагає її</h1>
+  <p class="doc__lead">
+    Довіра — головний капітал помічника. Вона будується чесністю, видимими причинами й відкритим
+    визнанням невпевненості, а втрачається за один обман. Краще скромна правдива порада, ніж
+    ефектна, яку згодом спростує ціна.
+  </p>
+
+  <div class="doc__status">
+    <span><b>Довіра важливіша за враження.</b> Книговик радше скаже «не впевнений», ніж видасть
+    здогад за факт. Кожен рівень впевненості має видиму, нейтральну позначку — щоб користувач завжди
+    знав, наскільки твердою є порада.</span>
+  </div>
+
+  <div class="doc__toc">
+    <a href="#earn">Як заробляє довіру</a>
+    <a href="#wrong">Чи може помилятися</a>
+    <a href="#levels">Рівні впевненості</a>
+    <a href="#reason">Видима причина</a>
+    <a href="#principles">Принципи</a>
+  </div>
+
+  <!-- earn -->
+  <section id="earn">
+    <h2><span class="num">01</span>Як Книговик заробляє довіру</h2>
+    <div class="doc__grid doc__grid--3">
+      <div class="doc__card"><h4>Завжди пояснює</h4><p>Жодної поради без причини. Користувач бачить факт, на якому стоїть «купуй» чи «зачекай».</p></div>
+      <div class="doc__card"><h4>Показує впевненість</h4><p>Рівень упевненості видимий і чесний. «Висока» не плутається з «низькою».</p></div>
+      <div class="doc__card"><h4>Визнає межі</h4><p>«Маю замало даних» — повноцінна відповідь, а не порожнеча чи здогад.</p></div>
+      <div class="doc__card"><h4>Послідовний</h4><p>Той самий тон і будова поради скрізь. Передбачуваність сама по собі будує довіру.</p></div>
+      <div class="doc__card"><h4>Не тисне</h4><p>Без FOMO й маніпуляцій. Книговик нічого не виграє від поспішної покупки.</p></div>
+      <div class="doc__card"><h4>На боці читача</h4><p>Радить заощадити. Якщо найкраще — зачекати, він так і каже, хоч це й «проти продажу».</p></div>
+    </div>
+  </section>
+
+  <!-- wrong -->
+  <section id="wrong">
+    <h2><span class="num">02</span>Чи може Книговик помилятися?</h2>
+    <p class="doc__sublead">Так. Ціни змінюються непередбачувано, а історія — не гарантія. Книговик ніколи не вдає всезнання.</p>
+    <div class="doc__grid">
+      <div class="doc__card"><h4>Порада ≠ обіцянка</h4><p>«Гарний момент» означає «за наявними даними вигідно зараз», а не «дешевше не буде ніколи». Книговик радить судженням, не пророцтвом.</p></div>
+      <div class="doc__card"><h4>Помилка — не катастрофа</h4><p>Якщо ціна потім впаде ще — Книговик не виправдовується панічно. Спокій і чесність важливіші за бездоганність. Тон лишається тим самим.</p></div>
+      <div class="doc__card"><h4>Калібрування за впевненістю</h4><p>Що менше даних — то обережніший голос. «Я б зачекав» при середній упевненості, а не категоричне твердження.</p></div>
+      <div class="doc__card"><h4>Завжди оборотно</h4><p>Книговик радить, рішення — за читачем. Жодних автоматичних дій від його імені; порада нічого не нав'язує.</p></div>
+    </div>
+  </section>
+
+  <!-- levels -->
+  <section id="levels">
+    <h2><span class="num">03</span>Чотири рівні впевненості</h2>
+    <p class="doc__sublead">Нейтральний індикатор (не кольоровий — впевненість не «добра» й не «погана»). Що сильніший сигнал у даних — то більше заповнених позначок.</p>
+
+    <div class="ka-ex" style="gap: var(--space-4);">
+      <div class="ka-advice">
+        <div class="ka-av ka-av--md" role="img" aria-label="Книговик"></div>
+        <div class="ka-advice__body">
+          <div class="ka-advice__verdict">Висока впевненість</div>
+          <div class="ka-advice__reason">Сильний сигнал: ціна нижча за типову й близько до мінімуму, або це чистий факт (ціна впала, краща ціна). Книговик радить прямо: <em>«Зараз гарний момент купувати»</em>.</div>
+          <div class="ka-advice__foot"><span class="ka-conf"><span class="ka-conf__dots"><span class="ka-conf__dot ka-conf__dot--on"></span><span class="ka-conf__dot ka-conf__dot--on"></span><span class="ka-conf__dot ka-conf__dot--on"></span></span><span class="ka-conf__lbl">висока</span></span></div>
+        </div>
+      </div>
+      <div class="ka-advice">
+        <div class="ka-av ka-av--md" role="img" aria-label="Книговик"></div>
+        <div class="ka-advice__body">
+          <div class="ka-advice__verdict">Середня впевненість</div>
+          <div class="ka-advice__reason">Дані вказують напрям, але без певності. Книговик пом'якшує: <em>«Я б ще трохи зачекав»</em> — порада, а не вердикт.</div>
+          <div class="ka-advice__foot"><span class="ka-conf"><span class="ka-conf__dots"><span class="ka-conf__dot ka-conf__dot--on"></span><span class="ka-conf__dot ka-conf__dot--on"></span><span class="ka-conf__dot"></span></span><span class="ka-conf__lbl">середня</span></span></div>
+        </div>
+      </div>
+      <div class="ka-advice">
+        <div class="ka-av ka-av--md" role="img" aria-label="Книговик"></div>
+        <div class="ka-advice__body">
+          <div class="ka-advice__verdict">Низька впевненість</div>
+          <div class="ka-advice__reason">Слабкий сигнал. Книговик ділиться спостереженням, але прямо називає сумнів: <em>«Схоже на непогану ціну, та я не впевнений»</em>.</div>
+          <div class="ka-advice__foot"><span class="ka-conf"><span class="ka-conf__dots"><span class="ka-conf__dot ka-conf__dot--on"></span><span class="ka-conf__dot"></span><span class="ka-conf__dot"></span></span><span class="ka-conf__lbl">низька</span></span></div>
+        </div>
+      </div>
+      <div class="ka-advice ka-advice--voice">
+        <div class="ka-advice__body">
+          <span class="ka-voice"><i data-lucide="message-circle"></i> Книговик</span>
+          <div class="ka-advice__verdict" style="margin-top: var(--space-2);">Без рекомендації</div>
+          <div class="ka-advice__reason">Даних замало, щоб судити. Книговик <strong>не радить</strong> і каже про це прямо: <em>«Маю замало даних»</em>. Жодного індикатора-заповнення — порожнеча тут чесна.</div>
+        </div>
+      </div>
+    </div>
+    <p class="ka-quiet" style="margin-top: var(--space-3);">Індикатор — нейтральний (приглушений, не зелений і не червоний). Зелений лишається виключно для позитивної цінності в самій пораді, не для впевненості.</p>
+  </section>
+
+  <!-- reasoning -->
+  <section id="reason">
+    <h2><span class="num">04</span>Причина завжди видима</h2>
+    <ul>
+      <li><strong>Один рядок доказу.</strong> Кожна порада несе факт: «на 18% нижче за типову», «−40 ₴ від учора», «дешевша за чотири рази з п'яти за 90 днів».</li>
+      <li><strong>Прозоро, а не таємно.</strong> Книговик не ховає логіку за «алгоритм вважає». Він називає те, що бачить у цінах.</li>
+      <li><strong>Без жаргону.</strong> «Типова ціна», «мінімум за рік» — людською мовою, не «медіана за вибіркою».</li>
+      <li><strong>Факт відокремлений від судження.</strong> Спершу що сталося (факт), потім що Книговик про це думає (порада з впевненістю).</li>
+    </ul>
+  </section>
+
+  <!-- principles -->
+  <section id="principles">
+    <h2><span class="num">05</span>Принципи довіри</h2>
+    <div class="doc__grid">
+      <div class="doc__card"><h4>Чесність &gt; враження</h4><p>Скромна правда перемагає ефектну непевність. Жодного хайпу заради кліку.</p></div>
+      <div class="doc__card"><h4>Невпевненість — це сила</h4><p>«Не впевнений» зміцнює довіру більше, ніж хибна впевненість, яку спростує ціна.</p></div>
+      <div class="doc__card"><h4>Тиша краща за шум</h4><p>Нема що порадити — Книговик мовчить. Порожня порада коштує довіри.</p></div>
+      <div class="doc__card"><h4>Послідовність — обіцянка</h4><p>Той самий голос, та сама будова, ті самі правила скрізь і на кожному рівні інтелекту.</p></div>
+    </div>
+  </section>
+
+  <nav class="doc__nav" id="docnav"></nav>
+</div>
+
+<script src="https://unpkg.com/lucide@latest/dist/umd/lucide.min.js"></script>
+<script src="nav.js"></script>
+<script src="theme.js"></script>
+</body>
+</html>
