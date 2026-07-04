@@ -2,101 +2,34 @@
 
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
-import { createPortal } from 'react-dom';
 import type { CollectionDto } from '@/lib/api/types';
 import { useIsMobile } from './useIsMobile';
 import { CNavIcon } from './icons';
 
 /**
- * Frozen sticky section nav (`collections-nav.jsx`, 2026-07-04 patch): theme
- * background with a soft green tint, accent stays `var(--accent)`. Desktop:
- * `.cnav__links` scroll row (six section links) + a sibling
- * `.cnav__genres-wrap` holding the «Жанри» trigger and its compact dropdown —
- * the wrap sits OUTSIDE the scroll container so the dropdown is never clipped
- * (never put overflow on `.cnav__row` itself). Mobile: horizontal scroll row;
- * «Жанри» opens a theme-aware bottom sheet with search. Smooth-scrolls to hub
- * section anchors; the active item follows scroll position. Genres come from
- * the hub payload (real taxonomic collections), not the mock's hardcoded
- * 17-genre list.
+ * Frozen sticky section nav (`collections-nav.jsx`, 2026-07-04 mobile-nav
+ * patch): theme background with a soft green tint, accent stays
+ * `var(--accent)`. Desktop (>768px, unchanged): `.cnav__links` scroll row +
+ * a sibling `.cnav__genres-wrap` holding the «Жанри» trigger and its compact
+ * dropdown — the wrap sits OUTSIDE the scroll container so the dropdown is
+ * never clipped (never put overflow on `.cnav__row` itself). Mobile (≤768px):
+ * two anchored dropdown triggers in one row — a section switcher (current
+ * section's icon + label) and «Жанри» (search + scrollable icon list); the
+ * old bottom sheet is gone. Both dropdowns share the same close behaviour
+ * (outside pointerdown / Escape / re-click / leaving mobile) and opening one
+ * closes the other. Smooth-scrolls to hub section anchors; the active item
+ * follows scroll position. Genres come from the hub payload (real taxonomic
+ * collections with their DB icons), not the mock's hardcoded 17-genre list.
  */
 
 const CNAV_ITEMS = [
   { id: 'populyarne', label: 'Популярне', icon: 'flame' },
-  { id: 'obrane', label: 'Обране', icon: 'heart' },
+  { id: 'obrane', label: 'У бажанках', icon: 'heart' },
   { id: 'novynky', label: 'Новинки', icon: 'sparkles' },
   { id: 'znyzhky', label: 'Знижки', icon: 'badge-percent' },
   { id: 'nastroji', label: 'Настрої', icon: 'moon' },
-  { id: 'redaktsiya', label: 'Добірки', icon: 'library' },
+  { id: 'redaktsiya', label: 'Колекції', icon: 'library' },
 ] as const;
-
-/** Bottom sheet (mobile «Жанри») — portaled to <body> so it escapes the nav's stacking context. */
-function CNavGenreSheet({
-  genres,
-  onClose,
-}: {
-  readonly genres: readonly CollectionDto[];
-  readonly onClose: () => void;
-}): React.JSX.Element {
-  const [q, setQ] = useState('');
-
-  useEffect(() => {
-    const prev = document.body.style.overflow;
-    document.body.style.overflow = 'hidden';
-    const onKey = (e: KeyboardEvent): void => {
-      if (e.key === 'Escape') onClose();
-    };
-    window.addEventListener('keydown', onKey);
-    return () => {
-      document.body.style.overflow = prev;
-      window.removeEventListener('keydown', onKey);
-    };
-  }, [onClose]);
-
-  const query = q.trim().toLowerCase();
-  const list = query ? genres.filter((g) => g.name.toLowerCase().includes(query)) : genres;
-
-  return createPortal(
-    <>
-      <div className="cnav-sheet-backdrop" onClick={onClose} />
-      <div className="cnav-sheet" role="dialog" aria-modal="true" aria-label="Жанри">
-        <div className="cnav-sheet__grab" />
-        <div className="cnav-sheet__head">
-          <div className="cnav-sheet__title">Жанри</div>
-          <button type="button" className="cnav-sheet__close" onClick={onClose} aria-label="Закрити">
-            <CNavIcon name="x" size={18} />
-          </button>
-        </div>
-        <label className="cnav-sheet__search">
-          <CNavIcon name="search" size={17} />
-          <input
-            type="text"
-            placeholder="Знайти жанр"
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            aria-label="Пошук жанру"
-          />
-        </label>
-        <div className="cnav-sheet__list">
-          {list.map((g) => (
-            <a key={g.slug} href={`/zhanry/${g.slug}`} className="cnav-sheet__item" onClick={onClose}>
-              {g.name}
-              <CNavIcon name="chevron-right" size={16} />
-            </a>
-          ))}
-          {list.length === 0 ? (
-            <div className="cnav-sheet__empty">Нічого не знайшли. Спробуйте інший запит.</div>
-          ) : null}
-        </div>
-        <div className="cnav-sheet__foot">
-          <Link href="/dobirky" className="cnav-sheet__all" onClick={onClose}>
-            Усі жанри <CNavIcon name="arrow-right" size={17} />
-          </Link>
-        </div>
-      </div>
-    </>,
-    document.body,
-  );
-}
 
 export interface CollectionsNavProps {
   readonly genres: readonly CollectionDto[];
@@ -107,9 +40,14 @@ export function CollectionsNav({ genres }: CollectionsNavProps): React.JSX.Eleme
   const [active, setActive] = useState<string | null>(null);
   const [stuck, setStuck] = useState(false);
   const [megaOpen, setMegaOpen] = useState(false);
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [secOpen, setSecOpen] = useState(false);
+  const [genOpen, setGenOpen] = useState(false);
+  const [genQ, setGenQ] = useState('');
   const navRef = useRef<HTMLElement | null>(null);
+  const secRef = useRef<HTMLDivElement | null>(null);
+  const genRef = useRef<HTMLDivElement | null>(null);
   const closeTimer = useRef(0);
+  const activeItem = CNAV_ITEMS.find((s) => s.id === active) ?? CNAV_ITEMS[0];
 
   /* Scroll-spy: the section whose box crosses the probe line (just under the sticky bar) is active. */
   useEffect(() => {
@@ -163,6 +101,51 @@ export function CollectionsNav({ genres }: CollectionsNavProps): React.JSX.Eleme
     };
   }, [megaOpen]);
 
+  /* Mobile section dropdown — close on Escape / outside click / leaving mobile. */
+  useEffect(() => {
+    if (!secOpen) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setSecOpen(false);
+    };
+    const onDown = (e: PointerEvent): void => {
+      if (secRef.current && !secRef.current.contains(e.target as Node)) setSecOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('pointerdown', onDown);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('pointerdown', onDown);
+    };
+  }, [secOpen]);
+  /* Leaving mobile force-closes both mobile dropdowns (canonical behaviour),
+     expressed as adjust-state-during-render — the repo's lint forbids the
+     mock's setState-in-effect form. */
+  const [wasMobile, setWasMobile] = useState(isMobile);
+  if (wasMobile !== isMobile) {
+    setWasMobile(isMobile);
+    if (!isMobile) {
+      setSecOpen(false);
+      setGenOpen(false);
+    }
+  }
+
+  /* Mobile genres dropdown — same close behaviour as the section dropdown. */
+  useEffect(() => {
+    if (!genOpen) return;
+    const onKey = (e: KeyboardEvent): void => {
+      if (e.key === 'Escape') setGenOpen(false);
+    };
+    const onDown = (e: PointerEvent): void => {
+      if (genRef.current && !genRef.current.contains(e.target as Node)) setGenOpen(false);
+    };
+    window.addEventListener('keydown', onKey);
+    window.addEventListener('pointerdown', onDown);
+    return () => {
+      window.removeEventListener('keydown', onKey);
+      window.removeEventListener('pointerdown', onDown);
+    };
+  }, [genOpen]);
+
   function go(e: React.MouseEvent, id: string): void {
     e.preventDefault();
     const el = document.getElementById(id);
@@ -207,6 +190,9 @@ export function CollectionsNav({ genres }: CollectionsNavProps): React.JSX.Eleme
     closeTimer.current = window.setTimeout(() => setMegaOpen(false), 140);
   }
 
+  const genQuery = genQ.trim().toLowerCase();
+  const genList = genQuery ? genres.filter((g) => g.name.toLowerCase().includes(genQuery)) : genres;
+
   return (
     <nav
       className={'cnav' + (stuck ? ' cnav--stuck' : '')}
@@ -216,64 +202,163 @@ export function CollectionsNav({ genres }: CollectionsNavProps): React.JSX.Eleme
       onMouseEnter={() => clearTimeout(closeTimer.current)}
     >
       <div className="page">
-        <div className="cnav__row">
-          <div className="cnav__links">
-            {CNAV_ITEMS.map((s) => (
-              <a
-                key={s.id}
-                href={'#' + s.id}
-                className={'cnav__link' + (active === s.id ? ' cnav__link--active' : '')}
-                onClick={(e) => go(e, s.id)}
+        {isMobile ? (
+          /* MOBILE ONLY — two dropdown triggers replace the horizontal scroll
+             row (2026-07-04 mobile nav patch). Desktop markup below untouched. */
+          <div className="cnav__mobrow">
+            <div className="cnav__sec-wrap" ref={secRef}>
+              <button
+                type="button"
+                className="cnav__secbtn"
+                aria-expanded={secOpen}
+                aria-haspopup="true"
+                onClick={() => {
+                  setSecOpen((o) => !o);
+                  setGenOpen(false);
+                }}
               >
-                <CNavIcon name={s.icon} />
-                {s.label}
-              </a>
-            ))}
-          </div>
-          <div className="cnav__genres-wrap">
-            <button
-              type="button"
-              className="cnav__link cnav__link--genres"
-              aria-expanded={megaOpen}
-              aria-haspopup="true"
-              onClick={() => (isMobile ? setSheetOpen(true) : setMegaOpen((o) => !o))}
-              onMouseEnter={openMegaSoon}
-            >
-              <CNavIcon name="book-open" />
-              Жанри
-              <span className="cnav__chev">
-                <CNavIcon name="chevron-down" size={14} />
-              </span>
-            </button>
-
-            {!isMobile && megaOpen ? (
-              <div className="cnav__mega">
-                <div className="cnav__mega-inner">
-                  <div className="cnav__mega-cols">
-                    {genres.map((g) => (
+                <CNavIcon name={activeItem.icon} />
+                <span className="cnav__secbtn-label">{activeItem.label}</span>
+                <span className="cnav__chev">
+                  <CNavIcon name="chevron-down" size={14} />
+                </span>
+              </button>
+              {secOpen ? (
+                <div className="cnav__secmenu" role="menu">
+                  {CNAV_ITEMS.map((s) => (
+                    <a
+                      key={s.id}
+                      href={'#' + s.id}
+                      role="menuitem"
+                      className={
+                        'cnav__secmenu-item' + (active === s.id ? ' cnav__secmenu-item--active' : '')
+                      }
+                      onClick={(e) => {
+                        go(e, s.id);
+                        setSecOpen(false);
+                      }}
+                    >
+                      <CNavIcon name={s.icon} />
+                      {s.label}
+                    </a>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+            <div className="cnav__sec-wrap" ref={genRef}>
+              <button
+                type="button"
+                className="cnav__secbtn"
+                aria-expanded={genOpen}
+                aria-haspopup="true"
+                onClick={() => {
+                  /* Query resets on (re)open — canonical clears it on close;
+                     the visible result is identical: a fresh list every open. */
+                  if (!genOpen) setGenQ('');
+                  setGenOpen((o) => !o);
+                  setSecOpen(false);
+                }}
+              >
+                <CNavIcon name="book-open" />
+                <span className="cnav__secbtn-label">Жанри</span>
+                <span className="cnav__chev">
+                  <CNavIcon name="chevron-down" size={14} />
+                </span>
+              </button>
+              {genOpen ? (
+                <div className="cnav__secmenu cnav__secmenu--genres" role="menu">
+                  <label className="cnav__secmenu-search">
+                    <CNavIcon name="search" size={15} />
+                    <input
+                      type="text"
+                      placeholder="Знайти жанр"
+                      value={genQ}
+                      onChange={(e) => setGenQ(e.target.value)}
+                      aria-label="Пошук жанру"
+                    />
+                  </label>
+                  <div className="cnav__secmenu-scroll">
+                    {genList.map((g) => (
                       <a
                         key={g.slug}
                         href={`/zhanry/${g.slug}`}
-                        className="cnav__genre"
-                        onClick={() => setMegaOpen(false)}
+                        role="menuitem"
+                        className="cnav__secmenu-item"
+                        onClick={() => setGenOpen(false)}
                       >
+                        <CNavIcon name={g.icon ?? 'book-open'} />
                         {g.name}
                       </a>
                     ))}
+                    {genList.length === 0 ? (
+                      <div className="cnav__secmenu-empty">Нічого не знайшли.</div>
+                    ) : null}
                   </div>
-                </div>
-                <div className="cnav__mega-foot">
-                  <Link href="/dobirky" className="cnav__mega-all" onClick={() => setMegaOpen(false)}>
-                    Усі жанри <CNavIcon name="arrow-right" size={17} />
+                  <Link href="/dobirky" className="cnav__secmenu-all" onClick={() => setGenOpen(false)}>
+                    Усі жанри <CNavIcon name="arrow-right" size={15} />
                   </Link>
                 </div>
-              </div>
-            ) : null}
+              ) : null}
+            </div>
           </div>
-        </div>
-      </div>
+        ) : (
+          <div className="cnav__row">
+            <div className="cnav__links">
+              {CNAV_ITEMS.map((s) => (
+                <a
+                  key={s.id}
+                  href={'#' + s.id}
+                  className={'cnav__link' + (active === s.id ? ' cnav__link--active' : '')}
+                  onClick={(e) => go(e, s.id)}
+                >
+                  <CNavIcon name={s.icon} />
+                  {s.label}
+                </a>
+              ))}
+            </div>
+            <div className="cnav__genres-wrap">
+              <button
+                type="button"
+                className="cnav__link cnav__link--genres"
+                aria-expanded={megaOpen}
+                aria-haspopup="true"
+                onClick={() => setMegaOpen((o) => !o)}
+                onMouseEnter={openMegaSoon}
+              >
+                <CNavIcon name="book-open" />
+                Жанри
+                <span className="cnav__chev">
+                  <CNavIcon name="chevron-down" size={14} />
+                </span>
+              </button>
 
-      {isMobile && sheetOpen ? <CNavGenreSheet genres={genres} onClose={() => setSheetOpen(false)} /> : null}
+              {megaOpen ? (
+                <div className="cnav__mega">
+                  <div className="cnav__mega-inner">
+                    <div className="cnav__mega-cols">
+                      {genres.map((g) => (
+                        <a
+                          key={g.slug}
+                          href={`/zhanry/${g.slug}`}
+                          className="cnav__genre"
+                          onClick={() => setMegaOpen(false)}
+                        >
+                          {g.name}
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                  <div className="cnav__mega-foot">
+                    <Link href="/dobirky" className="cnav__mega-all" onClick={() => setMegaOpen(false)}>
+                      Усі жанри <CNavIcon name="arrow-right" size={17} />
+                    </Link>
+                  </div>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        )}
+      </div>
     </nav>
   );
 }

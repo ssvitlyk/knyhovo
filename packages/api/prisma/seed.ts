@@ -44,26 +44,27 @@ const PROVIDERS: Provider[] = [
 /** Minimum live book count for a taxonomic (genre) collection to stay publicly browsable (catalog-v3 contract). */
 const MIN_GENRE_BOOK_COUNT = 30;
 
-// --- Genres (8, now TAXONOMIC collections) -----------------------------------
+// --- Genres (17 TAXONOMIC collections, frozen popular-reader order; icons
+//     follow the 2026-07-04 mobile-nav patch §4 mapping) ----------------------
 type GenreSeed = { slug: string; name: string; description: string; icon: string; displayOrder: number };
 const GENRES: GenreSeed[] = [
   { slug: 'fantastyka', name: 'Фантастика', description: 'Наукова фантастика та інші світи — від класики жанру до сучасних бестселерів.', icon: 'rocket', displayOrder: 1 },
-  { slug: 'fentezi', name: 'Фентезі', description: 'Магія, епічні саги та вигадані королівства для тих, хто любить втікати у інші світи.', icon: 'swords', displayOrder: 2 },
-  { slug: 'tryllery', name: 'Трилери', description: 'Напружені сюжети, що тримають у тонусі до останньої сторінки.', icon: 'eye', displayOrder: 3 },
+  { slug: 'fentezi', name: 'Фентезі', description: 'Магія, епічні саги та вигадані королівства для тих, хто любить втікати у інші світи.', icon: 'sparkles', displayOrder: 2 },
+  { slug: 'tryllery', name: 'Трилери', description: 'Напружені сюжети, що тримають у тонусі до останньої сторінки.', icon: 'knife', displayOrder: 3 },
   { slug: 'detektyvy', name: 'Детективи', description: 'Класичні та сучасні розслідування — для тих, хто любить розгадувати загадки.', icon: 'search', displayOrder: 4 },
   { slug: 'zhahy', name: 'Жахи', description: 'Історії, що лякають по-справжньому — від готичної класики до сучасного горору.', icon: 'ghost', displayOrder: 5 },
-  { slug: 'young-adult', name: 'Young Adult', description: 'Романи для підлітків і не тільки — про дорослішання, дружбу та перше кохання.', icon: 'sparkles', displayOrder: 6 },
-  { slug: 'klasyka', name: 'Класика', description: 'Українська та світова класична література, що не втрачає актуальності.', icon: 'feather', displayOrder: 7 },
+  { slug: 'young-adult', name: 'Young Adult', description: 'Романи для підлітків і не тільки — про дорослішання, дружбу та перше кохання.', icon: 'graduation-cap', displayOrder: 6 },
+  { slug: 'klasyka', name: 'Класика', description: 'Українська та світова класична література, що не втрачає актуальності.', icon: 'book-open', displayOrder: 7 },
   { slug: 'romantyka', name: 'Романтика', description: 'Історії кохання — від легких сучасних романів до знакових класичних сюжетів.', icon: 'heart', displayOrder: 8 },
-  { slug: 'samorozvytok', name: 'Саморозвиток', description: 'Практичні поради та ідеї для тих, хто прагне стати кращою версією себе.', icon: 'lightbulb', displayOrder: 9 },
+  { slug: 'samorozvytok', name: 'Саморозвиток', description: 'Практичні поради та ідеї для тих, хто прагне стати кращою версією себе.', icon: 'trending-up', displayOrder: 9 },
   { slug: 'psykholohiia', name: 'Психологія', description: 'Про мислення, емоції та стосунки — від наукового підходу до практичних порад.', icon: 'brain', displayOrder: 10 },
-  { slug: 'biznes', name: 'Бізнес', description: 'Стратегії, історії успіху та інструменти для тих, хто будує свою справу.', icon: 'chart-column', displayOrder: 11 },
-  { slug: 'biohrafii', name: 'Біографії', description: 'Життєписи видатних людей — натхнення на прикладах реальних доль.', icon: 'award', displayOrder: 12 },
-  { slug: 'dytiachi', name: 'Дитячі', description: 'Українська та світова класика для наймолодших читачів і їхніх батьків.', icon: 'star', displayOrder: 13 },
-  { slug: 'komiksy', name: 'Комікси', description: 'Графічні романи та комікси — історії, розказані малюнком і словом.', icon: 'palette', displayOrder: 14 },
+  { slug: 'biznes', name: 'Бізнес', description: 'Стратегії, історії успіху та інструменти для тих, хто будує свою справу.', icon: 'briefcase', displayOrder: 11 },
+  { slug: 'biohrafii', name: 'Біографії', description: 'Життєписи видатних людей — натхнення на прикладах реальних доль.', icon: 'user', displayOrder: 12 },
+  { slug: 'dytiachi', name: 'Дитячі', description: 'Українська та світова класика для наймолодших читачів і їхніх батьків.', icon: 'baby', displayOrder: 13 },
+  { slug: 'komiksy', name: 'Комікси', description: 'Графічні романи та комікси — історії, розказані малюнком і словом.', icon: 'panels-top-left', displayOrder: 14 },
   { slug: 'istoriia', name: 'Історія', description: 'Про минуле України та світу — від давніх часів до новітньої історії.', icon: 'landmark', displayOrder: 15 },
-  { slug: 'naukovo-populiarni', name: 'Науково-популярні', description: 'Наука простою мовою — про Всесвіт, мозок і природу навколо нас.', icon: 'microscope', displayOrder: 16 },
-  { slug: 'khudozhnia-proza', name: 'Художня проза', description: 'Сучасна українська та світова проза — історії, що залишаються надовго.', icon: 'book-open', displayOrder: 17 },
+  { slug: 'naukovo-populiarni', name: 'Науково-популярні', description: 'Наука простою мовою — про Всесвіт, мозок і природу навколо нас.', icon: 'flask-conical', displayOrder: 16 },
+  { slug: 'khudozhnia-proza', name: 'Художня проза', description: 'Сучасна українська та світова проза — історії, що залишаються надовго.', icon: 'feather', displayOrder: 17 },
 ];
 
 // --- Moods (6, now EDITORIAL collections identified by a constant slug list) -

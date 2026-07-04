@@ -81,31 +81,65 @@
 .cnav__mega-all { display: inline-flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; transition: gap 180ms ease-out, opacity 140ms ease-out; }
 .cnav__mega-all:hover { gap: 14px; opacity: .82; }
 
-/* Mobile bottom sheet («Жанри») — now theme-aware (light/dark), same tokens,
-   radii, weights and hover language as the desktop mega menu (§ above) so the
-   two feel like one component, just in a touch-friendly sheet shell. */
-.cnav-sheet-backdrop { position: fixed; inset: 0; z-index: 200; background: color-mix(in oklab, var(--text) 45%, transparent); animation: cnav-fade-in 220ms ease-out both; }
-@keyframes cnav-fade-in { from { opacity: 0; } }
-.cnav-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 201; height: 80vh; height: 80dvh; display: flex; flex-direction: column; background: var(--surface); border-radius: 22px 22px 0 0; border-top: 1px solid var(--border); box-shadow: 0 -24px 64px -12px color-mix(in oklab, var(--text) 45%, transparent); animation: cnav-sheet-up 300ms cubic-bezier(.22,.9,.32,1) both; }
-@keyframes cnav-sheet-up { from { transform: translateY(24%); opacity: .4; } to { transform: none; opacity: 1; } }
-.cnav-sheet__grab { width: 44px; height: 4px; border-radius: 999px; background: var(--border-strong); margin: 10px auto 2px; flex-shrink: 0; }
-.cnav-sheet__head { display: flex; align-items: center; justify-content: space-between; padding: 14px 22px 4px; flex-shrink: 0; }
-.cnav-sheet__title { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--text); }
-.cnav-sheet__close { width: 36px; height: 36px; border-radius: 50%; border: none; background: var(--surface-accent); color: var(--text-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.cnav-sheet__search { display: flex; align-items: center; gap: 10px; margin: 12px 22px 4px; padding: 0 14px; height: 46px; border-radius: 12px; background: var(--surface-accent); border: 1px solid var(--border); color: var(--text-muted); flex-shrink: 0; }
-.cnav-sheet__search input { flex: 1; height: 100%; background: none; border: none; outline: none; color: var(--text); font-size: 15px; font-family: var(--font-body); min-width: 0; }
-.cnav-sheet__search input::placeholder { color: var(--text-faint); }
-.cnav-sheet__list { flex: 1; overflow-y: auto; padding: 8px 22px 12px; overscroll-behavior: contain; }
-.cnav-sheet__item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 2px; font-family: var(--font-body); font-weight: 500; font-size: 16px; color: var(--text); text-decoration: none; border-bottom: 1px solid var(--border); transition: color 160ms ease-out; }
-.cnav-sheet__item:last-child { border-bottom: none; }
-.cnav-sheet__item svg { color: var(--text-faint); flex-shrink: 0; }
-.cnav-sheet__item:active, .cnav-sheet__item:hover { color: var(--accent); }
-.cnav-sheet__empty { padding: 28px 2px; font-size: 14.5px; color: var(--text-muted); }
-.cnav-sheet__foot { padding: 14px 22px calc(16px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); flex-shrink: 0; }
-.cnav-sheet__all { display: flex; align-items: center; justify-content: center; gap: 9px; height: 50px; border-radius: 12px; background: var(--accent); color: var(--text-on-accent); font-size: 15px; font-weight: 700; text-decoration: none; transition: opacity 140ms ease-out; }
-.cnav-sheet__all:hover { opacity: .85; }
-@media (prefers-reduced-motion: reduce) { .cnav__mega, .cnav-sheet, .cnav-sheet-backdrop { animation: none; } }
+/* The old mobile bottom sheet («Жанри», .cnav-sheet*) was removed by the
+   2026-07-04 mobile-nav patch — genres now open an anchored dropdown (below). */
+@media (prefers-reduced-motion: reduce) { .cnav__mega { animation: none; } }
 @media (max-width: 1119px) { .cnav__links { gap: 18px; } }
+
+/* ── MOBILE-ONLY nav (≤768px) ─────────────────────────────
+   Two dropdown triggers replace the horizontal scroll row. Desktop .cnav__row /
+   .cnav__links / .cnav__mega above are untouched — this component branches in JS
+   (isMobile), so these rules only ever apply to markup that JS renders on mobile. */
+@media (max-width: 768px) {
+  .cnav__mobrow { display: flex; align-items: center; gap: 10px; height: 52px; width: 100%; }
+  .cnav__sec-wrap { position: relative; flex: 1 1 0; min-width: 0; }
+  .cnav__secbtn {
+    display: flex; align-items: center; gap: 8px; height: 40px;
+    padding: 0 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-family: var(--font-body);
+    font-size: 13.5px; font-weight: 600; letter-spacing: .01em; cursor: pointer;
+    transition: color 140ms ease-out, border-color 140ms ease-out, background 140ms ease-out;
+  }
+  /* Two equal-width buttons in one row: the standalone «Жанри» trigger and the
+     section-switcher wrapper each take half; the button inside the wrapper fills it. */
+  .cnav__mobrow > .cnav__secbtn { flex: 1 1 0; min-width: 0; }
+  .cnav__sec-wrap .cnav__secbtn { width: 100%; }
+  .cnav__secbtn svg:first-child { opacity: .65; flex-shrink: 0; }
+  .cnav__secbtn-label { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cnav__secbtn .cnav__chev { flex-shrink: 0; opacity: .7; }
+  .cnav__secbtn:hover { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 30%, var(--border)); }
+  .cnav__secbtn:hover svg:first-child { opacity: .9; }
+  .cnav__secbtn[aria-expanded='true'] { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 40%, var(--border)); background: color-mix(in oklab, var(--accent) 6%, var(--surface)); }
+  .cnav__secbtn[aria-expanded='true'] svg:first-child { opacity: 1; }
+  .cnav__secbtn[aria-expanded='true'] .cnav__chev { transform: rotate(180deg); opacity: 1; }
+
+  .cnav__secmenu {
+    position: absolute; top: calc(100% + 8px); left: 0; z-index: 95;
+    width: max-content; min-width: 100%; max-width: min(300px, calc(100vw - 40px));
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: var(--shadow-lg); padding: 7px; animation: cnav-mega-in 160ms ease-out both;
+  }
+  /* Genres dropdown — same anatomy as the section menu, plus search + scroll + footer.
+     Anchored to the RIGHT edge of its (right-half) trigger so it never overflows. */
+  .cnav__secmenu--genres { left: auto; right: 0; display: flex; flex-direction: column; min-width: min(260px, calc(100vw - 40px)); }
+  .cnav__secmenu-search { display: flex; align-items: center; gap: 8px; margin: 3px 3px 6px; padding: 0 11px; height: 40px; border-radius: 10px; background: var(--surface-accent); border: 1px solid var(--border); color: var(--text-muted); flex-shrink: 0; transition: border-color 140ms ease-out, box-shadow 140ms ease-out; }
+  .cnav__secmenu-search:focus-within { border-color: var(--accent); box-shadow: var(--focus-ring); }
+  .cnav__secmenu-search svg { flex-shrink: 0; }
+  .cnav__secmenu-search input { flex: 1; height: 100%; background: none; border: none; outline: none; box-shadow: none; color: var(--text); font-size: 14.5px; font-family: var(--font-body); min-width: 0; }
+  .cnav__secmenu-search input:focus, .cnav__secmenu-search input:focus-visible { outline: none; box-shadow: none; }
+  .cnav__secmenu-search input::placeholder { color: var(--text-faint); }
+  .cnav__secmenu-scroll { flex: 1; overflow-y: auto; max-height: min(46vh, 380px); overscroll-behavior: contain; }
+  .cnav__secmenu-empty { padding: 12px 11px; font-family: var(--font-body); font-size: 13.5px; color: var(--text-faint); }
+  .cnav__secmenu-all { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 6px; padding: 10px 11px; border-top: 1px solid var(--border); border-radius: 0 0 9px 9px; font-family: var(--font-body); font-weight: 600; font-size: 13.5px; color: var(--accent); text-decoration: none; flex-shrink: 0; }
+  .cnav__secmenu-all:hover { background: color-mix(in oklab, var(--accent) 8%, var(--surface)); }
+  .cnav__secmenu-item { display: flex; align-items: center; gap: 10px; padding: 10px 11px; border-radius: 9px; font-family: var(--font-body); font-weight: 500; font-size: 14.5px; color: var(--text); text-decoration: none; transition: background 140ms ease-out, color 140ms ease-out; }
+  .cnav__secmenu-item svg { opacity: .65; flex-shrink: 0; }
+  .cnav__secmenu-item:hover { background: color-mix(in oklab, var(--accent) 8%, var(--surface)); color: var(--accent); }
+  .cnav__secmenu-item:hover svg { opacity: 1; }
+  .cnav__secmenu-item--active { color: var(--accent); font-weight: 700; background: color-mix(in oklab, var(--accent) 9%, var(--surface)); }
+  .cnav__secmenu-item--active svg { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { .cnav__secmenu { animation: none; } }
+}
 
 /* ── SECTION RHYTHM ─────────────────────────────
    Every section (plain or banded) shares the SAME padding-block, so the
@@ -438,8 +472,12 @@
 .cd-desc-toggle:hover { opacity: 0.7; }
 
 /* ── SORT BAR — sticky, minimal: a single sort dropdown only ── */
-.cd-sortbar { position: sticky; top: 0; z-index: 50; background: var(--bg); border-bottom: 1px solid var(--border); padding: 10px 0; transition: box-shadow 200ms ease-out; box-shadow: 0 0 0 100vmax var(--bg); clip-path: inset(0 -100vmax); }
-.cd-sortbar--stuck { box-shadow: 0 0 0 100vmax var(--bg), 0 10px 24px -18px color-mix(in oklab, var(--text) 30%, transparent); }
+/* NO full-bleed box-shadow/clip-path here (mock-verbatim): clip-path on the bar
+   would cut the absolutely-positioned .cd-sort__menu that hangs below it — the
+   same never-clip rule as the cnav dropdowns. The bar's --bg already matches the
+   body background, so no bleed trick is needed. */
+.cd-sortbar { position: sticky; top: 0; z-index: 50; background: var(--bg); border-bottom: 1px solid var(--border); padding: 10px 0; transition: box-shadow 200ms ease-out; }
+.cd-sortbar--stuck { box-shadow: 0 10px 24px -18px color-mix(in oklab, var(--text) 30%, transparent); }
 .cd-sortbar__row { display: flex; align-items: center; justify-content: flex-end; gap: 16px; }
 
 /* ── SORT DROPDOWN (KSD-style select) ── */
