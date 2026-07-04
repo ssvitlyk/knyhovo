@@ -9,34 +9,24 @@
 /* ---------- Layout (reused from approved homepage) ---------- */
 .page { max-width: var(--container-wide); margin: 0 auto; padding: 0 var(--gutter); }
 
-/* ---------- Header — frozen v1.0 pattern, ported verbatim from
-   Collections Landing Page.html § HEADER (the canonical source for this
-   chrome; every other page reuses it unchanged). ---------- */
-.site-header { display: flex; align-items: center; gap: var(--space-8); height: 72px; border-bottom: 1px solid var(--border); }
-.site-logo { height: 64px; display: block; margin-left: -9px; }
-.site-nav { display: flex; gap: 32px; margin-left: auto; }
-.nav-link { display: inline-flex; align-items: center; gap: 7px; font-size: 16px; font-weight: 500; color: var(--text-body); transition: color 140ms ease-out; text-decoration: none; }
-.nav-link:hover { color: var(--accent); }
-.nav-link--active { color: var(--accent); font-weight: 600; }
-.nav-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 19px; height: 19px; padding: 0 6px; border-radius: 999px; background: var(--kn-rose); color: #fff; font-size: 11px; font-weight: 700; line-height: 1; }
-.nav-badge--pop { animation: kn-heart-pop 300ms ease-out; }
-.site-actions { display: flex; align-items: center; gap: var(--space-5); margin-left: var(--space-8); margin-right: -9px; }
-.site-actions .kn-btn { height: 40px; padding: 0 20px; font-size: 14px; font-weight: 600; border-radius: 10px; }
-
-/* Theme-aware logo swap (server-rendered; toggled purely via CSS to stay SSR-safe) */
-.site-logo--dark { display: none; }
-[data-theme="dark"] .site-logo--light { display: none; }
-[data-theme="dark"] .site-logo--dark { display: block; }
-
-/* ---------- Footer (reused from approved homepage) ---------- */
+/* ---------- Footer (reused from approved homepage; compacted 2026-07-05) ---------- */
 .site-footer {
   border-top: 1px solid var(--border);
-  padding: var(--space-10) 0 var(--space-12);
-  display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3);
+  padding: var(--space-6) 0 var(--space-8);
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2);
 }
-.footer-logo { height: 36px; }
+.footer-logo { height: 32px; }
 .footer-line { font-size: var(--fs-sm); color: var(--text-body); }
 .footer-copy { font-size: var(--fs-xs); color: var(--text-muted); }
+/* Theme-aware logo swap (SSR-safe; the footer owns its own copy now that the
+   old header's .site-logo--* rules are gone). */
+.footer-logo--dark { display: none; }
+[data-theme="dark"] .footer-logo--light { display: none; }
+[data-theme="dark"] .footer-logo--dark { display: block; }
+@media (max-width: 768px) {
+  .site-footer { padding: var(--space-5) 0 var(--space-6); }
+  .footer-logo { height: 28px; }
+}
 
 /* ============================================================
    Search Results
@@ -162,20 +152,8 @@
    Desktop ≥768px: 2-column grid, horizontal BookCards, full pagination.
    Mobile  <768px: 1 column, vertical BookCards, full-width search, 44px touch targets. */
 @media (max-width: 900px) {
-  .site-nav { display: none; }
   .results__toolbar { flex-direction: column; align-items: flex-start; }
   .kn-empty__mascot { height: 180px; }
-}
-/* Compact mobile header — frozen v1.0 pattern, verbatim from the ≤768px block
-   of Collections Landing Page.html: smaller footprint, actions pinned to the
-   right edge (space-between), desktop-only «Увійти» hidden. Without this the
-   desktop-size logo + actions overflow narrow viewports and stretch .page. */
-@media (max-width: 768px) {
-  .site-header { height: 56px; justify-content: space-between; }
-  .site-logo { height: 42px; margin-left: -6px; }
-  .site-actions { margin-left: 0; gap: 10px; }
-  .site-actions .kn-theme-toggle { transform: scale(0.9); transform-origin: right center; }
-  .site-actions .kn-btn:not(.kn-btn--icon) { display: none; }
 }
 @media (max-width: 767px) {
   .results__grid { grid-template-columns: 1fr; max-width: none; }

@@ -12,8 +12,9 @@
       like the mock) — the clip technique would cut the `.cnav__mega` dropdown
       that hangs below the bar (see the 2026-07-04 nav patch in the design
       CLAUDE.md: never clip `.cnav__row`'s children).
-   2. The app header is not sticky, so the cnav pins at `top: 0` (source: 72px
-      desktop / 56px mobile under the mock's sticky header). */
+   2. The app header is now the sticky global `.knh` header (72px desktop /
+      56px mobile), matching the mock, so the cnav/sortbar pin below it at
+      `top: 72px` desktop / `top: 56px` mobile. */
 
 /* Rose accent used by the «Обране читачами» band + its card badge */
 [data-theme='light'] { --kn-rose: #BC5A57; --kn-heart-red: #E0332B; }
@@ -32,7 +33,7 @@
    on this page) — accent stays var(--accent) so it still reads as its own zone. ═══ */
 [data-theme='light'] .cnav { background: color-mix(in oklab, var(--brand-green) 7%, var(--bg)); }
 [data-theme='dark']  .cnav { background: color-mix(in oklab, var(--brand-green) 16%, var(--bg)); }
-.cnav { position: sticky; top: 0; z-index: 90; margin-inline: calc(50% - 50vw); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); box-shadow: 0 14px 28px -14px color-mix(in oklab, var(--text) 42%, transparent); transition: background 220ms ease-out, box-shadow 220ms ease-out; }
+.cnav { position: sticky; top: 72px; z-index: 90; margin-inline: calc(50% - 50vw); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); box-shadow: 0 14px 28px -14px color-mix(in oklab, var(--text) 42%, transparent); transition: background 220ms ease-out, box-shadow 220ms ease-out; }
 /* Stuck state — same tint, a touch stronger + soft drop shadow (no more dark-glass blur). */
 [data-theme='light'] .cnav--stuck { background: color-mix(in oklab, var(--brand-green) 11%, var(--bg)); }
 [data-theme='dark']  .cnav--stuck { background: color-mix(in oklab, var(--brand-green) 22%, var(--bg)); }
@@ -199,7 +200,7 @@
   -webkit-mask-image: radial-gradient(ellipse 60% 66% at 50% 50%, #000 46%, transparent 78%);
   mask-image: radial-gradient(ellipse 60% 66% at 50% 50%, #000 46%, transparent 78%);
 }
-/* Theme-aware mascot swap (SSR-safe, mirrors the .site-logo--light/--dark recipe). */
+/* Theme-aware mascot swap (SSR-safe, mirrors the .knh__logo--light/--dark recipe). */
 .feat-mascot--dark { display: none; }
 [data-theme='dark'] .feat-mascot--light { display: none; }
 [data-theme='dark'] .feat-mascot--dark { display: block; }
@@ -476,7 +477,7 @@
    would cut the absolutely-positioned .cd-sort__menu that hangs below it — the
    same never-clip rule as the cnav dropdowns. The bar's --bg already matches the
    body background, so no bleed trick is needed. */
-.cd-sortbar { position: sticky; top: 0; z-index: 50; background: var(--bg); border-bottom: 1px solid var(--border); padding: 10px 0; transition: box-shadow 200ms ease-out; }
+.cd-sortbar { position: sticky; top: 72px; z-index: 50; background: var(--bg); border-bottom: 1px solid var(--border); padding: 10px 0; transition: box-shadow 200ms ease-out; }
 .cd-sortbar--stuck { box-shadow: 0 10px 24px -18px color-mix(in oklab, var(--text) 30%, transparent); }
 .cd-sortbar__row { display: flex; align-items: center; justify-content: flex-end; gap: 16px; }
 
@@ -555,7 +556,7 @@
 }
 @media (max-width: 768px) {
   /* Collections nav → horizontal scroll ribbon under the compact header */
-  .cnav { top: 0; }
+  .cnav { top: 56px; }
   .cnav__row { height: 52px; gap: 6px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
   .cnav__row::-webkit-scrollbar { display: none; }
   .cnav__link { font-size: 14px; padding: 12px 10px; gap: 7px; }
@@ -645,7 +646,7 @@
   .cd-count { font-size: 13px; }
   .cd-info { padding: 4px 0 10px; }
   .cd-desc { font-size: 14px; -webkit-line-clamp: 3; margin-top: 6px; }
-  .cd-sortbar { padding: 10px 0; }
+  .cd-sortbar { top: 56px; padding: 10px 0; }
   .cd-sortbar__row { flex-direction: column; align-items: stretch; gap: 10px; }
   .cd-sort { width: 100%; }
   .cd-sort__btn { width: 100%; height: 48px; min-width: 0; font-size: 15px; }
