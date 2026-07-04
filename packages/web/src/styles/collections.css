@@ -6,12 +6,14 @@
    .site-footer) is NOT ported — the app owns that frozen chrome
    (search-results.css). Adaptations, both mandated by the app shell:
    1. The root layout wraps everything in a max-width `.page`, so full-bleed
-      ribbons (band tints, cnav ink bar, mega menu) use the homepage.css
-      technique: `box-shadow: 0 0 0 100vmax <color>` + `clip-path: inset(0 -100vmax)`.
-      The cnav bar gets an inner `.cnav__bar` so the clip never cuts the mega
-      panel that hangs below it.
+      band tints use the homepage.css technique: `box-shadow: 0 0 0 100vmax
+      <color>` + `clip-path: inset(0 -100vmax)`. The cnav instead breaks out
+      with `margin-inline: calc(50% - 50vw)` (body carries overflow-x: hidden,
+      like the mock) — the clip technique would cut the `.cnav__mega` dropdown
+      that hangs below the bar (see the 2026-07-04 nav patch in the design
+      CLAUDE.md: never clip `.cnav__row`'s children).
    2. The app header is not sticky, so the cnav pins at `top: 0` (source: 72px
-      under the mock's sticky header). */
+      desktop / 56px mobile under the mock's sticky header). */
 
 /* Rose accent used by the «Обране читачами» band + its card badge */
 [data-theme='light'] { --kn-rose: #BC5A57; --kn-heart-red: #E0332B; }
@@ -25,59 +27,85 @@
 }
 
 /* ═══ COLLECTIONS NAV — sticky section ribbon under the header, above the hero.
-   Dark ink bar in BOTH themes; only gold #F7B24D as accent. ═══ */
-.cnav { position: sticky; top: 0; z-index: 90; }
-.cnav__bar { background: #171411; border-top: 1px solid rgba(255,255,255,.08); border-bottom: 1px solid rgba(255,255,255,.08); transition: background 220ms ease-out, box-shadow 220ms ease-out; box-shadow: 0 0 0 100vmax #171411; clip-path: inset(0 -100vmax); }
-/* Stuck state — modern glassy pin: slight transparency + blur + soft drop shadow. */
-.cnav--stuck .cnav__bar { background: rgba(23,20,17,.94); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); box-shadow: 0 0 0 100vmax rgba(23,20,17,.94), 0 16px 32px -20px rgba(10,8,6,.55); }
-.cnav__row { display: flex; align-items: stretch; gap: 40px; height: 70px; }
-.cnav__link { position: relative; display: inline-flex; align-items: center; gap: 9px; padding: 12px 8px; font-family: var(--font-body); font-size: 15px; font-weight: 600; letter-spacing: .01em; white-space: nowrap; color: rgba(255,255,255,.72); text-decoration: none; background: none; border: none; cursor: pointer; transition: color 200ms ease-out; }
-.cnav__link svg { opacity: .5; flex-shrink: 0; transition: opacity 180ms ease-out; }
-.cnav__link:hover { color: #FFC261; }
+   2026-07-04: switched from a fixed dark ink bar to the page's own theme background
+   with a soft green tint (matches the --band--sage/green tint recipe used elsewhere
+   on this page) — accent stays var(--accent) so it still reads as its own zone. ═══ */
+[data-theme='light'] .cnav { background: color-mix(in oklab, var(--brand-green) 7%, var(--bg)); }
+[data-theme='dark']  .cnav { background: color-mix(in oklab, var(--brand-green) 16%, var(--bg)); }
+.cnav { position: sticky; top: 0; z-index: 90; margin-inline: calc(50% - 50vw); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); box-shadow: 0 14px 28px -14px color-mix(in oklab, var(--text) 42%, transparent); transition: background 220ms ease-out, box-shadow 220ms ease-out; }
+/* Stuck state — same tint, a touch stronger + soft drop shadow (no more dark-glass blur). */
+[data-theme='light'] .cnav--stuck { background: color-mix(in oklab, var(--brand-green) 11%, var(--bg)); }
+[data-theme='dark']  .cnav--stuck { background: color-mix(in oklab, var(--brand-green) 22%, var(--bg)); }
+.cnav--stuck { box-shadow: 0 18px 34px -14px color-mix(in oklab, var(--text) 50%, transparent); }
+.cnav__row { display: flex; align-items: stretch; height: 52px; }
+.cnav__links { display: flex; align-items: stretch; gap: 40px; flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; }
+.cnav__links::-webkit-scrollbar { display: none; }
+.cnav__genres-wrap { margin-left: 24px; flex-shrink: 0; }
+.cnav__link { position: relative; display: inline-flex; align-items: center; gap: 9px; padding: 12px 8px; font-family: var(--font-body); font-size: 15px; font-weight: 600; letter-spacing: .01em; white-space: nowrap; color: var(--text-muted); text-decoration: none; background: none; border: none; cursor: pointer; transition: color 200ms ease-out; }
+.cnav__link svg { opacity: .6; flex-shrink: 0; transition: opacity 180ms ease-out; }
+.cnav__link:hover { color: var(--accent); }
 .cnav__link:hover svg { opacity: .9; }
-.cnav__link--active { color: #F7B24D; }
+.cnav__link--active { color: var(--accent); }
 .cnav__link--active svg { opacity: 1; }
 /* Active underline — short (~48% of the label), centered, 200ms grow-in. */
-.cnav__link::after { content: ''; position: absolute; left: 50%; bottom: 0; width: 48%; height: 2px; border-radius: 2px 2px 0 0; background: #F7B24D; opacity: 0; transform: translateX(-50%) scaleX(.45); transform-origin: 50% 100%; transition: opacity 200ms ease-out, transform 200ms ease-out; }
+.cnav__link::after { content: ''; position: absolute; left: 50%; bottom: 0; width: 48%; height: 2px; border-radius: 2px 2px 0 0; background: var(--accent); opacity: 0; transform: translateX(-50%) scaleX(.45); transform-origin: 50% 100%; transition: opacity 200ms ease-out, transform 200ms ease-out; }
 .cnav__link--active::after { opacity: 1; transform: translateX(-50%) scaleX(1); }
 .cnav__chev { display: inline-flex; transition: transform 180ms ease-out; }
-.cnav__link[aria-expanded='true'] { color: #F7B24D; }
+.cnav__link[aria-expanded='true'] { color: var(--accent); }
 .cnav__link[aria-expanded='true'] svg { opacity: 1; }
 .cnav__link[aria-expanded='true'] .cnav__chev { transform: rotate(180deg); }
 
-/* Жанри mega menu — a full-width typographic panel, not a small dropdown. */
-.cnav__mega { position: absolute; top: 100%; left: 0; right: 0; background: rgba(23,20,17,.97); -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); border-bottom: 1px solid rgba(255,255,255,.08); box-shadow: 0 0 0 100vmax rgba(23,20,17,.97), 0 44px 80px -30px rgba(10,8,6,.65); clip-path: inset(0 -100vmax); animation: cnav-mega-in 200ms ease-out both; }
+/* Жанри dropdown — compact themed card anchored under the trigger (KSD-style),
+   NOT a full-bleed dark slab: bounded width, rounded corners, follows the page theme. */
+.cnav__genres-wrap { position: relative; display: flex; align-items: stretch; }
+.cnav__mega {
+  position: absolute; top: calc(100% + 10px); right: 0;
+  width: max-content; min-width: 480px; max-width: min(680px, calc(100vw - 64px));
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+  box-shadow: 0 28px 56px -18px color-mix(in oklab, var(--text) 45%, transparent), 0 8px 20px -6px color-mix(in oklab, var(--text) 22%, transparent);
+  animation: cnav-mega-in 180ms ease-out both;
+  z-index: 95;
+}
 @keyframes cnav-mega-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
-.cnav__mega-inner { padding-top: 32px; }
-.cnav__mega-cols { column-count: 3; column-gap: 56px; }
-.cnav__genre { display: block; break-inside: avoid; padding: 9px 0; font-family: var(--font-display); font-size: 18px; line-height: 1.3; color: rgba(255,255,255,.78); text-decoration: none; transition: color 180ms ease-out, transform 180ms ease-out; }
-.cnav__genre:hover { color: #F7B24D; transform: translateX(4px); }
-.cnav__mega-foot { display: flex; margin-top: 24px; padding: 16px 0 22px; border-top: 1px solid rgba(255,255,255,.08); }
-.cnav__mega-all { display: inline-flex; align-items: center; gap: 9px; font-size: 15px; font-weight: 600; color: #F7B24D; text-decoration: none; transition: gap 180ms ease-out; }
-.cnav__mega-all:hover { gap: 14px; }
+.cnav__mega-inner { padding: 24px 28px 6px; }
+.cnav__mega-cols { column-count: 3; column-gap: 32px; }
+.cnav__genre { display: block; break-inside: avoid; margin: 2px 0; padding: 6px 10px; border-radius: 8px; font-family: var(--font-body); font-weight: 500; font-size: 14.5px; line-height: 1.4; color: var(--text); text-decoration: none; transition: color 160ms ease-out, transform 160ms ease-out, background 160ms ease-out, box-shadow 160ms ease-out; }
+.cnav__genre:hover {
+  color: var(--brand-green);
+  transform: translateX(3px);
+  background: color-mix(in oklab, var(--brand-green) 12%, transparent);
+  box-shadow: 0 0 0 8px color-mix(in oklab, var(--brand-green) 12%, transparent);
+}
+[data-theme='dark'] .cnav__genre:hover { color: #7FC9A3; }
+.cnav__mega-foot { display: flex; margin-top: 14px; padding: 14px 28px 18px; border-top: 1px solid var(--border); }
+.cnav__mega-all { display: inline-flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; transition: gap 180ms ease-out, opacity 140ms ease-out; }
+.cnav__mega-all:hover { gap: 14px; opacity: .82; }
 
-/* Mobile bottom sheet («Жанри») — dark, ~80% viewport height, searchable. */
-.cnav-sheet-backdrop { position: fixed; inset: 0; z-index: 200; background: rgba(15,14,13,.55); animation: cnav-fade-in 220ms ease-out both; }
+/* Mobile bottom sheet («Жанри») — now theme-aware (light/dark), same tokens,
+   radii, weights and hover language as the desktop mega menu (§ above) so the
+   two feel like one component, just in a touch-friendly sheet shell. */
+.cnav-sheet-backdrop { position: fixed; inset: 0; z-index: 200; background: color-mix(in oklab, var(--text) 45%, transparent); animation: cnav-fade-in 220ms ease-out both; }
 @keyframes cnav-fade-in { from { opacity: 0; } }
-.cnav-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 201; height: 80vh; height: 80dvh; display: flex; flex-direction: column; background: #171411; border-radius: 22px 22px 0 0; border-top: 1px solid rgba(255,255,255,.1); box-shadow: 0 -24px 64px rgba(0,0,0,.45); animation: cnav-sheet-up 300ms cubic-bezier(.22,.9,.32,1) both; }
+.cnav-sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 201; height: 80vh; height: 80dvh; display: flex; flex-direction: column; background: var(--surface); border-radius: 22px 22px 0 0; border-top: 1px solid var(--border); box-shadow: 0 -24px 64px -12px color-mix(in oklab, var(--text) 45%, transparent); animation: cnav-sheet-up 300ms cubic-bezier(.22,.9,.32,1) both; }
 @keyframes cnav-sheet-up { from { transform: translateY(24%); opacity: .4; } to { transform: none; opacity: 1; } }
-.cnav-sheet__grab { width: 44px; height: 4px; border-radius: 999px; background: rgba(255,255,255,.22); margin: 10px auto 2px; flex-shrink: 0; }
+.cnav-sheet__grab { width: 44px; height: 4px; border-radius: 999px; background: var(--border-strong); margin: 10px auto 2px; flex-shrink: 0; }
 .cnav-sheet__head { display: flex; align-items: center; justify-content: space-between; padding: 14px 22px 4px; flex-shrink: 0; }
-.cnav-sheet__title { font-family: var(--font-display); font-size: 26px; font-weight: 700; color: #EADFCF; }
-.cnav-sheet__close { width: 36px; height: 36px; border-radius: 50%; border: none; background: rgba(255,255,255,.08); color: rgba(255,255,255,.7); display: flex; align-items: center; justify-content: center; cursor: pointer; }
-.cnav-sheet__search { display: flex; align-items: center; gap: 10px; margin: 12px 22px 4px; padding: 0 14px; height: 46px; border-radius: 12px; background: rgba(255,255,255,.07); border: 1px solid rgba(255,255,255,.1); color: rgba(255,255,255,.55); flex-shrink: 0; }
-.cnav-sheet__search input { flex: 1; height: 100%; background: none; border: none; outline: none; color: #EADFCF; font-size: 16px; font-family: var(--font-body); min-width: 0; }
-.cnav-sheet__search input::placeholder { color: rgba(255,255,255,.4); }
+.cnav-sheet__title { font-family: var(--font-display); font-size: 22px; font-weight: 700; color: var(--text); }
+.cnav-sheet__close { width: 36px; height: 36px; border-radius: 50%; border: none; background: var(--surface-accent); color: var(--text-muted); display: flex; align-items: center; justify-content: center; cursor: pointer; }
+.cnav-sheet__search { display: flex; align-items: center; gap: 10px; margin: 12px 22px 4px; padding: 0 14px; height: 46px; border-radius: 12px; background: var(--surface-accent); border: 1px solid var(--border); color: var(--text-muted); flex-shrink: 0; }
+.cnav-sheet__search input { flex: 1; height: 100%; background: none; border: none; outline: none; color: var(--text); font-size: 15px; font-family: var(--font-body); min-width: 0; }
+.cnav-sheet__search input::placeholder { color: var(--text-faint); }
 .cnav-sheet__list { flex: 1; overflow-y: auto; padding: 8px 22px 12px; overscroll-behavior: contain; }
-.cnav-sheet__item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 15px 2px; font-family: var(--font-display); font-size: 18px; color: rgba(255,255,255,.82); text-decoration: none; border-bottom: 1px solid rgba(255,255,255,.07); }
+.cnav-sheet__item { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 14px 2px; font-family: var(--font-body); font-weight: 500; font-size: 16px; color: var(--text); text-decoration: none; border-bottom: 1px solid var(--border); transition: color 160ms ease-out; }
 .cnav-sheet__item:last-child { border-bottom: none; }
-.cnav-sheet__item svg { color: rgba(255,255,255,.28); flex-shrink: 0; }
-.cnav-sheet__item:active { color: #F7B24D; }
-.cnav-sheet__empty { padding: 28px 2px; font-size: 14.5px; color: rgba(255,255,255,.5); }
-.cnav-sheet__foot { padding: 14px 22px calc(16px + env(safe-area-inset-bottom)); border-top: 1px solid rgba(255,255,255,.09); flex-shrink: 0; }
-.cnav-sheet__all { display: flex; align-items: center; justify-content: center; gap: 9px; height: 50px; border-radius: 12px; background: #F7B24D; color: #171411; font-size: 16px; font-weight: 700; text-decoration: none; }
+.cnav-sheet__item svg { color: var(--text-faint); flex-shrink: 0; }
+.cnav-sheet__item:active, .cnav-sheet__item:hover { color: var(--accent); }
+.cnav-sheet__empty { padding: 28px 2px; font-size: 14.5px; color: var(--text-muted); }
+.cnav-sheet__foot { padding: 14px 22px calc(16px + env(safe-area-inset-bottom)); border-top: 1px solid var(--border); flex-shrink: 0; }
+.cnav-sheet__all { display: flex; align-items: center; justify-content: center; gap: 9px; height: 50px; border-radius: 12px; background: var(--accent); color: var(--text-on-accent); font-size: 15px; font-weight: 700; text-decoration: none; transition: opacity 140ms ease-out; }
+.cnav-sheet__all:hover { opacity: .85; }
 @media (prefers-reduced-motion: reduce) { .cnav__mega, .cnav-sheet, .cnav-sheet-backdrop { animation: none; } }
-@media (max-width: 1119px) { .cnav__row { gap: 18px; } }
+@media (max-width: 1119px) { .cnav__links { gap: 18px; } }
 
 /* ── SECTION RHYTHM ─────────────────────────────
    Every section (plain or banded) shares the SAME padding-block, so the
@@ -100,9 +128,9 @@
 
 /* ── SECTION HEADER ─────────────────────────── */
 .sec-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
-.sec-head__left { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
-.sec-eyebrow { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); }
-.sec-eyebrow--rose { display: inline-flex; align-items: center; gap: 7px; }
+.sec-head__left { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.sec-eyebrow { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); line-height: 1.6; flex-wrap: wrap; row-gap: 2px; }
+.sec-eyebrow--rose { display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap; row-gap: 2px; }
 .sec-title { font-family: var(--font-display); font-size: 1.85rem; font-weight: 700; line-height: 1.14; letter-spacing: -0.01em; }
 .sec-sub { font-size: 14.5px; color: var(--text-muted); line-height: 1.55; max-width: 60ch; margin-top: 6px; text-wrap: pretty; }
 .sec-all { font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; white-space: nowrap; transition: opacity 140ms; padding-bottom: 3px; }
@@ -334,45 +362,6 @@
 .fresh-card:hover .fresh-card__stack img { transform: translateY(-2px); }
 .fresh-card__count { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
 
-/* ── ЗА ЖАНРОМ nav grid (§6.5) ───────────────────────────────
-   The frozen source ships the .genre-grid/.genre-card recipe in its ≤768px
-   block only (the desktop grid is described in the spec, not the mock). The
-   desktop rules below extend the exact same card recipe to a 4×2 grid — the
-   one sanctioned build-out on this page. */
-.genre-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
-.genre-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  text-decoration: none;
-  color: inherit;
-  transition: box-shadow 160ms ease-out, border-color 160ms, background 160ms;
-}
-.genre-card:hover {
-  background: color-mix(in oklab, var(--accent) 5%, var(--surface));
-  border-color: color-mix(in oklab, var(--accent) 30%, var(--border));
-  box-shadow: var(--shadow-sm);
-}
-.genre-card:active { box-shadow: var(--shadow-sm); }
-.genre-card__icon {
-  width: 36px; height: 36px;
-  border-radius: 8px;
-  flex-shrink: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: color-mix(in oklab, var(--accent) 12%, var(--surface));
-  color: var(--accent);
-}
-.genre-card__body { flex: 1; min-width: 0; }
-.genre-card__name { font-size: 14px; font-weight: 700; margin-bottom: 2px; }
-.genre-card__count { font-size: 12px; color: var(--text-muted); }
-.genre-card__arrow { color: var(--text-muted); font-size: 14px; opacity: .5; display: inline-flex; }
-
 /* ── НЕДООЦІНЕНІ КНИГИ (editorial hidden-gems band — green-wash panel + fanned cover trio) ── */
 .gems-band {
   position: relative; padding: 40px 48px; min-height: 300px; overflow: hidden;
@@ -573,10 +562,6 @@
   .shelf-more__label { font-size: 12px; }
   .shelf-more__hint { font-size: 10.5px; }
   .mood-grid { grid-template-columns: 1fr; }
-
-  /* Genre grid — the source ≤768px recipe, on a 2-up track so the icon+name
-     cards keep their touch size (see the desktop build-out note above). */
-  .genre-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
 
   /* Editorial collection cards («Добірки редакції») — full-width culmination,
      kept rich (not collapsed to rows) so they read as a visual accent on mobile. */

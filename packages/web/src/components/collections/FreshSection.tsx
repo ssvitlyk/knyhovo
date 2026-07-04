@@ -43,8 +43,8 @@ export function FreshSection({ weekly }: FreshSectionProps): React.JSX.Element |
             <div className="fresh-card__desc">{collection.description}</div>
             <div className="fresh-card__covers">
               <div className="fresh-card__stack">
-                {covers.map((cover) => (
-                  <img key={cover.url} src={cover.url} alt={cover.title} loading="lazy" />
+                {covers.map((cover, i) => (
+                  <img key={`${cover.url}-${i}`} src={cover.url} alt={cover.title} loading="lazy" />
                 ))}
               </div>
               <span className="fresh-card__count">

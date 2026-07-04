@@ -8,7 +8,6 @@ import { CollectionsNav } from '@/components/collections/CollectionsNav';
 import { FeaturedCard } from '@/components/collections/FeaturedCard';
 import { BookSection, SecDivider } from '@/components/collections/BookSection';
 import { MoodSection } from '@/components/collections/MoodSection';
-import { GenreGrid } from '@/components/collections/GenreGrid';
 import { FreshSection, type WeeklyCardData } from '@/components/collections/FreshSection';
 import { GemsBand } from '@/components/collections/GemsBand';
 import { BooksGridRetry } from '@/components/collections/BooksGrid';
@@ -49,8 +48,9 @@ function shelfItems(shelf: ShelfKind, books: readonly CollectionBookCardDto[]): 
 }
 
 /**
- * `/dobirky` — the Collections hub (SSR). Section order is frozen §6:
- * hero → Обране читачами → mood band → Популярне зараз → divider + За жанром →
+ * `/dobirky` — the Collections hub (SSR). Section order is frozen §6 minus the
+ * «За жанром» grid (removed 2026-07-04, user decision — genres live in the nav):
+ * hero → Обране читачами → mood band → Популярне зараз →
  * divider + Новинки місяця → divider + Добірки редакції → Найбільші знижки →
  * Недооцінені книги → footer. Books come from per-collection `:slug/books`
  * calls; the greedy allocate keeps every book on exactly one shelf.
@@ -137,11 +137,10 @@ export default async function DobirkyPage(): Promise<React.JSX.Element> {
           items={shelfItems('popular', alloc.popular ?? [])}
         />
 
-        {/* 5 · Divider → За жанром — navigation grid (structural break) */}
-        <SecDivider />
-        <GenreGrid genres={hub.genres} />
-
-        {/* 6 · Divider → Новинки місяця — new-arrivals shelf (NO description) */}
+        {/* 6 · Divider → Новинки місяця — new-arrivals shelf (NO description).
+            «За жанром» grid removed 2026-07-04 (user decision): genre navigation
+            lives only in the sticky nav's «Жанри» dropdown/sheet, which links
+            straight to /zhanry/:slug. */}
         <SecDivider />
         <BookSection
           id="novynky"

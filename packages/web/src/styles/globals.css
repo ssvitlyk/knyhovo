@@ -20,3 +20,9 @@
 @import './magic-link.css';
 @import './profile.css';
 @import './collections.css';
+
+/* Mock parity: every frozen page sets body { overflow-x: hidden } so full-bleed
+   breakouts (e.g. the collections cnav's margin-inline: calc(50% - 50vw)) never
+   create a horizontal scrollbar. Overflow-x propagates from body to the viewport,
+   so position: sticky descendants keep working. */
+body { overflow-x: hidden; }

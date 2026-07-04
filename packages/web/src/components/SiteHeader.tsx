@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
 import { ThemeToggle } from '@/components/ds/ThemeToggle';
+import { SiteNav } from '@/components/SiteNav';
 import { HeaderAuthActions, type HeaderUser } from '@/components/auth/HeaderAuthActions';
 import { me } from '@/lib/api/auth';
 
@@ -27,26 +28,7 @@ export async function SiteHeader(): Promise<React.JSX.Element> {
         <img className="site-logo site-logo--light" src="/logo/knyhovo-logo-light.png" alt="Knyhovo" />
         <img className="site-logo site-logo--dark" src="/logo/knyhovo-logo-dark.png" alt="Knyhovo" />
       </Link>
-      <nav className="site-nav">
-        <Link href="/" className="nav-link">
-          Головна
-        </Link>
-        <a href="/search" className="nav-link nav-link--active">
-          Каталог
-        </a>
-        <Link href="/dobirky" className="nav-link">
-          Добірки
-        </Link>
-        <a href="/wishlist" className="nav-link">
-          Бажанки
-        </a>
-        <a href="#" className="nav-link">
-          Знижки
-        </a>
-        <a href="#" className="nav-link">
-          Про нас
-        </a>
-      </nav>
+      <SiteNav />
       <div className="site-actions">
         <ThemeToggle />
         <HeaderAuthActions user={user} />
