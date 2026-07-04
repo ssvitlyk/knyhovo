@@ -31,6 +31,14 @@ enum Currency {
   @@map("currency")
 }
 
+enum CollectionType {
+  DYNAMIC   @map("dynamic")
+  EDITORIAL @map("editorial")
+  TAXONOMIC @map("taxonomic")
+
+  @@map("collection_type")
+}
+
 enum Availability {
   IN_STOCK     @map("in-stock")
   OUT_OF_STOCK @map("out-of-stock")
@@ -109,13 +117,53 @@ model CanonicalBook {
   author    String
   /// null when no provider has supplied an ISBN for this book
   isbn      String?
+  /// FK to a taxonomic `Collection` row (type = TAXONOMIC); null when the book
+  /// has not been assigned to a genre. Column name kept as `genre_id` for
+  /// migration simplicity — genres are now just Collection rows.
+  genreId   String?  @map("genre_id")
   createdAt DateTime @default(now()) @map("created_at")
 
   listings      ProviderListing[]
   wishlistItems WishlistItem[]
+  genre         Collection? @relation("CanonicalBookGenre", fields: [genreId], references: [id])
 
   @@index([isbn])
+  @@index([genreId])
   @@map("canonical_books")
+}
+
+model Collection {
+  id           String         @id @default(uuid())
+  slug         String         @unique
+  type         CollectionType
+  name         String
+  description  String
+  /// Optional decorative icon slug (e.g. lucide icon name); shown in UI chips/cards.
+  icon         String?
+  displayOrder Int            @default(0) @map("display_order")
+  isActive     Boolean        @default(true) @map("is_active")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  items CollectionItem[]
+  /// Books assigned to this collection when it's a TAXONOMIC (genre) row.
+  genreBooks CanonicalBook[] @relation("CanonicalBookGenre")
+
+  @@index([type, displayOrder])
+  @@map("collections")
+}
+
+model CollectionItem {
+  id              String @id @default(uuid())
+  collectionId    String @map("collection_id")
+  canonicalBookId String @map("canonical_book_id")
+  sortOrder       Int    @map("sort_order")
+
+  collection Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+
+  @@unique([collectionId, canonicalBookId])
+  @@index([collectionId, sortOrder])
+  @@map("collection_items")
 }
 
 model ProviderListing {

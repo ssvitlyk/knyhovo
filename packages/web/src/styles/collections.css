@@ -1,0 +1,659 @@
+/* Knyhovo web — Collections («Добірки») Landing v2.0 + Collection Details v1.0.
+   Ported 1:1 from the frozen `design-import/incoming/Collections Landing Page.html`
+   and `Collection Details Page.html` <style> blocks (FINAL DESIGN FREEZE
+   2026-07-03, see design-import/incoming/CLAUDE.md). Shared blocks (.bkc,
+   badges, fresh-card, reveal) appear once. Site chrome (.page/.site-header/
+   .site-footer) is NOT ported — the app owns that frozen chrome
+   (search-results.css). Adaptations, both mandated by the app shell:
+   1. The root layout wraps everything in a max-width `.page`, so full-bleed
+      band tints use the homepage.css technique: `box-shadow: 0 0 0 100vmax
+      <color>` + `clip-path: inset(0 -100vmax)`. The cnav instead breaks out
+      with `margin-inline: calc(50% - 50vw)` (body carries overflow-x: hidden,
+      like the mock) — the clip technique would cut the `.cnav__mega` dropdown
+      that hangs below the bar (see the 2026-07-04 nav patch in the design
+      CLAUDE.md: never clip `.cnav__row`'s children).
+   2. The app header is now the sticky global `.knh` header (72px desktop /
+      56px mobile), matching the mock, so the cnav/sortbar pin below it at
+      `top: 72px` desktop / `top: 56px` mobile. */
+
+/* Rose accent used by the «Обране читачами» band + its card badge */
+[data-theme='light'] { --kn-rose: #BC5A57; --kn-heart-red: #E0332B; }
+[data-theme='dark']  { --kn-rose: #E48E8A; --kn-heart-red: #FF5449; }
+/* Dark-theme body-text brightness (+~6%) — headings (--text) untouched.
+   Page-scoped: applied via the .dobirky-scope wrapper so other pages keep the
+   raw DS tokens (in the mock this stylesheet only loaded on these pages). */
+[data-theme='dark'] .dobirky-scope {
+  --text-body: color-mix(in oklab, white 6%, #D6CABA);
+  --text-muted: color-mix(in oklab, white 7%, #9A8E7E);
+}
+
+/* ═══ COLLECTIONS NAV — sticky section ribbon under the header, above the hero.
+   2026-07-04: switched from a fixed dark ink bar to the page's own theme background
+   with a soft green tint (matches the --band--sage/green tint recipe used elsewhere
+   on this page) — accent stays var(--accent) so it still reads as its own zone. ═══ */
+[data-theme='light'] .cnav { background: color-mix(in oklab, var(--brand-green) 7%, var(--bg)); }
+[data-theme='dark']  .cnav { background: color-mix(in oklab, var(--brand-green) 16%, var(--bg)); }
+.cnav { position: sticky; top: 72px; z-index: 90; margin-inline: calc(50% - 50vw); border-top: 1px solid var(--border); border-bottom: 1px solid var(--border); box-shadow: 0 14px 28px -14px color-mix(in oklab, var(--text) 42%, transparent); transition: background 220ms ease-out, box-shadow 220ms ease-out; }
+/* Stuck state — same tint, a touch stronger + soft drop shadow (no more dark-glass blur). */
+[data-theme='light'] .cnav--stuck { background: color-mix(in oklab, var(--brand-green) 11%, var(--bg)); }
+[data-theme='dark']  .cnav--stuck { background: color-mix(in oklab, var(--brand-green) 22%, var(--bg)); }
+.cnav--stuck { box-shadow: 0 18px 34px -14px color-mix(in oklab, var(--text) 50%, transparent); }
+.cnav__row { display: flex; align-items: stretch; height: 52px; }
+.cnav__links { display: flex; align-items: stretch; gap: 40px; flex: 1 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; -webkit-overflow-scrolling: touch; }
+.cnav__links::-webkit-scrollbar { display: none; }
+.cnav__genres-wrap { margin-left: 24px; flex-shrink: 0; }
+.cnav__link { position: relative; display: inline-flex; align-items: center; gap: 9px; padding: 12px 8px; font-family: var(--font-body); font-size: 15px; font-weight: 600; letter-spacing: .01em; white-space: nowrap; color: var(--text-muted); text-decoration: none; background: none; border: none; cursor: pointer; transition: color 200ms ease-out; }
+.cnav__link svg { opacity: .6; flex-shrink: 0; transition: opacity 180ms ease-out; }
+.cnav__link:hover { color: var(--accent); }
+.cnav__link:hover svg { opacity: .9; }
+.cnav__link--active { color: var(--accent); }
+.cnav__link--active svg { opacity: 1; }
+/* Active underline — short (~48% of the label), centered, 200ms grow-in. */
+.cnav__link::after { content: ''; position: absolute; left: 50%; bottom: 0; width: 48%; height: 2px; border-radius: 2px 2px 0 0; background: var(--accent); opacity: 0; transform: translateX(-50%) scaleX(.45); transform-origin: 50% 100%; transition: opacity 200ms ease-out, transform 200ms ease-out; }
+.cnav__link--active::after { opacity: 1; transform: translateX(-50%) scaleX(1); }
+.cnav__chev { display: inline-flex; transition: transform 180ms ease-out; }
+.cnav__link[aria-expanded='true'] { color: var(--accent); }
+.cnav__link[aria-expanded='true'] svg { opacity: 1; }
+.cnav__link[aria-expanded='true'] .cnav__chev { transform: rotate(180deg); }
+
+/* Жанри dropdown — compact themed card anchored under the trigger (KSD-style),
+   NOT a full-bleed dark slab: bounded width, rounded corners, follows the page theme. */
+.cnav__genres-wrap { position: relative; display: flex; align-items: stretch; }
+.cnav__mega {
+  position: absolute; top: calc(100% + 10px); right: 0;
+  width: max-content; min-width: 480px; max-width: min(680px, calc(100vw - 64px));
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+  box-shadow: 0 28px 56px -18px color-mix(in oklab, var(--text) 45%, transparent), 0 8px 20px -6px color-mix(in oklab, var(--text) 22%, transparent);
+  animation: cnav-mega-in 180ms ease-out both;
+  z-index: 95;
+}
+@keyframes cnav-mega-in { from { opacity: 0; transform: translateY(-6px); } to { opacity: 1; transform: none; } }
+.cnav__mega-inner { padding: 24px 28px 6px; }
+.cnav__mega-cols { column-count: 3; column-gap: 32px; }
+.cnav__genre { display: block; break-inside: avoid; margin: 2px 0; padding: 6px 10px; border-radius: 8px; font-family: var(--font-body); font-weight: 500; font-size: 14.5px; line-height: 1.4; color: var(--text); text-decoration: none; transition: color 160ms ease-out, transform 160ms ease-out, background 160ms ease-out, box-shadow 160ms ease-out; }
+.cnav__genre:hover {
+  color: var(--brand-green);
+  transform: translateX(3px);
+  background: color-mix(in oklab, var(--brand-green) 12%, transparent);
+  box-shadow: 0 0 0 8px color-mix(in oklab, var(--brand-green) 12%, transparent);
+}
+[data-theme='dark'] .cnav__genre:hover { color: #7FC9A3; }
+.cnav__mega-foot { display: flex; margin-top: 14px; padding: 14px 28px 18px; border-top: 1px solid var(--border); }
+.cnav__mega-all { display: inline-flex; align-items: center; gap: 9px; font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; transition: gap 180ms ease-out, opacity 140ms ease-out; }
+.cnav__mega-all:hover { gap: 14px; opacity: .82; }
+
+/* The old mobile bottom sheet («Жанри», .cnav-sheet*) was removed by the
+   2026-07-04 mobile-nav patch — genres now open an anchored dropdown (below). */
+@media (prefers-reduced-motion: reduce) { .cnav__mega { animation: none; } }
+@media (max-width: 1119px) { .cnav__links { gap: 18px; } }
+
+/* ── MOBILE-ONLY nav (≤768px) ─────────────────────────────
+   Two dropdown triggers replace the horizontal scroll row. Desktop .cnav__row /
+   .cnav__links / .cnav__mega above are untouched — this component branches in JS
+   (isMobile), so these rules only ever apply to markup that JS renders on mobile. */
+@media (max-width: 768px) {
+  .cnav__mobrow { display: flex; align-items: center; gap: 10px; height: 52px; width: 100%; }
+  .cnav__sec-wrap { position: relative; flex: 1 1 0; min-width: 0; }
+  .cnav__secbtn {
+    display: flex; align-items: center; gap: 8px; height: 40px;
+    padding: 0 12px; border-radius: 10px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-family: var(--font-body);
+    font-size: 13.5px; font-weight: 600; letter-spacing: .01em; cursor: pointer;
+    transition: color 140ms ease-out, border-color 140ms ease-out, background 140ms ease-out;
+  }
+  /* Two equal-width buttons in one row: the standalone «Жанри» trigger and the
+     section-switcher wrapper each take half; the button inside the wrapper fills it. */
+  .cnav__mobrow > .cnav__secbtn { flex: 1 1 0; min-width: 0; }
+  .cnav__sec-wrap .cnav__secbtn { width: 100%; }
+  .cnav__secbtn svg:first-child { opacity: .65; flex-shrink: 0; }
+  .cnav__secbtn-label { flex: 1; min-width: 0; text-align: left; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .cnav__secbtn .cnav__chev { flex-shrink: 0; opacity: .7; }
+  .cnav__secbtn:hover { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 30%, var(--border)); }
+  .cnav__secbtn:hover svg:first-child { opacity: .9; }
+  .cnav__secbtn[aria-expanded='true'] { color: var(--accent); border-color: color-mix(in oklab, var(--accent) 40%, var(--border)); background: color-mix(in oklab, var(--accent) 6%, var(--surface)); }
+  .cnav__secbtn[aria-expanded='true'] svg:first-child { opacity: 1; }
+  .cnav__secbtn[aria-expanded='true'] .cnav__chev { transform: rotate(180deg); opacity: 1; }
+
+  .cnav__secmenu {
+    position: absolute; top: calc(100% + 8px); left: 0; z-index: 95;
+    width: max-content; min-width: 100%; max-width: min(300px, calc(100vw - 40px));
+    background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+    box-shadow: var(--shadow-lg); padding: 7px; animation: cnav-mega-in 160ms ease-out both;
+  }
+  /* Genres dropdown — same anatomy as the section menu, plus search + scroll + footer.
+     Anchored to the RIGHT edge of its (right-half) trigger so it never overflows. */
+  .cnav__secmenu--genres { left: auto; right: 0; display: flex; flex-direction: column; min-width: min(260px, calc(100vw - 40px)); }
+  .cnav__secmenu-search { display: flex; align-items: center; gap: 8px; margin: 3px 3px 6px; padding: 0 11px; height: 40px; border-radius: 10px; background: var(--surface-accent); border: 1px solid var(--border); color: var(--text-muted); flex-shrink: 0; transition: border-color 140ms ease-out, box-shadow 140ms ease-out; }
+  .cnav__secmenu-search:focus-within { border-color: var(--accent); box-shadow: var(--focus-ring); }
+  .cnav__secmenu-search svg { flex-shrink: 0; }
+  .cnav__secmenu-search input { flex: 1; height: 100%; background: none; border: none; outline: none; box-shadow: none; color: var(--text); font-size: 14.5px; font-family: var(--font-body); min-width: 0; }
+  .cnav__secmenu-search input:focus, .cnav__secmenu-search input:focus-visible { outline: none; box-shadow: none; }
+  .cnav__secmenu-search input::placeholder { color: var(--text-faint); }
+  .cnav__secmenu-scroll { flex: 1; overflow-y: auto; max-height: min(46vh, 380px); overscroll-behavior: contain; }
+  .cnav__secmenu-empty { padding: 12px 11px; font-family: var(--font-body); font-size: 13.5px; color: var(--text-faint); }
+  .cnav__secmenu-all { display: flex; align-items: center; justify-content: center; gap: 6px; margin-top: 6px; padding: 10px 11px; border-top: 1px solid var(--border); border-radius: 0 0 9px 9px; font-family: var(--font-body); font-weight: 600; font-size: 13.5px; color: var(--accent); text-decoration: none; flex-shrink: 0; }
+  .cnav__secmenu-all:hover { background: color-mix(in oklab, var(--accent) 8%, var(--surface)); }
+  .cnav__secmenu-item { display: flex; align-items: center; gap: 10px; padding: 10px 11px; border-radius: 9px; font-family: var(--font-body); font-weight: 500; font-size: 14.5px; color: var(--text); text-decoration: none; transition: background 140ms ease-out, color 140ms ease-out; }
+  .cnav__secmenu-item svg { opacity: .65; flex-shrink: 0; }
+  .cnav__secmenu-item:hover { background: color-mix(in oklab, var(--accent) 8%, var(--surface)); color: var(--accent); }
+  .cnav__secmenu-item:hover svg { opacity: 1; }
+  .cnav__secmenu-item--active { color: var(--accent); font-weight: 700; background: color-mix(in oklab, var(--accent) 9%, var(--surface)); }
+  .cnav__secmenu-item--active svg { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) { .cnav__secmenu { animation: none; } }
+}
+
+/* ── SECTION RHYTHM ─────────────────────────────
+   Every section (plain or banded) shares the SAME padding-block, so the
+   whitespace between any two adjacent sections is always identical. */
+.sec { padding-block: 48px; }
+.sec--hero { padding-block: 0; }
+/* Each shelf fades into its own section background; --shelf-fade rides the band so the
+   right-edge fade always matches the surface behind it (plain sections default to --bg).
+   Full-bleed tint via the homepage box-shadow + clip-path technique. */
+.band { padding-block: 48px; background: var(--band-bg); --shelf-fade: var(--band-bg); box-shadow: 0 0 0 100vmax var(--band-bg); clip-path: inset(0 -100vmax); }
+[data-theme='light'] .band--rose  { --band-bg: color-mix(in oklab, var(--kn-rose) 6.5%, var(--bg)); }
+[data-theme='dark']  .band--rose  { --band-bg: color-mix(in oklab, var(--kn-rose) 11%, var(--bg)); }
+[data-theme='light'] .band--green { --band-bg: color-mix(in oklab, var(--brand-green) 6%, var(--bg)); }
+[data-theme='dark']  .band--green { --band-bg: color-mix(in oklab, var(--brand-green) 13%, var(--bg)); }
+.band--warm { --band-bg: var(--surface-accent); }
+[data-theme='light'] .band--sage { --band-bg: color-mix(in oklab, var(--brand-green) 5%, var(--bg)); }
+[data-theme='dark']  .band--sage { --band-bg: color-mix(in oklab, var(--brand-green) 10%, var(--bg)); }
+[data-theme='light'] .band--cool { --band-bg: color-mix(in oklab, #64748b 5.5%, var(--bg)); }
+[data-theme='dark']  .band--cool { --band-bg: color-mix(in oklab, #94a3b8 8%, var(--bg)); }
+
+/* ── SECTION HEADER ─────────────────────────── */
+.sec-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
+.sec-head__left { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+.sec-eyebrow { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); line-height: 1.6; flex-wrap: wrap; row-gap: 2px; }
+.sec-eyebrow--rose { display: inline-flex; align-items: center; gap: 7px; flex-wrap: wrap; row-gap: 2px; }
+.sec-title { font-family: var(--font-display); font-size: 1.85rem; font-weight: 700; line-height: 1.14; letter-spacing: -0.01em; }
+.sec-sub { font-size: 14.5px; color: var(--text-muted); line-height: 1.55; max-width: 60ch; margin-top: 6px; text-wrap: pretty; }
+.sec-all { font-size: 14px; font-weight: 600; color: var(--accent); text-decoration: none; white-space: nowrap; transition: opacity 140ms; padding-bottom: 3px; }
+.sec-all:hover { opacity: .68; }
+/* Band-tinted eyebrow + link accents */
+.band--rose  .sec-eyebrow, .band--rose  .sec-all { color: var(--kn-rose); }
+.band--green .sec-eyebrow, .band--green .sec-all { color: var(--brand-green); }
+[data-theme='dark'] .band--green .sec-eyebrow, [data-theme='dark'] .band--green .sec-all { color: #7FC9A3; }
+.band--sage .sec-eyebrow, .band--sage .sec-all { color: var(--brand-green); }
+[data-theme='dark'] .band--sage .sec-eyebrow, [data-theme='dark'] .band--sage .sec-all { color: #7FC9A3; }
+
+/* ── FRESHNESS SIGNAL (live dot for algorithmic / accent dot for editorial) ── */
+.sec-fresh { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; color: var(--text-muted); font-weight: 500; margin-top: 6px; }
+.sec-fresh__dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; background: var(--brand-green); box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-green) 22%, transparent); }
+.sec-fresh--ed .sec-fresh__dot { background: var(--accent); box-shadow: 0 0 0 3px color-mix(in oklab, var(--accent) 20%, transparent); }
+
+/* ── FROZEN v1.0 — «Книговик радить» FEATURED CARD (DO NOT EDIT) ── */
+.feat-card {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center;
+  gap: 28px; padding: 26px 36px; height: 232px; overflow: hidden;
+  background: var(--surface-accent); border: 1px solid var(--border);
+  border-radius: 16px; box-shadow: var(--shadow-sm);
+  margin-bottom: 4px; margin-top: 32px; text-decoration: none; color: inherit;
+  transition: box-shadow 200ms ease-out, transform 200ms ease-out;
+}
+.feat-card:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
+[data-theme='dark'] .feat-card { background: #070606; border-color: #262019; }
+[data-theme='dark'] .feat-mascot { filter: brightness(1.07) saturate(1.04); }
+[data-theme='light'] .feat-card { background: #f2dbc1; }
+.feat-mascot {
+  width: 262px; height: 181px; object-fit: cover; flex-shrink: 0; display: block;
+  -webkit-mask-image: radial-gradient(ellipse 60% 66% at 50% 50%, #000 46%, transparent 78%);
+  mask-image: radial-gradient(ellipse 60% 66% at 50% 50%, #000 46%, transparent 78%);
+}
+/* Theme-aware mascot swap (SSR-safe, mirrors the .knh__logo--light/--dark recipe). */
+.feat-mascot--dark { display: none; }
+[data-theme='dark'] .feat-mascot--light { display: none; }
+[data-theme='dark'] .feat-mascot--dark { display: block; }
+.feat-body { flex: 1; }
+.feat-badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; color: var(--accent); margin-bottom: 10px; }
+.feat-badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
+.feat-title { font-family: var(--font-display); font-size: 1.5rem; font-weight: 700; margin-bottom: 8px; line-height: 1.2; }
+.feat-desc { font-size: 15px; color: var(--text-muted); line-height: 1.6; max-width: 52ch; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
+.feat-meta { display: flex; flex-direction: column; align-items: flex-end; gap: 8px; flex-shrink: 0; }
+.feat-count-block { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.feat-count { display: flex; align-items: baseline; gap: 5px; font-family: var(--font-display); font-weight: 700; color: var(--accent); line-height: 1; }
+.feat-count-num { font-size: 2rem; }
+.feat-count-unit { font-size: 1rem; font-weight: 600; }
+.feat-count-lbl { font-size: 12px; color: var(--text-muted); font-weight: 600; text-align: right; }
+.feat-cta {
+  display: inline-flex; align-items: center; gap: 8px; margin-top: 8px;
+  font-size: 15px; font-weight: 700; padding: 15px 30px; border-radius: 11px;
+  color: var(--text-on-accent); white-space: nowrap;
+  background: linear-gradient(155deg, color-mix(in oklab, white 22%, var(--accent)), var(--accent));
+  box-shadow: 0 12px 26px -8px color-mix(in oklab, var(--accent) 68%, transparent), var(--shadow-md);
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out, background 200ms ease-out;
+}
+.feat-cta svg { transition: transform 200ms ease-out; flex-shrink: 0; }
+.feat-card:hover .feat-cta, .feat-cta:hover {
+  transform: translateY(-3px) scale(1.015);
+  box-shadow: 0 18px 36px -9px color-mix(in oklab, var(--accent) 78%, transparent), var(--shadow-md);
+  background: linear-gradient(155deg, color-mix(in oklab, white 30%, var(--accent)), color-mix(in oklab, black 8%, var(--accent)));
+}
+.feat-card:hover .feat-cta svg, .feat-cta:hover svg { transform: translateX(3px); }
+.feat-cta:active { transform: translateY(-1px) scale(1); }
+
+/* ═══ UNIVERSAL BOOK CARD + HORIZONTAL SHELF ═══════════════════════
+   One clickable card used in every book shelf: cover · title · author ·
+   price · always-visible wishlist heart (bottom-right). Book shelves are
+   horizontal rails (wheel / shift-wheel / drag / swipe) with a peek edge
+   and a trailing «see all» card — never paginated. */
+.shelf-wrap { position: relative; }
+/* Subtle fade at the right edge so the shelf reads as continuing past the viewport —
+   like the far end of a long bookshelf. Matches the section background via --shelf-fade. */
+.shelf-wrap::after {
+  content: ''; position: absolute; top: 6px; right: -2px; bottom: 20px; width: 52px;
+  pointer-events: none; z-index: 2; border-radius: 0 18px 18px 0;
+  background: linear-gradient(to right, transparent, color-mix(in oklab, var(--shelf-fade, var(--bg)) 80%, transparent));
+}
+@media (max-width: 768px) { .shelf-wrap::after { width: 26px; } }
+.shelf-rail {
+  display: flex; gap: 18px; overflow-x: auto; overflow-y: hidden;
+  scroll-snap-type: x proximity; scroll-padding-left: 2px;
+  padding: 6px 2px 16px; margin: -6px -2px -4px;
+  -webkit-overflow-scrolling: touch; scrollbar-width: none; cursor: grab;
+  overscroll-behavior-x: contain;
+}
+.shelf-rail::-webkit-scrollbar { display: none; }
+.shelf-rail.is-dragging { cursor: grabbing; scroll-snap-type: none; }
+.shelf-rail.is-dragging a { pointer-events: none; }
+.shelf-rail .bkc { flex: 0 0 202px; scroll-snap-align: start; }
+
+/* Desktop shelf scroll buttons — discoverable nav for the rails, seated over the
+   cover mid-line, revealed on shelf hover, auto-hidden at each scroll extreme. */
+.shelf-btn {
+  position: absolute; top: var(--cover-mid, 132px); transform: translateY(-50%);
+  z-index: 4; width: 44px; height: 44px; border-radius: 50%; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface); color: var(--text); border: 1px solid var(--border);
+  box-shadow: var(--shadow-md); cursor: pointer; opacity: 0;
+  transition: opacity 200ms ease-out, box-shadow 200ms ease-out, color 200ms, transform 200ms ease-out;
+}
+.shelf-wrap:hover .shelf-btn { opacity: 1; }
+.shelf-btn:hover { box-shadow: var(--shadow-lg); color: var(--accent); border-color: color-mix(in oklab, var(--accent) 35%, var(--border)); }
+.shelf-btn:active { transform: translateY(-50%) scale(0.94); }
+.shelf-btn:disabled { opacity: 0 !important; pointer-events: none; }
+.shelf-btn--prev { left: -10px; }
+.shelf-btn--next { right: -10px; }
+@media (hover: none), (max-width: 768px) { .shelf-btn { display: none; } }
+
+.bkc {
+  position: relative;
+  display: flex; flex-direction: column;
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: 18px; padding: 14px; text-decoration: none; color: inherit;
+  box-shadow: var(--shadow-sm); cursor: pointer;
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out, border-color 200ms ease-out;
+}
+.bkc:hover { transform: translateY(-4px); box-shadow: var(--shadow-lg); border-color: color-mix(in oklab, var(--accent) 26%, var(--border)); }
+/* coverwrap = positioning context for the floating heart (NOT clipped);
+   coverclip = the rounded, overflow-hidden frame that holds the cover + badge. */
+.bkc__coverwrap { position: relative; }
+.bkc__coverclip { position: relative; border-radius: 12px; overflow: hidden; aspect-ratio: 2 / 3; background: var(--surface-accent); box-shadow: var(--shadow-sm); }
+.bkc__cover { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 260ms ease-out; }
+.bkc:hover .bkc__cover { transform: scale(1.045); }
+.bkc__badge {
+  position: absolute; top: -8px; left: -8px; display: inline-flex; align-items: center; gap: 5px;
+  font-size: 11.5px; font-weight: 600; padding: 5px 10px; border-radius: 999px; line-height: 1;
+  border: 1px solid transparent; box-shadow: var(--shadow-sm); z-index: 3;
+}
+.bkc__badge svg { width: 12px; height: 12px; flex-shrink: 0; stroke-width: 2.3; }
+.bkc__badge--accent { background: color-mix(in oklab, var(--accent) 16%, var(--surface)); border-color: color-mix(in oklab, var(--accent) 32%, var(--border)); color: var(--accent); }
+.bkc__badge--new    { background: var(--surface-accent); color: var(--accent); }
+.bkc__badge--green  { background: color-mix(in oklab, var(--brand-green) 15%, var(--surface)); border-color: color-mix(in oklab, var(--brand-green) 32%, var(--border)); color: var(--brand-green); }
+.bkc__badge--rose   { background: color-mix(in oklab, var(--kn-rose) 14%, var(--surface)); border-color: color-mix(in oklab, var(--kn-rose) 32%, var(--border)); color: var(--kn-rose); }
+.bkc__badge--rating { background: var(--text); color: var(--bg); }
+.bkc__badge--neutral{ background: var(--text-muted); color: var(--bg); }
+
+/* Always-visible quick wishlist toggle — the site's signature secondary action.
+   Sits at the card's bottom-right, bottom edge level with the price row.
+   Always a bright rose outline heart on a white circle; fills solid red once saved. */
+.bkc__wish {
+  position: absolute; right: 8px; bottom: 18px; z-index: 5;
+  width: 40px; height: 40px; border-radius: 50%; padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--surface); color: var(--kn-rose);
+  border: 1px solid var(--border); box-shadow: var(--shadow-md); cursor: pointer;
+  transition: transform 150ms ease-out, box-shadow 150ms ease-out, color 150ms, background 150ms, border-color 150ms;
+}
+.bkc__wish svg { width: 18px; height: 18px; stroke-width: 2.4; }
+.bkc:hover .bkc__wish { box-shadow: var(--shadow-lg); }
+.bkc__wish:hover { transform: scale(1.1); box-shadow: var(--shadow-lg); border-color: color-mix(in oklab, var(--kn-rose) 45%, var(--border)); }
+.bkc__wish--on, .bkc__wish--on:hover, .bkc:hover .bkc__wish--on { background: var(--surface); border-color: color-mix(in oklab, var(--kn-heart-red) 45%, var(--border)); color: var(--kn-heart-red); }
+.bkc__wish--pop { animation: kn-heart-pop 280ms ease-out; }
+@keyframes kn-heart-pop { 0% { transform: scale(1); } 42% { transform: scale(1.3); } 100% { transform: scale(1); } }
+@media (prefers-reduced-motion: reduce) { .bkc__wish--pop { animation: none; } }
+
+.bkc__body { display: flex; flex-direction: column; flex: 1; padding: 15px 4px 4px; }
+.bkc__title { font-family: var(--font-display); font-weight: 600; font-size: 16px; line-height: 1.32; letter-spacing: -0.005em; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.64em; word-break: break-word; }
+.bkc__author { font-size: 13px; color: var(--text-muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bkc__foot { display: flex; align-items: baseline; gap: 8px; margin-top: auto; padding-top: 12px; padding-right: 46px; }
+.bkc__price { font-family: var(--font-display); font-weight: 700; font-size: 18px; color: var(--accent); }
+.bkc__old { font-size: 13px; color: var(--text-faint); text-decoration: line-through; }
+.bkc--out .bkc__coverclip { opacity: 0.55; }
+.bkc--out .bkc__cover { filter: grayscale(0.3); }
+
+/* Trailing «see all» card — a proper continuation of the shelf, not an empty placeholder:
+   soft accent-tinted gradient, a filled arrow medallion, and a stronger hover pull. */
+.shelf-more {
+  flex: 0 0 172px; scroll-snap-align: start; align-self: stretch;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px;
+  border: 1.5px dashed color-mix(in oklab, var(--accent) 28%, var(--border)); border-radius: 18px;
+  background: color-mix(in oklab, var(--accent) 4%, var(--surface));
+  color: var(--text); text-decoration: none; text-align: center; padding: 16px;
+  transition: border-color 200ms ease-out, border-style 200ms ease-out, box-shadow 200ms ease-out, transform 200ms ease-out, background 200ms ease-out;
+}
+.shelf-more:hover { border-style: solid; border-color: color-mix(in oklab, var(--accent) 50%, var(--border)); box-shadow: var(--shadow-lg); transform: translateY(-4px); background: color-mix(in oklab, var(--accent) 9%, var(--surface)); }
+.shelf-more__icon {
+  width: 50px; height: 50px; border-radius: 50%; flex-shrink: 0;
+  background: var(--accent); color: var(--text-on-accent);
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: var(--shadow-accent, var(--shadow-md));
+  transition: transform 220ms ease-out;
+}
+.shelf-more:hover .shelf-more__icon { transform: translateX(4px); }
+.shelf-more__label { font-size: 14px; font-weight: 700; max-width: 9em; line-height: 1.3; color: var(--text); }
+.shelf-more__hint { font-size: 12px; font-weight: 600; color: var(--accent); letter-spacing: 0.2px; }
+
+/* ── ЩО ЧИТАТИ СЬОГОДНІ (mood tiles) ────────── */
+.mood-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; }
+.mood-card {
+  display: flex; flex-direction: column; gap: 10px; padding: 18px 20px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+  text-decoration: none; color: inherit; min-height: 148px;
+  transition: box-shadow 200ms ease-out, transform 200ms ease-out, border-color 200ms ease-out, background 200ms ease-out;
+}
+.mood-card:hover {
+  box-shadow: var(--shadow-lg), 0 0 0 1px color-mix(in oklab, var(--accent) 16%, transparent);
+  transform: translateY(-4px);
+  border-color: color-mix(in oklab, var(--accent) 40%, var(--border));
+  background: color-mix(in oklab, var(--accent) 3.5%, var(--surface));
+}
+.mood-card__icon { width: 46px; height: 46px; border-radius: 12px; background: color-mix(in oklab, var(--accent) 12%, var(--surface)); color: var(--accent); display: flex; align-items: center; justify-content: center; transition: transform 240ms ease-out, background 200ms ease-out; }
+.mood-card:hover .mood-card__icon { transform: scale(1.1) rotate(-4deg); background: color-mix(in oklab, var(--accent) 22%, var(--surface)); }
+.mood-card__body { flex: 1; }
+.mood-card__name { font-family: var(--font-display); font-weight: 700; font-size: 1.15rem; line-height: 1.25; margin-bottom: 6px; }
+.mood-card__desc { font-size: 13.5px; color: var(--text-muted); line-height: 1.55; }
+.mood-card__count { font-size: 12px; font-weight: 600; color: var(--accent); }
+
+/* ── ЩОЙНО ЗІБРАЛИ (fresh editorial collections) ── */
+.fresh-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+.fresh-card {
+  display: flex; flex-direction: column; gap: 10px; padding: 20px 22px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+  text-decoration: none; color: inherit; cursor: pointer;
+  transition: box-shadow 200ms ease-out, transform 200ms ease-out;
+}
+.fresh-card:hover { box-shadow: var(--shadow-md); transform: translateY(-3px); }
+.fresh-card__head { display: flex; align-items: center; gap: 10px; }
+.fresh-card__icon { width: 36px; height: 36px; border-radius: 10px; background: var(--surface-accent); color: var(--accent); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+.fresh-card__type { font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; color: var(--accent); }
+.fresh-card__name { font-family: var(--font-display); font-weight: 700; font-size: 1.2rem; line-height: 1.25; }
+.fresh-card__desc { font-size: 13.5px; color: var(--text-muted); line-height: 1.55; flex: 1; }
+.fresh-card__covers { display: flex; align-items: center; gap: 8px; margin-top: 4px; padding-top: 12px; border-top: 1px solid var(--border); }
+/* Overlapping stack of ~12 miniature covers — communicates the depth of the collection at a glance. */
+.fresh-card__stack { display: flex; align-items: center; padding-left: 2px; }
+.fresh-card__stack img { width: 34px; height: 51px; object-fit: cover; border-radius: 4px; box-shadow: var(--shadow-sm); border: 1.5px solid var(--surface); margin-left: -15px; flex-shrink: 0; transition: transform 200ms ease-out; }
+.fresh-card__stack img:first-child { margin-left: 0; }
+.fresh-card:hover .fresh-card__stack img { transform: translateY(-2px); }
+.fresh-card__count { margin-left: auto; font-size: 13px; font-weight: 600; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+
+/* ── НЕДООЦІНЕНІ КНИГИ (editorial hidden-gems band — green-wash panel + fanned cover trio) ── */
+.gems-band {
+  position: relative; padding: 40px 48px; min-height: 300px; overflow: hidden;
+  border: 1px solid var(--border); border-radius: 24px; box-shadow: var(--shadow-sm);
+}
+[data-theme='light'] .gems-band { background: color-mix(in oklab, var(--brand-green) 6%, var(--surface)); border-color: color-mix(in oklab, var(--brand-green) 15%, var(--border)); }
+[data-theme='dark']  .gems-band { background: color-mix(in oklab, var(--brand-green) 15%, var(--surface)); border-color: color-mix(in oklab, var(--brand-green) 24%, var(--border)); }
+.gems-band__body { position: relative; z-index: 2; max-width: 55%; }
+.gems-band__eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; color: var(--brand-green); margin-bottom: 12px; }
+[data-theme='dark'] .gems-band__eyebrow { color: #7FC9A3; }
+.gems-band__dot { width: 7px; height: 7px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.gems-band__title { font-family: var(--font-display); font-size: 2.1rem; font-weight: 700; line-height: 1.12; letter-spacing: -0.015em; margin-bottom: 12px; max-width: 15ch; text-wrap: balance; }
+.gems-band__desc { font-size: 15.5px; color: var(--text-muted); line-height: 1.62; max-width: 48ch; margin-bottom: 20px; text-wrap: pretty; }
+.gems-band__cta { display: inline-flex; align-items: center; gap: 8px; font-size: 15px; font-weight: 700; color: var(--accent); text-decoration: none; transition: gap 200ms ease-out; }
+.gems-band__cta svg { width: 18px; height: 18px; }
+.gems-band__cta:hover { gap: 13px; }
+/* Fanned trio — absolutely positioned so the covers bleed and get cut by the panel's bottom edge. */
+.gems-band__fan { position: absolute; right: 78px; bottom: 0; width: 420px; height: 300px; z-index: 1; }
+.gems-fan__cover { position: absolute; width: 160px; height: 238px; object-fit: cover; border-radius: 9px; box-shadow: var(--shadow-lg); transition: transform 320ms ease-out; }
+.gems-fan__cover--0 { left: 8px;   bottom: -42px; transform: rotate(-9deg); z-index: 1; }
+.gems-fan__cover--1 { left: 128px; bottom: -22px; transform: rotate(-1deg); z-index: 2; }
+.gems-fan__cover--2 { left: 248px; bottom: -32px; transform: rotate(8deg);  z-index: 3; }
+.gems-band:hover .gems-fan__cover--0 { transform: rotate(-12deg) translateY(-7px); }
+.gems-band:hover .gems-fan__cover--1 { transform: rotate(-1deg) translateY(-11px); }
+.gems-band:hover .gems-fan__cover--2 { transform: rotate(11deg) translateY(-7px); }
+@media (prefers-reduced-motion: reduce) { .gems-band:hover .gems-fan__cover--0, .gems-band:hover .gems-fan__cover--1, .gems-band:hover .gems-fan__cover--2 { transform: rotate(-9deg); } .gems-fan__cover--1 { transform: rotate(-1deg); } .gems-fan__cover--2 { transform: rotate(8deg); } }
+@media (max-width: 1023px) {
+  .gems-band { padding: 36px 32px; min-height: 0; }
+  .gems-band__body { max-width: 100%; }
+  .gems-band__fan { display: none; }
+}
+@media (max-width: 768px) {
+  .gems-band { padding: 32px 24px; border-radius: 18px; }
+  .gems-band__title { font-size: 1.7rem; }
+}
+/* Hidden-gems section is hidden below 1024px (frozen §6.9). */
+@media (max-width: 1023px) { .sec--gems { display: none; } }
+
+/* ── DIVIDER (between consecutive plain sections) ── */
+.page-divider { border: none; border-top: 1px solid var(--border); margin: 0; }
+
+/* ── Nav-jump settle: after a cnav smooth-scroll lands, the section head gets a
+   short one-shot fade-in (~300ms). Attribute is set + removed by CollectionsNav. ── */
+@keyframes kn-sec-flash { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+[data-cnav-flash] .sec-head, [data-cnav-flash].sec--hero .feat-card { animation: kn-sec-flash 300ms ease-out both; }
+@media (prefers-reduced-motion: reduce) { [data-cnav-flash] .sec-head, [data-cnav-flash].sec--hero .feat-card { animation: none; } }
+
+/* ── Section entrance: pure-CSS load fade (no JS gating). ── */
+@keyframes kn-rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+.reveal { animation: kn-rise 620ms ease-out both; }
+/* Collection Details grid uses the details-page timing (500ms / 14px feel). */
+.cd-grid-wrap.reveal { animation-duration: 500ms; }
+@media (prefers-reduced-motion: reduce) { .reveal { animation: none; } }
+@media print { .reveal { animation: none !important; } }
+
+/* ═══ COLLECTION DETAILS (one reusable template, /dobirky/:slug + /zhanry/:slug) ═══ */
+
+/* ── BREADCRUMB ─────────────────────────────── */
+.cd-crumbs { display: flex; align-items: center; gap: 8px; padding: 14px 0 0; font-size: 13px; color: var(--text-muted); }
+.cd-crumbs a { color: var(--text-muted); text-decoration: none; transition: color 140ms ease-out; }
+.cd-crumbs a:hover { color: var(--accent); }
+.cd-crumbs__sep { color: var(--text-faint); }
+.cd-crumbs__current { color: var(--text); font-weight: 600; }
+
+/* ── COMPACT INFO HEADER (catalogue-first — breadcrumb · title+count · short desc only) ── */
+.cd-info { padding: 6px 0 10px; }
+.cd-titlerow { display: flex; align-items: baseline; justify-content: space-between; gap: 8px 24px; }
+.cd-title { flex: 1 1 auto; min-width: 0; font-family: var(--font-display); font-size: 1.9rem; font-weight: 700; line-height: 1.12; letter-spacing: -0.015em; max-width: 42ch; }
+.cd-count { font-size: 14px; color: var(--text-muted); white-space: nowrap; flex-shrink: 0; }
+.cd-count b { color: var(--text); font-weight: 700; }
+.cd-desc { font-size: 15px; color: var(--text-muted); line-height: 1.55; max-width: 74ch; margin-top: 6px; text-wrap: pretty; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
+.cd-desc--open { -webkit-line-clamp: unset; overflow: visible; }
+.cd-desc-toggle { margin-top: 5px; font-family: var(--font-body); font-size: 13.5px; font-weight: 600; color: var(--accent); background: none; border: none; cursor: pointer; padding: 0; transition: opacity 140ms ease-out; }
+.cd-desc-toggle:hover { opacity: 0.7; }
+
+/* ── SORT BAR — sticky, minimal: a single sort dropdown only ── */
+/* NO full-bleed box-shadow/clip-path here (mock-verbatim): clip-path on the bar
+   would cut the absolutely-positioned .cd-sort__menu that hangs below it — the
+   same never-clip rule as the cnav dropdowns. The bar's --bg already matches the
+   body background, so no bleed trick is needed. */
+.cd-sortbar { position: sticky; top: 72px; z-index: 50; background: var(--bg); border-bottom: 1px solid var(--border); padding: 10px 0; transition: box-shadow 200ms ease-out; }
+.cd-sortbar--stuck { box-shadow: 0 10px 24px -18px color-mix(in oklab, var(--text) 30%, transparent); }
+.cd-sortbar__row { display: flex; align-items: center; justify-content: flex-end; gap: 16px; }
+
+/* ── SORT DROPDOWN (KSD-style select) ── */
+.cd-sort { position: relative; flex-shrink: 0; }
+.cd-sort__btn {
+  display: inline-flex; align-items: center; justify-content: space-between; gap: 10px;
+  height: 40px; padding: 0 14px; min-width: 208px;
+  font-family: var(--font-body); font-size: 14px; font-weight: 600; color: var(--text);
+  background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px;
+  cursor: pointer; transition: border-color 140ms ease-out, color 140ms ease-out, box-shadow 140ms ease-out;
+}
+.cd-sort__btn:hover { border-color: var(--accent); }
+.cd-sort__btn:focus-visible { outline: none; box-shadow: var(--focus-ring); border-color: var(--accent); }
+.cd-sort__btn[aria-expanded='true'] { border-color: var(--accent); }
+.cd-sort__val { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; }
+.cd-sort__val svg { color: var(--icon-muted); flex-shrink: 0; }
+.cd-sort__caret { transition: transform 180ms ease-out; color: var(--text-muted); flex-shrink: 0; }
+.cd-sort__btn[aria-expanded='true'] .cd-sort__caret { transform: rotate(180deg); }
+.cd-sort__menu {
+  position: absolute; top: calc(100% + 6px); right: 0; z-index: 80; min-width: 100%;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  box-shadow: var(--shadow-lg); padding: 6px; list-style: none; margin: 0;
+  animation: cd-pop 160ms ease-out;
+}
+.cd-sort__opt {
+  display: flex; align-items: center; gap: 10px; width: 100%;
+  padding: 9px 12px; border-radius: 8px; border: none; background: none; cursor: pointer;
+  font-family: var(--font-body); font-size: 14px; font-weight: 500; color: var(--text-body);
+  text-align: left; white-space: nowrap; transition: background 120ms ease-out, color 120ms ease-out;
+}
+.cd-sort__opt:hover { background: var(--surface-accent); color: var(--text); }
+.cd-sort__opt--active { color: var(--accent); font-weight: 600; }
+.cd-sort__check { width: 16px; flex-shrink: 0; color: var(--accent); display: inline-flex; }
+.cd-sort__check--hidden { visibility: hidden; }
+@keyframes cd-pop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .cd-sort__menu { animation: none; } .cd-sort__caret { transition: none; } }
+
+/* ── BOOK GRID (catalogue) ───────────────────────────────────── */
+.cd-grid-wrap { padding: 12px 0 8px; }
+.cd-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; }
+.cd-empty { padding: 60px 0; text-align: center; color: var(--text-muted); font-size: 15px; }
+/* Local retry block — only the grid/shelf errors out, chrome stays (PRD Part 08). */
+.col-retry { padding: 48px 0; text-align: center; color: var(--text-muted); font-size: 15px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
+
+/* ── SIMILAR COLLECTIONS (exact fresh-card style, reused verbatim) ── */
+.cd-similar { padding: 56px 0 8px; border-top: 1px solid var(--border); margin-top: 24px; }
+.cd-similar__title { font-family: var(--font-display); font-size: 1.6rem; font-weight: 700; margin-bottom: 18px; }
+
+/* ── LOADING SKELETONS — warm (--surface-accent), no cold grey ── */
+@keyframes cskel-breathe { 0%, 100% { opacity: 1; } 50% { opacity: .55; } }
+.cskel { background: var(--surface-accent); border-radius: 10px; animation: cskel-breathe 1.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .cskel { animation: none; } }
+.cskel--hero { height: 232px; border-radius: 16px; margin-top: 32px; }
+.cskel--sechead { height: 30px; width: 320px; max-width: 60%; margin-bottom: 18px; }
+.cskel-shelf { display: flex; gap: 18px; overflow: hidden; padding: 6px 2px 16px; }
+.cskel-shelf .cskel--card { flex: 0 0 202px; height: 400px; border-radius: 18px; }
+.cskel--title { height: 34px; width: 420px; max-width: 80%; margin-top: 20px; }
+.cskel--desc { height: 16px; width: 560px; max-width: 95%; margin-top: 12px; }
+.cskel--bar { height: 40px; width: 208px; margin: 14px 0 14px auto; }
+.cskel-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; padding: 12px 0 8px; }
+.cskel-grid .cskel--card { height: 400px; border-radius: 18px; }
+@media (max-width: 1119px) { .cskel-grid { grid-template-columns: repeat(3, 1fr); } }
+@media (max-width: 768px) {
+  .cskel-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .cskel-grid .cskel--card, .cskel-shelf .cskel--card { height: 300px; }
+  .cskel-shelf .cskel--card { flex-basis: 142px; }
+}
+
+/* ── RESPONSIVE ─────────────────────────────── */
+@media (max-width: 1119px) {
+  .shelf-rail .bkc { flex-basis: 190px; }
+  .mood-grid { grid-template-columns: repeat(2, 1fr); }
+  .fresh-grid { grid-template-columns: 1fr; }
+  .cd-grid { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 768px) {
+  /* Collections nav → horizontal scroll ribbon under the compact header */
+  .cnav { top: 56px; }
+  .cnav__row { height: 52px; gap: 6px; overflow-x: auto; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .cnav__row::-webkit-scrollbar { display: none; }
+  .cnav__link { font-size: 14px; padding: 12px 10px; gap: 7px; }
+  .cnav__mega { display: none; }
+  /* FROZEN featured — mobile v1.0 (+ iteration 5 CTA/count polish) */
+  .feat-card { grid-template-columns: 1fr; gap: 14px; padding: 20px; height: auto; overflow: visible; margin-top: 24px; margin-bottom: 0; }
+  .feat-mascot { margin: 0 auto; }
+  .feat-meta { flex-direction: row; align-items: center; gap: 14px; }
+  .feat-count-block { flex: 0 0 auto; align-items: flex-start; }
+  .feat-count-lbl { text-align: left; }
+  .feat-cta { flex: 1 1 auto; justify-content: center; height: 54px; padding: 0 18px; margin-top: 0; }
+
+  /* Tighter section rhythm — scanning over reading, faster scroll */
+  .sec, .band { padding-block: 30px; }
+  .sec-head { margin-bottom: 12px; gap: 14px; }
+  .sec-title { font-size: 1.28rem; }
+  .sec-eyebrow { font-size: 10px; letter-spacing: 1.5px; }
+  .sec-sub {
+    font-size: 13px; margin-top: 3px; max-width: none;
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
+  }
+  .sec-fresh { font-size: 11px; margin-top: 5px; }
+  .sec-all { font-size: 13px; }
+
+  /* Book carousels — shorter cards, ~2.3 visible per screen, scanning-first */
+  .shelf-rail { gap: 10px; padding-bottom: 12px; }
+  .shelf-rail .bkc { flex-basis: 142px; }
+  .bkc { padding: 10px; border-radius: 14px; }
+  .bkc__coverclip { border-radius: 9px; }
+  .bkc__body { padding: 8px 2px 0; }
+  .bkc__title { font-size: 13.5px; line-height: 1.28; -webkit-line-clamp: 1; min-height: 1.3em; }
+  .bkc__author { font-size: 11px; margin-top: 2px; }
+  .bkc__foot { padding-top: 6px; padding-right: 34px; }
+  .bkc__price { font-size: 15px; }
+  .bkc__old { font-size: 11px; }
+  .bkc__wish { width: 32px; height: 32px; right: 6px; bottom: 12px; }
+  .bkc__wish svg { width: 15px; height: 15px; }
+  .bkc__badge { font-size: 10px; padding: 4px 8px; top: -6px; left: -6px; }
+  .shelf-more { flex-basis: 130px; }
+  .shelf-more { flex-basis: 118px; padding: 12px; gap: 8px; }
+  .shelf-more__icon { width: 36px; height: 36px; }
+  .shelf-more__label { font-size: 12px; }
+  .shelf-more__hint { font-size: 10.5px; }
+  .mood-grid { grid-template-columns: 1fr; }
+
+  /* Editorial collection cards («Добірки редакції») — full-width culmination,
+     kept rich (not collapsed to rows) so they read as a visual accent on mobile. */
+  .fresh-grid { gap: 12px; }
+  .fresh-card { padding: 18px 18px 16px; border-radius: 16px; gap: 10px; }
+  .fresh-card__name { font-size: 1.12rem; }
+  .fresh-card__desc { font-size: 13px; }
+  .fresh-card__covers { padding-top: 14px; }
+  .fresh-card__stack img { width: 30px; height: 45px; margin-left: -13px; }
+
+  /* Collection & mood cards → one shared, dense list-row pattern. */
+  .list-rows-card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 2px 14px; }
+  .list-row { display: flex; align-items: center; gap: 12px; padding: 13px 0; text-decoration: none; color: inherit; border-bottom: 1px solid var(--border); }
+  .list-row:last-child { border-bottom: none; }
+  .list-row__icon { width: 42px; height: 42px; border-radius: 11px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: color-mix(in oklab, var(--accent) 12%, var(--surface)); color: var(--accent); }
+  .list-row__body { flex: 1; min-width: 0; }
+  .list-row__title { font-family: var(--font-display); font-weight: 700; font-size: 14.5px; line-height: 1.3; margin-bottom: 2px; }
+  .list-row__desc { font-size: 12px; color: var(--text-muted); line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+  .list-row__meta { flex-shrink: 0; display: flex; align-items: center; gap: 2px; font-size: 11.5px; font-weight: 600; color: var(--text-muted); white-space: nowrap; }
+  .list-row__meta svg { color: var(--text-faint); }
+  .band--sage .list-row__icon { background: color-mix(in oklab, var(--brand-green) 14%, var(--surface)); color: var(--brand-green); }
+  [data-theme='dark'] .band--sage .list-row__icon { color: #7FC9A3; }
+
+  /* Editorial hero band — richer storytelling instead of a plain banner:
+     the fanned cover trio comes back (smaller, static row) below the copy. */
+  .gems-band { padding: 28px 20px 24px; }
+  .gems-band__eyebrow { margin-bottom: 12px; }
+  .gems-band__title { font-size: 1.45rem; margin-bottom: 10px; }
+  .gems-band__desc { font-size: 13.5px; margin-bottom: 18px; }
+  .gems-band__fan {
+    display: flex; position: static; width: 100%; height: auto;
+    justify-content: center; align-items: flex-end; margin-top: 4px;
+  }
+  .gems-fan__cover { position: static; width: 90px; height: 134px; margin-left: -20px; box-shadow: var(--shadow-md); }
+  .gems-fan__cover--0 { margin-left: 0; transform: rotate(-8deg) translateY(6px); }
+  .gems-fan__cover--1 { transform: rotate(0deg) translateY(-6px); }
+  .gems-fan__cover--2 { transform: rotate(8deg) translateY(6px); }
+
+  /* Collection Details — mobile */
+  .cd-crumbs { padding: 12px 0 0; }
+  .cd-titlerow { flex-direction: column; align-items: flex-start; gap: 4px; }
+  .cd-title { font-size: 1.4rem; max-width: none; }
+  .cd-count { font-size: 13px; }
+  .cd-info { padding: 4px 0 10px; }
+  .cd-desc { font-size: 14px; -webkit-line-clamp: 3; margin-top: 6px; }
+  .cd-sortbar { top: 56px; padding: 10px 0; }
+  .cd-sortbar__row { flex-direction: column; align-items: stretch; gap: 10px; }
+  .cd-sort { width: 100%; }
+  .cd-sort__btn { width: 100%; height: 48px; min-width: 0; font-size: 15px; }
+  .cd-sort__menu { left: 0; right: 0; }
+  .cd-sort__opt { padding: 12px; font-size: 15px; }
+  .cd-grid-wrap { padding: 12px 0 4px; }
+  .cd-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  /* Details grid keeps 2-line titles (unlike the 1-line shelf cards above). */
+  .cd-grid .bkc__title { -webkit-line-clamp: 2; min-height: 2.5em; }
+}

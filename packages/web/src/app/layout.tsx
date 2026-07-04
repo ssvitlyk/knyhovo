@@ -21,10 +21,13 @@ export default function RootLayout({ children }: { readonly children: ReactNode 
       </head>
       <body>
         {/* One login modal for the whole app (singleton) — mounted here so every
-            «Увійти» trigger shares a single overlay/portal/backdrop. */}
+            «Увійти» trigger shares a single overlay/portal/backdrop. The header
+            lives outside `.page` (it carries its own `.knh__page` container with
+            the same width tokens) but still inside the provider, since it needs
+            the login modal context. */}
         <LoginModalProvider>
+          <SiteHeader />
           <div className="page">
-            <SiteHeader />
             {children}
             <SiteFooter />
           </div>

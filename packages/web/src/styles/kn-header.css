@@ -1,0 +1,192 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   kn-header.css — Knyhovo GLOBAL SITE HEADER · v1.0 · 2026-07-04
+   One design-system solution for desktop + mobile (UX reference: ksd.ua,
+   visuals 100% Knyhovo DS). Pairs with kn-header.jsx (window.KnHeader).
+
+   Anatomy
+   · Desktop (>768px): logo · search capsule (~440px) · nav links · theme
+     toggle · login/profile. Height 72px, sticky, bg var(--bg), hairline.
+   · Mobile (≤768px): logo · wishlist icon · search icon · burger. 56px.
+     Search opens a top overlay (dimmed backdrop, 52px input, clear ×,
+     submit). Burger opens a right drawer (nav, auth, theme toggle).
+   All colors/type/radii/shadows are DS tokens — no new visual language.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.knh { position: sticky; top: 0; z-index: 100; background: var(--bg); border-bottom: 1px solid var(--border); }
+.knh *, .knh *::before, .knh *::after { box-sizing: border-box; }
+/* Rose count badge — same recipe as the Collections nav-badge; local fallback
+   so the header works on pages that don't define --kn-rose. */
+.knh, .knh-dr { --knh-rose: var(--kn-rose, #BC5A57); }
+[data-theme="dark"] .knh, [data-theme="dark"] .knh-dr { --knh-rose: var(--kn-rose, #E48E8A); }
+
+.knh__page { max-width: var(--container-wide, 1680px); margin: 0 auto; padding: 0 var(--gutter, 32px); }
+.knh__row { display: flex; align-items: center; gap: 24px; height: 72px; }
+
+.knh__brand { display: flex; align-items: center; flex-shrink: 0; }
+.knh__logo { height: 64px; display: block; margin-left: -9px; }
+
+/* SSR theme swap — both logos render; CSS shows one (same recipe as the old .site-logo--*). */
+.knh__logo--dark { display: none; }
+[data-theme="dark"] .knh__logo--light { display: none; }
+[data-theme="dark"] .knh__logo--dark { display: block; }
+
+/* ── Desktop search capsule ── a quiet part of the header, not the hero. */
+.knh__search {
+  flex: 0 1 440px; min-width: 220px;
+  display: flex; align-items: center; gap: 10px;
+  height: 44px; padding: 0 6px 0 14px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
+  transition: border-color 140ms ease-out, box-shadow 140ms ease-out;
+}
+/* Single focus treatment on the wrapper only — no double outline (input itself
+   never draws its own ring; same recipe as the Collections genre search). */
+.knh__search:focus-within { border-color: var(--accent); box-shadow: var(--focus-ring); }
+.knh__search > svg { color: var(--icon-muted, var(--text-muted)); flex-shrink: 0; }
+.knh__search input {
+  flex: 1; min-width: 0; height: 100%;
+  border: 0; outline: none; box-shadow: none; background: transparent;
+  font-family: var(--font-body); font-size: 14.5px; font-weight: 500; color: var(--text);
+}
+.knh__search input::placeholder { color: var(--text-faint, var(--text-muted)); font-weight: 400; }
+/* Suppress the native WebKit/Chromium clear control on the header's
+   type="search" inputs so only the custom .knh__clear button shows (same
+   recipe as the DS .kn-field in search-intelligence.css). */
+.knh__search input[type='search']::-webkit-search-cancel-button,
+.knh-so__field input[type='search']::-webkit-search-cancel-button {
+  -webkit-appearance: none;
+  appearance: none;
+  display: none;
+}
+.knh__clear {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; flex-shrink: 0; border: 0; border-radius: 8px;
+  background: transparent; color: var(--text-muted); cursor: pointer;
+  transition: color 140ms ease-out, background 140ms ease-out;
+}
+.knh__clear:hover { color: var(--text); background: var(--surface-accent); }
+
+/* ── Desktop nav links (frozen v1.0 link recipe) ── */
+.knh__nav { display: flex; align-items: center; gap: 28px; margin-left: auto; }
+.knh__link {
+  display: inline-flex; align-items: center; gap: 7px; white-space: nowrap;
+  font-family: var(--font-body); font-size: 15.5px; font-weight: 500;
+  color: var(--text-body, var(--text)); text-decoration: none; transition: color 140ms ease-out;
+}
+.knh__link:hover { color: var(--accent); }
+.knh__link--active { color: var(--accent); font-weight: 600; }
+.knh__badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 19px; height: 19px; padding: 0 6px; border-radius: 999px;
+  background: var(--knh-rose); color: #fff; font-size: 11px; font-weight: 700; line-height: 1;
+}
+
+.knh__actions { display: flex; align-items: center; gap: var(--space-5, 16px); margin-right: -9px; flex-shrink: 0; }
+.knh__actions .kn-btn { height: 40px; padding: 0 20px; font-size: 14px; font-weight: 600; border-radius: 10px; }
+.knh__auth { display: inline-flex; align-items: center; gap: 8px; }
+
+/* ── Mobile icon cluster (hidden on desktop) ── */
+.knh__mob { display: none; }
+.knh__iconbtn {
+  position: relative; display: inline-flex; align-items: center; justify-content: center;
+  width: 44px; height: 44px; border: 0; border-radius: 12px;
+  background: transparent; color: var(--text-body, var(--text)); cursor: pointer;
+  transition: background 140ms ease-out, color 140ms ease-out;
+}
+.knh__iconbtn:hover { background: var(--surface-accent); color: var(--accent); }
+.knh__count {
+  position: absolute; top: 3px; right: 1px;
+  display: inline-flex; align-items: center; justify-content: center;
+  min-width: 17px; height: 17px; padding: 0 4px; border-radius: 999px;
+  background: var(--knh-rose); color: #fff; font-family: var(--font-body);
+  font-size: 10px; font-weight: 700; line-height: 1; border: 2px solid var(--bg);
+}
+
+/* Mid-width squeeze (tablet / narrow desktop): keep everything on one row —
+   tighter gaps, search capsule allowed to shrink further. No overflow, ever. */
+@media (max-width: 1180px) {
+  .knh__row { gap: 16px; }
+  .knh__nav { gap: 18px; }
+  .knh__search { min-width: 150px; }
+  .knh__link { font-size: 14.5px; }
+}
+
+@media (max-width: 768px) {
+  .knh__row { height: 56px; gap: 8px; justify-content: space-between; }
+  .knh__logo { height: 42px; margin-left: -6px; }
+  .knh__search, .knh__nav, .knh__actions { display: none; }
+  .knh__mob { display: flex; align-items: center; gap: 2px; margin-right: -10px; }
+}
+
+/* ═══ Mobile SEARCH OVERLAY — full search bar drops from the top,
+       page dimmed behind (ksd.ua interaction, Knyhovo visuals). ═══ */
+.knh-so { position: fixed; inset: 0; z-index: 300; }
+.knh-so__backdrop { position: absolute; inset: 0; background: color-mix(in oklab, var(--text) 45%, transparent); animation: knh-fade 200ms ease-out; }
+.knh-so__panel {
+  position: absolute; top: 0; left: 0; right: 0;
+  display: flex; align-items: center; gap: 10px; padding: 12px 16px 14px;
+  background: var(--bg); border-bottom: 1px solid var(--border);
+  box-shadow: var(--shadow-lg); animation: knh-drop 240ms ease-out;
+}
+.knh-so__field {
+  flex: 1; min-width: 0; display: flex; align-items: center; gap: 10px;
+  height: 52px; padding: 0 4px 0 14px;
+  background: var(--surface); border: 1px solid var(--border); border-radius: 14px;
+  transition: border-color 140ms ease-out, box-shadow 140ms ease-out;
+}
+.knh-so__field:focus-within { border-color: var(--accent); box-shadow: var(--focus-ring); }
+.knh-so__field > svg { color: var(--icon-muted, var(--text-muted)); flex-shrink: 0; }
+.knh-so__field input {
+  flex: 1; min-width: 0; height: 100%;
+  border: 0; outline: none; box-shadow: none; background: transparent;
+  font-family: var(--font-body); font-size: 16px; color: var(--text);
+}
+.knh-so__field input::placeholder { color: var(--text-faint, var(--text-muted)); }
+.knh-so__field .knh__clear { width: 44px; height: 44px; border-radius: 10px; }
+.knh-so__go {
+  flex-shrink: 0; height: 52px; padding: 0 18px; border: 0; border-radius: 12px;
+  background: var(--accent); color: var(--text-on-accent, #fff);
+  font-family: var(--font-body); font-size: 15px; font-weight: 600; cursor: pointer;
+  transition: opacity 140ms ease-out;
+}
+.knh-so__go:hover { opacity: .88; }
+
+/* ═══ Mobile MENU DRAWER — simple right sheet: nav · auth · theme. ═══ */
+.knh-dr { position: fixed; inset: 0; z-index: 300; }
+.knh-dr__backdrop { position: absolute; inset: 0; background: color-mix(in oklab, var(--text) 45%, transparent); animation: knh-fade 200ms ease-out; }
+.knh-dr__panel {
+  position: absolute; top: 0; right: 0; bottom: 0; width: min(320px, 86vw);
+  display: flex; flex-direction: column;
+  background: var(--surface); border-left: 1px solid var(--border);
+  box-shadow: var(--shadow-lg); padding: 10px 20px 24px;
+  animation: knh-slide 260ms ease-out;
+}
+.knh-dr__head { display: flex; align-items: center; justify-content: space-between; height: 46px; margin: 0 -6px 6px 0; }
+.knh-dr__title { font-family: var(--font-display); font-size: 18px; font-weight: 600; color: var(--text); }
+.knh-dr__nav { display: flex; flex-direction: column; }
+.knh-dr__item {
+  display: flex; align-items: center; gap: 10px; min-height: 50px;
+  font-family: var(--font-body); font-size: 16.5px; font-weight: 500;
+  color: var(--text-body, var(--text)); text-decoration: none;
+  border-bottom: 1px solid var(--border);
+  background: none; border-left: 0; border-right: 0; border-top: 0;
+  padding: 0; cursor: pointer; text-align: left; width: 100%;
+  transition: color 140ms ease-out;
+}
+.knh-dr__item:hover { color: var(--accent); }
+.knh-dr__item--active { color: var(--accent); font-weight: 600; }
+.knh-dr__item--muted { color: var(--text-muted); }
+.knh-dr__item svg { flex-shrink: 0; opacity: .7; }
+.knh-dr__auth { display: flex; flex-direction: column; margin-top: 16px; }
+.knh-dr__auth .kn-btn { width: 100%; height: 48px; font-size: 15px; font-weight: 600; border-radius: 10px; }
+.knh-dr__theme {
+  margin-top: auto; display: flex; align-items: center; justify-content: space-between;
+  padding-top: 18px; border-top: 1px solid var(--border);
+  font-family: var(--font-body); font-size: 14px; font-weight: 500; color: var(--text-muted);
+}
+
+@keyframes knh-fade { from { opacity: 0; } }
+@keyframes knh-drop { from { opacity: 0; transform: translateY(-12px); } }
+@keyframes knh-slide { from { opacity: 0; transform: translateX(24px); } }
+@media (prefers-reduced-motion: reduce) {
+  .knh-so__backdrop, .knh-so__panel, .knh-dr__backdrop, .knh-dr__panel { animation: none; }
+}

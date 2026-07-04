@@ -9,29 +9,24 @@
 /* ---------- Layout (reused from approved homepage) ---------- */
 .page { max-width: var(--container-wide); margin: 0 auto; padding: 0 var(--gutter); }
 
-/* ---------- Header (reused from approved homepage) ---------- */
-.site-header { display: flex; align-items: center; gap: var(--space-8); padding: var(--space-5) 0; }
-.site-logo { height: 44px; display: block; }
-.site-nav { display: flex; gap: var(--space-6); margin-left: auto; }
-.nav-link { font-size: var(--fs-sm); font-weight: var(--fw-medium); color: var(--text-body); transition: color var(--dur-fast) var(--ease-out); }
-.nav-link:hover { color: var(--accent); }
-.nav-link--active { color: var(--accent); font-weight: var(--fw-semibold); }
-.site-actions { display: flex; align-items: center; gap: var(--space-4); }
-
-/* Theme-aware logo swap (server-rendered; toggled purely via CSS to stay SSR-safe) */
-.site-logo--dark { display: none; }
-[data-theme="dark"] .site-logo--light { display: none; }
-[data-theme="dark"] .site-logo--dark { display: block; }
-
-/* ---------- Footer (reused from approved homepage) ---------- */
+/* ---------- Footer (reused from approved homepage; compacted 2026-07-05) ---------- */
 .site-footer {
   border-top: 1px solid var(--border);
-  padding: var(--space-10) 0 var(--space-12);
-  display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3);
+  padding: var(--space-6) 0 var(--space-8);
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2);
 }
-.footer-logo { height: 36px; }
+.footer-logo { height: 32px; }
 .footer-line { font-size: var(--fs-sm); color: var(--text-body); }
 .footer-copy { font-size: var(--fs-xs); color: var(--text-muted); }
+/* Theme-aware logo swap (SSR-safe; the footer owns its own copy now that the
+   old header's .site-logo--* rules are gone). */
+.footer-logo--dark { display: none; }
+[data-theme="dark"] .footer-logo--light { display: none; }
+[data-theme="dark"] .footer-logo--dark { display: block; }
+@media (max-width: 768px) {
+  .site-footer { padding: var(--space-5) 0 var(--space-6); }
+  .footer-logo { height: 28px; }
+}
 
 /* ============================================================
    Search Results
@@ -157,7 +152,6 @@
    Desktop ≥768px: 2-column grid, horizontal BookCards, full pagination.
    Mobile  <768px: 1 column, vertical BookCards, full-width search, 44px touch targets. */
 @media (max-width: 900px) {
-  .site-nav { display: none; }
   .results__toolbar { flex-direction: column; align-items: flex-start; }
   .kn-empty__mascot { height: 180px; }
 }

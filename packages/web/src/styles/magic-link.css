@@ -194,7 +194,7 @@
   margin: 0 auto var(--space-5);
   opacity: 1;
 }
-/* Theme-swapped redirect logo (mirrors the .site-logo--light/--dark recipe). */
+/* Theme-swapped redirect logo (mirrors the .knh__logo--light/--dark recipe). */
 .ml-redirect-logo--dark {
   display: none;
 }
@@ -293,7 +293,7 @@
 }
 
 /* ── Authenticated header control (account menu) ────────────────────────────
-   Sits in the existing .site-actions slot in place of «Увійти». Uses DS tokens
+   Sits in the existing .knh__actions slot in place of «Увійти». Uses DS tokens
    only; the dropdown is absolutely positioned so header layout is unchanged. */
 .kn-account {
   position: relative;

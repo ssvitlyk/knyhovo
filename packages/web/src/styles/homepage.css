@@ -141,7 +141,7 @@
   -webkit-mask-image: radial-gradient(ellipse 72% 60% at 50% 46%, black 52%, transparent 82%);
   mask-image: radial-gradient(ellipse 72% 60% at 50% 46%, black 52%, transparent 82%);
 }
-/* Theme-swap (mirrors the .site-logo--light/--dark recipe). */
+/* Theme-swap (mirrors the .knh__logo--light/--dark recipe). */
 .hero__mascot--dark {
   display: none;
 }

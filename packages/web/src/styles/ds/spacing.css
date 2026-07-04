@@ -29,8 +29,8 @@
 
   /* ---- Layout ---- */
   --container:        1200px;
-  --container-wide:   1320px;
-  --gutter:           clamp(20px, 4vw, 48px); /* @kind spacing */
+  --container-wide:   1680px;
+  --gutter:           clamp(20px, 3vw, 32px); /* @kind spacing */
   --section-y:        clamp(48px, 8vw, 112px); /* @kind spacing */
 
   /* ---- Control sizes ---- */

@@ -199,3 +199,79 @@ export interface NotificationPreferencesDto {
   readonly backInStockEnabled: boolean;
   readonly unsubscribed: boolean;
 }
+
+/**
+ * Frontend mirror of the Collections API contract (Collections PRD v1.0,
+ * `GET /api/collections*`). The DTOs are not exported from `@knyhovo/shared`,
+ * and the architecture forbids web → api imports, so the shape is mirrored
+ * here verbatim from the agreed contract. Monetary amounts are integer kopiyky.
+ */
+
+export type CollectionType = 'dynamic' | 'editorial' | 'taxonomic';
+
+export interface CollectionDto {
+  readonly id: string;
+  readonly slug: string;
+  readonly type: CollectionType;
+  readonly name: string;
+  readonly description: string;
+  readonly bookCount: number;
+  /** ISO 8601 timestamp of the last content refresh. */
+  readonly updatedAt: string;
+  readonly isActive: boolean;
+  /** Lucide-style icon name rendered via DynIcon (optional). */
+  readonly icon?: string;
+}
+
+export interface CollectionBookCardDto {
+  readonly id: string;
+  readonly title: string;
+  readonly author: string;
+  readonly coverUrl: string;
+  /** Current best price in kopiyky. */
+  readonly price: number;
+  /** Previous/crossed-out price in kopiyky, when there is a real drop. */
+  readonly oldPrice?: number;
+  readonly storeName: string;
+  readonly discountPct?: number;
+  readonly inStock: boolean;
+  /** Site-relative Book Details URL (e.g. `/books/:id`). */
+  readonly url: string;
+  /** ISO 8601 timestamp when the book entered the catalog. */
+  readonly catalogAddedAt: string;
+  readonly wishlistCount: number;
+}
+
+export interface CollectionsHubFeaturedDto {
+  readonly collection: CollectionDto;
+  readonly previewBooks: readonly CollectionBookCardDto[];
+}
+
+export interface CollectionsHubDto {
+  readonly featured: CollectionsHubFeaturedDto;
+  readonly dynamic: readonly CollectionDto[];
+  /** knyhovyk-radyt + pryhovani-skarby. */
+  readonly editorial: readonly CollectionDto[];
+  /** Weekly editorial trio (buker-2026, ukr-fentezi, non-fikshn). */
+  readonly weekly: readonly CollectionDto[];
+  readonly moods: readonly CollectionDto[];
+  /** Taxonomic collections with bookCount >= 30. */
+  readonly genres: readonly CollectionDto[];
+}
+
+/** Sort options accepted by `GET /api/collections/:slug/books`. */
+export type CollectionsApiSort =
+  | 'relevance'
+  | 'price_asc'
+  | 'price_desc'
+  | 'newest'
+  | 'oldest'
+  | 'discount_desc';
+
+export interface CollectionBooksPageDto {
+  readonly books: readonly CollectionBookCardDto[];
+  readonly total: number;
+  readonly page: number;
+  readonly per_page: number;
+  readonly total_pages: number;
+}
