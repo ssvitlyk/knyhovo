@@ -34,6 +34,9 @@ export async function SiteHeader(): Promise<React.JSX.Element> {
         <a href="/search" className="nav-link nav-link--active">
           Каталог
         </a>
+        <Link href="/dobirky" className="nav-link">
+          Добірки
+        </Link>
         <a href="/wishlist" className="nav-link">
           Бажанки
         </a>
