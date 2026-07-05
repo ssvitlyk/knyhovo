@@ -4,7 +4,16 @@
 // first (Turbo caches, so it is a near-no-op when nothing changed). Never run this
 // file with raw `tsx` and expect fresh scraper code — go through `pnpm scrape`.
 import { prisma } from '../db.js';
-import { YakabooScraper, VivatScraper, BookYeScraper, browserManager } from '@knyhovo/scrapers';
+import {
+  YakabooScraper,
+  VivatScraper,
+  BookYeScraper,
+  BookChefScraper,
+  LaboratoryScraper,
+  KnigolandScraper,
+  BookClubScraper,
+  browserManager,
+} from '@knyhovo/scrapers';
 import type { ScraperProvider } from '@knyhovo/shared';
 import { ScrapeRunTrigger } from '@prisma/client';
 import { createLogger } from '../pipeline/index.js';
@@ -18,6 +27,10 @@ const providers: ScraperProvider[] = [
   new YakabooScraper(),
   new VivatScraper(),
   new BookYeScraper(),
+  new BookChefScraper(),
+  new LaboratoryScraper(),
+  new KnigolandScraper(),
+  new BookClubScraper(),
 ];
 
 /**
