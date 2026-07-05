@@ -20,12 +20,13 @@ const DEFAULT_DELAY_MS = 500;
  * Knigoland scraper (Tier A). Discovery traverses the sitemap index
  * (`/sitemaps/sitemap.xml`): the index lists sub-sitemaps, of which only the
  * `sections/catalog-products-1..5.xml` ones (~50k product URLs total) are kept.
- * Each product page is server-rendered (nginx + Next.js, no Cloudflare/WAF) with
- * a `@type:Product` block (price/availability) plus a `@type:Book` block
- * (isbn/author) that the parser merges. Non-books (gifts/stationery/toys) carry no
- * `@type:Book` and the parser skips them silently — no error, and because product
- * URLs are deduplicated across all sub-sitemaps BEFORE the fetch loop, each URL
- * (book or not) is fetched at most once and never re-fetched after a skip.
+ * Each product page is server-rendered (Next.js, no Cloudflare/WAF) with a
+ * `@type:Product` JSON-LD block (price/availability) plus a visible spec table
+ * the parser reads for isbn/author. Non-books (gifts/stationery/toys) carry no
+ * Bookland-prefixed ISBN and the parser skips them silently — no error, and
+ * because product URLs are deduplicated across all sub-sitemaps BEFORE the fetch
+ * loop, each URL (book or not) is fetched at most once and never re-fetched
+ * after a skip.
  *
  * The fetcher is injectable so tests substitute fixtures and prod can swap
  * implementations. `options.maxPages` overrides the provider-local product cap

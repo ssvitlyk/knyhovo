@@ -11,8 +11,8 @@ import type { ParsedProductState } from '../single-product.js';
 /** Result of parsing a single Knigoland product page into a raw listing. */
 export interface ParseResult {
   /**
-   * The parsed listing, or null when the page lacked a usable Product/Book block
-   * OR when the page is not a paper book (a silent skip — see {@link parseKnigolandListing}).
+   * The parsed listing, or null when the page lacked a usable Product block OR
+   * when the page is not a paper book (a silent skip — see {@link parseKnigolandListing}).
    */
   readonly listing: RawProviderListing | null;
   readonly errors: string[];
@@ -25,17 +25,6 @@ interface KnigolandProduct {
   readonly image?: unknown;
   readonly sku?: unknown;
   readonly mpn?: unknown;
-  readonly offers?: unknown;
-}
-
-/** Shape of a Knigoland JSON-LD `@type:Book` block (all fields untrusted). */
-interface KnigolandBook {
-  readonly '@type'?: unknown;
-  readonly name?: unknown;
-  readonly image?: unknown;
-  readonly isbn?: unknown;
-  readonly author?: unknown;
-  readonly url?: unknown;
   readonly offers?: unknown;
 }
 
@@ -90,27 +79,50 @@ function resolveAvailability(availability: unknown, hasPrice: boolean): Availabi
   return 'unknown';
 }
 
-/** Join Knigoland's Book.author field (Person object / array / string) into one string. */
-function resolveAuthor(author: unknown): string | null {
-  if (typeof author === 'string') {
-    return author.trim() !== '' ? author.trim() : null;
-  }
-  if (Array.isArray(author)) {
-    const names = author
-      .map((entry) => readName(entry))
-      .filter((name): name is string => name !== null);
-    return names.length > 0 ? names.join(', ') : null;
-  }
-  return readName(author);
+/**
+ * Read the value next to a "Характеристики" spec-table label (e.g. `ISBN`) —
+ * `<span class="whitespace-nowrap">{label}</span>` followed by a dashed-line div,
+ * with the value living in the label's parent's next sibling. Returns the first
+ * match in document order, or null when the label/value is absent.
+ */
+function readSpecValue($: cheerio.CheerioAPI, label: string): string | null {
+  let value: string | null = null;
+  $('span.whitespace-nowrap').each((_, el) => {
+    if (value !== null) return;
+    if ($(el).text().trim() !== label) return;
+    const text = $(el).parent().next().text().trim();
+    if (text !== '') value = text;
+  });
+  return value;
 }
 
-function readName(value: unknown): string | null {
-  if (typeof value === 'string') return value.trim() !== '' ? value.trim() : null;
-  if (typeof value === 'object' && value !== null) {
-    const name = (value as { name?: unknown }).name;
-    if (typeof name === 'string' && name.trim() !== '') return name.trim();
-  }
-  return null;
+/**
+ * Read the author from `<meta name="description">` (`"Купити книгу {title} автора
+ * {author} арт: {sku} …"`). Deliberately NOT read from the visible "Автори:"
+ * spec-table link(s): that section sometimes lists the same person twice under
+ * two transliteration variants (e.g. "Курт Воннегут" and "Курт Воннеґут" — a
+ * site data-quality quirk, verified against the live catalog), while the meta
+ * description always carries one clean canonical name. Non-book pages ("Придбати
+ * «…»") never match and yield null.
+ */
+function readAuthorFromMetaDescription($: cheerio.CheerioAPI): string | null {
+  const content = $('meta[name="description"]').attr('content') ?? '';
+  const match = /автора\s+(.+?)\s+арт:/u.exec(content);
+  if (!match) return null;
+  const author = match[1]!.replace(/\s+/g, ' ').trim();
+  return author !== '' ? author : null;
+}
+
+/**
+ * Whether a spec-table ISBN value is a real Bookland EAN-13 (`978`/`979` prefix).
+ * Knigoland's ISBN spec row also carries plain product barcodes for non-books
+ * (e.g. toys), which pass the same checksum as a real ISBN-13 — the Bookland
+ * prefix is the only reliable discriminator once the prefix-agnostic checksum
+ * alone would accept both.
+ */
+function isBooklandIsbn13(raw: string): boolean {
+  const digits = raw.replace(/[^0-9]/g, '');
+  return digits.length === 13 && (digits.startsWith('978') || digits.startsWith('979'));
 }
 
 function matchesType(type: unknown, wanted: string): boolean {
@@ -139,23 +151,24 @@ function findByType(parsed: unknown, wanted: string): Record<string, unknown> | 
 }
 
 /**
- * Read the `@type:Product` and `@type:Book` JSON-LD blocks from a Knigoland product
- * page. Pure — no IO. Malformed JSON in a block is recorded and skipped, never thrown.
+ * Read the `@type:Product` JSON-LD block from a Knigoland product page, plus a
+ * loaded cheerio document for reading spec-table fields (ISBN, authors) that
+ * Knigoland no longer exposes as JSON-LD. Pure — no IO. Malformed JSON in a
+ * block is recorded and skipped, never thrown.
  */
 function readBlocks(html: string): {
+  $: cheerio.CheerioAPI;
   product: KnigolandProduct | null;
-  book: KnigolandBook | null;
   errors: string[];
 } {
   const errors: string[] = [];
   const $ = cheerio.load(html);
   const blocks = $(JSON_LD_SELECTOR).toArray();
   if (blocks.length === 0) {
-    return { product: null, book: null, errors: ['no JSON-LD script found'] };
+    return { $, product: null, errors: ['no JSON-LD script found'] };
   }
 
   let product: KnigolandProduct | null = null;
-  let book: KnigolandBook | null = null;
 
   for (const block of blocks) {
     const raw = $(block).contents().text().trim();
@@ -168,48 +181,51 @@ function readBlocks(html: string): {
       continue;
     }
     if (product === null) product = findByType(parsed, 'Product') as KnigolandProduct | null;
-    if (book === null) book = findByType(parsed, 'Book') as KnigolandBook | null;
   }
 
-  return { product, book, errors };
+  return { $, product, errors };
 }
 
 /**
- * Parse a Knigoland product page into a single raw provider listing by merging the
- * `@type:Product` block (price, availability, sku/mpn) with the `@type:Book` block
- * (isbn, author). Pure function — no IO, never throws.
+ * Parse a Knigoland product page into a single raw provider listing from the
+ * `@type:Product` JSON-LD block (price, availability, sku/mpn, image) merged with
+ * the visible spec table (ISBN, authors) — Knigoland dropped the `@type:Book`
+ * JSON-LD block from every product page (site migration, verified against the
+ * live catalog); isbn/author are no longer available as structured data.
  *
- * Paper-book filter (verified against the live catalog): a paper book is identified by
- * the presence of a `@type:Book` block. Non-books (gifts/stationery/toys) carry only a
- * `@type:Product` block and are skipped silently — `{ listing: null, errors: [] }` —
- * since a mixed catalog is expected, not an error. Breadcrumb root categories vary per
- * section (Книги, Комікси та манга, Навчальна література, …) so they are NOT used to
- * gate. A genuinely malformed/incomplete page yields `listing: null` with a message in
- * `errors`.
+ * Paper-book filter: a paper book is identified by a spec-table ISBN in the
+ * Bookland range (`978`/`979` prefix). Non-books (gifts/stationery/toys) carry a
+ * plain EAN-13 barcode in the same spec row, which passes the same checksum as a
+ * real ISBN — the Bookland prefix is what distinguishes them. Non-books are
+ * skipped silently — `{ listing: null, errors: [] }` — since a mixed catalog is
+ * expected, not an error. A genuinely malformed/incomplete page yields
+ * `listing: null` with a message in `errors`.
  */
 export function parseKnigolandListing(html: string): ParseResult {
-  const { product, book, errors } = readBlocks(html);
-  if (product === null && book === null) {
-    if (errors.length === 0) errors.push('no Product/Book JSON-LD found');
+  const { $, product, errors } = readBlocks(html);
+  if (product === null) {
+    if (errors.length === 0) errors.push('no Product JSON-LD found');
     return { listing: null, errors };
   }
 
-  // Paper-book filter — a non-book (Product without a Book block) is skipped silently
+  const specIsbn = readSpecValue($, 'ISBN');
+
+  // Paper-book filter — a non-book (no Bookland-prefixed ISBN) is skipped silently
   // (an expected outcome for a mixed catalog, not a scrape error).
-  if (book === null) {
+  if (specIsbn === null || !isBooklandIsbn13(specIsbn)) {
     return { listing: null, errors };
   }
 
   try {
-    const offers = asOffers(product?.offers) ?? asOffers(book?.offers) ?? {};
+    const offers = asOffers(product.offers) ?? {};
 
-    const title = readString(product?.name) ?? readString(book?.name) ?? '';
+    const title = readString(product.name) ?? '';
     if (!title) {
       errors.push('Product missing name, skipped');
       return { listing: null, errors };
     }
 
-    const url = readString(offers.url) ?? readString(book?.url) ?? '';
+    const url = readString(offers.url) ?? '';
     if (!url) {
       errors.push(`Product "${title}": missing url, skipped`);
       return { listing: null, errors };
@@ -218,22 +234,23 @@ export function parseKnigolandListing(html: string): ParseResult {
     const priceKopecks = knigolandPriceToKopecks(offers.price);
     const price: Money | null = priceKopecks !== null ? toMoney(priceKopecks) : null;
 
-    // ISBN cascade: Book.isbn → Product.sku → Product.mpn. sku/mpn are numeric
-    // catalogue codes, so the fallback is defensive (usually fails the checksum).
+    // ISBN cascade: spec-table ISBN → Product.sku → Product.mpn. sku/mpn are
+    // numeric catalogue codes, so the fallback is defensive (usually fails the
+    // checksum); the spec-table value already passed the Bookland gate above.
     const isbn =
-      normalizeIsbn(readString(book?.isbn)) ??
-      normalizeIsbn(readString(product?.sku)) ??
-      normalizeIsbn(readString(product?.mpn));
+      normalizeIsbn(specIsbn) ??
+      normalizeIsbn(readString(product.sku)) ??
+      normalizeIsbn(readString(product.mpn));
 
     const listing: RawProviderListing = {
       provider: 'knigoland',
       title,
-      author: resolveAuthor(book?.author),
+      author: readAuthorFromMetaDescription($),
       isbn,
       price,
       url,
       availability: resolveAvailability(offers.availability, price !== null),
-      coverUrl: buildCoverUrl(product?.image ?? book?.image),
+      coverUrl: buildCoverUrl(product.image),
       description: null,
     };
     return { listing, errors };
@@ -250,8 +267,8 @@ export function parseKnigolandListing(html: string): ParseResult {
  * yields `{ price: null, availability: 'out-of-stock' }`.
  */
 export function parseKnigolandProduct(html: string): ParsedProductState {
-  const { product, book } = readBlocks(html);
-  const offers = asOffers(product?.offers) ?? asOffers(book?.offers);
+  const { product } = readBlocks(html);
+  const offers = asOffers(product?.offers);
   if (offers === null) return { price: null, availability: 'unknown' };
 
   const priceKopecks = knigolandPriceToKopecks(offers.price);
