@@ -1,13 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import type { CollectionBookCardDto } from '@/lib/api/types';
+import type { CollectionBookDto } from '@/lib/api/types';
 import type { CardBadge } from '@/lib/collections/badges';
 import { formatMoney } from '@/lib/format';
 import { DynIcon } from './icons';
 
 export interface CollectionBookCardProps {
-  readonly book: CollectionBookCardDto;
+  readonly book: CollectionBookDto;
   readonly badge: CardBadge | null;
   readonly saved: boolean;
   readonly onToggle: (bookId: string) => void;
@@ -50,9 +50,15 @@ export function BookCard({ book, badge, saved, onToggle }: CollectionBookCardPro
         <div className="bkc__title">{book.title}</div>
         <div className="bkc__author">{book.author}</div>
         <div className="bkc__foot">
-          <span className="bkc__price">{formatMoney({ amount: book.price, currency: 'UAH' })}</span>
-          {book.oldPrice !== undefined ? (
-            <span className="bkc__old">{formatMoney({ amount: book.oldPrice, currency: 'UAH' })}</span>
+          {book.minPrice !== null ? (
+            <span className="bkc__price">{formatMoney(book.minPrice)}</span>
+          ) : (
+            <span className="bkc__price" style={{ color: 'var(--text-muted)' }}>
+              —
+            </span>
+          )}
+          {book.oldPrice !== null ? (
+            <span className="bkc__old">{formatMoney(book.oldPrice)}</span>
           ) : null}
         </div>
       </div>

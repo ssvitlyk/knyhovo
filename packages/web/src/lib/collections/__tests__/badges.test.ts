@@ -1,19 +1,24 @@
 import { describe, expect, it } from 'vitest';
-import type { CollectionBookCardDto } from '@/lib/api/types';
+import type { CollectionBookDto } from '@/lib/api/types';
 import { compactUA, detailsBadgeFor, discountPercent, shelfBadgeFor } from '../badges';
 
-function book(overrides: Partial<CollectionBookCardDto> = {}): CollectionBookCardDto {
+function book(overrides: Partial<CollectionBookDto> = {}): CollectionBookDto {
   return {
     id: 'b1',
     title: 'Кобзар',
     author: 'Тарас Шевченко',
     coverUrl: '/covers/kobzar.png',
-    price: 24000,
+    minPrice: { amount: 24000, currency: 'UAH' },
+    oldPrice: null,
+    discountPercent: null,
     storeName: 'Yakaboo',
+    rating: null,
+    reviewsCount: null,
     inStock: true,
     url: '/books/b1',
     catalogAddedAt: '2026-01-01T00:00:00.000Z',
     wishlistCount: 0,
+    isWishlisted: false,
     ...overrides,
   };
 }
@@ -32,10 +37,14 @@ describe('compactUA', () => {
 
 describe('discountPercent', () => {
   it('computes from oldPrice when present', () => {
-    expect(discountPercent(book({ price: 28500, oldPrice: 38000 }))).toBe(25);
+    expect(
+      discountPercent(
+        book({ minPrice: { amount: 28500, currency: 'UAH' }, oldPrice: { amount: 38000, currency: 'UAH' } }),
+      ),
+    ).toBe(25);
   });
-  it('falls back to discountPct', () => {
-    expect(discountPercent(book({ discountPct: 30 }))).toBe(30);
+  it('falls back to discountPercent', () => {
+    expect(discountPercent(book({ discountPercent: 30 }))).toBe(30);
   });
   it('returns null without any discount signal', () => {
     expect(discountPercent(book())).toBeNull();
@@ -61,11 +70,15 @@ describe('shelfBadgeFor', () => {
     expect(shelfBadgeFor('novynky', book(), 0)).toEqual({ tone: 'new', text: 'Новинка' });
   });
   it('znyzhky → first card «Найкраща ціна», rest «−N%», no badge without discount', () => {
-    expect(shelfBadgeFor('znyzhky', book({ oldPrice: 38000, price: 28500 }), 0)).toEqual({
+    const discounted = book({
+      minPrice: { amount: 28500, currency: 'UAH' },
+      oldPrice: { amount: 38000, currency: 'UAH' },
+    });
+    expect(shelfBadgeFor('znyzhky', discounted, 0)).toEqual({
       tone: 'green',
       text: 'Найкраща ціна',
     });
-    expect(shelfBadgeFor('znyzhky', book({ oldPrice: 38000, price: 28500 }), 1)).toEqual({
+    expect(shelfBadgeFor('znyzhky', discounted, 1)).toEqual({
       tone: 'green',
       text: '−25%',
     });
@@ -76,7 +89,14 @@ describe('shelfBadgeFor', () => {
 describe('detailsBadgeFor', () => {
   it('discount wins over everything', () => {
     expect(
-      detailsBadgeFor(book({ oldPrice: 38000, price: 28500, inStock: false }), NOW),
+      detailsBadgeFor(
+        book({
+          minPrice: { amount: 28500, currency: 'UAH' },
+          oldPrice: { amount: 38000, currency: 'UAH' },
+          inStock: false,
+        }),
+        NOW,
+      ),
     ).toEqual({ tone: 'green', text: '−25%' });
   });
   it('recent arrival → «Новинка»', () => {

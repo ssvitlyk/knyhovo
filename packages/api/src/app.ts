@@ -155,7 +155,10 @@ export function buildApp(prisma: PrismaClient, authDeps?: AuthDeps): FastifyInst
   // Public one-click unsubscribe (no auth) — backs the email List-Unsubscribe header.
   registerUnsubscribeRoute(app, prisma);
   // Collections/добірки are a public browsing surface — no auth required.
-  registerCollectionsRoute(app, prisma);
+  // `authDeps` is optional here too: when present, isWishlisted is decorated
+  // for a signed-in session; when absent (or the request is a guest), every
+  // book comes back with isWishlisted: false — never a 401.
+  registerCollectionsRoute(app, prisma, authDeps);
 
   // Auth routes are only registered when deps are provided.
   // Tests that don't exercise auth can call buildApp(prisma) without

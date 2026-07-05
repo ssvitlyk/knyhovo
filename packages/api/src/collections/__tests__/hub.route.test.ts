@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import type { Mock } from 'vitest';
 import { buildApp } from '../../app.js';
 import { clearCache } from '../cache.js';
 import {
@@ -10,6 +11,9 @@ import {
   itemsFor,
 } from './fake-prisma.js';
 import type { FakeDb } from './fake-prisma.js';
+
+/** Loosely-typed vitest mock function, for asserting call counts on the fake Prisma spies. */
+type MockFn = Mock<(...args: unknown[]) => unknown>;
 
 const FEATURED_SLUG = 'knyhovyk-radyt';
 const EDITORIAL_SLUGS = ['knyhovyk-radyt', 'pryhovani-skarby'];
@@ -153,5 +157,37 @@ describe('GET /api/collections/hub', () => {
     const body = res.json();
     const fb1 = body.featured.previewBooks.find((b: { id: string }) => b.id === 'fb1');
     expect(fb1.wishlistCount).toBe(2);
+  });
+
+  it('previewBooks expose the unified CollectionBookDto shape (Money minPrice, null defaults, isWishlisted false for guests)', async () => {
+    const db = fullHubDb();
+    const app = await buildTestApp(db);
+    const res = await app.inject({ method: 'GET', url: '/api/collections/hub' });
+    const [preview] = res.json().featured.previewBooks;
+    expect(preview).toMatchObject({
+      minPrice: { amount: 10000, currency: 'UAH' },
+      oldPrice: null,
+      discountPercent: null,
+      rating: null,
+      reviewsCount: null,
+      isWishlisted: false,
+      storeName: 'Yakaboo',
+    });
+  });
+
+  it('single-scan perf: canonicalBook.findMany <= 2, wishlistItem.groupBy and canonicalBook.groupBy exactly 1', async () => {
+    const db = fullHubDb();
+    const prisma = makeFakePrisma(db);
+    const spies = prisma as unknown as {
+      canonicalBook: { findMany: MockFn; groupBy: MockFn };
+      wishlistItem: { groupBy: MockFn };
+    };
+    const app = buildApp(prisma);
+    const res = await app.inject({ method: 'GET', url: '/api/collections/hub' });
+    expect(res.statusCode).toBe(200);
+
+    expect(spies.canonicalBook.findMany.mock.calls.length).toBeLessThanOrEqual(2);
+    expect(spies.wishlistItem.groupBy.mock.calls.length).toBe(1);
+    expect(spies.canonicalBook.groupBy.mock.calls.length).toBe(1);
   });
 });

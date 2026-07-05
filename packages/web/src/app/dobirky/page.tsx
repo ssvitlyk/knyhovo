@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
+import { cookies } from 'next/headers';
 import { getCollectionBooks, getCollectionsHub } from '@/lib/api/collections';
-import type { CollectionBookCardDto, CollectionsHubDto } from '@/lib/api/types';
+import type { CollectionBookDto, CollectionsHubDto } from '@/lib/api/types';
 import { allocate } from '@/lib/collections/allocate';
 import { shelfBadgeFor, type ShelfKind } from '@/lib/collections/badges';
 import { buildCollectionPageJsonLd } from '@/lib/seo/collections-jsonld';
@@ -35,15 +36,15 @@ const SHELF_SLUGS: Readonly<Record<string, string>> = {
   gems: 'pryhovani-skarby',
 };
 
-async function booksOf(slug: string): Promise<readonly CollectionBookCardDto[]> {
+async function booksOf(slug: string, cookie: string): Promise<readonly CollectionBookDto[]> {
   try {
-    return (await getCollectionBooks({ slug, page: 1 })).books;
+    return (await getCollectionBooks({ slug, page: 1, cookie })).books;
   } catch {
     return []; // degraded shelf — the section renders with what survived dedup
   }
 }
 
-function shelfItems(shelf: ShelfKind, books: readonly CollectionBookCardDto[]): ShelfItem[] {
+function shelfItems(shelf: ShelfKind, books: readonly CollectionBookDto[]): ShelfItem[] {
   return books.map((book, index) => ({ book, badge: shelfBadgeFor(shelf, book, index) }));
 }
 
@@ -56,9 +57,11 @@ function shelfItems(shelf: ShelfKind, books: readonly CollectionBookCardDto[]): 
  * calls; the greedy allocate keeps every book on exactly one shelf.
  */
 export default async function DobirkyPage(): Promise<React.JSX.Element> {
+  const cookie = (await cookies()).toString();
+
   let hub: CollectionsHubDto;
   try {
-    hub = await getCollectionsHub();
+    hub = await getCollectionsHub({ cookie });
   } catch {
     return (
       <main className="dobirky-scope">
@@ -68,15 +71,15 @@ export default async function DobirkyPage(): Promise<React.JSX.Element> {
   }
 
   const [obrane, popular, novynky, znyzhky, gems, ...weeklyBooks] = await Promise.all([
-    booksOf(SHELF_SLUGS.obrane),
-    booksOf(SHELF_SLUGS.popular),
-    booksOf(SHELF_SLUGS.novynky),
-    booksOf(SHELF_SLUGS.znyzhky),
-    booksOf(SHELF_SLUGS.gems),
-    ...hub.weekly.map((w) => booksOf(w.slug)),
+    booksOf(SHELF_SLUGS.obrane, cookie),
+    booksOf(SHELF_SLUGS.popular, cookie),
+    booksOf(SHELF_SLUGS.novynky, cookie),
+    booksOf(SHELF_SLUGS.znyzhky, cookie),
+    booksOf(SHELF_SLUGS.gems, cookie),
+    ...hub.weekly.map((w) => booksOf(w.slug, cookie)),
   ]);
 
-  const alloc = allocate<CollectionBookCardDto>([
+  const alloc = allocate<CollectionBookDto>([
     { key: 'gems', take: SHELF_TAKES.gems, pool: gems },
     { key: 'znyzhky', take: SHELF_TAKES.znyzhky, pool: znyzhky },
     { key: 'obrane', take: SHELF_TAKES.obrane, pool: obrane },
@@ -146,7 +149,7 @@ export default async function DobirkyPage(): Promise<React.JSX.Element> {
           id="novynky"
           eyebrow="Свіже на полицях"
           title="Новинки місяця"
-          fresh={{ text: 'Додано цього тижня' }}
+          fresh={{ text: 'Нові надходження' }}
           allLabel="Усі новинки"
           allHref="/dobirky/novynky"
           items={shelfItems('novynky', alloc.novynky ?? [])}

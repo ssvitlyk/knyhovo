@@ -5,13 +5,20 @@
  * type is ever returned from the collections endpoints — the repository/
  * mapper/service layers translate persistence rows into these structures.
  *
- * Monetary amounts are expressed as whole кopiyky (smallest currency unit).
- * Formatting to a display value is the UI's responsibility.
+ * Monetary amounts are expressed via {@link MoneyDto} (whole кopiyky, i.e.
+ * smallest currency unit). Formatting to a display value is the UI's
+ * responsibility.
  */
 
 export type CollectionTypeDto = 'dynamic' | 'editorial' | 'taxonomic';
 
 export type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'newest' | 'oldest' | 'discount_desc';
+
+/** Slice-local money shape, mirrored from search/books/wishlist. */
+export interface MoneyDto {
+  readonly amount: number;
+  readonly currency: 'UAH';
+}
 
 export interface CollectionDto {
   readonly id: string;
@@ -26,32 +33,38 @@ export interface CollectionDto {
   readonly icon?: string;
 }
 
-export interface BookCardDataDto {
+export interface CollectionBookDto {
   /** = canonical_books.id */
   readonly id: string;
   readonly title: string;
   readonly author: string;
   /** Defensively `''` when no listing carries a usable cover. */
   readonly coverUrl: string;
-  /** Cheapest offer, in кopiyky. */
-  readonly price: number;
-  /** Only present when there is a real historical price drop. */
-  readonly oldPrice?: number;
-  /** Display name of the provider backing the cheapest listing. */
-  readonly storeName: string;
-  readonly discountPct?: number;
+  /** Cheapest priced listing. `null` only when the book has zero priced listings. */
+  readonly minPrice: MoneyDto | null;
+  /** Only set when there is a real historical price drop on the cheapest listing. */
+  readonly oldPrice: MoneyDto | null;
+  readonly discountPercent: number | null;
+  /** Display name of the provider backing the cheapest listing; `null` when `minPrice` is `null`. */
+  readonly storeName: string | null;
+  /** Always `null` — TODO: populate once review data exists. */
+  readonly rating: number | null;
+  /** Always `null` — TODO: populate once review data exists. */
+  readonly reviewsCount: number | null;
+  readonly wishlistCount: number;
+  /** `false` in the cache/for guests; decorated after cache read for a signed-in user. */
+  readonly isWishlisted: boolean;
   readonly inStock: boolean;
   /** = `/books/{id}` */
   readonly url: string;
-  /** ISO-8601 timestamp; = canonical_books.created_at */
-  readonly catalogAddedAt: string;
-  readonly wishlistCount: number;
+  /** ISO-8601 timestamp; = canonical_books.created_at. `null` only if the book has no createdAt. */
+  readonly catalogAddedAt: string | null;
 }
 
 export interface HubResponseDto {
   readonly featured: {
     readonly collection: CollectionDto;
-    readonly previewBooks: readonly BookCardDataDto[];
+    readonly previewBooks: readonly CollectionBookDto[];
   };
   readonly dynamic: readonly CollectionDto[];
   readonly editorial: readonly CollectionDto[];
@@ -65,7 +78,7 @@ export interface CollectionDetailResponseDto {
 }
 
 export interface CollectionBooksResponseDto {
-  readonly books: readonly BookCardDataDto[];
+  readonly books: readonly CollectionBookDto[];
   readonly total: number;
   readonly page: number;
   readonly per_page: number;

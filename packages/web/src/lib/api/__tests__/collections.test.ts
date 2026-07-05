@@ -40,6 +40,30 @@ describe('getCollectionsHub', () => {
     expect(result).toEqual(hub);
     expect(calledUrl).toContain('/api/collections/hub');
   });
+
+  it('forwards the cookie header when passed', async () => {
+    let calledInit: RequestInit | undefined;
+    const hub = { featured: { collection: COLLECTION, previewBooks: [] }, dynamic: [], editorial: [], weekly: [], moods: [], genres: [] };
+    mockFetch((async (_input: RequestInfo | URL, init?: RequestInit) => {
+      calledInit = init;
+      return new Response(JSON.stringify(hub), { status: 200 });
+    }) as typeof fetch);
+
+    await getCollectionsHub({ cookie: 'session=abc' });
+    expect(calledInit?.headers).toEqual({ cookie: 'session=abc' });
+  });
+
+  it('sends no cookie header when omitted', async () => {
+    let calledInit: RequestInit | undefined;
+    const hub = { featured: { collection: COLLECTION, previewBooks: [] }, dynamic: [], editorial: [], weekly: [], moods: [], genres: [] };
+    mockFetch((async (_input: RequestInfo | URL, init?: RequestInit) => {
+      calledInit = init;
+      return new Response(JSON.stringify(hub), { status: 200 });
+    }) as typeof fetch);
+
+    await getCollectionsHub();
+    expect(calledInit?.headers).toBeUndefined();
+  });
 });
 
 describe('getCollection', () => {
@@ -95,6 +119,30 @@ describe('getCollectionBooks', () => {
     const error = await getCollectionBooks({ slug: 'znyzhky' }).catch((e: unknown) => e);
     expect(error).toBeInstanceOf(CollectionsError);
     expect((error as CollectionsError).status).toBeNull();
+  });
+
+  it('forwards the cookie header when passed', async () => {
+    let calledInit: RequestInit | undefined;
+    const page = { books: [], total: 0, page: 1, per_page: 24, total_pages: 0 };
+    mockFetch((async (_input: RequestInfo | URL, init?: RequestInit) => {
+      calledInit = init;
+      return new Response(JSON.stringify(page), { status: 200 });
+    }) as typeof fetch);
+
+    await getCollectionBooks({ slug: 'znyzhky', cookie: 'session=abc' });
+    expect(calledInit?.headers).toEqual({ cookie: 'session=abc' });
+  });
+
+  it('sends no cookie header when omitted', async () => {
+    let calledInit: RequestInit | undefined;
+    const page = { books: [], total: 0, page: 1, per_page: 24, total_pages: 0 };
+    mockFetch((async (_input: RequestInfo | URL, init?: RequestInit) => {
+      calledInit = init;
+      return new Response(JSON.stringify(page), { status: 200 });
+    }) as typeof fetch);
+
+    await getCollectionBooks({ slug: 'znyzhky' });
+    expect(calledInit?.headers).toBeUndefined();
   });
 });
 

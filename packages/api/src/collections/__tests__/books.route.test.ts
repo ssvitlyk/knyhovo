@@ -301,7 +301,7 @@ describe('GET /api/collections/:slug/books — filters', () => {
 describe('GET /api/collections/:slug/books — book card fields', () => {
   beforeEach(() => clearCache());
 
-  it('exposes wishlistCount and the required BookCardData fields', async () => {
+  it('exposes wishlistCount and the required CollectionBookDto fields', async () => {
     const db = emptyDb();
     const c = collection('c1', 'card-col', 'EDITORIAL');
     db.collections.push(c);
@@ -317,8 +317,13 @@ describe('GET /api/collections/:slug/books — book card fields', () => {
       title: 'The Book',
       author: 'The Author',
       coverUrl: '/cover.png',
-      price: 12345,
+      minPrice: { amount: 12345, currency: 'UAH' },
+      oldPrice: null,
+      discountPercent: null,
       storeName: 'Yakaboo',
+      rating: null,
+      reviewsCount: null,
+      isWishlisted: false,
       inStock: true,
       url: '/books/b1',
       wishlistCount: 2,
@@ -336,5 +341,51 @@ describe('GET /api/collections/:slug/books — book card fields', () => {
     const app = await buildTestApp(db);
     const res = await app.inject({ method: 'GET', url: '/api/collections/nocover-col/books' });
     expect(res.json().books[0].coverUrl).toBe('');
+  });
+
+  it('unpriced book (no listings) has minPrice/storeName null and is excluded/last under price sorts and filters', async () => {
+    const db = emptyDb();
+    const c = collection('c1', 'unpriced-col', 'EDITORIAL');
+    db.collections.push(c);
+    db.books.push(
+      book('unpriced', 'Unpriced', 'A', { listings: [] }),
+      book('priced', 'Priced', 'B', { listings: [listing(5000)] }),
+    );
+    db.collectionItems.push(...itemsFor(c.id, ['unpriced', 'priced']));
+
+    const app = await buildTestApp(db);
+
+    const plain = await app.inject({ method: 'GET', url: '/api/collections/unpriced-col/books' });
+    const unpricedCard = plain.json().books.find((b: { id: string }) => b.id === 'unpriced');
+    expect(unpricedCard.minPrice).toBeNull();
+    expect(unpricedCard.storeName).toBeNull();
+
+    const priceAsc = await app.inject({
+      method: 'GET',
+      url: '/api/collections/unpriced-col/books',
+      query: { sort: 'price_asc' },
+    });
+    expect(priceAsc.json().books.map((b: { id: string }) => b.id)).toEqual(['priced', 'unpriced']);
+
+    const priceDesc = await app.inject({
+      method: 'GET',
+      url: '/api/collections/unpriced-col/books',
+      query: { sort: 'price_desc' },
+    });
+    expect(priceDesc.json().books.map((b: { id: string }) => b.id)).toEqual(['priced', 'unpriced']);
+
+    const withMin = await app.inject({
+      method: 'GET',
+      url: '/api/collections/unpriced-col/books',
+      query: { price_min: '0' },
+    });
+    expect(withMin.json().books.map((b: { id: string }) => b.id)).toEqual(['priced']);
+
+    const withMax = await app.inject({
+      method: 'GET',
+      url: '/api/collections/unpriced-col/books',
+      query: { price_max: '100000' },
+    });
+    expect(withMax.json().books.map((b: { id: string }) => b.id)).toEqual(['priced']);
   });
 });
