@@ -26,17 +26,22 @@ export const CATALOG_PRODUCTS_SITEMAP_PATTERN = /\/sections\/catalog-products-\d
 export const DEFAULT_MAX_PRODUCTS = 50;
 
 /**
- * Knigoland product pages are server-rendered (nginx + Next.js, no Cloudflare/WAF)
- * with several JSON-LD blocks; the parser reads `@type:Product` (price, availability,
- * sku/mpn) and `@type:Book` (isbn, author) and ignores the rest (LocalBusiness,
- * WebSite, BreadcrumbList, ImageObject).
+ * Knigoland product pages are server-rendered (Next.js, no Cloudflare/WAF) with
+ * several JSON-LD blocks; the parser reads `@type:Product` (price, availability,
+ * sku/mpn, image) and ignores the rest (LocalBusiness, WebSite, BreadcrumbList,
+ * ImageObject). Knigoland dropped the `@type:Book` block from every product page
+ * (site migration, verified 2026-07-05) — isbn now comes from the visible
+ * "Характеристики" spec table, and author from `<meta name="description">`
+ * (see `readSpecValue` / `readAuthorFromMetaDescription` in knigoland.parser.ts).
  *
  * Paper-book filter: Knigoland exposes no `bookFormat`, and its catalog mixes books
- * with gifts/stationery/toys ("Канцтовари та ігри"). Verified against the live site,
- * the reliable discriminator is the presence of a `@type:Book` block — every book
- * (incl. comics/manga and educational titles, whose breadcrumb roots are NOT "Книги")
- * carries one, while non-books do not. A breadcrumb allowlist was rejected because the
- * book root category varies per section and would silently drop whole categories.
+ * with gifts/stationery/toys ("Канцтовари та ігри"). The spec table's ISBN row is
+ * populated for both books (a real ISBN-13) and non-books (a plain EAN-13
+ * barcode) — both pass the same checksum, so the reliable discriminator is the
+ * Bookland prefix (`978`/`979`), not checksum validity alone. A breadcrumb
+ * allowlist was rejected because the book root category varies per section
+ * (Книги, Комікси та манга, Навчальна література, …) and would silently drop
+ * whole categories.
  */
 export const JSON_LD_SELECTOR = 'script[type="application/ld+json"]';
 

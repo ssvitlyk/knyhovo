@@ -17,27 +17,37 @@ function loadFixture(name: string): string {
   return readFileSync(resolve(FIXTURES_DIR, name), 'utf-8');
 }
 
-// All __fixtures__ are REAL captured Knigoland artifacts (recon 2026-06-28):
+// All __fixtures__ are REAL captured Knigoland artifacts (recon 2026-07-05, after the
+// site migration that dropped the `@type:Book` JSON-LD block from every product page):
 //   sitemap-index.xml       → full /sitemaps/sitemap.xml (index of sub-sitemaps)
 //   sitemap-products.xml    → first 12 <url> entries of sections/catalog-products-1.xml
 //   product-instock.html    → /his-last-bow-item  (InStock,    isbn 9789660396999, 200)
 //   product-outofstock.html → /galapagos-item     (OutOfStock, isbn 9786176141594, 250 — keeps price)
 //   product-instock-2.html  → /gra-v-biser-item   (InStock,    isbn 9789660392595, 780)
-//   product-nonbook.html    → /kartonnyy-...-boxer (Product only, NO @type:Book → silent skip)
+//   product-nonbook.html    → /kartonnyy-...-boxer (barcode 4820191135000, not Bookland → silent skip)
 // Error/edge branches the live site never emits (malformed JSON, missing name/url,
-// string-vs-array author, absent isbn → sku fallback) are exercised by perturbing real
-// markup in-memory or with a minimal inline string — never by a synthetic fixture file.
+// multi-author, absent isbn → sku fallback) are exercised by perturbing real markup
+// in-memory or with a minimal inline string — never by a synthetic fixture file.
 
-/** Wrap Product/Book JSON-LD objects into a minimal product-page HTML string. */
-function productHtml(opts: { product?: unknown; book?: unknown }): string {
+/** Wrap a Product JSON-LD block plus an optional spec-table ISBN / meta-description author into a minimal product-page HTML string. */
+function productHtml(opts: { product?: unknown; isbn?: string; author?: string }): string {
   const scripts: string[] = [];
   if (opts.product !== undefined) {
     scripts.push(`<script type="application/ld+json">${JSON.stringify(opts.product)}</script>`);
   }
-  if (opts.book !== undefined) {
-    scripts.push(`<script type="application/ld+json">${JSON.stringify(opts.book)}</script>`);
+  const meta =
+    opts.author !== undefined
+      ? `<meta name="description" content="Купити книгу X автора ${opts.author} арт: 1 в 👉 КнигоЛенд"/>`
+      : '';
+  const specRows: string[] = [];
+  if (opts.isbn !== undefined) {
+    specRows.push(
+      `<div class="flex items-start"><div class="flex items-center w-full max-w-[60%]">` +
+        `<span class="whitespace-nowrap">ISBN</span></div>` +
+        `<span class="w-[220px]"><div><span>${opts.isbn}</span></div></span></div>`,
+    );
   }
-  return `<html><head>${scripts.join('')}</head><body></body></html>`;
+  return `<html><head>${scripts.join('')}${meta}</head><body>${specRows.join('')}</body></html>`;
 }
 
 // ──────────────────────────────────────────────────────────────
@@ -176,7 +186,7 @@ describe('parseKnigolandSitemap', () => {
 });
 
 // ──────────────────────────────────────────────────────────────
-// parseKnigolandListing — real product pages (two-block merge)
+// parseKnigolandListing — real product pages (JSON-LD Product + spec-table merge)
 // ──────────────────────────────────────────────────────────────
 
 describe('parseKnigolandListing — product-instock.html (real)', () => {
@@ -187,7 +197,7 @@ describe('parseKnigolandListing — product-instock.html (real)', () => {
     expect(listing).not.toBeNull();
   });
 
-  it('merges Product + Book blocks into one listing', () => {
+  it('merges the Product JSON-LD block with the spec-table isbn/authors', () => {
     expect(listing).toMatchObject({
       provider: 'knigoland',
       title: 'His Last Bow',
@@ -240,17 +250,17 @@ describe('parseKnigolandListing — product-outofstock.html (real)', () => {
 });
 
 // ──────────────────────────────────────────────────────────────
-// parseKnigolandListing — paper-book filter (presence of @type:Book)
+// parseKnigolandListing — paper-book filter (Bookland-prefixed spec-table ISBN)
 // ──────────────────────────────────────────────────────────────
 
 describe('parseKnigolandListing — paper-book filter', () => {
-  it('silently skips a real non-book (Product only, no @type:Book)', () => {
+  it('silently skips a real non-book (spec-table barcode, not Bookland-prefixed)', () => {
     const { listing, errors } = parseKnigolandListing(loadFixture('product-nonbook.html'));
     expect(listing).toBeNull();
     expect(errors).toEqual([]);
   });
 
-  it('silently skips a synthetic Product-only page regardless of breadcrumb', () => {
+  it('silently skips a synthetic product with no spec-table ISBN at all', () => {
     const html = productHtml({
       product: {
         '@type': 'Product',
@@ -260,29 +270,42 @@ describe('parseKnigolandListing — paper-book filter', () => {
     });
     expect(parseKnigolandListing(html)).toEqual({ listing: null, errors: [] });
   });
+
+  it('silently skips a synthetic product with a non-Bookland EAN-13 barcode', () => {
+    const html = productHtml({
+      product: {
+        '@type': 'Product',
+        name: 'Пазл',
+        offers: { '@type': 'Offer', price: 999, url: 'https://knigoland.com.ua/puzzle-item' },
+      },
+      isbn: '4820191135000',
+    });
+    expect(parseKnigolandListing(html)).toEqual({ listing: null, errors: [] });
+  });
 });
 
 // ──────────────────────────────────────────────────────────────
-// parseKnigolandListing — ISBN cascade (Book.isbn → sku → mpn)
+// parseKnigolandListing — ISBN cascade (spec-table isbn → sku → mpn)
 // ──────────────────────────────────────────────────────────────
 
 describe('parseKnigolandListing — ISBN handling', () => {
   const realInstock = loadFixture('product-instock.html');
 
-  it('normalizes the Book.isbn', () => {
+  it('normalizes the spec-table isbn', () => {
     expect(parseKnigolandListing(realInstock).listing?.isbn).toBe('9789660396999');
   });
 
-  it('yields isbn: null when Book.isbn is invalid and sku/mpn are non-ISBN codes', () => {
-    // Break the Book.isbn checksum; the real sku/mpn ("469152") are 6-digit catalogue
-    // codes that normalizeIsbn rejects, so the whole cascade resolves to null.
+  it('rejects a Bookland-prefixed spec-table isbn with a bad checksum as a non-book', () => {
+    // A 978/979-prefixed value with a broken checksum still passes the Bookland-prefix
+    // gate, but normalizeIsbn then rejects it and the sku/mpn fallback ("469152", a
+    // 6-digit catalogue code) also fails, so isbn resolves to null (listing still kept).
     const html = realInstock.split('9789660396999').join('9789660396998');
     const { listing } = parseKnigolandListing(html);
     expect(listing).not.toBeNull();
     expect(listing?.isbn).toBeNull();
   });
 
-  it('falls back through sku to mpn when Book.isbn and sku are absent', () => {
+  it('falls back through sku to mpn when the spec-table isbn is invalid', () => {
     const html = productHtml({
       product: {
         '@type': 'Product',
@@ -290,7 +313,7 @@ describe('parseKnigolandListing — ISBN handling', () => {
         mpn: '9789660396999',
         offers: { '@type': 'Offer', price: 100, url: 'https://knigoland.com.ua/x-item' },
       },
-      book: { '@type': 'Book', name: 'X', isbn: '' },
+      isbn: '9789660396998', // Bookland-prefixed but bad checksum — passes the gate, fails normalizeIsbn
     });
     expect(parseKnigolandListing(html).listing?.isbn).toBe('9789660396999');
   });
@@ -307,42 +330,31 @@ describe('parseKnigolandListing — author resolution', () => {
       name: 'X',
       offers: { '@type': 'Offer', price: 100, url: 'https://knigoland.com.ua/x-item' },
     },
+    isbn: '9789660396999',
   };
 
-  it('reads a single Person object (as the live site emits)', () => {
-    const html = productHtml({
-      ...base,
-      book: { '@type': 'Book', author: { '@type': 'Person', name: 'Соло Автор' } },
-    });
+  it('reads the author from the meta description (as the live site emits)', () => {
+    const html = productHtml({ ...base, author: 'Соло Автор' });
     expect(parseKnigolandListing(html).listing?.author).toBe('Соло Автор');
   });
 
-  it('joins an array of Person objects with ", "', () => {
-    const html = productHtml({
-      ...base,
-      book: {
-        '@type': 'Book',
-        author: [
-          { '@type': 'Person', name: 'Автор А' },
-          { '@type': 'Person', name: 'Автор Б' },
-        ],
-      },
-    });
-    expect(parseKnigolandListing(html).listing?.author).toBe('Автор А, Автор Б');
+  it('collapses internal whitespace in the meta-description author', () => {
+    const html = productHtml({ ...base, author: 'Коллинз  У.У.' });
+    expect(parseKnigolandListing(html).listing?.author).toBe('Коллинз У.У.');
   });
 
-  it('reads a plain-string author and joins an array of strings', () => {
-    const single = productHtml({ ...base, book: { '@type': 'Book', author: 'Один Автор' } });
-    expect(parseKnigolandListing(single).listing?.author).toBe('Один Автор');
-    const many = productHtml({ ...base, book: { '@type': 'Book', author: ['Автор А', 'Автор Б'] } });
-    expect(parseKnigolandListing(many).listing?.author).toBe('Автор А, Автор Б');
+  it('yields author: null when the meta description has no "автора" segment', () => {
+    const html = productHtml(base);
+    expect(parseKnigolandListing(html).listing?.author).toBeNull();
   });
 
-  it('yields author: null for an empty array or absent author', () => {
-    const empty = productHtml({ ...base, book: { '@type': 'Book', author: [] } });
-    expect(parseKnigolandListing(empty).listing?.author).toBeNull();
-    const absent = productHtml({ ...base, book: { '@type': 'Book' } });
-    expect(parseKnigolandListing(absent).listing?.author).toBeNull();
+  it('yields author: null for a non-book meta description ("Придбати «…»")', () => {
+    const html = `<html><head><script type="application/ld+json">${JSON.stringify(base.product)}</script>
+      <meta name="description" content="Придбати «Пазл» арт: 1 в Україні"/></head>
+      <body><div class="flex items-start"><div class="flex items-center w-full max-w-[60%]">
+      <span class="whitespace-nowrap">ISBN</span></div>
+      <span class="w-[220px]"><div><span>9789660396999</span></div></span></div></body></html>`;
+    expect(parseKnigolandListing(html).listing?.author).toBeNull();
   });
 });
 
@@ -400,14 +412,9 @@ describe('parseKnigolandListing — container shapes', () => {
       url: 'https://knigoland.com.ua/k-item',
     },
   };
-  const book = {
-    '@type': 'Book',
-    author: [{ '@type': 'Person', name: 'Автор' }],
-    isbn: '9789660396999',
-  };
 
-  it('finds Product/Book when both share one array-typed JSON-LD block', () => {
-    const html = `<html><head><script type="application/ld+json">${JSON.stringify([product, book])}</script></head></html>`;
+  it('finds the Product block when it is array-typed', () => {
+    const html = productHtml({ product, isbn: '9789660396999', author: 'Автор' });
     const { listing } = parseKnigolandListing(html);
     expect(listing).toMatchObject({
       title: 'Контейнер',
@@ -418,8 +425,13 @@ describe('parseKnigolandListing — container shapes', () => {
     });
   });
 
-  it('finds Product/Book nested inside an @graph container', () => {
-    const html = `<html><head><script type="application/ld+json">${JSON.stringify({ '@graph': [product, book] })}</script></head></html>`;
+  it('finds the Product block nested inside an @graph container', () => {
+    const html =
+      `<html><head><script type="application/ld+json">${JSON.stringify({ '@graph': [product] })}</script>` +
+      `<meta name="description" content="Купити книгу X автора Автор арт: 1 в 👉 КнигоЛенд"/></head>` +
+      `<body><div class="flex items-start"><div class="flex items-center w-full max-w-[60%]">` +
+      `<span class="whitespace-nowrap">ISBN</span></div>` +
+      `<span class="w-[220px]"><div><span>9789660396999</span></div></span></div></body></html>`;
     const { listing } = parseKnigolandListing(html);
     expect(listing).toMatchObject({ title: 'Контейнер', author: 'Автор', availability: 'in-stock' });
   });
@@ -436,7 +448,7 @@ describe('parseKnigolandListing — error handling', () => {
     expect(errors.length).toBeGreaterThan(0);
   });
 
-  it('returns listing: null + error when no Product/Book block is present', () => {
+  it('returns listing: null + error when no Product block is present', () => {
     const html = productHtml({ product: { '@type': 'Organization', name: 'Книголенд' } });
     const { listing, errors } = parseKnigolandListing(html);
     expect(listing).toBeNull();
@@ -451,14 +463,14 @@ describe('parseKnigolandListing — error handling', () => {
     expect(errors.some((e) => e.includes('malformed JSON-LD'))).toBe(true);
   });
 
-  it('skips a book missing its name (both blocks blanked)', () => {
+  it('skips a book missing its name (Product name blanked)', () => {
     const html = loadFixture('product-instock.html').split('"name":"His Last Bow"').join('"name":""');
     const { listing, errors } = parseKnigolandListing(html);
     expect(listing).toBeNull();
     expect(errors.some((e) => e.includes('name'))).toBe(true);
   });
 
-  it('skips a book missing its url (offers.url + Book.url blanked)', () => {
+  it('skips a book missing its url (offers.url blanked)', () => {
     const html = loadFixture('product-instock.html')
       .split('"url":"https://knigoland.com.ua/his-last-bow-item"')
       .join('"url":""');
