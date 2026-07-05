@@ -203,3 +203,16 @@ export async function findWishlistCounts(prisma: PrismaClient): Promise<Map<stri
   }
   return counts;
 }
+
+/**
+ * Book ids the given user has wishlisted, as a `Set` for O(1) membership
+ * checks. Used to decorate `isWishlisted` on cached, user-agnostic payloads
+ * — one query per request, never inside the collections cache.
+ */
+export async function findWishlistedBookIds(prisma: PrismaClient, userId: string): Promise<Set<string>> {
+  const rows = await prisma.wishlistItem.findMany({
+    where: { userId },
+    select: { canonicalBookId: true },
+  });
+  return new Set(rows.map((r) => r.canonicalBookId));
+}

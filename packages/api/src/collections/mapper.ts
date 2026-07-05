@@ -1,5 +1,5 @@
 import type { CollectionBookRow, CollectionListingRow, CollectionRow } from './repository.js';
-import type { BookCardDataDto, CollectionDto, CollectionTypeDto } from './dto.js';
+import type { CollectionBookDto, CollectionDto, CollectionTypeDto, MoneyDto } from './dto.js';
 
 /** Display name shown to users for the store backing the cheapest listing. */
 const PROVIDER_DISPLAY: Record<CollectionListingRow['provider'], string> = {
@@ -23,6 +23,11 @@ function hasPrice(listing: CollectionListingRow): boolean {
   return listing.priceAmount != null && Number.isFinite(listing.priceAmount);
 }
 
+/** Whether a book row has at least one priced listing (any availability). */
+export function hasPricedListing(row: CollectionBookRow): boolean {
+  return row.listings.some(hasPrice);
+}
+
 /** Per-request context needed to map books without N+1 queries. */
 export interface CollectionMapperContext {
   readonly wishlistCounts: ReadonlyMap<string, number>;
@@ -30,20 +35,25 @@ export interface CollectionMapperContext {
 
 /**
  * Map a canonical book row (with listings + price history) to a
- * {@link BookCardDataDto}.
+ * {@link CollectionBookDto}.
  *
- * - `price` is the cheapest listing's current price; `inStock` mirrors
+ * - `minPrice` is the cheapest listing's current price; `inStock` mirrors
  *   whether any listing is not OUT_OF_STOCK. When every listing is
  *   OUT_OF_STOCK, the cheapest OUT_OF_STOCK price is still surfaced as
- *   `price` (a book always has *some* displayable price), but `inStock`
- *   is false.
- * - `oldPrice`/`discountPct` reflect a *real* historical drop on the
+ *   `minPrice` (a book always has *some* displayable price when it has any
+ *   priced listing), but `inStock` is false. `minPrice`/`storeName` are only
+ *   `null` when the book has zero priced listings.
+ * - `oldPrice`/`discountPercent` reflect a *real* historical drop on the
  *   cheapest listing: the highest historical price strictly greater than
- *   the current cheapest price. Omitted when there is no such drop.
+ *   the current cheapest price. `null` when there is no such drop.
  * - `storeName` is the display name of the provider backing the cheapest
  *   listing.
+ * - `rating`/`reviewsCount` are always `null` — TODO: populate once review
+ *   data exists.
+ * - `isWishlisted` always starts `false` here; the service decorates it
+ *   per-user *after* the cache read (see `service.ts`).
  */
-export function toBookCardDataDto(book: CollectionBookRow, ctx: CollectionMapperContext): BookCardDataDto {
+export function toCollectionBookDto(book: CollectionBookRow, ctx: CollectionMapperContext): CollectionBookDto {
   const priced = book.listings.filter(hasPrice).sort((a, b) => a.priceAmount - b.priceAmount);
   const inStockPriced = priced.filter((l) => l.availability !== 'OUT_OF_STOCK');
   const cheapest = inStockPriced[0] ?? priced[0] ?? null;
@@ -52,15 +62,15 @@ export function toBookCardDataDto(book: CollectionBookRow, ctx: CollectionMapper
   const coverUrl: string =
     priced.find((l) => l.coverUrl)?.coverUrl ?? book.listings.find((l) => l.coverUrl)?.coverUrl ?? '';
 
-  let oldPrice: number | undefined;
-  let discountPct: number | undefined;
+  let oldPrice: MoneyDto | null = null;
+  let discountPercent: number | null = null;
   if (cheapest) {
     const highestHistorical = cheapest.priceHistory
       .filter((p) => p.priceAmount > cheapest.priceAmount)
       .reduce<number | null>((max, p) => (max === null || p.priceAmount > max ? p.priceAmount : max), null);
     if (highestHistorical !== null) {
-      oldPrice = highestHistorical;
-      discountPct = Math.round(((highestHistorical - cheapest.priceAmount) / highestHistorical) * 100);
+      oldPrice = { amount: highestHistorical, currency: 'UAH' };
+      discountPercent = Math.round(((highestHistorical - cheapest.priceAmount) / highestHistorical) * 100);
     }
   }
 
@@ -69,14 +79,17 @@ export function toBookCardDataDto(book: CollectionBookRow, ctx: CollectionMapper
     title: book.title,
     author: book.author,
     coverUrl,
-    price: cheapest?.priceAmount ?? 0,
-    ...(oldPrice !== undefined ? { oldPrice } : {}),
-    storeName: cheapest ? PROVIDER_DISPLAY[cheapest.provider] : '',
-    ...(discountPct !== undefined ? { discountPct } : {}),
+    minPrice: cheapest ? { amount: cheapest.priceAmount, currency: 'UAH' } : null,
+    oldPrice,
+    discountPercent,
+    storeName: cheapest ? PROVIDER_DISPLAY[cheapest.provider] : null,
+    rating: null,
+    reviewsCount: null,
+    wishlistCount: ctx.wishlistCounts.get(book.id) ?? 0,
+    isWishlisted: false,
     inStock,
     url: `/books/${book.id}`,
     catalogAddedAt: book.createdAt.toISOString(),
-    wishlistCount: ctx.wishlistCounts.get(book.id) ?? 0,
   };
 }
 

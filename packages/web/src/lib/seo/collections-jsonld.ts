@@ -1,4 +1,4 @@
-import type { CollectionBookCardDto, CollectionDto } from '@/lib/api/types';
+import type { CollectionBookDto, CollectionDto } from '@/lib/api/types';
 import { knBookWord } from '@/lib/format';
 
 /**
@@ -66,7 +66,7 @@ export function buildCollectionPageJsonLd(
 export function buildItemListJsonLd(
   siteUrl: string,
   collection: CollectionDto,
-  books: readonly CollectionBookCardDto[],
+  books: readonly CollectionBookDto[],
 ): Record<string, unknown> {
   return {
     '@context': 'https://schema.org',
@@ -81,11 +81,15 @@ export function buildItemListJsonLd(
         name: book.title,
         author: { '@type': 'Person', name: book.author },
         url: `${siteUrl}${book.url}`,
-        offers: {
-          '@type': 'Offer',
-          price: toMajorUnits(book.price),
-          priceCurrency: 'UAH',
-        },
+        ...(book.minPrice !== null
+          ? {
+              offers: {
+                '@type': 'Offer',
+                price: toMajorUnits(book.minPrice.amount),
+                priceCurrency: 'UAH',
+              },
+            }
+          : {}),
       },
     })),
   };

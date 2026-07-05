@@ -223,28 +223,35 @@ export interface CollectionDto {
   readonly icon?: string;
 }
 
-export interface CollectionBookCardDto {
+export interface CollectionBookDto {
   readonly id: string;
   readonly title: string;
   readonly author: string;
   readonly coverUrl: string;
-  /** Current best price in kopiyky. */
-  readonly price: number;
-  /** Previous/crossed-out price in kopiyky, when there is a real drop. */
-  readonly oldPrice?: number;
-  readonly storeName: string;
-  readonly discountPct?: number;
+  /** Current best price; null only when the book has zero priced listings. */
+  readonly minPrice: MoneyDto | null;
+  /** Previous price, only when there is a real historical drop. */
+  readonly oldPrice: MoneyDto | null;
+  readonly discountPercent: number | null;
+  /** Display name of the cheapest listing's provider; null when unpriced. */
+  readonly storeName: string | null;
+  /** Always null for now — no reviews yet. */
+  readonly rating: number | null;
+  /** Always null for now — no reviews yet. */
+  readonly reviewsCount: number | null;
+  readonly wishlistCount: number;
+  /** Per-user; always false for a guest request. */
+  readonly isWishlisted: boolean;
   readonly inStock: boolean;
   /** Site-relative Book Details URL (e.g. `/books/:id`). */
   readonly url: string;
-  /** ISO 8601 timestamp when the book entered the catalog. */
-  readonly catalogAddedAt: string;
-  readonly wishlistCount: number;
+  /** ISO 8601 timestamp when the book entered the catalog; null when unknown. */
+  readonly catalogAddedAt: string | null;
 }
 
 export interface CollectionsHubFeaturedDto {
   readonly collection: CollectionDto;
-  readonly previewBooks: readonly CollectionBookCardDto[];
+  readonly previewBooks: readonly CollectionBookDto[];
 }
 
 export interface CollectionsHubDto {
@@ -269,7 +276,7 @@ export type CollectionsApiSort =
   | 'discount_desc';
 
 export interface CollectionBooksPageDto {
-  readonly books: readonly CollectionBookCardDto[];
+  readonly books: readonly CollectionBookDto[];
   readonly total: number;
   readonly page: number;
   readonly per_page: number;

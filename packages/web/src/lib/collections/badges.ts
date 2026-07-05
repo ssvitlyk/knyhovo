@@ -1,9 +1,10 @@
-import type { CollectionBookCardDto } from '@/lib/api/types';
+import type { CollectionBookDto } from '@/lib/api/types';
 
 /**
  * Badge logic for the Collections book card (`.bkc__badge`). Computed on the
  * frontend from raw card data (frozen rule: the backend only sends
- * price/oldPrice/inStock/catalogAddedAt/wishlistCount). Max ONE badge per card.
+ * minPrice/oldPrice/discountPercent/inStock/catalogAddedAt/wishlistCount).
+ * Max ONE badge per card.
  */
 
 export type BadgeTone = 'rose' | 'accent' | 'new' | 'green' | 'neutral';
@@ -27,12 +28,17 @@ export function compactUA(n: number): string {
   return (Number.isInteger(t) ? String(t) : t.toFixed(1).replace('.', ',')) + 'к';
 }
 
-/** Discount percent from oldPrice, falling back to the API's discountPct. */
-export function discountPercent(book: CollectionBookCardDto): number | null {
-  if (book.oldPrice !== undefined && book.oldPrice > 0 && book.price < book.oldPrice) {
-    return Math.round((1 - book.price / book.oldPrice) * 100);
+/** Discount percent from oldPrice/minPrice, falling back to the API's discountPercent. */
+export function discountPercent(book: CollectionBookDto): number | null {
+  if (
+    book.oldPrice !== null &&
+    book.minPrice !== null &&
+    book.oldPrice.amount > 0 &&
+    book.minPrice.amount < book.oldPrice.amount
+  ) {
+    return Math.round((1 - book.minPrice.amount / book.oldPrice.amount) * 100);
   }
-  if (book.discountPct !== undefined && book.discountPct > 0) return Math.round(book.discountPct);
+  if (book.discountPercent !== null && book.discountPercent > 0) return Math.round(book.discountPercent);
   return null;
 }
 
@@ -43,7 +49,7 @@ export function discountPercent(book: CollectionBookCardDto): number | null {
  */
 export function shelfBadgeFor(
   shelf: ShelfKind,
-  book: CollectionBookCardDto,
+  book: CollectionBookDto,
   index: number,
 ): CardBadge | null {
   switch (shelf) {
@@ -69,11 +75,11 @@ const NEW_ARRIVAL_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
  * «Немає в наявності». Never stacks two. `now` is an explicit argument so the
  * logic stays deterministic in tests.
  */
-export function detailsBadgeFor(book: CollectionBookCardDto, now: Date): CardBadge | null {
+export function detailsBadgeFor(book: CollectionBookDto, now: Date): CardBadge | null {
   const pct = discountPercent(book);
   if (pct !== null) return { tone: 'green', text: `−${pct}%` };
 
-  const addedAt = Date.parse(book.catalogAddedAt);
+  const addedAt = book.catalogAddedAt !== null ? Date.parse(book.catalogAddedAt) : NaN;
   if (Number.isFinite(addedAt) && now.getTime() - addedAt <= NEW_ARRIVAL_WINDOW_MS) {
     return { tone: 'new', text: 'Новинка' };
   }

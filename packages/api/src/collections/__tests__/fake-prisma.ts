@@ -62,15 +62,32 @@ export interface FakeWishlistItem {
   canonicalBookId: string;
 }
 
+export interface FakeSession {
+  id: string;
+  userId: string;
+  tokenHash: string;
+  expiresAt: Date;
+  createdAt: Date;
+}
+
+export interface FakeUser {
+  id: string;
+  email: string;
+  createdAt: Date;
+  displayName?: string | null;
+}
+
 export interface FakeDb {
   books: FakeBook[];
   collections: FakeCollection[];
   collectionItems: FakeCollectionItem[];
   wishlistItems: FakeWishlistItem[];
+  sessions: FakeSession[];
+  users: FakeUser[];
 }
 
 export function emptyDb(): FakeDb {
-  return { books: [], collections: [], collectionItems: [], wishlistItems: [] };
+  return { books: [], collections: [], collectionItems: [], wishlistItems: [], sessions: [], users: [] };
 }
 
 export function book(
@@ -188,6 +205,37 @@ export function makeFakePrisma(db: FakeDb): PrismaClient {
           canonicalBookId,
           _count: { _all: count },
         }));
+      }),
+      findMany: vi.fn(async ({ where }: { where: { userId: string }; select?: unknown }) => {
+        return db.wishlistItems
+          .filter((w) => w.userId === where.userId)
+          .map((w) => ({ canonicalBookId: w.canonicalBookId }));
+      }),
+    },
+    session: {
+      findFirst: vi.fn(
+        async ({
+          where,
+          include,
+        }: {
+          where: { tokenHash: string; expiresAt: { gt: Date } };
+          include?: { user?: boolean };
+        }) => {
+          const session = db.sessions.find(
+            (s) => s.tokenHash === where.tokenHash && s.expiresAt > where.expiresAt.gt,
+          );
+          if (!session) return null;
+          if (include?.user) {
+            const user = db.users.find((u) => u.id === session.userId);
+            return { ...session, user: user ?? null };
+          }
+          return session;
+        },
+      ),
+    },
+    user: {
+      findUnique: vi.fn(async ({ where }: { where: { id?: string; email?: string } }) => {
+        return db.users.find((u) => u.id === where.id || u.email === where.email) ?? null;
       }),
     },
   };

@@ -14,11 +14,11 @@ export interface WishlistHearts {
  * Quick-wishlist state for the collections card hearts (`.bkc__wish`).
  * Optimistic toggle backed by the real wishlist API; a 401 reverts the heart
  * and opens the app-wide login modal with the current path as returnTo.
- * Hearts start unsaved — the collections contract carries no per-user
- * wishlist status. TODO: hydrate initial saved state once the API exposes it.
+ * Seeded from each book's `isWishlisted` (server-decorated per-user; always
+ * empty for a guest request).
  */
-export function useWishlistHearts(): WishlistHearts {
-  const [saved, setSaved] = useState<ReadonlySet<string>>(new Set());
+export function useWishlistHearts(initialSavedIds: readonly string[]): WishlistHearts {
+  const [saved, setSaved] = useState<ReadonlySet<string>>(() => new Set(initialSavedIds));
   const { openLogin } = useLoginModal();
   const pathname = usePathname();
 

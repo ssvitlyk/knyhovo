@@ -16,25 +16,48 @@ async function buildTestApp(db: FakeDb) {
 describe('GET /api/collections/novynky/books', () => {
   beforeEach(() => clearCache());
 
-  it('includes only books added within the last 90 days, newest first, with no fallback', async () => {
+  it('includes only books added within the last 30 days, newest first, when the window already has >= 24', async () => {
+    const db = emptyDb();
+    db.collections.push(collection('c1', 'novynky', 'DYNAMIC'));
+    const ids: string[] = [];
+    for (let i = 0; i < 24; i += 1) {
+      const id = `window${i}`;
+      ids.push(id);
+      // Spread across the window, distinct createdAt so newest-first order is unambiguous.
+      db.books.push(book(id, `Window ${i}`, 'A', { createdAt: daysAgo(i), listings: [listing(1000)] }));
+    }
+    db.books.push(book('old', 'Old', 'C', { createdAt: daysAgo(200), listings: [listing(1000)] }));
+
+    const app = await buildTestApp(db);
+    const res = await app.inject({ method: 'GET', url: '/api/collections/novynky/books' });
+    const resultIds = res.json().books.map((b: { id: string }) => b.id);
+    // Window is already >= NOVYNKY_MIN_POOL -> no fallback, old book excluded.
+    expect(resultIds).toEqual(ids); // already newest-first (daysAgo(0)..daysAgo(23))
+    expect(resultIds).not.toContain('old');
+  });
+
+  it('falls back to the newest older priced books when the 30-day window is thin (< 24)', async () => {
     const db = emptyDb();
     db.collections.push(collection('c1', 'novynky', 'DYNAMIC'));
     db.books.push(
       book('recent1', 'Recent1', 'A', { createdAt: daysAgo(10), listings: [listing(1000)] }),
-      book('recent2', 'Recent2', 'B', { createdAt: daysAgo(50), listings: [listing(1000)] }),
-      book('old', 'Old', 'C', { createdAt: daysAgo(200), listings: [listing(1000)] }),
+      book('recent2', 'Recent2', 'B', { createdAt: daysAgo(20), listings: [listing(1000)] }),
+      book('older1', 'Older1', 'C', { createdAt: daysAgo(40), listings: [listing(1000)] }),
+      book('older2', 'Older2', 'D', { createdAt: daysAgo(60), listings: [listing(1000)] }),
     );
 
     const app = await buildTestApp(db);
     const res = await app.inject({ method: 'GET', url: '/api/collections/novynky/books' });
     const ids = res.json().books.map((b: { id: string }) => b.id);
-    expect(ids).toEqual(['recent1', 'recent2']);
+    // Window (recent1, recent2) comes first, newest first; fallback fills with
+    // the newest remaining priced books, also newest first.
+    expect(ids).toEqual(['recent1', 'recent2', 'older1', 'older2']);
   });
 
-  it('returns an empty pool (no fallback) when nothing is within the 90-day window', async () => {
+  it('returns an empty pool when there are no priced books at all (nothing to fall back to)', async () => {
     const db = emptyDb();
     db.collections.push(collection('c1', 'novynky', 'DYNAMIC'));
-    db.books.push(book('old', 'Old', 'A', { createdAt: daysAgo(200), listings: [listing(1000)] }));
+    db.books.push(book('old', 'Old', 'A', { createdAt: daysAgo(200), listings: [] }));
 
     const app = await buildTestApp(db);
     const res = await app.inject({ method: 'GET', url: '/api/collections/novynky/books' });
@@ -62,8 +85,8 @@ describe('GET /api/collections/znyzhky/books', () => {
     const res = await app.inject({ method: 'GET', url: '/api/collections/znyzhky/books' });
     const body = res.json();
     expect(body.books.map((b: { id: string }) => b.id)).toEqual(['big-drop', 'small-drop']);
-    expect(body.books[0].discountPct).toBe(50);
-    expect(body.books[1].discountPct).toBe(10);
+    expect(body.books[0].discountPercent).toBe(50);
+    expect(body.books[1].discountPercent).toBe(10);
   });
 });
 
@@ -146,6 +169,37 @@ describe('GET /api/collections/rekordno-nyzka-tsina/books', () => {
   });
 });
 
+describe('unpriced books are excluded from every dynamic feed', () => {
+  beforeEach(() => clearCache());
+
+  const DYNAMIC_SLUGS = ['novynky', 'znyzhky', 'ponyzhena-tsina', 'najbilsh-bazhani', 'rekordno-nyzka-tsina', 'populyarne-zaraz'];
+
+  it.each(DYNAMIC_SLUGS)('%s excludes a book with zero priced listings, even if wishlisted', async (slug) => {
+    const db = emptyDb();
+    db.collections.push(collection('c1', slug, 'DYNAMIC'));
+    db.books.push(
+      book('unpriced', 'Unpriced', 'A', { createdAt: daysAgo(1), listings: [] }),
+      book('priced', 'Priced', 'B', {
+        createdAt: daysAgo(1),
+        listings: [
+          listing(5000, {
+            priceHistory: [
+              { priceAmount: 9000, priceCurrency: 'UAH', recordedAt: daysAgo(14) },
+              { priceAmount: 4000, priceCurrency: 'UAH', recordedAt: daysAgo(9) },
+            ],
+          }),
+        ],
+      }),
+    );
+    db.wishlistItems.push({ userId: 'u1', canonicalBookId: 'unpriced' }, { userId: 'u1', canonicalBookId: 'priced' });
+
+    const app = await buildTestApp(db);
+    const res = await app.inject({ method: 'GET', url: `/api/collections/${slug}/books` });
+    const ids = res.json().books.map((b: { id: string }) => b.id);
+    expect(ids).not.toContain('unpriced');
+  });
+});
+
 describe('GET /api/collections/populyarne-zaraz/books', () => {
   beforeEach(() => clearCache());
 
@@ -165,5 +219,25 @@ describe('GET /api/collections/populyarne-zaraz/books', () => {
     const res = await app.inject({ method: 'GET', url: '/api/collections/populyarne-zaraz/books' });
     const ids = res.json().books.map((b: { id: string }) => b.id);
     expect(ids).toEqual(['high', 'low']);
+  });
+
+  it('composite tiebreak: equal wishlistCount -> in-stock first, then newer catalogAddedAt first', async () => {
+    const db = emptyDb();
+    db.collections.push(collection('c1', 'populyarne-zaraz', 'DYNAMIC'));
+    db.books.push(
+      // All three have the same wishlistCount (0) -> tiebreak kicks in.
+      book('oos-newer', 'OosNewer', 'A', {
+        createdAt: daysAgo(1),
+        listings: [listing(1000, { availability: 'OUT_OF_STOCK' })],
+      }),
+      book('in-older', 'InOlder', 'B', { createdAt: daysAgo(10), listings: [listing(1000)] }),
+      book('in-newer', 'InNewer', 'C', { createdAt: daysAgo(2), listings: [listing(1000)] }),
+    );
+
+    const app = await buildTestApp(db);
+    const res = await app.inject({ method: 'GET', url: '/api/collections/populyarne-zaraz/books' });
+    const ids = res.json().books.map((b: { id: string }) => b.id);
+    // In-stock books first (newest first among them), out-of-stock last.
+    expect(ids).toEqual(['in-newer', 'in-older', 'oos-newer']);
   });
 });

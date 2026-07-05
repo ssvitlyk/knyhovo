@@ -53,7 +53,10 @@ async function readErrorEnvelope(
  * time out, no hidden retries). Throws {@link CollectionsError} on transport,
  * timeout, or non-2xx — with the envelope code attached when available.
  */
-async function fetchCollectionsJson<T>(path: string, redirect?: RequestRedirect): Promise<T> {
+async function fetchCollectionsJson<T>(
+  path: string,
+  options?: { readonly redirect?: RequestRedirect; readonly cookie?: string },
+): Promise<T> {
   const url = `${apiBaseUrl()}${path}`;
 
   const controller = new AbortController();
@@ -64,7 +67,8 @@ async function fetchCollectionsJson<T>(path: string, redirect?: RequestRedirect)
     response = await fetch(url, {
       signal: controller.signal,
       cache: 'no-store',
-      ...(redirect ? { redirect } : {}),
+      ...(options?.redirect ? { redirect: options.redirect } : {}),
+      ...(options?.cookie ? { headers: { cookie: options.cookie } } : {}),
     });
   } catch {
     throw new CollectionsError('Не вдалося звʼязатися з сервісом добірок.', null);
@@ -84,9 +88,13 @@ async function fetchCollectionsJson<T>(path: string, redirect?: RequestRedirect)
   return (await response.json()) as T;
 }
 
-/** Call `GET /api/collections/hub` — the single aggregated hub payload for `/dobirky`. */
-export async function getCollectionsHub(): Promise<CollectionsHubDto> {
-  return fetchCollectionsJson<CollectionsHubDto>('/api/collections/hub');
+/**
+ * Call `GET /api/collections/hub` — the single aggregated hub payload for
+ * `/dobirky`. Forwarding the session cookie decorates `previewBooks` with the
+ * caller's real `isWishlisted`; omitted for guests (always `false`).
+ */
+export async function getCollectionsHub(options?: { readonly cookie?: string }): Promise<CollectionsHubDto> {
+  return fetchCollectionsJson<CollectionsHubDto>('/api/collections/hub', { cookie: options?.cookie });
 }
 
 /**
@@ -142,6 +150,8 @@ export interface CollectionBooksArgs {
   /** Kopiyky. */
   readonly priceMax?: number;
   readonly inStock?: boolean;
+  /** Forwarded session cookie; decorates each book's `isWishlisted`. */
+  readonly cookie?: string;
 }
 
 /** Call `GET /api/collections/:slug/books` — paginated book cards for one collection. */
@@ -154,6 +164,7 @@ export async function getCollectionBooks({
   priceMin,
   priceMax,
   inStock,
+  cookie,
 }: CollectionBooksArgs): Promise<CollectionBooksPageDto> {
   const params = new URLSearchParams({ page: String(page), per_page: String(perPage) });
   if (sort) params.set('sort', sort);
@@ -164,6 +175,7 @@ export async function getCollectionBooks({
 
   return fetchCollectionsJson<CollectionBooksPageDto>(
     `/api/collections/${encodeURIComponent(slug)}/books?${params.toString()}`,
+    { cookie },
   );
 }
 

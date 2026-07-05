@@ -1,9 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
 import { CollectionNotFoundError } from '../errors.js';
 import {
-  findCanonicalBooksByIds,
   findAllCanonicalBooks,
-  findCanonicalBooksByGenreId,
   findCollectionBySlug,
   findCollectionsByType,
   findAllActiveCollections,
@@ -11,12 +9,13 @@ import {
   countBooksByGenre,
   findTaxonomicSlugById,
   findWishlistCounts,
+  findWishlistedBookIds,
 } from './repository.js';
 import type { CollectionBookRow, CollectionRow } from './repository.js';
-import { toBookCardDataDto, toCollectionDto } from './mapper.js';
+import { toCollectionBookDto, toCollectionDto, hasPricedListing } from './mapper.js';
 import type { CollectionMapperContext } from './mapper.js';
 import type {
-  BookCardDataDto,
+  CollectionBookDto,
   CollectionDto,
   HubResponseDto,
   CollectionDetailResponseDto,
@@ -59,28 +58,81 @@ const DYNAMIC_SLUGS = new Set([
   'rekordno-nyzka-tsina',
 ]);
 
-const NEW_ARRIVALS_WINDOW_MS = 90 * 24 * 60 * 60 * 1000;
+const NEW_ARRIVALS_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
+/** Minimum size for the novynky pool before falling back to older priced books. */
+const NOVYNKY_MIN_POOL = 24;
 const PRICE_DROP_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
 
 const HUB_CACHE_TTL_MS = 5 * 60 * 1000;
 const DYNAMIC_BOOKS_CACHE_TTL_MS = 5 * 60 * 1000;
 const STATIC_BOOKS_CACHE_TTL_MS = 60 * 60 * 1000;
 
-// ── Context / mapping helpers ────────────────────────────────────────────────
+// ── Compute context ─────────────────────────────────────────────────────────
 
-async function buildContext(prisma: PrismaClient): Promise<CollectionMapperContext> {
-  const wishlistCounts = await findWishlistCounts(prisma);
-  return { wishlistCounts };
+/**
+ * Per-request compute context, built exactly once per {@link buildHub},
+ * {@link getAllCollections}, or {@link resolveCollection} call.
+ *
+ * Fetches the full canonical book set, wishlist counts, and genre counts in
+ * a single round each — this replaces the previous pattern where
+ * `liveBookCount` (called once per collection) re-ran a full
+ * `findAllCanonicalBooks` + `findWishlistCounts` for *every* dynamic
+ * collection on the hub.
+ */
+interface HubComputeContext {
+  readonly allRows: readonly CollectionBookRow[];
+  /** `allRows` filtered to books with at least one priced listing. */
+  readonly pricedRows: readonly CollectionBookRow[];
+  readonly byId: ReadonlyMap<string, CollectionBookRow>;
+  readonly mapperCtx: CollectionMapperContext;
+  readonly genreCounts: ReadonlyMap<string, number>;
+  readonly now: Date;
 }
 
-function toBookDtos(rows: CollectionBookRow[], ctx: CollectionMapperContext): BookCardDataDto[] {
-  return rows.map((row) => toBookCardDataDto(row, ctx));
+async function buildHubComputeContext(prisma: PrismaClient, now: Date = new Date()): Promise<HubComputeContext> {
+  const [allRows, wishlistCounts, genreCounts] = await Promise.all([
+    findAllCanonicalBooks(prisma),
+    findWishlistCounts(prisma),
+    countBooksByGenre(prisma),
+  ]);
+  const pricedRows = allRows.filter(hasPricedListing);
+  const byId = new Map(allRows.map((r) => [r.id, r]));
+  return { allRows, pricedRows, byId, mapperCtx: { wishlistCounts }, genreCounts, now };
+}
+
+/** Resolve rows for `ids`, preserving order, from an already-fetched context (no extra query). */
+function rowsByIds(ctx: HubComputeContext, ids: readonly string[]): CollectionBookRow[] {
+  const rows: CollectionBookRow[] = [];
+  for (const id of ids) {
+    const row = ctx.byId.get(id);
+    if (row) rows.push(row);
+  }
+  return rows;
+}
+
+function toBookDtos(rows: readonly CollectionBookRow[], mapperCtx: CollectionMapperContext): CollectionBookDto[] {
+  return rows.map((row) => toCollectionBookDto(row, mapperCtx));
 }
 
 // ── Sorting ──────────────────────────────────────────────────────────────────
 
+/** `catalogAddedAt` as epoch millis; `null` is treated as epoch 0 (never `NaN`). */
+function catalogAddedAtMs(book: CollectionBookDto): number {
+  return book.catalogAddedAt ? new Date(book.catalogAddedAt).getTime() : 0;
+}
+
+/** `minPrice.amount`, or `+Infinity` when unpriced — sorts unpriced books last under `price_asc`. */
+function priceAscValue(book: CollectionBookDto): number {
+  return book.minPrice?.amount ?? Number.POSITIVE_INFINITY;
+}
+
+/** `minPrice.amount`, or `-Infinity` when unpriced — sorts unpriced books last under `price_desc`. */
+function priceDescValue(book: CollectionBookDto): number {
+  return book.minPrice?.amount ?? Number.NEGATIVE_INFINITY;
+}
+
 /** Stable sort: OUT_OF_STOCK books always last, relative order otherwise preserved. */
-function outOfStockLast(books: BookCardDataDto[]): BookCardDataDto[] {
+function outOfStockLast(books: CollectionBookDto[]): CollectionBookDto[] {
   return [...books]
     .map((book, index) => ({ book, index }))
     .sort((a, b) => {
@@ -90,50 +142,59 @@ function outOfStockLast(books: BookCardDataDto[]): BookCardDataDto[] {
     .map((x) => x.book);
 }
 
-function sortByWishlistCountDesc(books: BookCardDataDto[]): BookCardDataDto[] {
+function sortByWishlistCountDesc(books: CollectionBookDto[]): CollectionBookDto[] {
   return [...books].sort((a, b) => b.wishlistCount - a.wishlistCount);
 }
 
-function sortByNewestDesc(books: BookCardDataDto[]): BookCardDataDto[] {
-  return [...books].sort(
-    (a, b) => new Date(b.catalogAddedAt).getTime() - new Date(a.catalogAddedAt).getTime(),
-  );
+function sortByNewestDesc(books: CollectionBookDto[]): CollectionBookDto[] {
+  return [...books].sort((a, b) => catalogAddedAtMs(b) - catalogAddedAtMs(a));
 }
 
 /**
  * Taxonomic (genre) "relevance" order: a proxy for popularity — wishlistCount
  * DESC, tie-broken by recency. // TODO: incorporate page_view_count_7d once tracked.
  */
-function sortTaxonomicRelevance(books: BookCardDataDto[]): BookCardDataDto[] {
+function sortTaxonomicRelevance(books: CollectionBookDto[]): CollectionBookDto[] {
   return [...books].sort((a, b) => {
     if (b.wishlistCount !== a.wishlistCount) return b.wishlistCount - a.wishlistCount;
-    return new Date(b.catalogAddedAt).getTime() - new Date(a.catalogAddedAt).getTime();
+    return catalogAddedAtMs(b) - catalogAddedAtMs(a);
+  });
+}
+
+/**
+ * populyarne-zaraz composite order: wishlistCount DESC → in-stock first →
+ * catalogAddedAt DESC.
+ * // TODO: incorporate real view/interaction tracking once available.
+ */
+function sortPopulyarneZaraz(books: CollectionBookDto[]): CollectionBookDto[] {
+  return [...books].sort((a, b) => {
+    if (b.wishlistCount !== a.wishlistCount) return b.wishlistCount - a.wishlistCount;
+    if (a.inStock !== b.inStock) return a.inStock ? -1 : 1;
+    return catalogAddedAtMs(b) - catalogAddedAtMs(a);
   });
 }
 
 function applySort(
-  books: BookCardDataDto[],
+  books: CollectionBookDto[],
   sort: SortOption,
   relevanceOrder: readonly string[],
-): BookCardDataDto[] {
-  let sorted: BookCardDataDto[];
+): CollectionBookDto[] {
+  let sorted: CollectionBookDto[];
   switch (sort) {
     case 'price_asc':
-      sorted = [...books].sort((a, b) => a.price - b.price);
+      sorted = [...books].sort((a, b) => priceAscValue(a) - priceAscValue(b));
       break;
     case 'price_desc':
-      sorted = [...books].sort((a, b) => b.price - a.price);
+      sorted = [...books].sort((a, b) => priceDescValue(b) - priceDescValue(a));
       break;
     case 'newest':
       sorted = sortByNewestDesc(books);
       break;
     case 'oldest':
-      sorted = [...books].sort(
-        (a, b) => new Date(a.catalogAddedAt).getTime() - new Date(b.catalogAddedAt).getTime(),
-      );
+      sorted = [...books].sort((a, b) => catalogAddedAtMs(a) - catalogAddedAtMs(b));
       break;
     case 'discount_desc':
-      sorted = [...books].sort((a, b) => (b.discountPct ?? -1) - (a.discountPct ?? -1));
+      sorted = [...books].sort((a, b) => (b.discountPercent ?? -1) - (a.discountPercent ?? -1));
       break;
     case 'relevance':
     default: {
@@ -193,31 +254,40 @@ function isAllTimeLow(listing: CollectionBookRow['listings'][number]): boolean {
 }
 
 interface DynamicResult {
-  readonly rows: CollectionBookRow[];
+  readonly rows: readonly CollectionBookRow[];
   readonly order: readonly string[];
 }
 
 /**
  * Compute a dynamic feed's pool + its natural ("relevance") order, over the
- * full canonical book set.
+ * priced subset of the canonical book set (`pricedRows` — unpriced books are
+ * excluded from every dynamic feed).
  */
-function computeDynamicPool(slug: string, allRows: CollectionBookRow[], now: Date): DynamicResult {
+function computeDynamicPool(slug: string, pricedRows: readonly CollectionBookRow[], now: Date): DynamicResult {
   switch (slug) {
     case 'populyarne-zaraz': {
-      // Pool = every book with any priced listing; order handled via wishlistCount
-      // in applySort's relevance branch (computed from DTOs upstream), so here we
-      // just pass the full pool through in wishlistCount-agnostic id order — the
-      // caller re-derives relevance order once DTOs (with wishlistCount) exist.
-      return { rows: allRows, order: allRows.map((r) => r.id) };
+      // Pool = every priced book; composite order is resolved by the caller
+      // once DTOs (with wishlistCount/inStock) exist (see resolveDynamicFeed).
+      return { rows: pricedRows, order: pricedRows.map((r) => r.id) };
     }
     case 'novynky': {
       const cutoff = now.getTime() - NEW_ARRIVALS_WINDOW_MS;
-      const recent = allRows.filter((r) => r.createdAt.getTime() >= cutoff);
-      const ordered = [...recent].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
-      return { rows: ordered, order: ordered.map((r) => r.id) };
+      const windowRows = pricedRows.filter((r) => r.createdAt.getTime() >= cutoff);
+      const windowSorted = [...windowRows].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      if (windowSorted.length >= NOVYNKY_MIN_POOL) {
+        return { rows: windowSorted, order: windowSorted.map((r) => r.id) };
+      }
+      // Fallback: top up with the newest remaining priced books (older than
+      // the window), newest first, until NOVYNKY_MIN_POOL or exhausted.
+      const windowIds = new Set(windowSorted.map((r) => r.id));
+      const remaining = pricedRows.filter((r) => !windowIds.has(r.id));
+      const remainingSorted = [...remaining].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+      const fill = remainingSorted.slice(0, NOVYNKY_MIN_POOL - windowSorted.length);
+      const combined = [...windowSorted, ...fill];
+      return { rows: combined, order: combined.map((r) => r.id) };
     }
     case 'znyzhky': {
-      const withDrop = allRows.filter((r) => {
+      const withDrop = pricedRows.filter((r) => {
         const cheapest = cheapestListing(r);
         return cheapest !== null && highestHistoricalAbove(cheapest) !== null;
       });
@@ -231,7 +301,7 @@ function computeDynamicPool(slug: string, allRows: CollectionBookRow[], now: Dat
       return { rows: scored.map((s) => s.row), order: scored.map((s) => s.row.id) };
     }
     case 'ponyzhena-tsina': {
-      const withRecentDrop = allRows.filter((r) => {
+      const withRecentDrop = pricedRows.filter((r) => {
         const cheapest = cheapestListing(r);
         if (!cheapest) return false;
         const then = priceAroundLookback(cheapest, now, PRICE_DROP_LOOKBACK_MS);
@@ -248,10 +318,10 @@ function computeDynamicPool(slug: string, allRows: CollectionBookRow[], now: Dat
     case 'najbilsh-bazhani': {
       // Pool/order both depend on wishlistCount — resolved by the caller once
       // DTOs exist (see resolveDynamicFeed).
-      return { rows: allRows, order: allRows.map((r) => r.id) };
+      return { rows: pricedRows, order: pricedRows.map((r) => r.id) };
     }
     case 'rekordno-nyzka-tsina': {
-      const atLow = allRows.filter((r) => {
+      const atLow = pricedRows.filter((r) => {
         const cheapest = cheapestListing(r);
         return cheapest !== null && isAllTimeLow(cheapest);
       });
@@ -263,24 +333,29 @@ function computeDynamicPool(slug: string, allRows: CollectionBookRow[], now: Dat
   }
 }
 
-/** Resolve a dynamic feed's book DTOs, already in their natural ("relevance") order. */
-async function resolveDynamicFeed(
-  prisma: PrismaClient,
-  slug: string,
-  ctx: CollectionMapperContext,
-  now: Date,
-): Promise<BookCardDataDto[]> {
-  const allRows = await findAllCanonicalBooks(prisma);
-  const { rows } = computeDynamicPool(slug, allRows, now);
-  let dtos = toBookDtos(rows, ctx);
+/**
+ * Resolve a dynamic feed's book DTOs, already in their natural ("relevance")
+ * order. Pure function over an already-built {@link HubComputeContext} — no
+ * database access, so it is safe to call once per collection without
+ * re-querying (fixes the previous double `findAllCanonicalBooks` fetch for
+ * dynamic slugs).
+ */
+function resolveDynamicFeed(slug: string, ctx: HubComputeContext): CollectionBookDto[] {
+  const { rows } = computeDynamicPool(slug, ctx.pricedRows, ctx.now);
+  let dtos = toBookDtos(rows, ctx.mapperCtx);
 
-  if (slug === 'populyarne-zaraz' || slug === 'najbilsh-bazhani') {
-    if (slug === 'najbilsh-bazhani') {
-      dtos = dtos.filter((b) => b.wishlistCount > 0);
-    }
-    dtos = sortByWishlistCountDesc(dtos);
-  } else if (slug === 'rekordno-nyzka-tsina') {
-    dtos = sortByWishlistCountDesc(dtos);
+  switch (slug) {
+    case 'najbilsh-bazhani':
+      dtos = sortByWishlistCountDesc(dtos.filter((b) => b.wishlistCount > 0));
+      break;
+    case 'rekordno-nyzka-tsina':
+      dtos = sortByWishlistCountDesc(dtos);
+      break;
+    case 'populyarne-zaraz':
+      dtos = sortPopulyarneZaraz(dtos);
+      break;
+    default:
+      break;
   }
 
   return dtos;
@@ -290,16 +365,16 @@ async function resolveDynamicFeed(
 
 interface ResolvedCollection {
   readonly row: CollectionRow;
-  readonly books: BookCardDataDto[];
+  readonly books: CollectionBookDto[];
   /** Natural ("relevance") id order for this collection's pool. */
   readonly relevanceOrder: readonly string[];
   /** book id → taxonomic (genre) collection id, for the `?genre=slug` filter. */
   readonly genreIdByBookId: ReadonlyMap<string, string>;
 }
 
-function genreIdMap(rows: readonly CollectionBookRow[]): Map<string, string> {
+function genreIdMap(ctx: HubComputeContext): Map<string, string> {
   const map = new Map<string, string>();
-  for (const row of rows) {
+  for (const row of ctx.allRows) {
     if (row.genreId) map.set(row.id, row.genreId);
   }
   return map;
@@ -309,44 +384,43 @@ function genreIdMap(rows: readonly CollectionBookRow[]): Map<string, string> {
  * Resolve a collection's DB row + its book pool (already de-duplicated, with
  * `relevanceOrder` capturing the natural order per FR-DYN / curated / taxonomic
  * semantics). Throws {@link CollectionNotFoundError} when the slug is unknown.
+ *
+ * Builds exactly one {@link HubComputeContext} for the call.
  */
 async function resolveCollection(prisma: PrismaClient, slug: string): Promise<ResolvedCollection> {
   const row = await findCollectionBySlug(prisma, slug);
   if (!row) throw new CollectionNotFoundError();
 
-  const ctx = await buildContext(prisma);
+  const ctx = await buildHubComputeContext(prisma);
+  const genreIdByBookId = genreIdMap(ctx);
 
   if (row.type === 'TAXONOMIC') {
-    const rows = await findCanonicalBooksByGenreId(prisma, row.id);
-    const books = toBookDtos(rows, ctx);
+    const rows = ctx.allRows.filter((r) => r.genreId === row.id);
+    const books = toBookDtos(rows, ctx.mapperCtx);
     const relevanceOrder = sortTaxonomicRelevance(books).map((b) => b.id);
-    return { row, books, relevanceOrder, genreIdByBookId: genreIdMap(rows) };
+    return { row, books, relevanceOrder, genreIdByBookId };
   }
 
   if (row.type === 'DYNAMIC' && DYNAMIC_SLUGS.has(row.slug)) {
-    const allRows = await findAllCanonicalBooks(prisma);
-    const books = await resolveDynamicFeed(prisma, row.slug, ctx, new Date());
-    return { row, books, relevanceOrder: books.map((b) => b.id), genreIdByBookId: genreIdMap(allRows) };
+    const books = resolveDynamicFeed(row.slug, ctx);
+    return { row, books, relevanceOrder: books.map((b) => b.id), genreIdByBookId };
   }
 
   // EDITORIAL (and any DYNAMIC row without a known compute function): curated
   // order = CollectionItem.sortOrder.
   const ids = await findCollectionItemBookIds(prisma, row.id);
-  const rows = await findCanonicalBooksByIds(prisma, ids);
-  const books = toBookDtos(rows, ctx);
-  return { row, books, relevanceOrder: ids, genreIdByBookId: genreIdMap(rows) };
+  const rows = rowsByIds(ctx, ids);
+  const books = toBookDtos(rows, ctx.mapperCtx);
+  return { row, books, relevanceOrder: ids, genreIdByBookId };
 }
 
 /** Live book count for a collection row (dynamic pool size / editorial item count / taxonomic genre count). */
-async function liveBookCount(prisma: PrismaClient, row: CollectionRow): Promise<number> {
+async function liveBookCount(prisma: PrismaClient, ctx: HubComputeContext, row: CollectionRow): Promise<number> {
   if (row.type === 'TAXONOMIC') {
-    const counts = await countBooksByGenre(prisma);
-    return counts.get(row.id) ?? 0;
+    return ctx.genreCounts.get(row.id) ?? 0;
   }
   if (row.type === 'DYNAMIC' && DYNAMIC_SLUGS.has(row.slug)) {
-    const ctx = await buildContext(prisma);
-    const books = await resolveDynamicFeed(prisma, row.slug, ctx, new Date());
-    return books.length;
+    return resolveDynamicFeed(row.slug, ctx).length;
   }
   const ids = await findCollectionItemBookIds(prisma, row.id);
   return ids.length;
@@ -354,16 +428,24 @@ async function liveBookCount(prisma: PrismaClient, row: CollectionRow): Promise<
 
 // ── Hub ──────────────────────────────────────────────────────────────────────
 
-async function collectionDtoWithCount(prisma: PrismaClient, row: CollectionRow): Promise<CollectionDto> {
-  const count = await liveBookCount(prisma, row);
+async function collectionDtoWithCount(
+  prisma: PrismaClient,
+  ctx: HubComputeContext,
+  row: CollectionRow,
+): Promise<CollectionDto> {
+  const count = await liveBookCount(prisma, ctx, row);
   return toCollectionDto(row, count);
 }
 
-async function bySlugList(prisma: PrismaClient, slugs: readonly string[]): Promise<CollectionDto[]> {
+async function bySlugList(
+  prisma: PrismaClient,
+  ctx: HubComputeContext,
+  slugs: readonly string[],
+): Promise<CollectionDto[]> {
   const dtos: CollectionDto[] = [];
   for (const slug of slugs) {
     const row = await findCollectionBySlug(prisma, slug);
-    if (row && row.isActive) dtos.push(await collectionDtoWithCount(prisma, row));
+    if (row && row.isActive) dtos.push(await collectionDtoWithCount(prisma, ctx, row));
   }
   return dtos;
 }
@@ -371,22 +453,23 @@ async function bySlugList(prisma: PrismaClient, slugs: readonly string[]): Promi
 async function buildHub(prisma: PrismaClient): Promise<HubResponseDto> {
   const featuredRow = await findCollectionBySlug(prisma, FEATURED_SLUG);
   if (!featuredRow) throw new CollectionNotFoundError();
-  const ctx = await buildContext(prisma);
+
+  const ctx = await buildHubComputeContext(prisma);
+
   const featuredIds = await findCollectionItemBookIds(prisma, featuredRow.id);
-  const featuredBooks = toBookDtos(await findCanonicalBooksByIds(prisma, featuredIds), ctx);
-  const featuredCollection = await collectionDtoWithCount(prisma, featuredRow);
+  const featuredBooks = toBookDtos(rowsByIds(ctx, featuredIds), ctx.mapperCtx);
+  const featuredCollection = await collectionDtoWithCount(prisma, ctx, featuredRow);
 
   const dynamicRows = await findCollectionsByType(prisma, 'DYNAMIC');
-  const dynamic = await Promise.all(dynamicRows.map((row) => collectionDtoWithCount(prisma, row)));
+  const dynamic = await Promise.all(dynamicRows.map((row) => collectionDtoWithCount(prisma, ctx, row)));
 
-  const editorial = await bySlugList(prisma, EDITORIAL_SLUGS);
-  const weekly = await bySlugList(prisma, WEEKLY_SLUGS);
-  const moods = await bySlugList(prisma, MOOD_SLUGS);
+  const editorial = await bySlugList(prisma, ctx, EDITORIAL_SLUGS);
+  const weekly = await bySlugList(prisma, ctx, WEEKLY_SLUGS);
+  const moods = await bySlugList(prisma, ctx, MOOD_SLUGS);
 
   const taxonomicRows = await findCollectionsByType(prisma, 'TAXONOMIC');
-  const genreCounts = await countBooksByGenre(prisma);
-  const eligibleGenreRows = taxonomicRows.filter((row) => (genreCounts.get(row.id) ?? 0) >= MIN_GENRE_BOOK_COUNT);
-  const genres = eligibleGenreRows.map((row) => toCollectionDto(row, genreCounts.get(row.id) ?? 0));
+  const eligibleGenreRows = taxonomicRows.filter((row) => (ctx.genreCounts.get(row.id) ?? 0) >= MIN_GENRE_BOOK_COUNT);
+  const genres = eligibleGenreRows.map((row) => toCollectionDto(row, ctx.genreCounts.get(row.id) ?? 0));
 
   return {
     featured: { collection: featuredCollection, previewBooks: featuredBooks.slice(0, 3) },
@@ -398,8 +481,24 @@ async function buildHub(prisma: PrismaClient): Promise<HubResponseDto> {
   };
 }
 
-export async function getHub(prisma: PrismaClient): Promise<HubResponseDto> {
-  return getOrSet('hub', HUB_CACHE_TTL_MS, () => buildHub(prisma));
+/**
+ * `userId` is decorated onto the (user-agnostic, cached) hub payload after
+ * the cache read — `isWishlisted` is never part of the cache key/value.
+ * `null` (guest, or no `authDeps` configured) short-circuits to the cached
+ * payload as-is (`isWishlisted: false` on every book, from the mapper).
+ */
+export async function getHub(prisma: PrismaClient, userId: string | null): Promise<HubResponseDto> {
+  const cached = await getOrSet('hub', HUB_CACHE_TTL_MS, () => buildHub(prisma));
+  if (!userId) return cached;
+
+  const saved = await findWishlistedBookIds(prisma, userId);
+  return {
+    ...cached,
+    featured: {
+      ...cached.featured,
+      previewBooks: cached.featured.previewBooks.map((b) => ({ ...b, isWishlisted: saved.has(b.id) })),
+    },
+  };
 }
 
 // ── Collection detail ────────────────────────────────────────────────────────
@@ -413,7 +512,8 @@ export async function getCollectionDetail(prisma: PrismaClient, slug: string): P
   const row = await findCollectionBySlug(prisma, slug);
   if (!row) throw new CollectionNotFoundError();
 
-  const count = await liveBookCount(prisma, row);
+  const ctx = await buildHubComputeContext(prisma);
+  const count = await liveBookCount(prisma, ctx, row);
   if (row.type === 'TAXONOMIC' && count < MIN_GENRE_BOOK_COUNT) {
     return { response: { collection: toCollectionDto(row, count) }, redirect: THIN_GENRE_REDIRECT };
   }
@@ -428,12 +528,12 @@ function defaultSort(type: CollectionRow['type']): SortOption {
 }
 
 function applyFilters(
-  books: BookCardDataDto[],
+  books: CollectionBookDto[],
   row: CollectionRow,
   params: BooksQueryParams,
   genreIdByBookId: ReadonlyMap<string, string>,
   taxonomicSlugById: ReadonlyMap<string, string>,
-): BookCardDataDto[] {
+): CollectionBookDto[] {
   let result = books;
 
   // `genre` filters non-taxonomic collections by the book's assigned genre
@@ -446,11 +546,14 @@ function applyFilters(
     });
   }
 
+  // Unpriced books (minPrice: null) never match a price bound.
   if (params.price_min !== undefined) {
-    result = result.filter((b) => b.price >= (params.price_min as number));
+    const min = params.price_min;
+    result = result.filter((b) => b.minPrice !== null && b.minPrice.amount >= min);
   }
   if (params.price_max !== undefined) {
-    result = result.filter((b) => b.price <= (params.price_max as number));
+    const max = params.price_max;
+    result = result.filter((b) => b.minPrice !== null && b.minPrice.amount <= max);
   }
   if (params.in_stock === 1) {
     result = result.filter((b) => b.inStock);
@@ -486,23 +589,36 @@ async function buildCollectionBooksResponse(
   };
 }
 
+/**
+ * `userId` is decorated onto the (user-agnostic, cached) books payload after
+ * the cache read — see {@link getHub} for the same pattern.
+ */
 export async function getCollectionBooks(
   prisma: PrismaClient,
   slug: string,
   params: BooksQueryParams,
+  userId: string | null,
 ): Promise<CollectionBooksResponseDto> {
   const row = await findCollectionBySlug(prisma, slug);
   if (!row) throw new CollectionNotFoundError();
 
   const ttl = row.type === 'DYNAMIC' ? DYNAMIC_BOOKS_CACHE_TTL_MS : STATIC_BOOKS_CACHE_TTL_MS;
   const cacheKey = `books:${slug}:${JSON.stringify(params)}`;
-  return getOrSet(cacheKey, ttl, () => buildCollectionBooksResponse(prisma, slug, params));
+  const cached = await getOrSet(cacheKey, ttl, () => buildCollectionBooksResponse(prisma, slug, params));
+  if (!userId) return cached;
+
+  const saved = await findWishlistedBookIds(prisma, userId);
+  return {
+    ...cached,
+    books: cached.books.map((b) => ({ ...b, isWishlisted: saved.has(b.id) })),
+  };
 }
 
 // ── All collections ──────────────────────────────────────────────────────────
 
 export async function getAllCollections(prisma: PrismaClient): Promise<CollectionsListResponseDto> {
   const rows = await findAllActiveCollections(prisma);
-  const collections = await Promise.all(rows.map((row) => collectionDtoWithCount(prisma, row)));
+  const ctx = await buildHubComputeContext(prisma);
+  const collections = await Promise.all(rows.map((row) => collectionDtoWithCount(prisma, ctx, row)));
   return { collections };
 }
