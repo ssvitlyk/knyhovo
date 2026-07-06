@@ -142,6 +142,19 @@ describe('isWishlisted decoration', () => {
     expect(books.find((b) => b.id === 'pb2')?.isWishlisted).toBe(false);
   });
 
+  it('logged-in user against an unseeded collections table gets featured: null without throwing', async () => {
+    const db = emptyDb();
+    db.users.push({ id: USER_A, email: 'a@example.com', createdAt: FIXED_DATE });
+    seedSession(db, USER_A, TOKEN_A);
+    const prisma = makeFakePrisma(db);
+    const authDeps = makeAuthDeps(prisma);
+    const app = buildApp(prisma, authDeps);
+
+    const res = await app.inject({ method: 'GET', url: '/api/collections/hub', headers: { cookie: COOKIE_A } });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().featured).toBeNull();
+  });
+
   it('a different logged-in user does not see another user\'s wishlisted books as true', async () => {
     const db = baseDb();
     db.wishlistItems.push({ userId: USER_A, canonicalBookId: 'pb1' });

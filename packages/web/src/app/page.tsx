@@ -2,13 +2,10 @@ import type { Metadata } from 'next';
 import { Hero } from '@/components/home/Hero';
 import { Shelf } from '@/components/home/Shelf';
 import { RecommendsShelf } from '@/components/home/RecommendsShelf';
-import { POPULAR_NOW, NEW_RELEASES, RECOMMENDS } from '@/components/home/content';
+import { getHomeShelves } from '@/components/home/data';
 
 /** Public site URL (absolute) — configurable; used for canonical + JSON-LD. */
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
-
-/** Canonical `/search` catalog target for every shelf CTA. */
-const CATALOG_HREF = '/search';
 
 const DESCRIPTION =
   'Порівнюйте ціни на паперові книги у 5+ книгарнях України. Пошук за назвою, ' +
@@ -55,10 +52,12 @@ const JSON_LD = {
  * Home page v1.0 — search-first landing (Concept A · Oracle Search). Server
  * Component: only `Hero` is a client island. Sections follow the frozen
  * Homepage v1.0 order (spec §6): Hero → Популярне зараз → Новинки → Knyhovo
- * радить. Shelves are fed by the curated static content module (clean seam for
- * a future API); an empty shelf hides its section.
+ * радить. Shelves are fed live from the collections API (`getHomeShelves`);
+ * each shelf CTA links to its backing `/dobirky/:slug`. An empty shelf hides
+ * its section.
  */
-export default function HomePage(): React.JSX.Element {
+export default async function HomePage(): Promise<React.JSX.Element> {
+  const { popular, newReleases, recommends } = await getHomeShelves();
   return (
     <main>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
@@ -68,18 +67,18 @@ export default function HomePage(): React.JSX.Element {
         title="Популярне зараз"
         lead="Книги, за якими читачі приходять до Knyhovo цього тижня."
         cta="Усі →"
-        ctaHref={CATALOG_HREF}
-        books={POPULAR_NOW}
+        ctaHref="/dobirky/populyarne-zaraz"
+        books={popular}
       />
       <Shelf
         eyebrow="Щойно з друку"
         title="Новинки"
         cta="Весь каталог →"
-        ctaHref={CATALOG_HREF}
+        ctaHref="/dobirky/novynky"
         tint
-        books={NEW_RELEASES}
+        books={newReleases}
       />
-      <RecommendsShelf books={RECOMMENDS} ctaHref={CATALOG_HREF} />
+      <RecommendsShelf books={recommends} ctaHref="/dobirky/knyhovyk-radyt" />
     </main>
   );
 }

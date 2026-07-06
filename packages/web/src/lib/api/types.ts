@@ -247,6 +247,8 @@ export interface CollectionBookDto {
   readonly url: string;
   /** ISO 8601 timestamp when the book entered the catalog; null when unknown. */
   readonly catalogAddedAt: string | null;
+  /** Number of priced listings in the pool backing `minPrice` (in-stock priced listings when any exist, otherwise all priced listings); 0 when unpriced. */
+  readonly offersCount: number;
 }
 
 export interface CollectionsHubFeaturedDto {
@@ -255,7 +257,8 @@ export interface CollectionsHubFeaturedDto {
 }
 
 export interface CollectionsHubDto {
-  readonly featured: CollectionsHubFeaturedDto;
+  /** Null when the collections table has no `knyhovyk-radyt` row (unseeded). */
+  readonly featured: CollectionsHubFeaturedDto | null;
   readonly dynamic: readonly CollectionDto[];
   /** knyhovyk-radyt + pryhovani-skarby. */
   readonly editorial: readonly CollectionDto[];

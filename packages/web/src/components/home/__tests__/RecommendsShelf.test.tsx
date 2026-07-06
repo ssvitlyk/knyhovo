@@ -12,8 +12,8 @@ vi.mock('next/link', () => ({
 }));
 
 const BOOKS: readonly HomeBook[] = [
-  { title: 'Кобзар', author: 'Тарас Шевченко', price: '165 ₴', store: 'Книгарня «Є»', badge: null, cover: '/covers/kobzar.png' },
-  { title: 'Маленький принц', author: 'А. де Сент-Екзюпері', price: '185 ₴', store: 'Yakaboo', badge: 'green', cover: '/covers/pryntz.png' },
+  { id: 'b1', href: '/books/b1', title: 'Кобзар', author: 'Тарас Шевченко', price: '165 ₴', store: 'Книгарня «Є»', badge: null, cover: '/covers/kobzar.png' },
+  { id: 'b2', href: '/books/b2', title: 'Маленький принц', author: 'А. де Сент-Екзюпері', price: '185 ₴', store: 'Yakaboo', badge: 'green', cover: '/covers/pryntz.png' },
 ];
 
 describe('RecommendsShelf', () => {

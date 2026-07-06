@@ -451,14 +451,21 @@ async function bySlugList(
 }
 
 async function buildHub(prisma: PrismaClient): Promise<HubResponseDto> {
-  const featuredRow = await findCollectionBySlug(prisma, FEATURED_SLUG);
-  if (!featuredRow) throw new CollectionNotFoundError();
+  const [featuredRow, ctx] = await Promise.all([
+    findCollectionBySlug(prisma, FEATURED_SLUG),
+    buildHubComputeContext(prisma),
+  ]);
 
-  const ctx = await buildHubComputeContext(prisma);
-
-  const featuredIds = await findCollectionItemBookIds(prisma, featuredRow.id);
-  const featuredBooks = toBookDtos(rowsByIds(ctx, featuredIds), ctx.mapperCtx);
-  const featuredCollection = await collectionDtoWithCount(prisma, ctx, featuredRow);
+  // `featuredRow` is absent on an unseeded DB (e.g. staging before the
+  // collection-metadata migration runs, or before any editorial curation
+  // happens) — the rest of the hub is still built and returned normally.
+  let featured: HubResponseDto['featured'] = null;
+  if (featuredRow) {
+    const featuredIds = await findCollectionItemBookIds(prisma, featuredRow.id);
+    const featuredBooks = toBookDtos(rowsByIds(ctx, featuredIds), ctx.mapperCtx);
+    const featuredCollection = await collectionDtoWithCount(prisma, ctx, featuredRow);
+    featured = { collection: featuredCollection, previewBooks: featuredBooks.slice(0, 3) };
+  }
 
   const dynamicRows = await findCollectionsByType(prisma, 'DYNAMIC');
   const dynamic = await Promise.all(dynamicRows.map((row) => collectionDtoWithCount(prisma, ctx, row)));
@@ -472,7 +479,7 @@ async function buildHub(prisma: PrismaClient): Promise<HubResponseDto> {
   const genres = eligibleGenreRows.map((row) => toCollectionDto(row, ctx.genreCounts.get(row.id) ?? 0));
 
   return {
-    featured: { collection: featuredCollection, previewBooks: featuredBooks.slice(0, 3) },
+    featured,
     dynamic,
     editorial,
     weekly,
@@ -489,7 +496,7 @@ async function buildHub(prisma: PrismaClient): Promise<HubResponseDto> {
  */
 export async function getHub(prisma: PrismaClient, userId: string | null): Promise<HubResponseDto> {
   const cached = await getOrSet('hub', HUB_CACHE_TTL_MS, () => buildHub(prisma));
-  if (!userId) return cached;
+  if (!userId || !cached.featured) return cached;
 
   const saved = await findWishlistedBookIds(prisma, userId);
   return {
