@@ -1,4 +1,5 @@
 export { LaboratoryScraper } from './laboratory.scraper.js';
+export type { LaboratoryScraperConfig } from './laboratory.scraper.js';
 export {
   laboratoryPriceToKopecks,
   parseLaboratoryListing,
