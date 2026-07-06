@@ -191,3 +191,24 @@ describe('GET /api/collections/hub', () => {
     expect(spies.canonicalBook.groupBy.mock.calls.length).toBe(1);
   });
 });
+
+describe('GET /api/collections/hub — unseeded collections table', () => {
+  beforeEach(() => {
+    clearCache();
+  });
+
+  it('returns 200 with featured: null and empty arrays instead of 404 when no collections are seeded', async () => {
+    const db = emptyDb();
+    const app = await buildTestApp(db);
+    const res = await app.inject({ method: 'GET', url: '/api/collections/hub' });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.featured).toBeNull();
+    expect(body.dynamic).toEqual([]);
+    expect(body.editorial).toEqual([]);
+    expect(body.weekly).toEqual([]);
+    expect(body.moods).toEqual([]);
+    expect(body.genres).toEqual([]);
+  });
+});

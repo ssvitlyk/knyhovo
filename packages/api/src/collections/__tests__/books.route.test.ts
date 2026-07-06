@@ -327,8 +327,67 @@ describe('GET /api/collections/:slug/books — book card fields', () => {
       inStock: true,
       url: '/books/b1',
       wishlistCount: 2,
+      offersCount: 1,
     });
     expect(typeof card.catalogAddedAt).toBe('string');
+  });
+
+  it('offersCount counts only in-stock priced listings when any exist', async () => {
+    const db = emptyDb();
+    const c = collection('c1', 'offers-col', 'EDITORIAL');
+    db.collections.push(c);
+    db.books.push(
+      book('mixed', 'Mixed', 'A', {
+        listings: [
+          listing(5000, { availability: 'IN_STOCK' }),
+          listing(4500, { availability: 'IN_STOCK' }),
+          listing(4000, { availability: 'OUT_OF_STOCK' }),
+        ],
+      }),
+    );
+    db.collectionItems.push(...itemsFor(c.id, ['mixed']));
+
+    const app = await buildTestApp(db);
+    const res = await app.inject({ method: 'GET', url: '/api/collections/offers-col/books' });
+    const [card] = res.json().books;
+    expect(card.offersCount).toBe(2);
+    expect(card.inStock).toBe(true);
+  });
+
+  it('offersCount falls back to all priced listings when every listing is out of stock', async () => {
+    const db = emptyDb();
+    const c = collection('c1', 'offers-oos-col', 'EDITORIAL');
+    db.collections.push(c);
+    db.books.push(
+      book('allOos', 'All OOS', 'A', {
+        listings: [
+          listing(6000, { availability: 'OUT_OF_STOCK' }),
+          listing(5500, { availability: 'OUT_OF_STOCK' }),
+        ],
+      }),
+    );
+    db.collectionItems.push(...itemsFor(c.id, ['allOos']));
+
+    const app = await buildTestApp(db);
+    const res = await app.inject({ method: 'GET', url: '/api/collections/offers-oos-col/books' });
+    const [card] = res.json().books;
+    expect(card.offersCount).toBe(2);
+    expect(card.inStock).toBe(false);
+    expect(card.minPrice).toEqual({ amount: 5500, currency: 'UAH' });
+  });
+
+  it('offersCount is 0 for a book with no priced listings', async () => {
+    const db = emptyDb();
+    const c = collection('c1', 'offers-none-col', 'EDITORIAL');
+    db.collections.push(c);
+    db.books.push(book('noOffers', 'No Offers', 'A', { listings: [] }));
+    db.collectionItems.push(...itemsFor(c.id, ['noOffers']));
+
+    const app = await buildTestApp(db);
+    const res = await app.inject({ method: 'GET', url: '/api/collections/offers-none-col/books' });
+    const [card] = res.json().books;
+    expect(card.offersCount).toBe(0);
+    expect(card.minPrice).toBeNull();
   });
 
   it('defaults coverUrl to an empty string when no listing has one', async () => {

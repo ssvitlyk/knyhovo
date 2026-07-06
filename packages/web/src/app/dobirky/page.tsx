@@ -55,6 +55,11 @@ function shelfItems(shelf: ShelfKind, books: readonly CollectionBookDto[]): Shel
  * divider + Новинки місяця → divider + Добірки редакції → Найбільші знижки →
  * Недооцінені книги → footer. Books come from per-collection `:slug/books`
  * calls; the greedy allocate keeps every book on exactly one shelf.
+ *
+ * The hub tolerates an "empty collections" state (unseeded DB): `hub.featured`
+ * may be `null`, and any weekly/mood/shelf collection may have zero books —
+ * those degrade to a hidden section, never the fetch-failure retry block
+ * (which stays reserved for an actual `getCollectionsHub` rejection below).
  */
 export default async function DobirkyPage(): Promise<React.JSX.Element> {
   const cookie = (await cookies()).toString();
@@ -70,13 +75,17 @@ export default async function DobirkyPage(): Promise<React.JSX.Element> {
     );
   }
 
+  const weeklyCollections = hub.weekly.filter((w) => w.bookCount > 0);
+  const moods = hub.moods.filter((m) => m.bookCount > 0);
+  const hasFeatured = hub.featured !== null && hub.featured.collection.bookCount > 0;
+
   const [obrane, popular, novynky, znyzhky, gems, ...weeklyBooks] = await Promise.all([
     booksOf(SHELF_SLUGS.obrane, cookie),
     booksOf(SHELF_SLUGS.popular, cookie),
     booksOf(SHELF_SLUGS.novynky, cookie),
     booksOf(SHELF_SLUGS.znyzhky, cookie),
     booksOf(SHELF_SLUGS.gems, cookie),
-    ...hub.weekly.map((w) => booksOf(w.slug, cookie)),
+    ...weeklyCollections.map((w) => booksOf(w.slug, cookie)),
   ]);
 
   const alloc = allocate<CollectionBookDto>([
@@ -87,10 +96,26 @@ export default async function DobirkyPage(): Promise<React.JSX.Element> {
     { key: 'popular', take: SHELF_TAKES.popular, pool: popular },
   ]);
 
-  const weekly: WeeklyCardData[] = hub.weekly.map((collection, i) => ({
+  const weekly: WeeklyCardData[] = weeklyCollections.map((collection, i) => ({
     collection,
     covers: (weeklyBooks[i] ?? []).slice(0, 12).map((b) => ({ url: b.coverUrl, title: b.title })),
   }));
+
+  const obraneItems = shelfItems('obrane', alloc.obrane ?? []);
+  const popularItems = shelfItems('popular', alloc.popular ?? []);
+  const novynkyItems = shelfItems('novynky', alloc.novynky ?? []);
+  const znyzhkyItems = shelfItems('znyzhky', alloc.znyzhky ?? []);
+  const gemsCovers = (alloc.gems ?? []).map((b) => b.coverUrl);
+
+  const isFullyEmpty =
+    !hasFeatured &&
+    moods.length === 0 &&
+    weekly.length === 0 &&
+    obraneItems.length === 0 &&
+    popularItems.length === 0 &&
+    novynkyItems.length === 0 &&
+    znyzhkyItems.length === 0 &&
+    gemsCovers.length === 0;
 
   const jsonLd = buildCollectionPageJsonLd(
     SITE_URL,
@@ -105,74 +130,99 @@ export default async function DobirkyPage(): Promise<React.JSX.Element> {
       <main className="dobirky-scope">
         <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
 
-        {/* 1 · Hero — FROZEN featured block (editorial) */}
-        <section className="sec sec--hero reveal">
-          <FeaturedCard collection={hub.featured.collection} />
-        </section>
+        {isFullyEmpty ? (
+          <div className="cd-empty">У добірках поки немає книг.</div>
+        ) : (
+          <>
+            {/* 1 · Hero — FROZEN featured block (editorial); hidden when the
+                collections table has no `knyhovyk-radyt` row (`hub.featured === null`)
+                or the featured collection has no books yet. */}
+            {hasFeatured && hub.featured ? (
+              <section className="sec sec--hero reveal">
+                <FeaturedCard collection={hub.featured.collection} />
+              </section>
+            ) : null}
 
-        {/* 2 · Обране читачами — establishing discovery shelf (FULL header) */}
-        <BookSection
-          id="obrane"
-          eyebrow={
-            <span className="sec-eyebrow--rose">
-              <DynIcon name="heart" size={13} solid />
-              Найчастіше додають у бажанки
-            </span>
-          }
-          title="Обране читачами"
-          sub="Книги, які читачі Knyhovo найчастіше додають до своїх бажанок."
-          fresh={{ text: 'На основі активності читачів' }}
-          allLabel="Усі улюблені"
-          allHref="/dobirky/najbilsh-bazhani"
-          items={shelfItems('obrane', alloc.obrane ?? [])}
-        />
+            {/* 2 · Обране читачами — establishing discovery shelf (FULL header) */}
+            {obraneItems.length > 0 ? (
+              <BookSection
+                id="obrane"
+                eyebrow={
+                  <span className="sec-eyebrow--rose">
+                    <DynIcon name="heart" size={13} solid />
+                    Найчастіше додають у бажанки
+                  </span>
+                }
+                title="Обране читачами"
+                sub="Книги, які читачі Knyhovo найчастіше додають до своїх бажанок."
+                fresh={{ text: 'На основі активності читачів' }}
+                allLabel="Усі улюблені"
+                allHref="/dobirky/najbilsh-bazhani"
+                items={obraneItems}
+              />
+            ) : null}
 
-        {/* 3 · Що читати сьогодні — mood discovery (editorial break, sage band) */}
-        <MoodSection moods={hub.moods} />
+            {/* 3 · Що читати сьогодні — mood discovery (editorial break, sage band) */}
+            {moods.length > 0 ? <MoodSection moods={moods} /> : null}
 
-        {/* 4 · Популярне зараз — trending shelf (MINIMAL header: title + live status only) */}
-        <BookSection
-          id="populyarne"
-          title="Популярне зараз"
-          fresh={{ text: 'Оновлюється щогодини' }}
-          allLabel="Уся добірка"
-          allHref="/dobirky/populyarne-zaraz"
-          items={shelfItems('popular', alloc.popular ?? [])}
-        />
+            {/* 4 · Популярне зараз — trending shelf (MINIMAL header: title + live status only) */}
+            {popularItems.length > 0 ? (
+              <BookSection
+                id="populyarne"
+                title="Популярне зараз"
+                fresh={{ text: 'Оновлюється щогодини' }}
+                allLabel="Уся добірка"
+                allHref="/dobirky/populyarne-zaraz"
+                items={popularItems}
+              />
+            ) : null}
 
-        {/* 6 · Divider → Новинки місяця — new-arrivals shelf (NO description).
-            «За жанром» grid removed 2026-07-04 (user decision): genre navigation
-            lives only in the sticky nav's «Жанри» dropdown/sheet, which links
-            straight to /zhanry/:slug. */}
-        <SecDivider />
-        <BookSection
-          id="novynky"
-          eyebrow="Свіже на полицях"
-          title="Новинки місяця"
-          fresh={{ text: 'Нові надходження' }}
-          allLabel="Усі новинки"
-          allHref="/dobirky/novynky"
-          items={shelfItems('novynky', alloc.novynky ?? [])}
-        />
+            {/* 6 · Divider → Новинки місяця — new-arrivals shelf (NO description).
+                «За жанром» grid removed 2026-07-04 (user decision): genre navigation
+                lives only in the sticky nav's «Жанри» dropdown/sheet, which links
+                straight to /zhanry/:slug. */}
+            {novynkyItems.length > 0 ? (
+              <>
+                <SecDivider />
+                <BookSection
+                  id="novynky"
+                  eyebrow="Свіже на полицях"
+                  title="Новинки місяця"
+                  fresh={{ text: 'Нові надходження' }}
+                  allLabel="Усі новинки"
+                  allHref="/dobirky/novynky"
+                  items={novynkyItems}
+                />
+              </>
+            ) : null}
 
-        {/* 7 · Divider → Добірки редакції — weekly editorial collections (big cards) */}
-        <SecDivider />
-        <FreshSection weekly={weekly} />
+            {/* 7 · Divider → Добірки редакції — weekly editorial collections (big cards).
+                `FreshSection` already hides itself when `weekly` is empty. */}
+            {weekly.length > 0 ? (
+              <>
+                <SecDivider />
+                <FreshSection weekly={weekly} />
+              </>
+            ) : null}
 
-        {/* 8 · Найбільші знижки — deals shelf (SHORT status, warm band) */}
-        <BookSection
-          id="znyzhky"
-          band="warm"
-          eyebrow="Вигідно зараз"
-          title="Найбільші знижки"
-          fresh={{ text: 'Ціни перевірено сьогодні' }}
-          allLabel="Усі знижки"
-          allHref="/dobirky/znyzhky"
-          items={shelfItems('znyzhky', alloc.znyzhky ?? [])}
-        />
+            {/* 8 · Найбільші знижки — deals shelf (SHORT status, warm band) */}
+            {znyzhkyItems.length > 0 ? (
+              <BookSection
+                id="znyzhky"
+                band="warm"
+                eyebrow="Вигідно зараз"
+                title="Найбільші знижки"
+                fresh={{ text: 'Ціни перевірено сьогодні' }}
+                allLabel="Усі знижки"
+                allHref="/dobirky/znyzhky"
+                items={znyzhkyItems}
+              />
+            ) : null}
 
-        {/* 9 · Недооцінені книги — hidden-gems editorial culmination (fanned cover trio) */}
-        <GemsBand fanCovers={(alloc.gems ?? []).map((b) => b.coverUrl)} />
+            {/* 9 · Недооцінені книги — hidden-gems editorial culmination (fanned cover trio) */}
+            {gemsCovers.length > 0 ? <GemsBand fanCovers={gemsCovers} /> : null}
+          </>
+        )}
       </main>
     </>
   );

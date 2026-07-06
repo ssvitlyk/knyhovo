@@ -59,13 +59,25 @@ export interface CollectionBookDto {
   readonly url: string;
   /** ISO-8601 timestamp; = canonical_books.created_at. `null` only if the book has no createdAt. */
   readonly catalogAddedAt: string | null;
+  /**
+   * Number of priced listings in the pool backing `minPrice`: in-stock
+   * priced listings when any exist, otherwise all priced listings; `0` when
+   * the book has no priced listing.
+   */
+  readonly offersCount: number;
 }
 
 export interface HubResponseDto {
+  /**
+   * `null` when the `knyhovyk-radyt` editorial collection row is absent —
+   * e.g. an unseeded staging DB whose `collections` table has no rows yet.
+   * The rest of the hub (dynamic/editorial/weekly/moods/genres) is still
+   * built normally in that case.
+   */
   readonly featured: {
     readonly collection: CollectionDto;
     readonly previewBooks: readonly CollectionBookDto[];
-  };
+  } | null;
   readonly dynamic: readonly CollectionDto[];
   readonly editorial: readonly CollectionDto[];
   readonly weekly: readonly CollectionDto[];

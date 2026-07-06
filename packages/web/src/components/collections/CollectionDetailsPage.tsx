@@ -92,7 +92,9 @@ async function loadSimilar(current: CollectionDto): Promise<SimilarItem[]> {
     return [];
   }
 
-  const eligible = all.filter((c) => c.slug !== current.slug && c.slug !== 'knyhovyk-radyt' && c.isActive);
+  const eligible = all.filter(
+    (c) => c.slug !== current.slug && c.slug !== 'knyhovyk-radyt' && c.isActive && c.bookCount > 0,
+  );
   const sameType = eligible.filter((c) => c.type === current.type);
   const rest = eligible.filter((c) => c.type !== current.type);
   const picked = [...sameType, ...rest].slice(0, SIMILAR_COUNT);

@@ -19,6 +19,7 @@ function book(overrides: Partial<CollectionBookDto> = {}): CollectionBookDto {
     catalogAddedAt: '2026-01-01T00:00:00.000Z',
     wishlistCount: 0,
     isWishlisted: false,
+    offersCount: 1,
     ...overrides,
   };
 }

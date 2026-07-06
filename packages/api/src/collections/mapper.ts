@@ -52,6 +52,9 @@ export interface CollectionMapperContext {
  *   data exists.
  * - `isWishlisted` always starts `false` here; the service decorates it
  *   per-user *after* the cache read (see `service.ts`).
+ * - `offersCount` is the size of the same pool `minPrice`/`storeName` are
+ *   drawn from: in-stock priced listings when any exist, otherwise all
+ *   priced listings; `0` when there is no priced listing at all.
  */
 export function toCollectionBookDto(book: CollectionBookRow, ctx: CollectionMapperContext): CollectionBookDto {
   const priced = book.listings.filter(hasPrice).sort((a, b) => a.priceAmount - b.priceAmount);
@@ -90,6 +93,7 @@ export function toCollectionBookDto(book: CollectionBookRow, ctx: CollectionMapp
     inStock,
     url: `/books/${book.id}`,
     catalogAddedAt: book.createdAt.toISOString(),
+    offersCount: inStockPriced.length > 0 ? inStockPriced.length : priced.length,
   };
 }
 

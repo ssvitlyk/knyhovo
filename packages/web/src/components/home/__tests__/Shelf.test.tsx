@@ -13,9 +13,9 @@ vi.mock('next/link', () => ({
 }));
 
 const BOOKS: readonly HomeBook[] = [
-  { title: 'Атомні звички', author: 'Джеймс Клір', price: '245 ₴', oldPrice: '320 ₴', store: 'Yakaboo', badge: 'green', cover: '/covers/atomni.png' },
-  { title: 'Sapiens', author: 'Ю. Н. Харарі', price: '380 ₴', oldPrice: '450 ₴', store: 'Rozetka', badge: 'solid:-16%', cover: '/covers/sapiens.png' },
-  { title: 'Інтернат', author: 'Сергій Жадан', price: '210 ₴', store: 'Книгарня «Є»', badge: 'accent:Новинка', cover: '/covers/internat.png' },
+  { id: 'b1', href: '/books/b1', title: 'Атомні звички', author: 'Джеймс Клір', price: '245 ₴', oldPrice: '320 ₴', store: 'Yakaboo', badge: 'green', cover: '/covers/atomni.png' },
+  { id: 'b2', href: '/books/b2', title: 'Sapiens', author: 'Ю. Н. Харарі', price: '380 ₴', oldPrice: '450 ₴', store: 'Rozetka', badge: 'solid:-16%', cover: '/covers/sapiens.png' },
+  { id: 'b3', href: '/books/b3', title: 'Інтернат', author: 'Сергій Жадан', price: '210 ₴', store: 'Книгарня «Є»', badge: 'accent:Новинка', cover: '/covers/internat.png' },
 ];
 
 function renderShelf(books: readonly HomeBook[]): HTMLElement {
@@ -43,8 +43,16 @@ describe('Shelf', () => {
 
   it('CTA and mobile chevron point at the canonical catalog href', () => {
     const container = renderShelf(BOOKS);
-    const links = Array.from(container.querySelectorAll('a')).map((a) => a.getAttribute('href'));
-    expect(links.every((href) => href === '/search')).toBe(true);
+    expect(container.querySelector('.hp-shelf__cta')?.getAttribute('href')).toBe('/search');
+    expect(container.querySelector('.hp-shelf__chev')?.getAttribute('href')).toBe('/search');
+  });
+
+  it('each card links to its own book href', () => {
+    const container = renderShelf(BOOKS);
+    const cardHrefs = Array.from(container.querySelectorAll('.hp-rail__card-link')).map((a) =>
+      a.getAttribute('href'),
+    );
+    expect(cardHrefs).toEqual(BOOKS.map((b) => b.href));
   });
 
   it('empty shelf → the whole section is hidden', () => {
