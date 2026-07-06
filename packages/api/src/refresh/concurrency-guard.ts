@@ -98,6 +98,16 @@ export async function isRefreshRunning(
  * per-provider scrape_runs are the running marker. Throws `RefreshAlreadyRunningError`
  * when a GUARDED_KIND run is already RUNNING. Returns a lock handle on success;
  * pass it to `releaseRefreshLock` in a finally block.
+ *
+ * TODO(stale-lock-recovery): a RUNNING row left behind by a SIGKILL'd/OOM'd/
+ * redeployed process currently blocks every future refresh with "already running"
+ * until cleared by hand. Recovery must NOT be done by reaping rows older than a
+ * fixed `startedAt` threshold — a legitimately long-running provider (e.g. the
+ * uncapped knigoland, hours-long) would then be reaped mid-flight, letting a
+ * second refresh acquire the lock and run concurrently (broken mutual exclusion →
+ * double writes). Do it in a follow-up PR via a liveness heartbeat
+ * (`lastHeartbeatAt` updated during a run; reap only when the heartbeat is stale),
+ * which distinguishes a dead process from a slow-but-alive one.
  */
 export async function acquireRefreshLock(
   prisma: PrismaClient,

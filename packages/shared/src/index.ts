@@ -17,6 +17,7 @@ export type {
   ProviderName,
   Availability,
   ScraperOptions,
+  ScraperLogger,
   RawProviderListing,
   ProviderListing,
   ScraperProvider,

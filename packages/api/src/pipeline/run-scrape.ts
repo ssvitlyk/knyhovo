@@ -16,12 +16,18 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
   const results: ProviderRunResult[] = [];
 
   for (const provider of opts.providers) {
-    bindContext(logger, { phase: 'scrape' }).info(`Scraping ${provider.name}...`);
+    const scrapeLogger = bindContext(logger, { phase: 'scrape' });
+    scrapeLogger.info(`Scraping ${provider.name}...`);
     const metrics = createMetrics();
 
     let scrapeResult: ScraperResult;
     try {
-      scrapeResult = await provider.scrape(opts.scraperOptions);
+      // Thread the scrape-phase logger into the provider so its progress/metrics
+      // surface in production; an explicit scraperOptions.logger still wins.
+      scrapeResult = await provider.scrape({
+        ...opts.scraperOptions,
+        logger: opts.scraperOptions?.logger ?? scrapeLogger,
+      });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       results.push({ provider: provider.name, metrics, scrapeErrors: [message] });

@@ -23,6 +23,16 @@ export type ProviderName =
 export type Availability = 'in-stock' | 'out-of-stock' | 'unknown';
 
 /**
+ * Minimal logging sink a scraper can write progress/metrics to. Structurally
+ * compatible with the API's richer `Logger` (which also has `error`), so callers
+ * can pass their existing logger straight through. Providers default to a no-op
+ * when none is supplied, so logging never becomes a hard dependency.
+ */
+export interface ScraperLogger {
+  info(message: string): void;
+}
+
+/**
  * Tuning knobs passed to ScraperProvider.scrape().
  * All fields are optional — providers use sensible defaults when omitted.
  */
@@ -33,6 +43,24 @@ export interface ScraperOptions {
   timeoutMs?: number;
   /** Delay between consecutive page requests in milliseconds. Provider default applies when omitted. */
   delayMs?: number;
+  /**
+   * How many product/page requests to run in parallel (providers that fetch many
+   * independent pages, e.g. sitemap-driven ones). Provider default applies when omitted.
+   */
+  concurrency?: number;
+  /**
+   * Emergency wall-clock ceiling for a single scrape() call, in milliseconds. A
+   * safety net, not the normal completion path: on exceed the provider returns a
+   * partial result plus an error rather than hanging. Provider default applies when omitted.
+   */
+  maxRuntimeMs?: number;
+  /**
+   * How many times to retry a transient per-request failure (429 / timeout /
+   * connection reset) with exponential backoff. Provider default applies when omitted.
+   */
+  maxRetries?: number;
+  /** Optional sink for progress and run-metrics logging. No-op when omitted. */
+  logger?: ScraperLogger;
   /**
    * Opt-in: run a per-book product-page fetch pass to enrich listings with descriptions (W9a F2).
    * Defaults to false — a normal catalog scrape performs no product-page requests.

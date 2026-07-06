@@ -16,8 +16,53 @@ export const LABORATORY_PRODUCTS_SITEMAP_URL = `${LABORATORY_BASE_URL}/sitemap.x
  * Provider-local default cap on how many product pages a single scrape fetches.
  * Uncapped by default so production runs pull the full ~6k-URL sitemap; pass a
  * finite `ScraperOptions.maxPages` (treated as a product cap) to bound manual/test runs.
+ *
+ * ~6k is the LEGITIMATE catalog size (the `/catalog/books` listing is ~258 pages
+ * of ~24 books), not sitemap bloat — so the fix for the post-cap hang is to fetch
+ * these pages FASTER (bounded concurrency, see `DEFAULT_CONCURRENCY`), not to cap
+ * how many we fetch.
  */
 export const DEFAULT_MAX_PRODUCTS = Number.POSITIVE_INFINITY;
+
+/**
+ * How many product pages the scraper fetches in parallel. The sitemap yields ~6k
+ * independent product URLs; fetching them one-at-a-time with a per-request delay
+ * stretched a full run to ~50min–hours (the post-PR-#72 hang). A bounded pool of
+ * 8 keeps the run to minutes while staying polite to Laboratory's origin — it is
+ * CDN-fronted (Cloudflare) with no JS challenge, so modest concurrency is safe.
+ */
+export const DEFAULT_CONCURRENCY = 8;
+
+/**
+ * Emergency wall-clock ceiling for a single scrape() call. This is a SAFETY NET,
+ * not the normal completion path: a healthy full run finishes in minutes well
+ * under this. If a run somehow blows past it (origin degradation, mass timeouts),
+ * the scraper stops dispatching new fetches and returns the products collected so
+ * far as a partial result plus an error — never a hang.
+ */
+export const DEFAULT_MAX_RUNTIME_MS = 30 * 60 * 1000;
+
+/** Per-request HTTP timeout for the sitemap and each product page. */
+export const DEFAULT_TIMEOUT_MS = 10_000;
+
+/**
+ * Throttle applied by each worker after a request. With `DEFAULT_CONCURRENCY`
+ * workers in flight the aggregate gap between requests is `delay / concurrency`,
+ * so this stays polite without serializing the run. Overridable via `ScraperOptions.delayMs`.
+ */
+export const DEFAULT_DELAY_MS = 500;
+
+/** Retries (after the first attempt) for a transient per-request failure (429 / timeout / reset). */
+export const DEFAULT_MAX_RETRIES = 3;
+
+/** Exponential-backoff base for retries: the nth retry waits `base * 2**(n-1)`, capped below. */
+export const DEFAULT_RETRY_BASE_DELAY_MS = 500;
+
+/** Upper bound on a single backoff wait, so a long retry chain cannot stall a worker for minutes. */
+export const DEFAULT_RETRY_MAX_DELAY_MS = 8_000;
+
+/** Emit a `processed X/Y` progress line every this-many product pages. */
+export const DEFAULT_PROGRESS_INTERVAL = 500;
 
 /**
  * Laboratory product pages are server-rendered with TWO JSON-LD blocks:
