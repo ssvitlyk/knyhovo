@@ -2,6 +2,7 @@ import type { ProviderName, Availability } from '@knyhovo/shared';
 import type { BookListingRow, BookDetailsRow } from './repository.js';
 import type { BookProviderDto, BookDetailsDto, MoneyDto } from './dto.js';
 import { selectDescription } from '../discovery/description-selection.js';
+import { selectCoverUrl } from '../discovery/cover-selection.js';
 
 /** Reverse map from the persisted provider enum to its public slug. */
 const PROVIDER_SLUG: Record<BookListingRow['provider'], ProviderName> = {
@@ -56,9 +57,10 @@ export function toBookDetails(row: BookDetailsRow): BookDetailsDto {
   const lowestPrice: MoneyDto | null = providers[0]?.price ?? null;
   const offersCount = providers.length;
 
-  // Description is selected across ALL listings (in-stock and out-of-stock alike,
-  // W9a §8) by provider priority with an ascending-price tiebreak — independent
-  // of the in-stock `providers` filtering above.
+  // Description and cover are selected across ALL listings (in-stock and
+  // out-of-stock alike, W9a §8/§9) by provider priority with an
+  // ascending-price tiebreak — independent of the in-stock `providers`
+  // filtering above.
   const description = selectDescription(
     row.listings.map((l) => ({
       provider: PROVIDER_SLUG[l.provider],
@@ -66,14 +68,26 @@ export function toBookDetails(row: BookDetailsRow): BookDetailsDto {
       priceAmount: l.priceAmount,
     })),
   );
+  const coverUrl = selectCoverUrl(
+    row.listings.map((l) => ({
+      provider: PROVIDER_SLUG[l.provider],
+      coverUrl: l.coverUrl,
+      priceAmount: l.priceAmount,
+    })),
+  );
+
+  // The canonical ISBN wins; when enrichment has only backfilled listing-level
+  // ISBNs (the canonical row is created before product-page enrichment runs),
+  // fall back to the cheapest listing that carries one.
+  const isbn = row.isbn ?? row.listings.find((l) => l.isbn)?.isbn ?? null;
 
   return {
     id: row.id,
     title: row.title,
     author: row.author,
-    isbn: row.isbn ?? null,
+    isbn,
     description,
-    coverUrl: null,
+    coverUrl,
     lowestPrice,
     offersCount,
     providers,

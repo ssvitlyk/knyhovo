@@ -15,6 +15,10 @@ export interface BookListingRow {
   readonly availability: 'IN_STOCK' | 'OUT_OF_STOCK' | 'UNKNOWN';
   readonly url: string;
   readonly lastSeenAt: Date;
+  /** ISBN as shown on the provider page, or null when the page exposed none. */
+  readonly isbn: string | null;
+  /** Cover image URL from the provider's catalog card, or null when none scraped (W9a F1). */
+  readonly coverUrl: string | null;
   /** Sanitized plain-text product-page description, or null when none enriched (W9a F2). */
   readonly description: string | null;
 }
@@ -55,6 +59,8 @@ export async function findCanonicalBookById(
           availability: true,
           url: true,
           lastSeenAt: true,
+          isbn: true,
+          coverUrl: true,
           description: true,
         },
       },

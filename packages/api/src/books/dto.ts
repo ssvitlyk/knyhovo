@@ -39,7 +39,10 @@ export interface BookDetailsDto {
    * listings (W9a F2). null when no provider has an enriched description.
    */
   readonly description: string | null;
-  /** Always null — column does not exist in DB. Reserved for future use. */
+  /**
+   * Display cover URL selected across the book's provider listings by
+   * provider priority (W9a F1). null when no listing carries a cover.
+   */
   readonly coverUrl: string | null;
   /** Minimum available provider price. null when there are no available offers. */
   readonly lowestPrice: MoneyDto | null;

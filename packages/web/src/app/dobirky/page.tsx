@@ -8,6 +8,7 @@ import { buildCollectionPageJsonLd } from '@/lib/seo/collections-jsonld';
 import { CollectionsNav } from '@/components/collections/CollectionsNav';
 import { FeaturedCard } from '@/components/collections/FeaturedCard';
 import { BookSection, SecDivider } from '@/components/collections/BookSection';
+import { SecHead } from '@/components/collections/SecHead';
 import { MoodSection } from '@/components/collections/MoodSection';
 import { FreshSection, type WeeklyCardData } from '@/components/collections/FreshSection';
 import { GemsBand } from '@/components/collections/GemsBand';
@@ -25,8 +26,24 @@ export const metadata: Metadata = {
   alternates: { canonical: '/dobirky', languages: { uk: '/dobirky' } },
 };
 
-/** Cross-section dedup priority + shelf sizes (frozen mock's SECTION_POOLS). */
-const SHELF_TAKES = { gems: 3, znyzhky: 5, obrane: 5, novynky: 5, popular: 5 } as const;
+/**
+ * Cross-section dedup priority + shelf sizes. Rail shelves show 12 books
+ * (product decision 2026-07-07; the frozen mock's 5 was a preview size —
+ * kept only on the home page). `gems` stays 3: it renders a fanned cover
+ * trio, not a rail.
+ */
+const SHELF_TAKES = { gems: 3, znyzhky: 12, obrane: 12, novynky: 12, popular: 12 } as const;
+
+/**
+ * How many 24-book API pages each shelf's candidate pool fetches. The greedy
+ * allocate consumes ids in priority order, so a later shelf must survive the
+ * worst case where every id taken by earlier shelves also sits at the top of
+ * its own pool: pool size ≥ take + Σ earlier takes (gems 3 → znyzhky 15 →
+ * obrane 27 → novynky 39 → popular 51). Without this, «Популярне зараз» (whose
+ * relevance order overlaps wishlist + newest almost exactly) starves on a
+ * single page and the section disappears.
+ */
+const SHELF_PAGES = { gems: 1, znyzhky: 1, obrane: 2, novynky: 2, popular: 3 } as const;
 
 const SHELF_SLUGS: Readonly<Record<string, string>> = {
   obrane: 'najbilsh-bazhani',
@@ -36,9 +53,12 @@ const SHELF_SLUGS: Readonly<Record<string, string>> = {
   gems: 'pryhovani-skarby',
 };
 
-async function booksOf(slug: string, cookie: string): Promise<readonly CollectionBookDto[]> {
+async function booksOf(slug: string, cookie: string, pages = 1): Promise<readonly CollectionBookDto[]> {
   try {
-    return (await getCollectionBooks({ slug, page: 1, cookie })).books;
+    const results = await Promise.all(
+      Array.from({ length: pages }, (_, i) => getCollectionBooks({ slug, page: i + 1, cookie })),
+    );
+    return results.flatMap((r) => r.books);
   } catch {
     return []; // degraded shelf — the section renders with what survived dedup
   }
@@ -80,11 +100,11 @@ export default async function DobirkyPage(): Promise<React.JSX.Element> {
   const hasFeatured = hub.featured !== null && hub.featured.collection.bookCount > 0;
 
   const [obrane, popular, novynky, znyzhky, gems, ...weeklyBooks] = await Promise.all([
-    booksOf(SHELF_SLUGS.obrane, cookie),
-    booksOf(SHELF_SLUGS.popular, cookie),
-    booksOf(SHELF_SLUGS.novynky, cookie),
-    booksOf(SHELF_SLUGS.znyzhky, cookie),
-    booksOf(SHELF_SLUGS.gems, cookie),
+    booksOf(SHELF_SLUGS.obrane, cookie, SHELF_PAGES.obrane),
+    booksOf(SHELF_SLUGS.popular, cookie, SHELF_PAGES.popular),
+    booksOf(SHELF_SLUGS.novynky, cookie, SHELF_PAGES.novynky),
+    booksOf(SHELF_SLUGS.znyzhky, cookie, SHELF_PAGES.znyzhky),
+    booksOf(SHELF_SLUGS.gems, cookie, SHELF_PAGES.gems),
     ...weeklyCollections.map((w) => booksOf(w.slug, cookie)),
   ]);
 
@@ -143,7 +163,10 @@ export default async function DobirkyPage(): Promise<React.JSX.Element> {
               </section>
             ) : null}
 
-            {/* 2 · Обране читачами — establishing discovery shelf (FULL header) */}
+            {/* 2 · Обране читачами — establishing discovery shelf (FULL header).
+                Unlike the other shelves, an empty pool here is an expected state
+                (a fresh install has no wishlist activity yet), so the section
+                shows a quiet empty hint instead of silently disappearing. */}
             {obraneItems.length > 0 ? (
               <BookSection
                 id="obrane"
@@ -160,7 +183,24 @@ export default async function DobirkyPage(): Promise<React.JSX.Element> {
                 allHref="/dobirky/najbilsh-bazhani"
                 items={obraneItems}
               />
-            ) : null}
+            ) : (
+              <section className="sec reveal" id="obrane">
+                <SecHead
+                  eyebrow={
+                    <span className="sec-eyebrow--rose">
+                      <DynIcon name="heart" size={13} solid />
+                      Найчастіше додають у бажанки
+                    </span>
+                  }
+                  title="Обране читачами"
+                  sub="Книги, які читачі Knyhovo найчастіше додають до своїх бажанок."
+                />
+                <div className="cd-empty">
+                  Тут з’являться книги, які читачі найчастіше додають до бажанок. Увійдіть та збережіть
+                  першу книгу — і добірка оживе.
+                </div>
+              </section>
+            )}
 
             {/* 3 · Що читати сьогодні — mood discovery (editorial break, sage band) */}
             {moods.length > 0 ? <MoodSection moods={moods} /> : null}
