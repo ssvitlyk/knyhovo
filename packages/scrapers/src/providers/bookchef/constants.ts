@@ -12,11 +12,11 @@ export const BOOKCHEF_BASE_URL = 'https://bookchef.ua';
 export const BOOKCHEF_PRODUCTS_SITEMAP_URL = `${BOOKCHEF_BASE_URL}/sitemap_products.xml`;
 
 /**
- * Provider-local default cap on how many product pages a single scrape fetches,
- * so manual/test runs do not pull the entire sitemap. `ScraperOptions.maxPages`
- * overrides it (treated as a product cap) without changing the shared contract.
+ * Provider-local default cap on how many product pages a single scrape fetches.
+ * Uncapped by default so production runs pull the full sitemap; pass a finite
+ * `ScraperOptions.maxPages` (treated as a product cap) to bound manual/test runs.
  */
-export const DEFAULT_MAX_PRODUCTS = 50;
+export const DEFAULT_MAX_PRODUCTS = Number.POSITIVE_INFINITY;
 
 /** Publisher/brand name as exposed in BookChef JSON-LD (`brand.name`). */
 export const BRAND = 'BookChef';

@@ -10,8 +10,12 @@ export const DEFAULT_CATALOG_PER_PAGE = 100;
 /** Default number of product slugs to enrich per alias-batch request. */
 export const DEFAULT_BATCH_SIZE = 30;
 
-/** Default maximum number of products to scrape in a single run. */
-export const DEFAULT_MAX_PRODUCTS = 60;
+/**
+ * Default maximum number of products to scrape in a single run.
+ * Uncapped by default so production runs paginate the full catalog; pass a
+ * finite `ScraperOptions.maxPages` to bound manual/test runs.
+ */
+export const DEFAULT_MAX_PRODUCTS = Number.POSITIVE_INFINITY;
 
 /** Default HTTP request timeout in milliseconds. */
 export const DEFAULT_TIMEOUT_MS = 10_000;

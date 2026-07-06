@@ -19,11 +19,11 @@ export const KNIGOLAND_SITEMAP_INDEX_URL = `${KNIGOLAND_BASE_URL}/sitemaps/sitem
 export const CATALOG_PRODUCTS_SITEMAP_PATTERN = /\/sections\/catalog-products-\d+\.xml$/;
 
 /**
- * Provider-local default cap on how many product pages a single scrape fetches,
- * so manual/test runs do not pull the entire ~50k-URL catalog. `ScraperOptions.maxPages`
- * overrides it (treated as a product cap) without changing the shared contract.
+ * Provider-local default cap on how many product pages a single scrape fetches.
+ * Uncapped by default so production runs pull the full ~50k-URL catalog; pass a
+ * finite `ScraperOptions.maxPages` (treated as a product cap) to bound manual/test runs.
  */
-export const DEFAULT_MAX_PRODUCTS = 50;
+export const DEFAULT_MAX_PRODUCTS = Number.POSITIVE_INFINITY;
 
 /**
  * Knigoland product pages are server-rendered (Next.js, no Cloudflare/WAF) with

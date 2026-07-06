@@ -13,11 +13,11 @@ export const LABORATORY_BASE_URL = 'https://laboratory.ua';
 export const LABORATORY_PRODUCTS_SITEMAP_URL = `${LABORATORY_BASE_URL}/sitemap.xml/type-products`;
 
 /**
- * Provider-local default cap on how many product pages a single scrape fetches,
- * so manual/test runs do not pull the entire ~6k-URL sitemap. `ScraperOptions.maxPages`
- * overrides it (treated as a product cap) without changing the shared contract.
+ * Provider-local default cap on how many product pages a single scrape fetches.
+ * Uncapped by default so production runs pull the full ~6k-URL sitemap; pass a
+ * finite `ScraperOptions.maxPages` (treated as a product cap) to bound manual/test runs.
  */
-export const DEFAULT_MAX_PRODUCTS = 50;
+export const DEFAULT_MAX_PRODUCTS = Number.POSITIVE_INFINITY;
 
 /**
  * Laboratory product pages are server-rendered with TWO JSON-LD blocks:
