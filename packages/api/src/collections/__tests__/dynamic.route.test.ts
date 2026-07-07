@@ -63,6 +63,35 @@ describe('GET /api/collections/novynky/books', () => {
     const res = await app.inject({ method: 'GET', url: '/api/collections/novynky/books' });
     expect(res.json().total).toBe(0);
   });
+
+  it('caps the pool to a share of the catalog when a bulk backfill puts everything inside the 30-day window', async () => {
+    const db = emptyDb();
+    db.collections.push(collection('c1', 'novynky', 'DYNAMIC'));
+    // Simulates a mass ingestion backfill: all 100 catalog books "created"
+    // (scraped) within the window, which would otherwise make novynky ==
+    // the whole catalog. Cap = NOVYNKY_MAX_SHARE (0.25) * 100 = 25.
+    for (let i = 0; i < 100; i += 1) {
+      db.books.push(book(`bulk${i}`, `Bulk ${i}`, 'A', { createdAt: daysAgo(i % 30), listings: [listing(1000)] }));
+    }
+
+    const app = await buildTestApp(db);
+    const res = await app.inject({ method: 'GET', url: '/api/collections/novynky/books' });
+    expect(res.json().total).toBe(25);
+  });
+
+  it('the cap never drops below NOVYNKY_MIN_POOL on a small catalog, even if that exceeds the 25% share', async () => {
+    const db = emptyDb();
+    db.collections.push(collection('c1', 'novynky', 'DYNAMIC'));
+    // 30 books, all in-window: 25% of 30 is 7 (< NOVYNKY_MIN_POOL), so the
+    // MIN_POOL floor wins — capped to 24, not down to 7.
+    for (let i = 0; i < 30; i += 1) {
+      db.books.push(book(`b${i}`, `B ${i}`, 'A', { createdAt: daysAgo(i), listings: [listing(1000)] }));
+    }
+
+    const app = await buildTestApp(db);
+    const res = await app.inject({ method: 'GET', url: '/api/collections/novynky/books' });
+    expect(res.json().total).toBe(24);
+  });
 });
 
 describe('GET /api/collections/znyzhky/books', () => {
@@ -152,13 +181,27 @@ describe('GET /api/collections/rekordno-nyzka-tsina/books', () => {
     const db = emptyDb();
     db.collections.push(collection('c1', 'rekordno-nyzka-tsina', 'DYNAMIC'));
     db.books.push(
-      // Current price 5000 is the lowest ever recorded -> included.
+      // Current price 5000 is the lowest ever recorded, over 2 real observations -> included.
       book('at-low', 'AtLow', 'A', {
-        listings: [listing(5000, { priceHistory: [{ priceAmount: 8000, priceCurrency: 'UAH', recordedAt: daysAgo(30) }] })],
+        listings: [
+          listing(5000, {
+            priceHistory: [
+              { priceAmount: 8000, priceCurrency: 'UAH', recordedAt: daysAgo(30) },
+              { priceAmount: 7000, priceCurrency: 'UAH', recordedAt: daysAgo(15) },
+            ],
+          }),
+        ],
       }),
       // Current price 6000 is higher than a past low of 4000 -> excluded.
       book('not-low', 'NotLow', 'B', {
-        listings: [listing(6000, { priceHistory: [{ priceAmount: 4000, priceCurrency: 'UAH', recordedAt: daysAgo(30) }] })],
+        listings: [
+          listing(6000, {
+            priceHistory: [
+              { priceAmount: 4000, priceCurrency: 'UAH', recordedAt: daysAgo(30) },
+              { priceAmount: 4500, priceCurrency: 'UAH', recordedAt: daysAgo(15) },
+            ],
+          }),
+        ],
       }),
     );
 
@@ -166,6 +209,20 @@ describe('GET /api/collections/rekordno-nyzka-tsina/books', () => {
     const res = await app.inject({ method: 'GET', url: '/api/collections/rekordno-nyzka-tsina/books' });
     const ids = res.json().books.map((b: { id: string }) => b.id);
     expect(ids).toEqual(['at-low']);
+  });
+
+  it('excludes a book scraped only once — a single price_history point matching the current price is not a real record', async () => {
+    const db = emptyDb();
+    db.collections.push(collection('c1', 'rekordno-nyzka-tsina', 'DYNAMIC'));
+    db.books.push(
+      book('scraped-once', 'ScrapedOnce', 'A', {
+        listings: [listing(5000, { priceHistory: [{ priceAmount: 5000, priceCurrency: 'UAH', recordedAt: daysAgo(1) }] })],
+      }),
+    );
+
+    const app = await buildTestApp(db);
+    const res = await app.inject({ method: 'GET', url: '/api/collections/rekordno-nyzka-tsina/books' });
+    expect(res.json().total).toBe(0);
   });
 });
 

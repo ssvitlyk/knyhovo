@@ -245,61 +245,63 @@ export function CollectionsNav({ genres }: CollectionsNavProps): React.JSX.Eleme
                 </div>
               ) : null}
             </div>
-            <div className="cnav__sec-wrap" ref={genRef}>
-              <button
-                type="button"
-                className="cnav__secbtn"
-                aria-expanded={genOpen}
-                aria-haspopup="true"
-                onClick={() => {
-                  /* Query resets on (re)open — canonical clears it on close;
-                     the visible result is identical: a fresh list every open. */
-                  if (!genOpen) setGenQ('');
-                  setGenOpen((o) => !o);
-                  setSecOpen(false);
-                }}
-              >
-                <CNavIcon name="book-open" />
-                <span className="cnav__secbtn-label">Жанри</span>
-                <span className="cnav__chev">
-                  <CNavIcon name="chevron-down" size={14} />
-                </span>
-              </button>
-              {genOpen ? (
-                <div className="cnav__secmenu cnav__secmenu--genres" role="menu">
-                  <label className="cnav__secmenu-search">
-                    <CNavIcon name="search" size={15} />
-                    <input
-                      type="text"
-                      placeholder="Знайти жанр"
-                      value={genQ}
-                      onChange={(e) => setGenQ(e.target.value)}
-                      aria-label="Пошук жанру"
-                    />
-                  </label>
-                  <div className="cnav__secmenu-scroll">
-                    {genList.map((g) => (
-                      <a
-                        key={g.slug}
-                        href={`/zhanry/${g.slug}`}
-                        role="menuitem"
-                        className="cnav__secmenu-item"
-                        onClick={() => setGenOpen(false)}
-                      >
-                        <CNavIcon name={g.icon ?? 'book-open'} />
-                        {g.name}
-                      </a>
-                    ))}
-                    {genList.length === 0 ? (
-                      <div className="cnav__secmenu-empty">Нічого не знайшли.</div>
-                    ) : null}
+            {genres.length > 0 ? (
+              <div className="cnav__sec-wrap" ref={genRef}>
+                <button
+                  type="button"
+                  className="cnav__secbtn"
+                  aria-expanded={genOpen}
+                  aria-haspopup="true"
+                  onClick={() => {
+                    /* Query resets on (re)open — canonical clears it on close;
+                       the visible result is identical: a fresh list every open. */
+                    if (!genOpen) setGenQ('');
+                    setGenOpen((o) => !o);
+                    setSecOpen(false);
+                  }}
+                >
+                  <CNavIcon name="book-open" />
+                  <span className="cnav__secbtn-label">Жанри</span>
+                  <span className="cnav__chev">
+                    <CNavIcon name="chevron-down" size={14} />
+                  </span>
+                </button>
+                {genOpen ? (
+                  <div className="cnav__secmenu cnav__secmenu--genres" role="menu">
+                    <label className="cnav__secmenu-search">
+                      <CNavIcon name="search" size={15} />
+                      <input
+                        type="text"
+                        placeholder="Знайти жанр"
+                        value={genQ}
+                        onChange={(e) => setGenQ(e.target.value)}
+                        aria-label="Пошук жанру"
+                      />
+                    </label>
+                    <div className="cnav__secmenu-scroll">
+                      {genList.map((g) => (
+                        <a
+                          key={g.slug}
+                          href={`/zhanry/${g.slug}`}
+                          role="menuitem"
+                          className="cnav__secmenu-item"
+                          onClick={() => setGenOpen(false)}
+                        >
+                          <CNavIcon name={g.icon ?? 'book-open'} />
+                          {g.name}
+                        </a>
+                      ))}
+                      {genList.length === 0 ? (
+                        <div className="cnav__secmenu-empty">Нічого не знайшли.</div>
+                      ) : null}
+                    </div>
+                    <Link href="/dobirky" className="cnav__secmenu-all" onClick={() => setGenOpen(false)}>
+                      Усі жанри <CNavIcon name="arrow-right" size={15} />
+                    </Link>
                   </div>
-                  <Link href="/dobirky" className="cnav__secmenu-all" onClick={() => setGenOpen(false)}>
-                    Усі жанри <CNavIcon name="arrow-right" size={15} />
-                  </Link>
-                </div>
-              ) : null}
-            </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         ) : (
           <div className="cnav__row">
@@ -316,46 +318,48 @@ export function CollectionsNav({ genres }: CollectionsNavProps): React.JSX.Eleme
                 </a>
               ))}
             </div>
-            <div className="cnav__genres-wrap">
-              <button
-                type="button"
-                className="cnav__link cnav__link--genres"
-                aria-expanded={megaOpen}
-                aria-haspopup="true"
-                onClick={() => setMegaOpen((o) => !o)}
-                onMouseEnter={openMegaSoon}
-              >
-                <CNavIcon name="book-open" />
-                Жанри
-                <span className="cnav__chev">
-                  <CNavIcon name="chevron-down" size={14} />
-                </span>
-              </button>
+            {genres.length > 0 ? (
+              <div className="cnav__genres-wrap">
+                <button
+                  type="button"
+                  className="cnav__link cnav__link--genres"
+                  aria-expanded={megaOpen}
+                  aria-haspopup="true"
+                  onClick={() => setMegaOpen((o) => !o)}
+                  onMouseEnter={openMegaSoon}
+                >
+                  <CNavIcon name="book-open" />
+                  Жанри
+                  <span className="cnav__chev">
+                    <CNavIcon name="chevron-down" size={14} />
+                  </span>
+                </button>
 
-              {megaOpen ? (
-                <div className="cnav__mega">
-                  <div className="cnav__mega-inner">
-                    <div className="cnav__mega-cols">
-                      {genres.map((g) => (
-                        <a
-                          key={g.slug}
-                          href={`/zhanry/${g.slug}`}
-                          className="cnav__genre"
-                          onClick={() => setMegaOpen(false)}
-                        >
-                          {g.name}
-                        </a>
-                      ))}
+                {megaOpen ? (
+                  <div className="cnav__mega">
+                    <div className="cnav__mega-inner">
+                      <div className="cnav__mega-cols">
+                        {genres.map((g) => (
+                          <a
+                            key={g.slug}
+                            href={`/zhanry/${g.slug}`}
+                            className="cnav__genre"
+                            onClick={() => setMegaOpen(false)}
+                          >
+                            {g.name}
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="cnav__mega-foot">
+                      <Link href="/dobirky" className="cnav__mega-all" onClick={() => setMegaOpen(false)}>
+                        Усі жанри <CNavIcon name="arrow-right" size={17} />
+                      </Link>
                     </div>
                   </div>
-                  <div className="cnav__mega-foot">
-                    <Link href="/dobirky" className="cnav__mega-all" onClick={() => setMegaOpen(false)}>
-                      Усі жанри <CNavIcon name="arrow-right" size={17} />
-                    </Link>
-                  </div>
-                </div>
-              ) : null}
-            </div>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         )}
       </div>
