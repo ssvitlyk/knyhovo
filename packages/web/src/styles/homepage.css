@@ -255,7 +255,7 @@
   padding: var(--space-3);
 }
 /* Cover dominates the card — real 2:3 book proportion; sized 93% (−7%). */
-.hp-rail .kn-book__cover {
+.hp-rail .kn-book__coverwrap {
   width: 93%;
   height: auto;
   aspect-ratio: 2 / 3;
@@ -267,9 +267,8 @@
 .hp-rail .kn-badge {
   white-space: nowrap;
 }
-/* Badge lifted onto the cover's top-left corner (targets the badge wrapper —
-   the first div inside the BookCard text column). */
-.hp-rail .kn-book > div > div:first-child {
+/* Badge lifted onto the cover's top-left corner. */
+.hp-rail .kn-book__badge {
   position: absolute;
   top: var(--space-2);
   left: var(--space-2);

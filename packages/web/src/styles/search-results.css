@@ -161,7 +161,7 @@
   /* BookCards go vertical via page-level override; BookCard component itself is NOT modified */
   .results__grid .kn-book,
   .results__grid .kn-skeleton { flex-direction: column; }
-  .results__grid .kn-book__cover,
+  .results__grid .kn-book__coverwrap,
   .results__grid .kn-skeleton__cover { width: 104px; height: 150px; }
   .kn-skeleton { min-height: 0; }
   .kn-pagination { flex-wrap: wrap; gap: var(--space-3); }

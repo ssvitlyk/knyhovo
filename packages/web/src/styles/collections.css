@@ -289,7 +289,7 @@
    coverclip = the rounded, overflow-hidden frame that holds the cover + badge. */
 .bkc__coverwrap { position: relative; }
 .bkc__coverclip { position: relative; border-radius: 12px; overflow: hidden; aspect-ratio: 2 / 3; background: var(--surface-accent); box-shadow: var(--shadow-sm); }
-.bkc__cover { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 260ms ease-out; }
+.bkc__cover { width: 100%; height: 100%; object-fit: contain; display: block; transition: transform 260ms ease-out; }
 .bkc:hover .bkc__cover { transform: scale(1.045); }
 .bkc__badge {
   position: absolute; top: -8px; left: -8px; display: inline-flex; align-items: center; gap: 5px;

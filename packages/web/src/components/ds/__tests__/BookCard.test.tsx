@@ -21,7 +21,7 @@ describe('BookCard', () => {
   });
 
   it('renders a badge when provided', () => {
-    render(
+    const { container } = render(
       <BookCard
         title="A"
         author="B"
@@ -31,13 +31,14 @@ describe('BookCard', () => {
       />,
     );
     expect(screen.getByText('Найкраща ціна')).toBeInTheDocument();
+    expect(container.querySelector('.kn-book__badge')).not.toBeNull();
   });
 
   it('renders the cover image when a cover URL is provided', () => {
     const { container } = render(
       <BookCard title="A" author="B" price="10 ₴" cover="https://img/cover.jpg" />,
     );
-    const img = container.querySelector('img.kn-book__cover');
+    const img = container.querySelector('.kn-book__coverwrap img.kn-book__cover');
     expect(img).not.toBeNull();
     expect(img!.getAttribute('src')).toBe('https://img/cover.jpg');
   });
@@ -48,5 +49,6 @@ describe('BookCard', () => {
     );
     expect(container.querySelector('img')).toBeNull();
     expect(container.querySelector('.kn-book__cover')).not.toBeNull();
+    expect(container.querySelector('.kn-book__coverwrap')).not.toBeNull();
   });
 });
