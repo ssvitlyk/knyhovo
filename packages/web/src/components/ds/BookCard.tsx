@@ -39,9 +39,11 @@ export function BookCard({
   const extraOffers = typeof offersCount === 'number' && offersCount > 1 ? offersCount - 1 : 0;
   return (
     <article className={classes} {...rest}>
-      <Cover src={cover} className="kn-book__cover" />
+      <div className="kn-book__coverwrap">
+        <Cover src={cover} className="kn-book__cover" />
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 4, minWidth: 0, flex: 1 }}>
-        {badge ? <div>{badge}</div> : null}
+        {badge ? <div className="kn-book__badge">{badge}</div> : null}
         <h3 className="kn-book__title">{title}</h3>
         <p className="kn-book__author">{author}</p>
         <div style={{ marginTop: 'auto', display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>

@@ -47,7 +47,7 @@
   gap: var(--space-5);
 }
 .as-shelf .kn-book { flex-direction: column; min-width: 0; } /* min-width:0 → card never forced wider than its track */
-.as-shelf .kn-book__cover { width: 104px; height: 150px; }
+.as-shelf .kn-book__coverwrap { width: 104px; height: 150px; }
 
 /* W9a: the page already states the author in the heading + hero, so the
    per-card author line is redundant AND would surface noisy author-string
@@ -73,7 +73,7 @@
    scroll-padding-left snaps each swiped card back to the left gutter. */
 .as-shelf--mob::-webkit-scrollbar { display: none; }
 .as-shelf--mob .kn-book { flex: none; width: 168px; flex-direction: column; scroll-snap-align: start; }
-.as-shelf--mob .kn-book__cover { width: 96px; height: 138px; }
+.as-shelf--mob .kn-book__coverwrap { width: 96px; height: 138px; }
 .as-shelf--mob .kn-book__author { display: none; }
 
 /* trailing rail card → author page (only when there are more than the cap) */

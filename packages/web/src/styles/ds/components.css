@@ -130,13 +130,24 @@
   transition: box-shadow var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
 }
 .kn-book:hover { box-shadow: var(--shadow-lg); transform: translateY(-2px); }
-.kn-book__cover {
+/* coverwrap = the fixed-size/aspect-ratio frame; cover = the img (or placeholder),
+   always 100%/100% inside it with object-fit: contain so wide/box-set covers
+   letterbox instead of cropping or stretching the card. */
+.kn-book__coverwrap {
   width: 84px; height: 122px; flex: none; border-radius: var(--radius-sm);
   background: linear-gradient(135deg, var(--surface-accent), var(--surface-sunk));
-  border: 1px solid var(--border); object-fit: cover; display: block;
+  border: 1px solid var(--border); overflow: hidden;
+  display: flex; align-items: center; justify-content: center;
 }
-.kn-book__title { font-family: var(--font-display); font-weight: 600; font-size: var(--fs-title); color: var(--text); line-height: 1.2; }
-.kn-book__author { font-size: var(--fs-sm); color: var(--text-muted); margin-top: 2px; }
+.kn-book__cover { width: 100%; height: 100%; object-fit: contain; display: block; }
+.kn-book__title {
+  font-family: var(--font-display); font-weight: 600; font-size: var(--fs-title); color: var(--text); line-height: 1.2;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.4em;
+}
+.kn-book__author {
+  font-size: var(--fs-sm); color: var(--text-muted); margin-top: 2px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
 .kn-book__price { font-family: var(--font-display); font-weight: 600; font-size: 1.5rem; color: var(--accent); }
 .kn-book__store { font-size: var(--fs-xs); color: var(--text-muted); }
 
