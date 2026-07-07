@@ -22,8 +22,10 @@ function listing(
   url = 'https://example.com',
   lastSeenAt = FIXED_DATE,
   description: string | null = null,
+  coverUrl: string | null = null,
+  isbn: string | null = null,
 ): BookListingRow {
-  return { provider, priceAmount, priceCurrency: 'UAH', availability, url, lastSeenAt, description };
+  return { provider, priceAmount, priceCurrency: 'UAH', availability, url, lastSeenAt, description, coverUrl, isbn };
 }
 
 describe('toBookDetails', () => {
@@ -114,9 +116,35 @@ describe('toBookDetails', () => {
     expect(dto.offersCount).toBe(0);
   });
 
-  it('coverUrl is always null (not wired in F2)', () => {
-    const dto = toBookDetails(row());
+  it('coverUrl is null when no listing carries a cover', () => {
+    const dto = toBookDetails(
+      row({ listings: [listing('YAKABOO', 34900), listing('BOOK_CLUB', 29900)] }),
+    );
     expect(dto.coverUrl).toBeNull();
+  });
+
+  it('selects coverUrl by provider priority (yakaboo over vivat)', () => {
+    const dto = toBookDetails(
+      row({
+        listings: [
+          listing('VIVAT', 10000, 'IN_STOCK', 'https://vivat', FIXED_DATE, null, 'https://vivat/cover.jpg'),
+          listing('YAKABOO', 50000, 'IN_STOCK', 'https://yakaboo', FIXED_DATE, null, 'https://yakaboo/cover.jpg'),
+        ],
+      }),
+    );
+    expect(dto.coverUrl).toBe('https://yakaboo/cover.jpg');
+  });
+
+  it('selects coverUrl from OUT_OF_STOCK listings too (uses ALL listings)', () => {
+    const dto = toBookDetails(
+      row({
+        listings: [
+          listing('BOOK_CLUB', 29900, 'OUT_OF_STOCK', 'https://book-club', FIXED_DATE, null, 'https://book-club/cover.jpg'),
+        ],
+      }),
+    );
+    expect(dto.providers).toEqual([]);
+    expect(dto.coverUrl).toBe('https://book-club/cover.jpg');
   });
 
   it('description is null when no listing carries one', () => {
@@ -153,9 +181,32 @@ describe('toBookDetails', () => {
     expect(dto.isbn).toBe('978-0-00-000000-0');
   });
 
-  it('passes through null isbn', () => {
+  it('passes through null isbn when no listing carries one either', () => {
     const dto = toBookDetails(row({ isbn: null }));
     expect(dto.isbn).toBeNull();
+  });
+
+  it('falls back to the cheapest listing ISBN when the canonical row has none', () => {
+    const dto = toBookDetails(
+      row({
+        isbn: null,
+        listings: [
+          listing('BOOK_CLUB', 29900, 'IN_STOCK', 'https://book-club', FIXED_DATE, null, null, '9786176795063'),
+          listing('YAKABOO', 34900, 'IN_STOCK', 'https://yakaboo', FIXED_DATE, null, null, '9786176790000'),
+        ],
+      }),
+    );
+    expect(dto.isbn).toBe('9786176795063');
+  });
+
+  it('prefers the canonical isbn over listing ISBNs', () => {
+    const dto = toBookDetails(
+      row({
+        isbn: '978-0-00-000000-0',
+        listings: [listing('YAKABOO', 34900, 'IN_STOCK', 'https://yakaboo', FIXED_DATE, null, null, '9786176790000')],
+      }),
+    );
+    expect(dto.isbn).toBe('978-0-00-000000-0');
   });
 
   it('emits availability as the correct slug', () => {

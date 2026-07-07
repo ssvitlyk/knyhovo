@@ -65,6 +65,27 @@ function collection(overrides: Partial<CollectionDto> = {}): CollectionDto {
   };
 }
 
+function bookDto(id: string): CollectionBookDto {
+  return {
+    id,
+    title: `Book ${id}`,
+    author: 'Author',
+    coverUrl: `/covers/${id}.png`,
+    minPrice: { amount: 24000, currency: 'UAH' },
+    oldPrice: null,
+    discountPercent: null,
+    storeName: 'Лабораторія',
+    rating: null,
+    reviewsCount: null,
+    wishlistCount: 0,
+    isWishlisted: false,
+    inStock: true,
+    url: `/books/${id}`,
+    catalogAddedAt: '2026-01-01T00:00:00.000Z',
+    offersCount: 1,
+  };
+}
+
 function emptyHub(overrides: Partial<CollectionsHubDto> = {}): CollectionsHubDto {
   return {
     featured: null,
@@ -149,6 +170,57 @@ describe('DobirkyPage', () => {
 
     const { container } = render(await DobirkyPage());
     expect(container.querySelector('[data-testid="featured"]')?.textContent).toBe('Книговик радить');
+  });
+
+  it('rail shelves take 12 books each when their pools are deep enough', async () => {
+    mockedGetCollectionsHub.mockResolvedValue(emptyHub());
+    // Distinct ids per slug+page so the cross-section dedup never starves a shelf.
+    mockedGetCollectionBooks.mockImplementation(async ({ slug, page = 1 }) => {
+      const books = Array.from({ length: 24 }, (_, i) => bookDto(`${slug}-${page}-${i}`));
+      return { books, total: 72, page, per_page: 24, total_pages: 3 };
+    });
+
+    const { container } = render(await DobirkyPage());
+
+    expect(container.querySelector('[data-testid="section-Обране читачами"]')?.textContent).toBe('12');
+    expect(container.querySelector('[data-testid="section-Популярне зараз"]')?.textContent).toBe('12');
+    expect(container.querySelector('[data-testid="section-Новинки місяця"]')?.textContent).toBe('12');
+    expect(container.querySelector('[data-testid="section-Найбільші знижки"]')?.textContent).toBe('12');
+    // Gems is the fanned cover trio, not a rail — stays at 3.
+    expect(container.querySelector('[data-testid="gems"]')?.textContent).toBe('3');
+  });
+
+  it('«Популярне зараз» still fills 12 when every earlier shelf drains the same relevance order (worst-case overlap)', async () => {
+    mockedGetCollectionsHub.mockResolvedValue(emptyHub());
+    // Every slug returns the SAME global ordering — the exact real-data case
+    // where popular's top of pool is consumed by wishlist/discount/new shelves.
+    const universe = Array.from({ length: 72 }, (_, i) => bookDto(`b-${i}`));
+    mockedGetCollectionBooks.mockImplementation(async ({ page = 1 }) => ({
+      books: universe.slice((page - 1) * 24, page * 24),
+      total: 72,
+      page,
+      per_page: 24,
+      total_pages: 3,
+    }));
+
+    const { container } = render(await DobirkyPage());
+
+    expect(container.querySelector('[data-testid="section-Популярне зараз"]')?.textContent).toBe('12');
+  });
+
+  it('renders the «Обране читачами» empty hint (not a hidden section) when the wishlist pool is empty but other shelves have books', async () => {
+    mockedGetCollectionsHub.mockResolvedValue(emptyHub());
+    mockedGetCollectionBooks.mockImplementation(async ({ slug }) =>
+      slug === 'najbilsh-bazhani'
+        ? { books: [], total: 0, page: 1, per_page: 24, total_pages: 0 }
+        : { books: [bookDto(`${slug}-0`)], total: 1, page: 1, per_page: 24, total_pages: 1 },
+    );
+
+    const { container } = render(await DobirkyPage());
+
+    expect(container.querySelector('[data-testid="section-Обране читачами"]')).toBeNull();
+    expect(container.textContent).toContain('Тут з’являться книги, які читачі найчастіше додають до бажанок.');
+    expect(container.textContent).not.toContain('У добірках поки немає книг.');
   });
 
   it('filters zero-book weekly/mood collections out before they reach their sections', async () => {

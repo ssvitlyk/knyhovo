@@ -21,6 +21,9 @@ interface FakeListing {
   availability: 'IN_STOCK' | 'OUT_OF_STOCK' | 'UNKNOWN';
   url: string;
   lastSeenAt: Date;
+  isbn: string | null;
+  coverUrl: string | null;
+  description: string | null;
 }
 
 interface FindUniqueArgs {
@@ -56,8 +59,21 @@ function listing(
   priceAmount: number,
   availability: FakeListing['availability'] = 'IN_STOCK',
   url = 'https://example.com',
+  extras: Partial<Pick<FakeListing, 'isbn' | 'coverUrl' | 'description'>> = {},
 ): FakeListing {
-  return { canonicalBookId, provider, priceAmount, priceCurrency: 'UAH', availability, url, lastSeenAt: FIXED_DATE };
+  return {
+    canonicalBookId,
+    provider,
+    priceAmount,
+    priceCurrency: 'UAH',
+    availability,
+    url,
+    lastSeenAt: FIXED_DATE,
+    isbn: null,
+    coverUrl: null,
+    description: null,
+    ...extras,
+  };
 }
 
 function appWith(books: FakeBook[], listingsArr: FakeListing[]) {
@@ -143,6 +159,32 @@ describe('GET /api/books/:id', () => {
     expect(body.lowestPrice).toEqual({ amount: 34900, currency: 'UAH' });
     expect(body.providers).toHaveLength(1);
     expect(body.providers[0].provider).toBe('yakaboo');
+  });
+
+  it('200: coverUrl, description and listing-ISBN fallback flow through from listings', async () => {
+    const books = [book(BOOK_UUID_A, 'Test', 'Author', null)];
+    const listings = [
+      listing(BOOK_UUID_A, 'BOOK_CLUB', 15000, 'IN_STOCK', 'https://book-club.example', {
+        isbn: '9786176795063',
+        coverUrl: 'https://book-club.example/cover.jpg',
+      }),
+      listing(BOOK_UUID_A, 'YAKABOO', 34900, 'IN_STOCK', 'https://yakaboo.example', {
+        coverUrl: 'https://yakaboo.example/cover.jpg',
+        description: 'Опис від Yakaboo',
+      }),
+    ];
+    const app = appWith(books, listings);
+    const res = await app.inject({ method: 'GET', url: `/api/books/${BOOK_UUID_A}` });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    // Both providers present — multi-listing books keep every offer.
+    expect(body.providers).toHaveLength(2);
+    // Cover/description follow W9a provider priority (yakaboo first).
+    expect(body.coverUrl).toBe('https://yakaboo.example/cover.jpg');
+    expect(body.description).toBe('Опис від Yakaboo');
+    // Canonical row has no ISBN → cheapest listing's ISBN backfills it.
+    expect(body.isbn).toBe('9786176795063');
   });
 
   it('400: invalid UUID in path → BAD_REQUEST', async () => {
