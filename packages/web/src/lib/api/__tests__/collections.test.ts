@@ -6,7 +6,7 @@ import {
   getCollectionsHub,
   listCollections,
 } from '../collections';
-import type { CollectionDto } from '../types';
+import type { CollectionBookDto, CollectionDto } from '../types';
 
 const COLLECTION: CollectionDto = {
   id: 'c1',
@@ -17,6 +17,26 @@ const COLLECTION: CollectionDto = {
   bookCount: 42,
   updatedAt: '2026-07-04T00:00:00.000Z',
   isActive: true,
+};
+
+/** Fully-populated book, matching the real `/api/collections/:slug/books` shape (catalog-v3). */
+const BOOK: CollectionBookDto = {
+  id: 'b1',
+  title: 'Кобзар',
+  author: 'Тарас Шевченко',
+  coverUrl: 'https://cdn.knyhovo.ua/covers/b1.jpg',
+  minPrice: { amount: 25000, currency: 'UAH' },
+  oldPrice: { amount: 30000, currency: 'UAH' },
+  discountPercent: 17,
+  storeName: 'Yakaboo',
+  rating: null,
+  reviewsCount: null,
+  wishlistCount: 128,
+  isWishlisted: false,
+  inStock: true,
+  url: '/books/b1',
+  catalogAddedAt: '2026-01-15T00:00:00.000Z',
+  offersCount: 3,
 };
 
 function mockFetch(impl: typeof fetch): void {
@@ -95,6 +115,28 @@ describe('getCollection', () => {
 });
 
 describe('getCollectionBooks', () => {
+  it('parses a fully-populated books page (24 books, staging-scale total)', async () => {
+    const page = {
+      books: Array.from({ length: 24 }, (_, i) => ({ ...BOOK, id: `b${i + 1}` })),
+      total: 6527,
+      page: 1,
+      per_page: 24,
+      total_pages: 272,
+    };
+    mockFetch((async () => new Response(JSON.stringify(page), { status: 200 })) as typeof fetch);
+
+    const result = await getCollectionBooks({ slug: 'populyarne-zaraz' });
+
+    expect(result.books).toHaveLength(24);
+    expect(result.total).toBe(6527);
+    expect(result.total_pages).toBe(272);
+    expect(result.books[0]).toEqual({ ...BOOK, id: 'b1' });
+    // fields the UI reads off each book (BookCard / badges) must survive the round-trip
+    expect(result.books[0].minPrice).toEqual({ amount: 25000, currency: 'UAH' });
+    expect(result.books[0].storeName).toBe('Yakaboo');
+    expect(result.books[0].offersCount).toBe(3);
+  });
+
   it('sends page/per_page/sort and returns the page payload', async () => {
     let calledUrl = '';
     const page = { books: [], total: 0, page: 2, per_page: 24, total_pages: 0 };

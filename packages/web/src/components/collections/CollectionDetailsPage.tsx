@@ -142,7 +142,8 @@ export async function CollectionDetailsPage({
   let booksPage: CollectionBooksPageDto | null = null;
   try {
     booksPage = await getCollectionBooks({ slug: collection.slug, page, sort: toApiSort(sort), cookie });
-  } catch {
+  } catch (error) {
+    console.error('[collection-details] books fetch failed', { slug: collection.slug, error });
     booksPage = null; // degraded: grid-local retry below
   }
 

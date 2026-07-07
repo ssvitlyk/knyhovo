@@ -1,3 +1,4 @@
+import { apiBaseUrl } from './env';
 import type { AlertDto, WishlistResponseDto } from './types';
 
 const REQUEST_TIMEOUT_MS = 8000;
@@ -12,10 +13,6 @@ export class WishlistError extends Error {
     this.name = 'WishlistError';
     this.status = status;
   }
-}
-
-function apiBaseUrl(): string {
-  return process.env.API_BASE_URL ?? 'http://localhost:3000';
 }
 
 /**

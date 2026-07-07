@@ -1,3 +1,4 @@
+import { apiBaseUrl } from './env';
 import type { SearchResponseDto } from './types';
 
 /** API default page size (packages/api/src/search/schema.ts). */
@@ -21,10 +22,6 @@ export interface SearchArgs {
   readonly q: string;
   readonly page?: number;
   readonly pageSize?: number;
-}
-
-function apiBaseUrl(): string {
-  return process.env.API_BASE_URL ?? 'http://localhost:3000';
 }
 
 /**

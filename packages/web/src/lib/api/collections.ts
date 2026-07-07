@@ -1,3 +1,4 @@
+import { apiBaseUrl } from './env';
 import type {
   CollectionBooksPageDto,
   CollectionDto,
@@ -23,10 +24,6 @@ export class CollectionsError extends Error {
     this.status = status;
     this.code = code;
   }
-}
-
-function apiBaseUrl(): string {
-  return process.env.API_BASE_URL ?? 'http://localhost:3000';
 }
 
 /** Parse the repo-standard error envelope `{ error: { code, message } }`; null when absent. */
@@ -70,7 +67,8 @@ async function fetchCollectionsJson<T>(
       ...(options?.redirect ? { redirect: options.redirect } : {}),
       ...(options?.cookie ? { headers: { cookie: options.cookie } } : {}),
     });
-  } catch {
+  } catch (cause) {
+    console.error('[collections] transport failure', { url, cause });
     throw new CollectionsError('Не вдалося звʼязатися з сервісом добірок.', null);
   } finally {
     clearTimeout(timer);
@@ -118,7 +116,8 @@ export async function getCollection(
       cache: 'no-store',
       redirect: 'manual',
     });
-  } catch {
+  } catch (cause) {
+    console.error('[collections] transport failure', { url, cause });
     throw new CollectionsError('Не вдалося звʼязатися з сервісом добірок.', null);
   } finally {
     clearTimeout(timer);
