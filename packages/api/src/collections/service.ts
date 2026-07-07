@@ -61,6 +61,17 @@ const DYNAMIC_SLUGS = new Set([
 const NEW_ARRIVALS_WINDOW_MS = 30 * 24 * 60 * 60 * 1000;
 /** Minimum size for the novynky pool before falling back to older priced books. */
 const NOVYNKY_MIN_POOL = 24;
+/**
+ * Upper bound on the novynky pool, expressed as a share of the whole priced
+ * catalog rather than a flat count — so it scales with catalog size instead
+ * of needing re-tuning as the catalog grows. `createdAt` is the ingestion
+ * (scrape) timestamp, not the book's actual publish date — it's the only
+ * "new" signal available, but a bulk backfill/re-scrape run makes it cluster
+ * within the 30-day window for most of the catalog at once. New arrivals are,
+ * by definition, a minority of an established catalog; if the window's real
+ * size exceeds this share, that's the backfill artifact, not organic growth.
+ */
+const NOVYNKY_MAX_SHARE = 0.25;
 const PRICE_DROP_LOOKBACK_MS = 7 * 24 * 60 * 60 * 1000;
 
 const HUB_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -244,10 +255,17 @@ function priceAroundLookback(
   return latest.priceAmount;
 }
 
-/** Whether the cheapest listing's current price equals its historical minimum (all-time low). */
+/**
+ * Whether the cheapest listing's current price equals its historical minimum
+ * (all-time low). Requires at least 2 recorded price points — a listing
+ * scraped only once has a single price_history row matching its current
+ * price, which would otherwise make it trivially "record low" with no real
+ * history to back the claim.
+ */
 function isAllTimeLow(listing: CollectionBookRow['listings'][number]): boolean {
-  const min = listing.priceHistory.reduce<number | null>(
-    (acc, p) => (acc === null || p.priceAmount < acc ? p.priceAmount : acc),
+  if (listing.priceHistory.length < 2) return false;
+  const min = listing.priceHistory.reduce(
+    (acc, p) => (p.priceAmount < acc ? p.priceAmount : acc),
     listing.priceAmount,
   );
   return min === listing.priceAmount;
@@ -275,7 +293,9 @@ function computeDynamicPool(slug: string, pricedRows: readonly CollectionBookRow
       const windowRows = pricedRows.filter((r) => r.createdAt.getTime() >= cutoff);
       const windowSorted = [...windowRows].sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
       if (windowSorted.length >= NOVYNKY_MIN_POOL) {
-        return { rows: windowSorted, order: windowSorted.map((r) => r.id) };
+        const maxPool = Math.max(NOVYNKY_MIN_POOL, Math.floor(pricedRows.length * NOVYNKY_MAX_SHARE));
+        const capped = windowSorted.slice(0, maxPool);
+        return { rows: capped, order: capped.map((r) => r.id) };
       }
       // Fallback: top up with the newest remaining priced books (older than
       // the window), newest first, until NOVYNKY_MIN_POOL or exhausted.

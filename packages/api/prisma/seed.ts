@@ -81,7 +81,7 @@ const MOODS: MoodSeed[] = [
 // --- Book catalog ------------------------------------------------------------
 // title/author drawn from the frozen collections-app.jsx CATALOG plus plausible
 // additional Ukrainian editions. `genre` is a genre slug (or null). `ageDays`
-// controls createdAt: <90 marks the book a "new arrival" (novynky window).
+// controls createdAt: <30 marks the book a "new arrival" (novynky window).
 // `drop` seeds a 14-day-old higher price into price history (real drop, for
 // znyzhky). `dropRecent` additionally seeds a 7-10-day-old higher price
 // (recent drop, for ponyzhena-tsina — distinct from `drop`'s 14-day point).
@@ -937,7 +937,7 @@ async function main(): Promise<void> {
     {
       slug: 'novynky',
       name: 'Новинки',
-      description: 'Найсвіжіші видання за останні 90 днів.',
+      description: 'Найсвіжіші видання за останні 30 днів.',
       icon: 'sparkle',
       displayOrder: 3,
     },

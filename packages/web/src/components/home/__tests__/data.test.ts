@@ -84,14 +84,14 @@ describe('getHomeShelves', () => {
     expect(popular[0]?.id).toBe('p2');
   });
 
-  it('caps a shelf at 8 books', async () => {
+  it('caps a shelf at 12 books', async () => {
     mockShelves({
-      'populyarne-zaraz': Array.from({ length: 12 }, (_, i) => book({ id: `p${i}` })),
+      'populyarne-zaraz': Array.from({ length: 16 }, (_, i) => book({ id: `p${i}` })),
       novynky: [],
       'knyhovyk-radyt': [],
     });
     const { popular } = await getHomeShelves();
-    expect(popular).toHaveLength(8);
+    expect(popular).toHaveLength(12);
   });
 
   it('a shelf fetch failure degrades to an empty shelf, not a crash', async () => {

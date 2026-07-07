@@ -96,6 +96,11 @@ describe('CollectionsNav — mobile (≤768px), 2026-07-04 dropdowns patch', () 
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(secBtn).toHaveAttribute('aria-expanded', 'false');
   });
+
+  it('hides the «Жанри» trigger entirely when there are no real genre collections', () => {
+    render(<CollectionsNav genres={[]} />);
+    expect(screen.queryByRole('button', { name: /Жанри/ })).not.toBeInTheDocument();
+  });
 });
 
 describe('CollectionsNav — desktop (>768px), unchanged', () => {
@@ -120,5 +125,11 @@ describe('CollectionsNav — desktop (>768px), unchanged', () => {
     const genreLink = screen.getByRole('link', { name: 'Фантастика' });
     expect(genreLink).toHaveAttribute('href', '/zhanry/fantastyka');
     expect(genreLink.querySelector('svg')).toBeNull();
+  });
+
+  it('hides the «Жанри» trigger entirely when there are no real genre collections', () => {
+    viewport.isMobile = false;
+    render(<CollectionsNav genres={[]} />);
+    expect(screen.queryByRole('button', { name: /Жанри/ })).not.toBeInTheDocument();
   });
 });

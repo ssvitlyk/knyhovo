@@ -3,8 +3,8 @@ import type { CollectionBookDto } from '@/lib/api/types';
 import { formatMoney } from '@/lib/format';
 import type { HomeBadge, HomeBook } from './content';
 
-/** Max cards shown per homepage shelf (frozen Homepage v1.0 rail). */
-const SHELF_CAP = 8;
+/** Max cards shown per homepage shelf — matches the collection detail page's real pool. */
+const SHELF_CAP = 12;
 
 type ShelfSlug = 'populyarne-zaraz' | 'novynky' | 'knyhovyk-radyt';
 
