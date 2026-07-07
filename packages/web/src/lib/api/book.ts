@@ -1,3 +1,4 @@
+import { apiBaseUrl } from './env';
 import type { BookDetailsDto } from './types';
 
 const REQUEST_TIMEOUT_MS = 8000;
@@ -12,10 +13,6 @@ export class BookDetailsError extends Error {
     this.name = 'BookDetailsError';
     this.status = status;
   }
-}
-
-function apiBaseUrl(): string {
-  return process.env.API_BASE_URL ?? 'http://localhost:3000';
 }
 
 /**

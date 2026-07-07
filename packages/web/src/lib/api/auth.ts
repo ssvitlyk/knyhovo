@@ -1,3 +1,4 @@
+import { apiBaseUrl } from './env';
 import type { AuthUserDto } from './types';
 
 const REQUEST_TIMEOUT_MS = 8000;
@@ -12,10 +13,6 @@ export class AuthError extends Error {
     this.name = 'AuthError';
     this.status = status;
   }
-}
-
-function apiBaseUrl(): string {
-  return process.env.API_BASE_URL ?? 'http://localhost:3000';
 }
 
 async function authFetch(url: string, init: RequestInit): Promise<Response> {

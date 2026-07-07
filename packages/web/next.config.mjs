@@ -8,7 +8,9 @@
  */
 import { join } from 'node:path';
 
-const API_BASE_URL = process.env.API_BASE_URL ?? 'http://localhost:3000';
+// Trim + treat an empty string as unset — Vercel can create an env var with an
+// empty value without it being `undefined`, which `??` alone would not catch.
+const API_BASE_URL = process.env.API_BASE_URL?.trim() || 'http://localhost:3000';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {

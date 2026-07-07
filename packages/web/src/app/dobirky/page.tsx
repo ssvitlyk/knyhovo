@@ -59,7 +59,8 @@ async function booksOf(slug: string, cookie: string, pages = 1): Promise<readonl
       Array.from({ length: pages }, (_, i) => getCollectionBooks({ slug, page: i + 1, cookie })),
     );
     return results.flatMap((r) => r.books);
-  } catch {
+  } catch (error) {
+    console.error('[dobirky] shelf fetch failed', { slug, error });
     return []; // degraded shelf — the section renders with what survived dedup
   }
 }
@@ -87,7 +88,8 @@ export default async function DobirkyPage(): Promise<React.JSX.Element> {
   let hub: CollectionsHubDto;
   try {
     hub = await getCollectionsHub({ cookie });
-  } catch {
+  } catch (error) {
+    console.error('[dobirky] hub fetch failed', error);
     return (
       <main className="dobirky-scope">
         <BooksGridRetry />
