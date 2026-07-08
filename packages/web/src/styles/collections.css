@@ -278,7 +278,7 @@
 
 .bkc {
   position: relative;
-  display: flex; flex-direction: column;
+  display: flex; flex-direction: column; height: 100%;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 18px; padding: 14px; text-decoration: none; color: inherit;
   box-shadow: var(--shadow-sm); cursor: pointer;
@@ -518,7 +518,7 @@
 
 /* ── BOOK GRID (catalogue) ───────────────────────────────────── */
 .cd-grid-wrap { padding: 12px 0 8px; }
-.cd-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; }
+.cd-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; align-items: stretch; }
 .cd-empty { padding: 60px 0; text-align: center; color: var(--text-muted); font-size: 15px; }
 /* Local retry block — only the grid/shelf errors out, chrome stays (PRD Part 08). */
 .col-retry { padding: 48px 0; text-align: center; color: var(--text-muted); font-size: 15px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
