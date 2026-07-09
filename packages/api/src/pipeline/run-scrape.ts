@@ -4,7 +4,7 @@ import type { CanonicalBookId } from '@knyhovo/shared';
 import { Prisma } from '@prisma/client';
 import type { RunScrapeOptions, PipelineResult, ProviderRunResult, Logger } from './types.js';
 import { createMetrics } from './metrics.js';
-import { persistListing, markUnavailable } from './persist-listing.js';
+import { persistListing, markUnavailable, mapProviderName } from './persist-listing.js';
 import { bindContext } from '../logging/logger.js';
 
 export async function runScrapePipeline(opts: RunScrapeOptions): Promise<PipelineResult> {
@@ -20,6 +20,22 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
     scrapeLogger.info(`Scraping ${provider.name}...`);
     const metrics = createMetrics();
 
+    // When the enrichment pass is on, tell the scraper which product URLs
+    // already have a stored description so it does not re-fetch those pages.
+    // An explicit caller-provided skip set still wins.
+    let skipDescriptionUrls = opts.scraperOptions?.skipDescriptionUrls;
+    if (opts.scraperOptions?.enrichDescriptions && skipDescriptionUrls === undefined) {
+      const enrichedRows = await opts.prisma.providerListing.findMany({
+        where: { provider: mapProviderName(provider.name), description: { not: null } },
+        select: { url: true },
+      });
+      skipDescriptionUrls = new Set(enrichedRows.map((row) => row.url));
+      scrapeLogger.info(
+        `${provider.name}: ${skipDescriptionUrls.size} listings already have descriptions — ` +
+          `enrichment will skip them`,
+      );
+    }
+
     let scrapeResult: ScraperResult;
     try {
       // Thread the scrape-phase logger into the provider so its progress/metrics
@@ -27,6 +43,7 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
       scrapeResult = await provider.scrape({
         ...opts.scraperOptions,
         logger: opts.scraperOptions?.logger ?? scrapeLogger,
+        ...(skipDescriptionUrls !== undefined ? { skipDescriptionUrls } : {}),
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
@@ -35,7 +52,13 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
     }
 
     metrics.scraped = scrapeResult.listings.length;
+    scrapeLogger.info(
+      `${provider.name}: scrape complete — ${scrapeResult.listings.length} listings, ` +
+        `${scrapeResult.errors.length} scrape errors`,
+    );
 
+    const persistLogger = bindContext(logger, { phase: 'persist' });
+    persistLogger.info(`${provider.name}: loading canonical candidates...`);
     const candidates: CanonicalBook[] = (await opts.prisma.canonicalBook.findMany()).map((row) => ({
       id: row.id as CanonicalBookId,
       title: row.title,
@@ -43,10 +66,21 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
       isbn: row.isbn,
       createdAt: row.createdAt.toISOString(),
     }));
+    persistLogger.info(
+      `${provider.name}: canonical matching + persist starting — ` +
+        `${scrapeResult.listings.length} listings against ${candidates.length} candidates`,
+    );
 
     const scrapedAt = new Date(scrapeResult.scrapedAt);
 
+    let processed = 0;
     for (const listing of scrapeResult.listings) {
+      processed++;
+      if (processed % 100 === 0) {
+        persistLogger.info(
+          `${provider.name}: persist progress ${processed}/${scrapeResult.listings.length}`,
+        );
+      }
       if (listing.price === null) {
         // No price means the book is currently unavailable. Instead of skipping
         // entirely (which left stale prices in the DB), refresh availability and
@@ -106,6 +140,10 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
       }
     }
 
+    persistLogger.info(
+      `${provider.name}: canonical matching + persist done — ` +
+        `${processed}/${scrapeResult.listings.length} listings processed`,
+    );
     results.push({ provider: provider.name, metrics, scrapeErrors: scrapeResult.errors });
   }
 
