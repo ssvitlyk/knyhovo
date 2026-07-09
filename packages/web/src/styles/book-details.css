@@ -15,6 +15,7 @@
 
 .bd-cover { border: 1px solid var(--border); border-radius: var(--radius-md); background: linear-gradient(135deg, var(--surface-accent), var(--surface-sunk)); box-shadow: var(--shadow-md); display: flex; align-items: center; justify-content: center; flex: none; object-fit: cover; }
 .bd-cover span { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-faint); }
+.bd-cover--lg { width: 300px; height: 440px; }
 .bd-cover--md { width: 220px; height: 320px; }
 
 .bd-desc__text { margin: 0 0 var(--space-4); max-width: 66ch; text-wrap: pretty; }
@@ -116,6 +117,7 @@
 @media (max-width: 767px) {
   .bdc-grid { grid-template-columns: 1fr; gap: var(--space-8); }
   .bd-meta { grid-template-columns: 1fr; }
+  .bd-cover--lg { width: 180px; height: 262px; } /* frozen mobile hero cover size */
   .bd-section { margin-top: var(--space-8); }
 
   /* Two-line offer rows: store + availability on top, price + CTA below —
