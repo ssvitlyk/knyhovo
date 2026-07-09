@@ -279,6 +279,10 @@
 .bkc {
   position: relative;
   display: flex; flex-direction: column; height: 100%;
+  /* min-width: 0 kills the automatic min-content floor: without it one long
+     nowrap author line (e.g. multi-author box sets) widens the whole 1fr grid
+     column / flex rail slot, and the aspect-ratio cover frame grows with it. */
+  min-width: 0;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: 18px; padding: 14px; text-decoration: none; color: inherit;
   box-shadow: var(--shadow-sm); cursor: pointer;
@@ -518,7 +522,7 @@
 
 /* ── BOOK GRID (catalogue) ───────────────────────────────────── */
 .cd-grid-wrap { padding: 12px 0 8px; }
-.cd-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; align-items: stretch; }
+.cd-grid { display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); gap: 18px; align-items: stretch; }
 .cd-empty { padding: 60px 0; text-align: center; color: var(--text-muted); font-size: 15px; }
 /* Local retry block — only the grid/shelf errors out, chrome stays (PRD Part 08). */
 .col-retry { padding: 48px 0; text-align: center; color: var(--text-muted); font-size: 15px; display: flex; flex-direction: column; align-items: center; gap: 16px; }
@@ -552,7 +556,7 @@
   .shelf-rail .bkc { flex-basis: 190px; }
   .mood-grid { grid-template-columns: repeat(2, 1fr); }
   .fresh-grid { grid-template-columns: 1fr; }
-  .cd-grid { grid-template-columns: repeat(3, 1fr); }
+  .cd-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 @media (max-width: 768px) {
   /* Collections nav → horizontal scroll ribbon under the compact header */
@@ -653,7 +657,7 @@
   .cd-sort__menu { left: 0; right: 0; }
   .cd-sort__opt { padding: 12px; font-size: 15px; }
   .cd-grid-wrap { padding: 12px 0 4px; }
-  .cd-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .cd-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
   /* Details grid keeps 2-line titles (unlike the 1-line shelf cards above). */
   .cd-grid .bkc__title { -webkit-line-clamp: 2; min-height: 2.5em; }
 }
