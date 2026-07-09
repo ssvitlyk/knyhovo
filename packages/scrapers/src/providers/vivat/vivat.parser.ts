@@ -170,14 +170,34 @@ export function parseVivatPage(html: string): ParseResult {
 }
 
 /**
+ * Strip heading elements (h1-h6) from an HTML description fragment.
+ *
+ * Vivat's `bookDescription` field is prefixed with a boilerplate heading
+ * (e.g. `<h2>Анотація книги «…»</h2>`) that is not description content.
+ * Returns the remaining HTML, or null when nothing but headings/whitespace
+ * remains after stripping.
+ */
+function stripHeadings(html: string): string | null {
+  const $ = cheerio.load(html);
+  $('h1, h2, h3, h4, h5, h6').remove();
+  const body = $('body');
+  if (body.text().trim() === '') return null;
+  return body.html() ?? '';
+}
+
+/**
  * Extract the raw description from a Vivat *product* page (W9a F2).
  * Pure function — no IO. Reads the `__NEXT_DATA__` JSON (same technique as the
  * catalog parser) and returns the first non-empty description-like field on
  * `props.pageProps.product`, or null when none is present.
  *
- * Field names are representative — must be re-verified against a live product
- * page before description enrichment is enabled (opt-in, off by default).
- * The value may contain HTML; sanitization happens at the enrichment boundary.
+ * Field names are VERIFIED against the live product page
+ * (https://vivat.com.ua/product/naviky-tokio/, checked 2026-07-09):
+ *   - `bookDescription` — HTML string, prefixed with a boilerplate heading
+ *     (e.g. `<h2>Анотація книги «…»</h2>`) that is stripped before returning.
+ *   - `shortDescription` — plain string, may be empty.
+ * The value may contain HTML; sanitization to plain text happens at the
+ * enrichment boundary (sanitize-description.ts) — not duplicated here.
  */
 export function extractVivatProductDescription(html: string): string | null {
   const $ = cheerio.load(html);
@@ -198,9 +218,15 @@ export function extractVivatProductDescription(html: string): string | null {
   }
   if (!product) return null;
 
-  for (const key of ['description', 'descriptionFull', 'annotation', 'text']) {
+  for (const key of ['bookDescription', 'shortDescription']) {
     const value = product[key];
-    if (typeof value === 'string' && value.trim() !== '') return value;
+    if (typeof value !== 'string' || value.trim() === '') continue;
+    if (key === 'bookDescription') {
+      const stripped = stripHeadings(value);
+      if (stripped !== null) return stripped;
+      continue;
+    }
+    return value;
   }
   return null;
 }
