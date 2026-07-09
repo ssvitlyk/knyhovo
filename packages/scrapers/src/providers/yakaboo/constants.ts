@@ -19,6 +19,11 @@ export const SELECTORS = {
  * tried in order; the first non-empty match wins. Representative selectors —
  * must be re-verified against live product HTML before description enrichment is
  * enabled in production (the pass is opt-in and off by default).
+ *
+ * Verification is currently BLOCKED: yakaboo.ua answers 403 (bot protection) to
+ * plain HTTP requests from the scrape environment (checked 2026-07-09), so these
+ * selectors cannot be confirmed the way Vivat's fields were. A miss is graceful
+ * (null description); unblocking Yakaboo is a separate task, same class as book-ye.
  */
 export const PRODUCT_DESCRIPTION_SELECTORS = [
   '[itemprop="description"]',

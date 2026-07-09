@@ -206,8 +206,19 @@ describe('parseKnigolandListing — product-instock.html (real)', () => {
       price: { amount: 20000, currency: 'UAH' },
       url: 'https://knigoland.com.ua/his-last-bow-item',
       availability: 'in-stock',
-      description: null,
     });
+  });
+
+  it('extracts and sanitizes the description from Product.description', () => {
+    // Always-on (no enrichDescriptions flag needed): this sitemap-driven provider
+    // already fetched the product page for every listing.
+    expect(listing?.description).toBe(
+      '«Його останній уклін» — одне з оповідань шотландського письменника Артура Конан ' +
+        'Дойла (1859–1930) про відомого детектива Шерлока Голмса. Шерлоку Голмсу та його ' +
+        'незмінному помічникові належить розкрити низку нових злочинів. Однак військові ' +
+        'таємниці Великобританії не мусять потрапити до рук ворога. Рівень складності – ' +
+        'Intermediate.',
+    );
   });
 
   it('resolves an absolute cover URL from the Product.image array', () => {
@@ -393,6 +404,37 @@ describe('parseKnigolandListing — price & availability', () => {
     expect(parseKnigolandListing(oos).listing?.availability).toBe('out-of-stock');
     const pre = realInstock.split('https://schema.org/InStock').join('https://schema.org/PreOrder');
     expect(parseKnigolandListing(pre).listing?.availability).toBe('in-stock');
+  });
+});
+
+// ──────────────────────────────────────────────────────────────
+// parseKnigolandListing — description handling
+// ──────────────────────────────────────────────────────────────
+
+describe('parseKnigolandListing — description handling', () => {
+  it('yields description: null when Product.description is absent', () => {
+    const html = productHtml({
+      product: {
+        '@type': 'Product',
+        name: 'X',
+        offers: { '@type': 'Offer', price: 100, url: 'https://knigoland.com.ua/x-item' },
+      },
+      isbn: '9789660396999',
+    });
+    expect(parseKnigolandListing(html).listing?.description).toBeNull();
+  });
+
+  it('yields description: null when Product.description is blank', () => {
+    const html = productHtml({
+      product: {
+        '@type': 'Product',
+        name: 'X',
+        description: '   ',
+        offers: { '@type': 'Offer', price: 100, url: 'https://knigoland.com.ua/x-item' },
+      },
+      isbn: '9789660396999',
+    });
+    expect(parseKnigolandListing(html).listing?.description).toBeNull();
   });
 });
 

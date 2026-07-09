@@ -11,10 +11,17 @@ function loadFixture(name: string): string {
 }
 
 describe('extractVivatProductDescription', () => {
-  it('extracts the description from the product __NEXT_DATA__ payload', () => {
+  it('extracts bookDescription from the product __NEXT_DATA__ payload', () => {
     const raw = extractVivatProductDescription(loadFixture('product-page.html'));
     expect(raw).not.toBeNull();
     expect(raw).toContain('Жадана');
+  });
+
+  it('strips the boilerplate heading from bookDescription', () => {
+    const raw = extractVivatProductDescription(loadFixture('product-page.html'));
+    expect(raw).not.toBeNull();
+    expect(raw).not.toContain('Анотація книги');
+    expect(raw).not.toContain('<h2>');
   });
 
   it('sanitizes the extracted description to plain text (no markup)', () => {
@@ -25,7 +32,17 @@ describe('extractVivatProductDescription', () => {
     expect(clean).not.toContain('<');
   });
 
-  it('returns null when the product payload has no description field', () => {
+  it('falls back to shortDescription when bookDescription is missing/empty', () => {
+    const raw = extractVivatProductDescription(loadFixture('product-short-description-fallback.html'));
+    expect(raw).toBe('Коротка анотація книги.');
+  });
+
+  it('falls back to shortDescription when bookDescription is only a heading', () => {
+    const raw = extractVivatProductDescription(loadFixture('product-heading-only-description.html'));
+    expect(raw).toBe('Резервний короткий опис.');
+  });
+
+  it('returns null when both bookDescription and shortDescription are missing/empty', () => {
     expect(extractVivatProductDescription(loadFixture('product-no-description.html'))).toBeNull();
   });
 
