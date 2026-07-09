@@ -83,6 +83,7 @@ export class VivatScraper implements ScraperProvider {
         delayMs: options.descriptionDelayMs ?? delayMs,
         errors,
         logger,
+        ...(options.skipDescriptionUrls ? { skipUrls: options.skipDescriptionUrls } : {}),
       });
     }
 

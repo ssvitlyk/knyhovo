@@ -1,6 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { PrismaClient } from '@prisma/client';
-import type { ScraperProvider, ScraperResult, RawProviderListing } from '@knyhovo/shared';
+import type { ScraperProvider, ScraperResult, ScraperOptions, RawProviderListing } from '@knyhovo/shared';
 import { runScrapePipeline } from '../run-scrape.js';
 
 // ── Fixed test dates ──────────────────────────────────────────────────────────
@@ -9,12 +9,16 @@ const SCRAPED_AT = '2026-01-01T00:00:00.000Z';
 
 // ── Fake scraper ──────────────────────────────────────────────────────────────
 class FakeScraper implements ScraperProvider {
+  /** Options the pipeline passed into the last scrape() call, for assertions. */
+  lastOptions?: ScraperOptions;
+
   constructor(
     readonly name: ScraperProvider['name'],
     private readonly result: ScraperResult,
   ) {}
 
-  async scrape(): Promise<ScraperResult> {
+  async scrape(options?: ScraperOptions): Promise<ScraperResult> {
+    if (options !== undefined) this.lastOptions = options;
     return this.result;
   }
 }
@@ -77,6 +81,12 @@ function makeFakePrisma(
       }),
     },
     providerListing: {
+      findMany: vi.fn(
+        async ({ where }: { where: { provider: string; description: { not: null } } }) =>
+          providerListings
+            .filter((pl) => pl.provider === where.provider && pl.description != null)
+            .map((pl) => ({ url: pl.url })),
+      ),
       findUnique: vi.fn(
         async ({ where }: { where: { provider_url: { provider: string; url: string } } }) => {
           const { provider, url } = where.provider_url;
@@ -669,6 +679,49 @@ describe('runScrapePipeline', () => {
     expect(metrics.providerListingsCreated).toBe(1);
     expect(errorLogger).toHaveBeenCalledOnce();
     expect(results).toHaveLength(1);
+  });
+
+  // Skip-set for already-enriched listings (enrichDescriptions on)
+  it('passes URLs with stored descriptions to the scraper as skipDescriptionUrls', async () => {
+    const enrichedRow: FakeProviderListingRow = {
+      id: 'pl-existing',
+      canonicalBookId: 'book-1',
+      provider: 'YAKABOO',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: null,
+      priceAmount: 10000,
+      priceCurrency: 'UAH',
+      url: 'https://yakaboo.ua/kobzar',
+      lastSeenAt: FIXED_DATE,
+      availability: 'IN_STOCK',
+      description: 'Вже збагачено',
+    };
+    const { db } = makeFakePrisma(
+      [{ id: 'book-1', title: 'Кобзар', author: 'Тарас Шевченко', isbn: null, createdAt: FIXED_DATE }],
+      [enrichedRow],
+    );
+    const scraper = new FakeScraper('yakaboo', makeScraperResult([makeListing({ isbn: null })]));
+
+    await runScrapePipeline({
+      prisma: db as unknown as PrismaClient,
+      providers: [scraper],
+      scraperOptions: { enrichDescriptions: true },
+    });
+
+    expect(scraper.lastOptions?.skipDescriptionUrls).toEqual(new Set(['https://yakaboo.ua/kobzar']));
+  });
+
+  it('does not query for a skip-set when enrichment is off', async () => {
+    const { db } = makeFakePrisma();
+    const scraper = new FakeScraper('yakaboo', makeScraperResult([makeListing({ isbn: null })]));
+
+    await runScrapePipeline({
+      prisma: db as unknown as PrismaClient,
+      providers: [scraper],
+    });
+
+    expect(db.providerListing.findMany).not.toHaveBeenCalled();
   });
 
   // Stage-boundary progress logging (diagnostics for long-running providers)

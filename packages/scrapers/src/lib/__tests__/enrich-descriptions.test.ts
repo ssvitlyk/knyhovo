@@ -120,7 +120,9 @@ describe('enrichDescriptions', () => {
     expect(lines[0]).toBe('description enrichment: starting for 2 listings (delayMs=0)');
     expect(lines).toContain('description enrichment [1/2]: fetching https://a');
     expect(lines).toContain('description enrichment [2/2]: fetching https://b');
-    expect(lines.at(-1)).toBe('description enrichment: done — 1/2 descriptions, 0 errors');
+    expect(lines.at(-1)).toBe(
+      'description enrichment: done — 1/2 descriptions (0 skipped as already enriched), 0 errors',
+    );
   });
 
   it('logs a progress line every 100 listings', async () => {
@@ -135,8 +137,46 @@ describe('enrichDescriptions', () => {
       logger: { info: (m) => lines.push(m) },
     });
 
-    expect(lines).toContain('description enrichment: progress 100/150 (descriptions=100, errors=0)');
+    expect(lines).toContain(
+      'description enrichment: progress 100/150 (descriptions=100, skipped=0, errors=0)',
+    );
     expect(lines.filter((l) => l.includes('progress'))).toHaveLength(1);
+  });
+
+  it('skips listings that already carry a description — no fetch', async () => {
+    const enrichedListing: RawProviderListing = { ...listing('https://a'), description: 'Вже є' };
+    const listings = [enrichedListing, listing('https://b')];
+    const fetcher = new MapFetcher({ 'https://b': '<p>B</p>' });
+
+    await enrichDescriptions(listings, fetcher, echoExtract, {
+      timeoutMs: 1000,
+      delayMs: 0,
+      errors: [],
+    });
+
+    expect(fetcher.calls).toEqual(['https://b']);
+    expect(listings[0]!.description).toBe('Вже є');
+    expect(listings[1]!.description).toBe('B');
+  });
+
+  it('skips URLs from skipUrls (already enriched in a previous run) — no fetch', async () => {
+    const listings = [listing('https://a'), listing('https://b')];
+    const fetcher = new MapFetcher({ 'https://b': '<p>B</p>' });
+    const lines: string[] = [];
+
+    await enrichDescriptions(listings, fetcher, echoExtract, {
+      timeoutMs: 1000,
+      delayMs: 0,
+      errors: [],
+      skipUrls: new Set(['https://a']),
+      logger: { info: (m) => lines.push(m) },
+    });
+
+    expect(fetcher.calls).toEqual(['https://b']);
+    expect(listings[0]!.description).toBeUndefined();
+    expect(lines.at(-1)).toBe(
+      'description enrichment: done — 1/2 descriptions (1 skipped as already enriched), 0 errors',
+    );
   });
 
   it('logs the early stop when rate-limited', async () => {

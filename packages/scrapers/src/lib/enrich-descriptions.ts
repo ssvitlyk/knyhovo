@@ -14,6 +14,11 @@ export interface EnrichDescriptionsOptions {
   readonly errors: string[];
   /** Progress sink; the pass is silent when omitted. */
   readonly logger?: ScraperLogger;
+  /**
+   * Product URLs that already have a stored description (e.g. from a previous
+   * run) — these listings are skipped without a fetch or throttle delay.
+   */
+  readonly skipUrls?: ReadonlySet<string>;
 }
 
 /**
@@ -50,11 +55,23 @@ export async function enrichDescriptions(
   const total = listings.length;
   const errorsBefore = errors.length;
   let enriched = 0;
+  let skipped = 0;
 
   logger.info(`description enrichment: starting for ${total} listings (delayMs=${delayMs})`);
 
   for (let i = 0; i < listings.length; i++) {
     const listing = listings[i]!;
+
+    // Already enriched — either the listing carries a description from the
+    // catalog pass, or a previous run stored one (skipUrls). No fetch, no delay.
+    if (
+      (listing.description != null && listing.description !== '') ||
+      opts.skipUrls?.has(listing.url) === true
+    ) {
+      skipped++;
+      continue;
+    }
+
     logger.info(`description enrichment [${i + 1}/${total}]: fetching ${listing.url}`);
     try {
       const html = await fetcher.fetch(listing.url, timeoutMs);
@@ -81,7 +98,7 @@ export async function enrichDescriptions(
     if ((i + 1) % PROGRESS_LOG_EVERY === 0) {
       logger.info(
         `description enrichment: progress ${i + 1}/${total} ` +
-          `(descriptions=${enriched}, errors=${errors.length - errorsBefore})`,
+          `(descriptions=${enriched}, skipped=${skipped}, errors=${errors.length - errorsBefore})`,
       );
     }
 
@@ -91,7 +108,7 @@ export async function enrichDescriptions(
   }
 
   logger.info(
-    `description enrichment: done — ${enriched}/${total} descriptions, ` +
-      `${errors.length - errorsBefore} errors`,
+    `description enrichment: done — ${enriched}/${total} descriptions ` +
+      `(${skipped} skipped as already enriched), ${errors.length - errorsBefore} errors`,
   );
 }

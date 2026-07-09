@@ -71,6 +71,12 @@ export interface ScraperOptions {
    * Falls back to delayMs when omitted. Product pages warrant a more aggressive throttle than catalog pages.
    */
   descriptionDelayMs?: number;
+  /**
+   * Product URLs whose listings already carry a stored description; the
+   * description-enrichment pass skips fetching these product pages entirely.
+   * Ignored when enrichDescriptions is off.
+   */
+  skipDescriptionUrls?: ReadonlySet<string>;
 }
 
 /**

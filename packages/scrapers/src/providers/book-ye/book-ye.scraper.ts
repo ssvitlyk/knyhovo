@@ -96,6 +96,7 @@ export class BookYeScraper implements ScraperProvider {
         delayMs: options.descriptionDelayMs ?? delayMs,
         errors,
         logger: options.logger ?? { info: () => {} },
+        ...(options.skipDescriptionUrls ? { skipUrls: options.skipDescriptionUrls } : {}),
       });
     }
 
