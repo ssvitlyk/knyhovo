@@ -20,7 +20,7 @@ export function BookDetails({ book, initialInWishlist, initialAlert }: BookDetai
     <div className="bdc-grid">
       <div className="bdc-left">
         <div className="bdc-idrow">
-          <Cover src={book.coverUrl} className="bd-cover bd-cover--md" placeholderLabel="Обкладинка" loading="eager" />
+          <Cover src={book.coverUrl} className="bd-cover bd-cover--lg" placeholderLabel="Обкладинка" loading="eager" />
           <div>
             <h1 className="bd-h1">{book.title}</h1>
             <p className="bd-author">{book.author}</p>
