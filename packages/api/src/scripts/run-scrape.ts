@@ -18,6 +18,7 @@ import type { ScraperProvider } from '@knyhovo/shared';
 import { ScrapeRunTrigger } from '@prisma/client';
 import { createLogger } from '../pipeline/index.js';
 import { runProductionScrape } from '../refresh/production-runner.js';
+import { parseScraperOptionsFromEnv } from './scrape-env.js';
 
 // Register new providers here — the pipeline is provider-agnostic and needs no changes.
 // Vivat is server-rendered Next.js, so the default FetchHtmlFetcher works (no Cloudflare).
@@ -51,11 +52,23 @@ function parseTriggeredBy(val: string | undefined): ScrapeRunTrigger {
 async function main(): Promise<void> {
   const logger = createLogger();
   const triggeredBy = parseTriggeredBy(process.env['SCRAPE_TRIGGERED_BY']);
+  const scraperOptions = parseScraperOptionsFromEnv(process.env);
   const startedAt = Date.now();
   logger.info(`run-scrape starting at ${new Date(startedAt).toISOString()} (triggeredBy=${triggeredBy})`);
+  if (scraperOptions?.enrichDescriptions === true) {
+    logger.info(
+      `description enrichment enabled (descriptionDelayMs=${scraperOptions.descriptionDelayMs ?? 'provider default'})`,
+    );
+  }
 
   try {
-    const result = await runProductionScrape({ prisma, providers, triggeredBy, logger });
+    const result = await runProductionScrape({
+      prisma,
+      providers,
+      triggeredBy,
+      logger,
+      ...(scraperOptions !== undefined ? { scraperOptions } : {}),
+    });
     process.exitCode = result.exitCode;
   } finally {
     const durationMs = Date.now() - startedAt;
