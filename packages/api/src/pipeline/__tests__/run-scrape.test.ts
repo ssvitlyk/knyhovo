@@ -670,4 +670,27 @@ describe('runScrapePipeline', () => {
     expect(errorLogger).toHaveBeenCalledOnce();
     expect(results).toHaveLength(1);
   });
+
+  // Stage-boundary progress logging (diagnostics for long-running providers)
+  it('logs scrape-complete and matching/persist stage boundaries', async () => {
+    const { db } = makeFakePrisma();
+    const listing = makeListing({ isbn: null });
+    const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+    const lines: string[] = [];
+    const logger = { info: (m: string) => lines.push(m), error: () => {} };
+
+    await runScrapePipeline({
+      prisma: db as unknown as PrismaClient,
+      providers: [scraper],
+      logger,
+    });
+
+    expect(lines.some((l) => l.includes('yakaboo: scrape complete — 1 listings'))).toBe(true);
+    expect(
+      lines.some((l) => l.includes('canonical matching + persist starting — 1 listings against 0 candidates')),
+    ).toBe(true);
+    expect(
+      lines.some((l) => l.includes('canonical matching + persist done — 1/1 listings processed')),
+    ).toBe(true);
+  });
 });

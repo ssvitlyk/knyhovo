@@ -27,13 +27,18 @@ export class VivatScraper implements ScraperProvider {
     const maxPages = options?.maxPages ?? DEFAULT_MAX_PAGES;
     const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const delayMs = options?.delayMs ?? DEFAULT_DELAY_MS;
+    const logger = options?.logger ?? { info: () => {} };
 
     const allListings: RawProviderListing[] = [];
     const errors: string[] = [];
     const seenUrls = new Set<string>();
 
+    logger.info(`vivat: catalog pass starting (maxPages=${maxPages}, delayMs=${delayMs})`);
+
+    let pagesFetched = 0;
     for (let page = 1; page <= maxPages; page++) {
       const url = `${this.catalogUrl}?page=${page}`;
+      logger.info(`vivat: fetching catalog page ${page}/${maxPages} — ${url}`);
 
       let html: string;
       try {
@@ -44,6 +49,7 @@ export class VivatScraper implements ScraperProvider {
         );
         break;
       }
+      pagesFetched = page;
 
       const { listings, errors: parseErrors, hasNextPage } = parseVivatPage(html);
 
@@ -62,13 +68,21 @@ export class VivatScraper implements ScraperProvider {
       }
     }
 
+    logger.info(
+      `vivat: catalog pass done — ${allListings.length} listings from ${pagesFetched} pages ` +
+        `(${errors.length} errors)`,
+    );
+
     // Opt-in per-book product-page description enrichment (W9a F2). Off by
     // default — a normal catalog scrape performs no product-page requests.
+    // NOTE: sequential by design (one product page per listing + throttle), so a
+    // full-catalog pass takes tens of minutes; progress is logged inside.
     if (options?.enrichDescriptions) {
       await enrichDescriptions(allListings, this.fetcher, extractVivatProductDescription, {
         timeoutMs,
         delayMs: options.descriptionDelayMs ?? delayMs,
         errors,
+        logger,
       });
     }
 

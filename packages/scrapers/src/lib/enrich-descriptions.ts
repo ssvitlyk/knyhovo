@@ -1,6 +1,9 @@
-import type { RawProviderListing } from '@knyhovo/shared';
+import type { RawProviderListing, ScraperLogger } from '@knyhovo/shared';
 import type { HtmlFetcher } from '../http/html-fetcher.js';
 import { sanitizeDescription } from './sanitize-description.js';
+
+/** Emit a progress line every this many listings during the enrichment pass. */
+const PROGRESS_LOG_EVERY = 100;
 
 export interface EnrichDescriptionsOptions {
   /** Per-request timeout in milliseconds (same value as the catalog pass). */
@@ -9,6 +12,8 @@ export interface EnrichDescriptionsOptions {
   readonly delayMs: number;
   /** Mutable error sink — fetch/extract failures are collected here, never thrown. */
   readonly errors: string[];
+  /** Progress sink; the pass is silent when omitted. */
+  readonly logger?: ScraperLogger;
 }
 
 /**
@@ -41,14 +46,22 @@ export async function enrichDescriptions(
   opts: EnrichDescriptionsOptions,
 ): Promise<void> {
   const { timeoutMs, delayMs, errors } = opts;
+  const logger = opts.logger ?? { info: () => {} };
+  const total = listings.length;
+  const errorsBefore = errors.length;
+  let enriched = 0;
+
+  logger.info(`description enrichment: starting for ${total} listings (delayMs=${delayMs})`);
 
   for (let i = 0; i < listings.length; i++) {
     const listing = listings[i]!;
+    logger.info(`description enrichment [${i + 1}/${total}]: fetching ${listing.url}`);
     try {
       const html = await fetcher.fetch(listing.url, timeoutMs);
       const description = sanitizeDescription(extract(html));
       if (description !== null) {
         listings[i] = { ...listing, description };
+        enriched++;
       }
     } catch (err) {
       errors.push(
@@ -56,11 +69,29 @@ export async function enrichDescriptions(
       );
       // Stop this provider's pass on rate-limit/overload — keep what we have,
       // do not retry. The scrape result remains valid.
-      if (isRateLimited(err)) break;
+      if (isRateLimited(err)) {
+        logger.info(
+          `description enrichment: stopping early at ${i + 1}/${total} (rate-limited); ` +
+            `${enriched} descriptions kept`,
+        );
+        break;
+      }
+    }
+
+    if ((i + 1) % PROGRESS_LOG_EVERY === 0) {
+      logger.info(
+        `description enrichment: progress ${i + 1}/${total} ` +
+          `(descriptions=${enriched}, errors=${errors.length - errorsBefore})`,
+      );
     }
 
     if (delayMs > 0 && i < listings.length - 1) {
       await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
     }
   }
+
+  logger.info(
+    `description enrichment: done — ${enriched}/${total} descriptions, ` +
+      `${errors.length - errorsBefore} errors`,
+  );
 }

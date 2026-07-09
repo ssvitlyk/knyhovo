@@ -104,4 +104,55 @@ describe('enrichDescriptions', () => {
     expect(fetcher.calls).toEqual(['https://a', 'https://b']);
     expect(errors).toHaveLength(1);
   });
+
+  it('logs start, a line before every fetch, and a final summary', async () => {
+    const listings = [listing('https://a'), listing('https://b')];
+    const fetcher = new MapFetcher({ 'https://a': '<p>A</p>', 'https://b': '' });
+    const lines: string[] = [];
+
+    await enrichDescriptions(listings, fetcher, echoExtract, {
+      timeoutMs: 1000,
+      delayMs: 0,
+      errors: [],
+      logger: { info: (m) => lines.push(m) },
+    });
+
+    expect(lines[0]).toBe('description enrichment: starting for 2 listings (delayMs=0)');
+    expect(lines).toContain('description enrichment [1/2]: fetching https://a');
+    expect(lines).toContain('description enrichment [2/2]: fetching https://b');
+    expect(lines.at(-1)).toBe('description enrichment: done — 1/2 descriptions, 0 errors');
+  });
+
+  it('logs a progress line every 100 listings', async () => {
+    const listings = Array.from({ length: 150 }, (_, i) => listing(`https://p/${i}`));
+    const fetcher: HtmlFetcher = { fetch: async () => '<p>x</p>' };
+    const lines: string[] = [];
+
+    await enrichDescriptions(listings, fetcher, echoExtract, {
+      timeoutMs: 1000,
+      delayMs: 0,
+      errors: [],
+      logger: { info: (m) => lines.push(m) },
+    });
+
+    expect(lines).toContain('description enrichment: progress 100/150 (descriptions=100, errors=0)');
+    expect(lines.filter((l) => l.includes('progress'))).toHaveLength(1);
+  });
+
+  it('logs the early stop when rate-limited', async () => {
+    const listings = [listing('https://a'), listing('https://b')];
+    const fetcher = new MapFetcher({ 'https://a': new Error('HTTP 429 Too Many Requests') });
+    const lines: string[] = [];
+
+    await enrichDescriptions(listings, fetcher, echoExtract, {
+      timeoutMs: 1000,
+      delayMs: 0,
+      errors: [],
+      logger: { info: (m) => lines.push(m) },
+    });
+
+    expect(lines).toContain(
+      'description enrichment: stopping early at 1/2 (rate-limited); 0 descriptions kept',
+    );
+  });
 });

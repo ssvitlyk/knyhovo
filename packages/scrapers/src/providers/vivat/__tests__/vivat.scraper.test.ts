@@ -142,3 +142,43 @@ describe('VivatScraper.scrape — ScraperResult shape', () => {
     });
   });
 });
+
+// ──────────────────────────────────────────────────────────────
+// Progress logging
+// ──────────────────────────────────────────────────────────────
+
+describe('VivatScraper.scrape — progress logging', () => {
+  it('logs catalog pass boundaries and each page fetch via options.logger', async () => {
+    const fetcher = makeFetcher([loadFixture('catalog-page.html'), loadFixture('catalog-empty.html')]);
+    const lines: string[] = [];
+
+    const scraper = new VivatScraper(fetcher);
+    await scraper.scrape({ delayMs: 0, logger: { info: (m) => lines.push(m) } });
+
+    expect(lines[0]).toBe('vivat: catalog pass starting (maxPages=50, delayMs=0)');
+    expect(lines.filter((l) => l.includes('fetching catalog page'))).toHaveLength(2);
+    expect(lines).toContain('vivat: catalog pass done — 3 listings from 2 pages (0 errors)');
+  });
+
+  it('threads the logger into the description enrichment pass', async () => {
+    const fetcher = makeFetcher([loadFixture('catalog-page.html'), loadFixture('catalog-empty.html')]);
+    const lines: string[] = [];
+
+    const scraper = new VivatScraper(fetcher);
+    await scraper.scrape({
+      delayMs: 0,
+      enrichDescriptions: true,
+      logger: { info: (m) => lines.push(m) },
+    });
+
+    expect(lines).toContain('description enrichment: starting for 3 listings (delayMs=0)');
+    expect(lines.some((l) => l.includes('description enrichment: done'))).toBe(true);
+  });
+
+  it('is silent and unchanged without a logger (no-op default)', async () => {
+    const fetcher = makeFetcher([loadFixture('catalog-empty.html')]);
+    const scraper = new VivatScraper(fetcher);
+    const result = await scraper.scrape({ delayMs: 0 });
+    expect(result.provider).toBe('vivat');
+  });
+});

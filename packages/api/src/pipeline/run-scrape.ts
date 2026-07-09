@@ -35,7 +35,13 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
     }
 
     metrics.scraped = scrapeResult.listings.length;
+    scrapeLogger.info(
+      `${provider.name}: scrape complete — ${scrapeResult.listings.length} listings, ` +
+        `${scrapeResult.errors.length} scrape errors`,
+    );
 
+    const persistLogger = bindContext(logger, { phase: 'persist' });
+    persistLogger.info(`${provider.name}: loading canonical candidates...`);
     const candidates: CanonicalBook[] = (await opts.prisma.canonicalBook.findMany()).map((row) => ({
       id: row.id as CanonicalBookId,
       title: row.title,
@@ -43,10 +49,21 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
       isbn: row.isbn,
       createdAt: row.createdAt.toISOString(),
     }));
+    persistLogger.info(
+      `${provider.name}: canonical matching + persist starting — ` +
+        `${scrapeResult.listings.length} listings against ${candidates.length} candidates`,
+    );
 
     const scrapedAt = new Date(scrapeResult.scrapedAt);
 
+    let processed = 0;
     for (const listing of scrapeResult.listings) {
+      processed++;
+      if (processed % 100 === 0) {
+        persistLogger.info(
+          `${provider.name}: persist progress ${processed}/${scrapeResult.listings.length}`,
+        );
+      }
       if (listing.price === null) {
         // No price means the book is currently unavailable. Instead of skipping
         // entirely (which left stale prices in the DB), refresh availability and
@@ -106,6 +123,10 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
       }
     }
 
+    persistLogger.info(
+      `${provider.name}: canonical matching + persist done — ` +
+        `${processed}/${scrapeResult.listings.length} listings processed`,
+    );
     results.push({ provider: provider.name, metrics, scrapeErrors: scrapeResult.errors });
   }
 

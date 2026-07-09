@@ -83,6 +83,7 @@ export class YakabooScraper implements ScraperProvider {
         timeoutMs,
         delayMs: options.descriptionDelayMs ?? delayMs,
         errors,
+        logger: options.logger ?? { info: () => {} },
       });
     }
 
