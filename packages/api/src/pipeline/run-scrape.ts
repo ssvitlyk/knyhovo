@@ -7,6 +7,36 @@ import { createMetrics } from './metrics.js';
 import { persistListing, markUnavailable, mapProviderName } from './persist-listing.js';
 import { bindContext } from '../logging/logger.js';
 
+/**
+ * Load canonical rows for matching, surviving a stale DB connection.
+ *
+ * The scrape phase (with description enrichment) can run for tens of minutes
+ * with zero DB activity, and this is the first query afterwards — a pooled
+ * connection dropped in the meantime fails exactly here (staging refresh of
+ * 2026-07-09 collapsed this way). A single explicit re-attempt after a
+ * connection touch recovers that case; a genuinely down DB still throws.
+ * This is one deliberate reconnect, not a retry loop.
+ */
+async function loadCanonicalRows(
+  prisma: RunScrapeOptions['prisma'],
+  logger: Logger,
+): Promise<Awaited<ReturnType<RunScrapeOptions['prisma']['canonicalBook']['findMany']>>> {
+  try {
+    return await prisma.canonicalBook.findMany();
+  } catch (err) {
+    logger.error(
+      `canonical candidates query failed (stale connection after a long scrape?): ` +
+        `${err instanceof Error ? err.message : String(err)} — reconnecting once`,
+    );
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+    } catch {
+      // Touch is best-effort; the re-attempt below decides success or failure.
+    }
+    return await prisma.canonicalBook.findMany();
+  }
+}
+
 export async function runScrapePipeline(opts: RunScrapeOptions): Promise<PipelineResult> {
   const logger: Logger = opts.logger ?? {
     info: (m: string) => console.log(m),
@@ -59,7 +89,9 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
 
     const persistLogger = bindContext(logger, { phase: 'persist' });
     persistLogger.info(`${provider.name}: loading canonical candidates...`);
-    const candidates: CanonicalBook[] = (await opts.prisma.canonicalBook.findMany()).map((row) => ({
+    const candidates: CanonicalBook[] = (
+      await loadCanonicalRows(opts.prisma, persistLogger)
+    ).map((row) => ({
       id: row.id as CanonicalBookId,
       title: row.title,
       author: row.author,

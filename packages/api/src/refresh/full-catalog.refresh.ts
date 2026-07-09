@@ -175,6 +175,14 @@ async function refreshProvider(
     // Best-effort: close an already-opened run as FAILED so it never dangles RUNNING.
     if (runId !== null && startedAt !== null) {
       try {
+        // If the failure above was a dropped DB connection (e.g. after a long
+        // enrichment pass), this touch lets the pool re-establish it so the
+        // run row can still be closed instead of dangling RUNNING.
+        try {
+          await opts.prisma.$queryRaw`SELECT 1`;
+        } catch {
+          // Touch is best-effort only; finishScrapeRun below has its own guard.
+        }
         await finishScrapeRun(opts.prisma, runId, {
           startedAt,
           finishedAt,
