@@ -17,6 +17,15 @@ export default function RootLayout({ children }: { readonly children: ReactNode 
   return (
     <html lang="uk" data-theme="light" suppressHydrationWarning>
       <head>
+        {/* DS webfonts (Lora + Inter). Loaded via <link>, not CSS @import:
+            the bundler drops external @import url() rules from compiled CSS,
+            which silently left the whole app on fallback system fonts. */}
+        <link rel="preconnect" href="https://fonts.googleapis.com" />
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Lora:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Inter:wght@400;500;600;700&display=swap"
+        />
         <script dangerouslySetInnerHTML={{ __html: THEME_BOOTSTRAP }} />
       </head>
       <body>
