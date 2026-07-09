@@ -1,0 +1,36 @@
+/* ============================================================================
+   Cover Frame System v1.0 — canonical book-cover rendering (2026-07-08)
+
+   Every REAL book cover renders inside a fixed "Cover Frame". The frame class
+   per surface (`.bkc__coverclip`, `.wl21-sale__coverclip`, `.wsc-cover`, …)
+   keeps owning size, aspect-ratio, border-radius, overflow, shadow and
+   background — exactly as frozen per component. This shared layer owns only
+   the fit contract:
+
+     frame  → centers its content both axes
+     image  → object-fit: contain, natural aspect ratio, never stretched,
+              never cropped; any letterbox whitespace comes from contain,
+              never from padding/margins on the image.
+
+   Markup goes through the shared <CoverFrame> component (cover-frame.jsx) —
+   never hand-roll a frame+img pair or override these rules locally.
+
+   OUT of this system (decorative art direction, keep object-fit: cover):
+   `.fresh-card__stack img` (editorial mini-cover stack), `.gems-fan__cover`
+   (fanned trio), mascot illustrations, hero artwork compositions.
+   ============================================================================ */
+
+.knc-frame {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.knc-frame > .knc-img {
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  display: block;
+}
