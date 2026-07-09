@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import type { RawProviderListing, Availability, Money } from '@knyhovo/shared';
 import { normalizeIsbn } from '../../canonical/isbn.js';
+import { sanitizeDescription } from '../../lib/sanitize-description.js';
 import { JSON_LD_SELECTOR, buildCoverUrl } from './constants.js';
 import type { ParsedProductState } from '../single-product.js';
 
@@ -19,6 +20,7 @@ interface LaboratoryProduct {
   readonly sku?: unknown;
   readonly mpn?: unknown;
   readonly offers?: unknown;
+  readonly description?: unknown;
 }
 
 /** Shape of a Laboratory JSON-LD `@type:Book` block (all fields untrusted). */
@@ -30,6 +32,23 @@ interface LaboratoryBook {
   readonly author?: unknown;
   readonly bookFormat?: unknown;
   readonly url?: unknown;
+  readonly description?: unknown;
+}
+
+/**
+ * Decode a Laboratory description that is double entity-encoded in the JSON-LD
+ * source (live-verified 2026-07-09, e.g. `garri-potter-i-napivkrovnyj-prynts`):
+ * the JSON string literal already contains escaped entities such as
+ * `&amp;mdash;`, `&amp;laquo;`, `&amp;nbsp;`. A single HTML-entity decode (via
+ * cheerio, already used throughout this parser) turns those into `&mdash;` /
+ * `&laquo;` / `&nbsp;` as literal text, so a second decode is required to reach
+ * the intended `—` / `«…»` / non-breaking space. `sanitizeDescription` itself
+ * only strips tags — it does not decode entities twice — so this must happen
+ * before handing the value to it.
+ */
+function decodeDoubleEncodedDescription(raw: string): string {
+  const once = cheerio.load(raw).text();
+  return cheerio.load(once).text();
 }
 
 interface LaboratoryOffers {
@@ -204,6 +223,9 @@ export function parseLaboratoryListing(html: string): ParseResult {
       normalizeIsbn(readString(product?.sku)) ??
       normalizeIsbn(readString(product?.mpn));
 
+    // Description cascade: Product.description → Book.description.
+    const rawDescription = readString(product?.description) ?? readString(book?.description);
+
     const listing: RawProviderListing = {
       provider: 'laboratory',
       title,
@@ -213,7 +235,14 @@ export function parseLaboratoryListing(html: string): ParseResult {
       url,
       availability: resolveAvailability(offers.availability, price !== null),
       coverUrl: buildCoverUrl(product?.image ?? book?.image),
-      description: null,
+      // Always-on extraction (not gated by the opt-in enrichDescriptions flag): this
+      // sitemap-driven provider already fetches the product page for every listing,
+      // so the description comes for free — no extra request like W9a F2 enrichment.
+      // Cascade: Product.description → Book.description (Book's block is sometimes
+      // absent for this field even when the Product block carries one).
+      description: sanitizeDescription(
+        rawDescription !== null ? decodeDoubleEncodedDescription(rawDescription) : null,
+      ),
     };
     return { listing, errors };
   } catch (err) {

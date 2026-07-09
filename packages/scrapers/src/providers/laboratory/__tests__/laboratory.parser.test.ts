@@ -141,8 +141,19 @@ describe('parseLaboratoryListing — product-instock.html (real)', () => {
       price: { amount: 99000, currency: 'UAH' },
       url: 'https://laboratory.ua/products/pro-vijnu',
       availability: 'in-stock',
-      description: null,
     });
+  });
+
+  it('extracts, decodes and sanitizes the double entity-encoded description', () => {
+    // Live-verified 2026-07-09: Laboratory's Product.description is double
+    // entity-encoded (the fixture's raw JSON string literally contains
+    // "&amp;laquo;"/"&amp;raquo;"), so a correct decode turns it into real « » quotes —
+    // not the literal "&laquo;"/"&raquo;" text a single decode would leave behind.
+    expect(listing?.description).toContain(
+      'книжка «Про війну» стала настільною книгою для поколінь військових',
+    );
+    expect(listing?.description).not.toContain('&laquo;');
+    expect(listing?.description).not.toContain('&amp;');
   });
 
   it('resolves an absolute cover URL', () => {
@@ -215,6 +226,49 @@ describe('parseLaboratoryListing — ISBN handling', () => {
       book: { '@type': 'Book', name: 'X', isbn: '' },
     });
     expect(parseLaboratoryListing(html).listing?.isbn).toBe('9786178621117');
+  });
+});
+
+// ──────────────────────────────────────────────────────────────
+// parseLaboratoryListing — description handling (Product → Book cascade)
+// ──────────────────────────────────────────────────────────────
+
+describe('parseLaboratoryListing — description handling', () => {
+  const base = {
+    product: {
+      '@type': 'Product',
+      name: 'X',
+      offers: { '@type': 'AggregateOffer', price: '100', url: 'https://laboratory.ua/products/x' },
+    },
+  };
+
+  it('yields description: null when neither block carries one', () => {
+    const html = productHtml({ ...base, book: { '@type': 'Book' } });
+    expect(parseLaboratoryListing(html).listing?.description).toBeNull();
+  });
+
+  it('yields description: null when the description is blank', () => {
+    const html = productHtml({
+      product: { ...base.product, description: '   ' },
+      book: { '@type': 'Book' },
+    });
+    expect(parseLaboratoryListing(html).listing?.description).toBeNull();
+  });
+
+  it('falls back to Book.description when Product.description is absent', () => {
+    const html = productHtml({
+      ...base,
+      book: { '@type': 'Book', description: 'Опис із блоку Book.' },
+    });
+    expect(parseLaboratoryListing(html).listing?.description).toBe('Опис із блоку Book.');
+  });
+
+  it('prefers Product.description over Book.description', () => {
+    const html = productHtml({
+      product: { ...base.product, description: 'Опис із Product.' },
+      book: { '@type': 'Book', description: 'Опис із Book.' },
+    });
+    expect(parseLaboratoryListing(html).listing?.description).toBe('Опис із Product.');
   });
 });
 

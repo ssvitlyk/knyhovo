@@ -1,6 +1,7 @@
 import * as cheerio from 'cheerio';
 import type { RawProviderListing, Availability, Money } from '@knyhovo/shared';
 import { normalizeIsbn } from '../../canonical/isbn.js';
+import { sanitizeDescription } from '../../lib/sanitize-description.js';
 import {
   JSON_LD_SELECTOR,
   CATALOG_PRODUCTS_SITEMAP_PATTERN,
@@ -26,6 +27,7 @@ interface KnigolandProduct {
   readonly sku?: unknown;
   readonly mpn?: unknown;
   readonly offers?: unknown;
+  readonly description?: unknown;
 }
 
 interface KnigolandOffers {
@@ -251,7 +253,10 @@ export function parseKnigolandListing(html: string): ParseResult {
       url,
       availability: resolveAvailability(offers.availability, price !== null),
       coverUrl: buildCoverUrl(product.image),
-      description: null,
+      // Always-on extraction (not gated by the opt-in enrichDescriptions flag): this
+      // sitemap-driven provider already fetches the product page for every listing,
+      // so the description comes for free — no extra request like W9a F2 enrichment.
+      description: sanitizeDescription(readString(product.description)),
     };
     return { listing, errors };
   } catch (err) {

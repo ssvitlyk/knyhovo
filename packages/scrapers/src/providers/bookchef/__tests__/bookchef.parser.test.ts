@@ -90,8 +90,17 @@ describe('parseBookChefListing — product-instock.html (real)', () => {
       price: { amount: 25900, currency: 'UAH' },
       url: 'https://bookchef.ua/na-vershynu-svitu',
       availability: 'in-stock',
-      description: null,
     });
+  });
+
+  it('extracts and sanitizes the description from Product.description', () => {
+    // Real fixture description has \n\n paragraph breaks — sanitizeDescription
+    // collapses them to single spaces (always-on, no enrichDescriptions flag needed:
+    // this sitemap-driven provider already fetched the product page).
+    expect(listing?.description).toContain(
+      'Так почалась історія Хельги, яка насправді шукала роботу, а не пригод.',
+    );
+    expect(listing?.description).not.toMatch(/\n/);
   });
 
   it('resolves an absolute cover URL', () => {
@@ -188,6 +197,27 @@ describe('parseBookChefListing — author resolution', () => {
       '"author":[]',
     );
     expect(parseBookChefListing(html).listing?.author).toBe('Зелений пес');
+  });
+});
+
+describe('parseBookChefListing — description handling', () => {
+  it('yields description: null when Product.description is absent', () => {
+    const html = loadFixture('product-instock.html').replace(
+      /"description":"(?:[^"\\]|\\.)*",/,
+      '',
+    );
+    const { listing } = parseBookChefListing(html);
+    expect(listing).not.toBeNull();
+    expect(listing?.description).toBeNull();
+  });
+
+  it('yields description: null when Product.description is blank', () => {
+    const html = loadFixture('product-instock.html').replace(
+      /"description":"(?:[^"\\]|\\.)*"/,
+      '"description":"   "',
+    );
+    const { listing } = parseBookChefListing(html);
+    expect(listing?.description).toBeNull();
   });
 });
 
