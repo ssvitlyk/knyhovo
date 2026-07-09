@@ -65,9 +65,22 @@ function makeFakePrisma(
   let listingCounter = 0;
   let historyCounter = 0;
 
+  let failNextCanonicalFindMany = false;
+
   const db = {
+    /** Makes the next canonicalBook.findMany call throw once (stale-connection simulation). */
+    failNextCanonicalFindMany: () => {
+      failNextCanonicalFindMany = true;
+    },
+    $queryRaw: vi.fn(async () => [{ '?column?': 1 }]),
     canonicalBook: {
-      findMany: vi.fn(async () => [...canonicalBooks]),
+      findMany: vi.fn(async () => {
+        if (failNextCanonicalFindMany) {
+          failNextCanonicalFindMany = false;
+          throw new Error('Server has closed the connection.');
+        }
+        return [...canonicalBooks];
+      }),
       create: vi.fn(async ({ data }: { data: Omit<FakeCanonicalRow, 'id'> }) => {
         const row: FakeCanonicalRow = {
           id: `book-${++bookCounter}`,
@@ -679,6 +692,40 @@ describe('runScrapePipeline', () => {
     expect(metrics.providerListingsCreated).toBe(1);
     expect(errorLogger).toHaveBeenCalledOnce();
     expect(results).toHaveLength(1);
+  });
+
+  // Stale-connection recovery on the first post-scrape query
+  it('recovers when the canonical candidates query fails once (stale connection)', async () => {
+    const { db, canonicalBooks } = makeFakePrisma();
+    const scraper = new FakeScraper('yakaboo', makeScraperResult([makeListing({ isbn: null })]));
+    db.failNextCanonicalFindMany();
+    const errorLines: string[] = [];
+
+    const { results } = await runScrapePipeline({
+      prisma: db as unknown as PrismaClient,
+      providers: [scraper],
+      logger: { info: () => {}, error: (m: string) => errorLines.push(m) },
+    });
+
+    // The pipeline reconnected and completed the run instead of collapsing.
+    expect(results[0]!.metrics.created).toBe(1);
+    expect(canonicalBooks).toHaveLength(1);
+    expect(db.canonicalBook.findMany).toHaveBeenCalledTimes(2);
+    expect(errorLines.some((l) => l.includes('reconnecting once'))).toBe(true);
+  });
+
+  it('propagates the error when the candidates query keeps failing (DB down)', async () => {
+    const { db } = makeFakePrisma();
+    const scraper = new FakeScraper('yakaboo', makeScraperResult([makeListing({ isbn: null })]));
+    db.canonicalBook.findMany.mockRejectedValue(new Error('DB down'));
+
+    await expect(
+      runScrapePipeline({
+        prisma: db as unknown as PrismaClient,
+        providers: [scraper],
+        logger: { info: () => {}, error: () => {} },
+      }),
+    ).rejects.toThrow('DB down');
   });
 
   // Skip-set for already-enriched listings (enrichDescriptions on)
