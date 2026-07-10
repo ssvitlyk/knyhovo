@@ -36,7 +36,14 @@ export function BookDetails({ book, initialInWishlist, initialAlert }: BookDetai
         <h2 className="bd-h2" style={{ marginTop: 'var(--space-8)' }}>
           Про видання
         </h2>
-        <BookMeta isbn={book.isbn} />
+        <BookMeta
+          isbn={book.isbn}
+          publisher={book.publisher}
+          language={book.language}
+          format={book.format}
+          series={book.series}
+          publicationYear={book.publicationYear}
+        />
       </div>
       <OffersPanel
         providers={book.providers}

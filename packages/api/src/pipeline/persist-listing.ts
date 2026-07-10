@@ -101,6 +101,11 @@ export async function persistListing(
         availability: mapAvailability(listing.availability),
         coverUrl: listing.coverUrl ?? null,
         description: listing.description ?? null,
+        publisher: listing.publisher ?? null,
+        language: listing.language ?? null,
+        format: listing.format ?? null,
+        series: listing.series ?? null,
+        publicationYear: listing.publicationYear ?? null,
       },
     });
 
@@ -124,6 +129,11 @@ export async function persistListing(
       isbn?: string;
       coverUrl?: string;
       description?: string;
+      publisher?: string;
+      language?: string;
+      format?: string;
+      series?: string;
+      publicationYear?: number;
     } = {
       priceAmount,
       priceCurrency,
@@ -147,6 +157,25 @@ export async function persistListing(
     // a previously-known description with null/empty (graceful enrichment; W9a F2).
     if (listing.description != null && listing.description !== '') {
       updateData.description = listing.description;
+    }
+
+    // Refresh edition metadata only when this scrape produced a usable value —
+    // never overwrite a previously-known value with null (graceful enrichment;
+    // book-metadata PRD).
+    if (listing.publisher != null && listing.publisher !== '') {
+      updateData.publisher = listing.publisher;
+    }
+    if (listing.language != null && listing.language !== '') {
+      updateData.language = listing.language;
+    }
+    if (listing.format != null && listing.format !== '') {
+      updateData.format = listing.format;
+    }
+    if (listing.series != null && listing.series !== '') {
+      updateData.series = listing.series;
+    }
+    if (listing.publicationYear != null) {
+      updateData.publicationYear = listing.publicationYear;
     }
 
     await tx.providerListing.update({

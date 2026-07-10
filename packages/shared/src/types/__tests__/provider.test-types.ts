@@ -57,6 +57,23 @@ const _rawOos: RawProviderListing = {
   availability: 'out-of-stock',
 };
 
+// RawProviderListing with enrichment metadata fields (book-metadata PRD) — all optional/nullable
+const _rawWithMetadata: RawProviderListing = {
+  provider: 'vivat',
+  title: 'Навіки Токіо',
+  author: 'Сергій Жадан',
+  isbn: '9789669829283',
+  price: { amount: 29900, currency: 'UAH' },
+  url: 'https://vivat.com.ua/product/naviky-tokio/',
+  availability: 'in-stock',
+  description: 'Роман про війну на сході України.',
+  publisher: 'Vivat',
+  language: 'Українська',
+  format: 'Тверда',
+  series: 'Навіки Токіо',
+  publicationYear: 2023,
+};
+
 // RawProviderListing rejects unknown provider
 const _badRaw: RawProviderListing = {
   // @ts-expect-error 'rozetka' is not a known ProviderName
@@ -82,6 +99,11 @@ const _listing: ProviderListing = {
   lastSeenAt: '2026-06-09T00:00:00.000Z',
   availability: 'in-stock',
   description: null,
+  publisher: null,
+  language: null,
+  format: null,
+  series: null,
+  publicationYear: null,
 };
 
 // ProviderListing rejects unknown provider
@@ -98,6 +120,11 @@ const _badListing: ProviderListing = {
   lastSeenAt: '2026-06-09T00:00:00.000Z',
   availability: 'in-stock',
   description: null,
+  publisher: null,
+  language: null,
+  format: null,
+  series: null,
+  publicationYear: null,
 };
 
 // ScraperProvider shape — scrape accepts optional ScraperOptions

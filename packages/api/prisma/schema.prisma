@@ -189,6 +189,16 @@ model ProviderListing {
   /// Sanitized plain-text description scraped from the provider's product page (W9a F2).
   /// null when the product page exposed no usable description; enrichment never overwrites a known description with null.
   description     String?  @map("description")
+  /// Publisher as provider text, as-is (book-metadata PRD); enrichment never overwrites a known value with null.
+  publisher       String?  @map("publisher")
+  /// Language as provider text, as-is (book-metadata PRD); enrichment never overwrites a known value with null.
+  language        String?  @map("language")
+  /// Format/cover type as provider text, as-is (book-metadata PRD); enrichment never overwrites a known value with null.
+  format          String?  @map("format")
+  /// Series as provider text, as-is (book-metadata PRD); enrichment never overwrites a known value with null.
+  series          String?  @map("series")
+  /// Publication year (book-metadata PRD); enrichment never overwrites a known value with null.
+  publicationYear Int?     @map("publication_year")
 
   canonicalBook CanonicalBook       @relation(fields: [canonicalBookId], references: [id])
   priceHistory  PriceHistoryPoint[]
