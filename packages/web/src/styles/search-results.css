@@ -53,8 +53,9 @@
 .results__sort { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 .results__sort-label { font-size: var(--fs-sm); color: var(--text-muted); margin-right: var(--space-1); }
 
-.results__grid { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-5); }
-.results__card-link { display: block; text-decoration: none; color: inherit; }
+/* minmax(0,1fr) + min-width:0 on items: a long nowrap author line must ellipsize, not raise the track's min-content floor (grid blowout) */
+.results__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5); }
+.results__card-link { display: block; text-decoration: none; color: inherit; min-width: 0; }
 
 /* ---------- Pagination ---------- */
 .kn-pagination {
@@ -156,7 +157,7 @@
   .kn-empty__mascot { height: 180px; }
 }
 @media (max-width: 767px) {
-  .results__grid { grid-template-columns: 1fr; max-width: none; }
+  .results__grid { grid-template-columns: minmax(0, 1fr); max-width: none; }
   .results__search { max-width: none; }
   /* BookCards go vertical via page-level override; BookCard component itself is NOT modified */
   .results__grid .kn-book,
