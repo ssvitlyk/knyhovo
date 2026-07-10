@@ -1,7 +1,7 @@
 import { searchBooks } from '@/lib/api/search';
 import { knBookWord } from '@/lib/format';
 import { lookupCorrection, type Correction } from '@/lib/search/corrections';
-import { findAuthorExactMatch } from '@/lib/search/authorMatch';
+import { findAuthorMatch } from '@/lib/search/authorMatch';
 import { readPartialIndexMeta } from '@/lib/search/partialIndex';
 import { SearchControl } from '@/components/search/SearchControl';
 import { SortControls } from '@/components/search/SortControls';
@@ -78,8 +78,9 @@ async function Results({
   // responded-stores metadata (it does not today → null → nothing rendered).
   const partial = readPartialIndexMeta(data);
 
-  // W7a Author Jump: exact author match derived purely from existing results.
-  const authorMatch = isEmpty ? null : findAuthorExactMatch(query, data.items);
+  // W7a Author Jump: token-based match (surname → full author) derived purely from
+  // existing results; self-referential matches (query already equals the author) are suppressed.
+  const authorMatch = isEmpty ? null : findAuthorMatch(query, data.items);
 
   return (
     <>
