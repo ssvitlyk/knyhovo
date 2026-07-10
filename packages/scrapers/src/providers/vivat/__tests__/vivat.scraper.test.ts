@@ -171,8 +171,8 @@ describe('VivatScraper.scrape — progress logging', () => {
       logger: { info: (m) => lines.push(m) },
     });
 
-    expect(lines).toContain('description enrichment: starting for 3 listings (delayMs=0)');
-    expect(lines.some((l) => l.includes('description enrichment: done'))).toBe(true);
+    expect(lines).toContain('product enrichment: starting for 3 listings (delayMs=0)');
+    expect(lines.some((l) => l.includes('product enrichment: done'))).toBe(true);
   });
 
   it('is silent and unchanged without a logger (no-op default)', async () => {

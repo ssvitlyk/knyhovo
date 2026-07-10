@@ -3,7 +3,7 @@ import { FetchHtmlFetcher, type HtmlFetcher } from '../../http/html-fetcher.js';
 import { classifyBlockedPage, isForbiddenError } from '../../http/blocked-page.js';
 import { YAKABOO_CATALOG_URL } from './constants.js';
 import { parseYakabooPage, extractYakabooProductDescription } from './yakaboo.parser.js';
-import { enrichDescriptions } from '../../lib/enrich-descriptions.js';
+import { enrichProductDetails, type ExtractedProductDetails } from '../../lib/enrich-product-details.js';
 import type { RawProviderListing } from '@knyhovo/shared';
 
 const DEFAULT_MAX_PAGES = 50;
@@ -78,14 +78,24 @@ export class YakabooScraper implements ScraperProvider {
 
     // Opt-in per-book product-page description enrichment (W9a F2). Off by
     // default — a normal catalog scrape performs no product-page requests.
+    // Yakaboo has no verified structured metadata source yet (book-metadata
+    // PRD §3) — metadata stays null, description-only behavior is unchanged.
     if (options?.enrichDescriptions) {
-      await enrichDescriptions(allListings, this.fetcher, extractYakabooProductDescription, {
-        timeoutMs,
-        delayMs: options.descriptionDelayMs ?? delayMs,
-        errors,
-        logger: options.logger ?? { info: () => {} },
-        ...(options.skipDescriptionUrls ? { skipUrls: options.skipDescriptionUrls } : {}),
-      });
+      await enrichProductDetails(
+        allListings,
+        this.fetcher,
+        (html): ExtractedProductDetails => ({
+          description: extractYakabooProductDescription(html),
+          metadata: null,
+        }),
+        {
+          timeoutMs,
+          delayMs: options.descriptionDelayMs ?? delayMs,
+          errors,
+          logger: options.logger ?? { info: () => {} },
+          ...(options.skipDescriptionUrls ? { skipUrls: options.skipDescriptionUrls } : {}),
+        },
+      );
     }
 
     return { provider: 'yakaboo', listings: allListings, scrapedAt, errors };

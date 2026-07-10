@@ -109,6 +109,31 @@ export interface RawProviderListing {
    * Optional and nullable: omitted/null unless the opt-in enrichment pass ran and found one.
    */
   readonly description?: string | null;
+  /**
+   * Publisher as provider text, as-is (book-metadata PRD). Optional and nullable:
+   * omitted/null unless the opt-in product-page enrichment pass ran and found one.
+   */
+  readonly publisher?: string | null;
+  /**
+   * Language as provider text, as-is (book-metadata PRD). Optional and nullable:
+   * omitted/null unless the opt-in product-page enrichment pass ran and found one.
+   */
+  readonly language?: string | null;
+  /**
+   * Format/cover type as provider text, as-is (book-metadata PRD). Optional and
+   * nullable: omitted/null unless the opt-in product-page enrichment pass ran and found one.
+   */
+  readonly format?: string | null;
+  /**
+   * Series as provider text, as-is (book-metadata PRD). Optional and nullable:
+   * omitted/null unless the opt-in product-page enrichment pass ran and found one.
+   */
+  readonly series?: string | null;
+  /**
+   * Publication year (book-metadata PRD). Optional and nullable: omitted/null
+   * unless the opt-in product-page enrichment pass ran and found one.
+   */
+  readonly publicationYear?: number | null;
 }
 
 /**
@@ -142,6 +167,26 @@ export interface ProviderListing {
    * null when no usable description has been enriched yet.
    */
   readonly description: string | null;
+  /**
+   * Publisher as provider text, as-is (book-metadata PRD). null when not yet enriched.
+   */
+  readonly publisher: string | null;
+  /**
+   * Language as provider text, as-is (book-metadata PRD). null when not yet enriched.
+   */
+  readonly language: string | null;
+  /**
+   * Format/cover type as provider text, as-is (book-metadata PRD). null when not yet enriched.
+   */
+  readonly format: string | null;
+  /**
+   * Series as provider text, as-is (book-metadata PRD). null when not yet enriched.
+   */
+  readonly series: string | null;
+  /**
+   * Publication year (book-metadata PRD). null when not yet enriched.
+   */
+  readonly publicationYear: number | null;
 }
 
 /**

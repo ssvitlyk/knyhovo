@@ -1,5 +1,5 @@
 import { matchOrCreate } from '@knyhovo/scrapers';
-import type { CanonicalBook, ScraperResult } from '@knyhovo/shared';
+import type { CanonicalBook, ScraperResult, ProviderName } from '@knyhovo/shared';
 import type { CanonicalBookId } from '@knyhovo/shared';
 import { Prisma } from '@prisma/client';
 import type { RunScrapeOptions, PipelineResult, ProviderRunResult, Logger } from './types.js';
@@ -37,6 +37,14 @@ async function loadCanonicalRows(
   }
 }
 
+/**
+ * Providers whose product-page extractor also finds edition metadata
+ * (book-metadata PRD), not just a description. Their skip-set query must
+ * re-fetch pages that already have a description but no metadata yet — v1
+ * ships Vivat only (source verified); other providers stay description-only.
+ */
+const METADATA_ENRICHED_PROVIDERS: ReadonlySet<ProviderName> = new Set(['vivat']);
+
 export async function runScrapePipeline(opts: RunScrapeOptions): Promise<PipelineResult> {
   const logger: Logger = opts.logger ?? {
     info: (m: string) => console.log(m),
@@ -55,13 +63,19 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
     // An explicit caller-provided skip set still wins.
     let skipDescriptionUrls = opts.scraperOptions?.skipDescriptionUrls;
     if (opts.scraperOptions?.enrichDescriptions && skipDescriptionUrls === undefined) {
+      const isMetadataProvider = METADATA_ENRICHED_PROVIDERS.has(provider.name);
       const enrichedRows = await opts.prisma.providerListing.findMany({
-        where: { provider: mapProviderName(provider.name), description: { not: null } },
+        where: {
+          provider: mapProviderName(provider.name),
+          description: { not: null },
+          ...(isMetadataProvider ? { publisher: { not: null } } : {}),
+        },
         select: { url: true },
       });
       skipDescriptionUrls = new Set(enrichedRows.map((row) => row.url));
       scrapeLogger.info(
-        `${provider.name}: ${skipDescriptionUrls.size} listings already have descriptions — ` +
+        `${provider.name}: ${skipDescriptionUrls.size} listings already ` +
+          `${isMetadataProvider ? 'have descriptions + metadata' : 'have descriptions'} — ` +
           `enrichment will skip them`,
       );
     }

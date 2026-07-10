@@ -24,8 +24,25 @@ function listing(
   description: string | null = null,
   coverUrl: string | null = null,
   isbn: string | null = null,
+  metadata: Partial<Pick<BookListingRow, 'publisher' | 'language' | 'format' | 'series' | 'publicationYear'>> = {},
 ): BookListingRow {
-  return { provider, priceAmount, priceCurrency: 'UAH', availability, url, lastSeenAt, description, coverUrl, isbn };
+  return {
+    provider,
+    priceAmount,
+    priceCurrency: 'UAH',
+    availability,
+    url,
+    lastSeenAt,
+    description,
+    coverUrl,
+    isbn,
+    publisher: null,
+    language: null,
+    format: null,
+    series: null,
+    publicationYear: null,
+    ...metadata,
+  };
 }
 
 describe('toBookDetails', () => {
@@ -51,6 +68,32 @@ describe('toBookDetails', () => {
     ]);
     expect(dto.lowestPrice).toEqual({ amount: 29900, currency: 'UAH' });
     expect(dto.offersCount).toBe(2);
+  });
+
+  it('selects edition metadata per field across listings by provider priority', () => {
+    const dto = toBookDetails(
+      row({
+        listings: [
+          listing('BOOK_CLUB', 29900, 'IN_STOCK', 'https://example.com', FIXED_DATE, null, null, null, {
+            publisher: 'КСД',
+            series: 'Серія КСД',
+          }),
+          listing('VIVAT', 34900, 'IN_STOCK', 'https://example.com', FIXED_DATE, null, null, null, {
+            publisher: 'Vivat',
+            language: 'Українська',
+            format: 'Тверда',
+            publicationYear: 2023,
+          }),
+        ],
+      }),
+    );
+    // vivat sits in the priority list, book-club does not — vivat wins per field;
+    // fields vivat lacks (series) fall through to the remaining candidate.
+    expect(dto.publisher).toBe('Vivat');
+    expect(dto.language).toBe('Українська');
+    expect(dto.format).toBe('Тверда');
+    expect(dto.publicationYear).toBe(2023);
+    expect(dto.series).toBe('Серія КСД');
   });
 
   it('counts IN_STOCK and UNKNOWN listings, drops OUT_OF_STOCK', () => {

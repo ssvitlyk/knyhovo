@@ -23,6 +23,13 @@ export { detectProviderBlock } from './lib/blocked-status.js';
 export type { ProviderBlock, ProviderBlockKind } from './lib/blocked-status.js';
 export * from './canonical/index.js';
 export { sanitizeDescription, DESCRIPTION_MAX_CHARS } from './lib/sanitize-description.js';
-export { enrichDescriptions, isRateLimited } from './lib/enrich-descriptions.js';
+export { sanitizeMetadataValue, parsePublicationYear, METADATA_MAX_CHARS } from './lib/sanitize-metadata.js';
+export { enrichProductDetails, isRateLimited } from './lib/enrich-product-details.js';
+export type {
+  ExtractedListingMetadata,
+  ExtractedProductDetails,
+  ProductDetailsExtract,
+  EnrichProductDetailsOptions,
+} from './lib/enrich-product-details.js';
 export { SINGLE_PRODUCT_PARSERS } from './providers/single-product.js';
 export type { SingleProductParser, ParsedProductState } from './providers/single-product.js';

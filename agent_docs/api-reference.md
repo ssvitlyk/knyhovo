@@ -67,7 +67,11 @@
 
 **Path params:** `id` — UUID canonical book
 
-**Response 200:** `BookDetailsDto` (id, title, author, isbn, description, coverUrl, lowestPrice, offersCount, providers)
+**Response 200:** `BookDetailsDto` (id, title, author, isbn, description, coverUrl, publisher, language, format, series, publicationYear, lowestPrice, offersCount, providers)
+
+Поля «Про видання» (publisher, language, format, series, publicationYear — book-metadata PRD) —
+nullable; кожне обирається незалежно з provider listings за provider-priority
+(`discovery/metadata-selection.ts`), значення — текст провайдера без нормалізації.
 
 **Errors:** `BAD_REQUEST` (non-UUID id), `BOOK_NOT_FOUND` (404)
 

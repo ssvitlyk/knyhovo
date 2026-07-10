@@ -2,8 +2,8 @@ import type { ScraperProvider, ScraperResult, ScraperOptions } from '@knyhovo/sh
 import type { RawProviderListing } from '@knyhovo/shared';
 import { FetchHtmlFetcher, type HtmlFetcher } from '../../http/html-fetcher.js';
 import { VIVAT_CATALOG_URL } from './constants.js';
-import { parseVivatPage, extractVivatProductDescription } from './vivat.parser.js';
-import { enrichDescriptions } from '../../lib/enrich-descriptions.js';
+import { parseVivatPage, extractVivatProductDetails } from './vivat.parser.js';
+import { enrichProductDetails } from '../../lib/enrich-product-details.js';
 
 const DEFAULT_MAX_PAGES = 50;
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -73,16 +73,22 @@ export class VivatScraper implements ScraperProvider {
         `(${errors.length} errors)`,
     );
 
-    // Opt-in per-book product-page description enrichment (W9a F2). Off by
-    // default — a normal catalog scrape performs no product-page requests.
+    // Opt-in per-book product-page enrichment (W9a F2 description pass,
+    // generalized by the book-metadata PRD to also extract edition metadata
+    // from the same fetch). Off by default — a normal catalog scrape performs
+    // no product-page requests.
     // NOTE: sequential by design (one product page per listing + throttle), so a
     // full-catalog pass takes tens of minutes; progress is logged inside.
     if (options?.enrichDescriptions) {
-      await enrichDescriptions(allListings, this.fetcher, extractVivatProductDescription, {
+      await enrichProductDetails(allListings, this.fetcher, extractVivatProductDetails, {
         timeoutMs,
         delayMs: options.descriptionDelayMs ?? delayMs,
         errors,
         logger,
+        // Vivat extracts metadata too — a listing is only "done" once it has
+        // both a description AND publisher, so a re-run backfills metadata on
+        // listings enriched before this PRD shipped (description-only).
+        skipListing: (l) => l.description != null && l.description !== '' && l.publisher != null,
         ...(options.skipDescriptionUrls ? { skipUrls: options.skipDescriptionUrls } : {}),
       });
     }

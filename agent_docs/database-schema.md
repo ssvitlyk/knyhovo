@@ -76,7 +76,16 @@ CREATE TABLE "provider_listings" (
     "price_currency"   "currency" NOT NULL,
     "url"              TEXT      NOT NULL,
     "last_seen_at"     TIMESTAMP NOT NULL,
-    "availability"     "availability" NOT NULL DEFAULT 'unknown'
+    "availability"     "availability" NOT NULL DEFAULT 'unknown',
+    "cover_url"        TEXT,                  -- W9a F1; enrichment ніколи не перезаписує відоме значення на NULL
+    "description"      TEXT,                  -- W9a F2; plain text з product-сторінки
+    -- «Про видання» (book-metadata PRD): текст провайдера as-is, без нормалізації;
+    -- enrichment ніколи не перезаписує відоме значення на NULL
+    "publisher"        TEXT,
+    "language"         TEXT,
+    "format"           TEXT,
+    "series"           TEXT,
+    "publication_year" INTEGER
 );
 
 CREATE UNIQUE INDEX "provider_listings_provider_url_key"

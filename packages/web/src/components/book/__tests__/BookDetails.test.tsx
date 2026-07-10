@@ -14,6 +14,11 @@ const BOOK_NO_DESC: BookDetailsDto = {
   isbn: '978-966-01-0001-1',
   description: null,
   coverUrl: null,
+  publisher: null,
+  language: null,
+  format: null,
+  series: null,
+  publicationYear: null,
   lowestPrice: { amount: 29900, currency: 'UAH' },
   offersCount: 1,
   providers: [

@@ -21,6 +21,16 @@ export interface BookListingRow {
   readonly coverUrl: string | null;
   /** Sanitized plain-text product-page description, or null when none enriched (W9a F2). */
   readonly description: string | null;
+  /** Publisher as provider text, as-is (book-metadata PRD); null when not yet enriched. */
+  readonly publisher: string | null;
+  /** Language as provider text, as-is (book-metadata PRD); null when not yet enriched. */
+  readonly language: string | null;
+  /** Format/cover type as provider text, as-is (book-metadata PRD); null when not yet enriched. */
+  readonly format: string | null;
+  /** Series as provider text, as-is (book-metadata PRD); null when not yet enriched. */
+  readonly series: string | null;
+  /** Publication year (book-metadata PRD); null when not yet enriched. */
+  readonly publicationYear: number | null;
 }
 
 export interface BookDetailsRow {
@@ -62,6 +72,11 @@ export async function findCanonicalBookById(
           isbn: true,
           coverUrl: true,
           description: true,
+          publisher: true,
+          language: true,
+          format: true,
+          series: true,
+          publicationYear: true,
         },
       },
     },

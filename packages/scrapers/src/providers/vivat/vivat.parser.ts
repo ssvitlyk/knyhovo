@@ -8,6 +8,8 @@ import {
 } from './constants.js';
 import type { VivatSingleProduct } from './constants.js';
 import type { ParsedProductState } from '../single-product.js';
+import type { ExtractedListingMetadata, ExtractedProductDetails } from '../../lib/enrich-product-details.js';
+import { sanitizeMetadataValue, parsePublicationYear } from '../../lib/sanitize-metadata.js';
 
 export interface ParseResult {
   readonly listings: RawProviderListing[];
@@ -186,38 +188,29 @@ function stripHeadings(html: string): string | null {
 }
 
 /**
- * Extract the raw description from a Vivat *product* page (W9a F2).
- * Pure function — no IO. Reads the `__NEXT_DATA__` JSON (same technique as the
- * catalog parser) and returns the first non-empty description-like field on
- * `props.pageProps.product`, or null when none is present.
- *
- * Field names are VERIFIED against the live product page
- * (https://vivat.com.ua/product/naviky-tokio/, checked 2026-07-09):
- *   - `bookDescription` — HTML string, prefixed with a boilerplate heading
- *     (e.g. `<h2>Анотація книги «…»</h2>`) that is stripped before returning.
- *   - `shortDescription` — plain string, may be empty.
- * The value may contain HTML; sanitization to plain text happens at the
- * enrichment boundary (sanitize-description.ts) — not duplicated here.
+ * Read `props.pageProps.product` from a Vivat *product* page's `__NEXT_DATA__`
+ * payload once. Pure function — no IO, never throws. Shared by every
+ * product-page reader (description, metadata, price/availability) so the
+ * `__NEXT_DATA__` script is only located and JSON-parsed a single time per call site.
  */
-export function extractVivatProductDescription(html: string): string | null {
+function readProductObject(html: string): Record<string, unknown> | null {
   const $ = cheerio.load(html);
   const raw = $(NEXT_DATA_SELECTOR).first().contents().text();
   if (!raw.trim()) return null;
 
-  let product: Record<string, unknown> | undefined;
   try {
-    const data = JSON.parse(raw) as {
-      props?: { pageProps?: { product?: unknown } };
-    };
+    const data = JSON.parse(raw) as { props?: { pageProps?: { product?: unknown } } };
     const candidate = data.props?.pageProps?.product;
-    product = typeof candidate === 'object' && candidate !== null
+    return typeof candidate === 'object' && candidate !== null
       ? (candidate as Record<string, unknown>)
-      : undefined;
+      : null;
   } catch {
     return null;
   }
-  if (!product) return null;
+}
 
+/** Extract the plain-text raw description from an already-read product object, or null. */
+function extractDescription(product: Record<string, unknown>): string | null {
   for (const key of ['bookDescription', 'shortDescription']) {
     const value = product[key];
     if (typeof value !== 'string' || value.trim() === '') continue;
@@ -231,10 +224,101 @@ export function extractVivatProductDescription(html: string): string | null {
   return null;
 }
 
+/** Shape of one `allCharacteristics` entry on a Vivat product page. */
+interface VivatCharacteristic {
+  readonly code?: unknown;
+  readonly value?: unknown;
+}
+
+/** Vivat `allCharacteristics` codes mapped to edition-metadata fields (book-metadata PRD). */
+const PUBLISHER_CODE = 'publisher_code_entityelement';
+const LANGUAGE_CODE = 'language';
+const FORMAT_CODE = 'book_cover';
+const SERIES_CODE = 'product_series';
+const PUB_YEAR_CODE = 'pub_year';
+const ISBN_CODE = 'ean_isbn';
+
+/**
+ * Join a characteristic's `value[].text` entries (non-empty, trimmed) with
+ * ", " — same joining spirit as {@link resolveAuthor} for the catalog payload.
+ */
+function joinCharacteristicText(value: unknown): string | null {
+  if (!Array.isArray(value)) return null;
+  const texts = value
+    .map((entry) =>
+      typeof entry === 'object' && entry !== null && typeof (entry as { text?: unknown }).text === 'string'
+        ? (entry as { text: string }).text.trim()
+        : '',
+    )
+    .filter((text) => text !== '');
+  return texts.length > 0 ? texts.join(', ') : null;
+}
+
+/**
+ * Validate and normalize an ISBN-like string: strip hyphens/spaces, accept
+ * only 13-digit or 9-digit+check-character (ISBN-10) forms, normalize a
+ * trailing x to uppercase X. Returns null for anything else (graceful —
+ * malformed provider ISBNs never reach the DB).
+ */
+function normalizeIsbn(raw: string): string | null {
+  const stripped = raw.replace(/[-\s]/g, '');
+  const normalized = /x$/i.test(stripped) ? `${stripped.slice(0, -1)}${stripped.slice(-1).toUpperCase()}` : stripped;
+  return /^(\d{13}|\d{9}[\dX])$/.test(normalized) ? normalized : null;
+}
+
+/**
+ * Extract edition metadata from an already-read product object's
+ * `allCharacteristics` array (book-metadata PRD — Vivat v1 source).
+ *
+ * Verified live shape (recon 2026-07-10):
+ * `{ code: "publisher_code_entityelement", value: [{ text: "Vivat", ... }] }`.
+ * Missing/malformed `allCharacteristics` (not an array, or absent) returns
+ * null gracefully — never throws.
+ */
+function extractMetadata(product: Record<string, unknown>): ExtractedListingMetadata | null {
+  const list = product['allCharacteristics'];
+  if (!Array.isArray(list)) return null;
+
+  const byCode = new Map<string, string>();
+  for (const entry of list as VivatCharacteristic[]) {
+    if (typeof entry?.code !== 'string') continue;
+    const text = joinCharacteristicText(entry.value);
+    if (text !== null) byCode.set(entry.code, text);
+  }
+
+  const isbnRaw = byCode.get(ISBN_CODE);
+  const pubYearRaw = byCode.get(PUB_YEAR_CODE);
+
+  return {
+    publisher: sanitizeMetadataValue(byCode.get(PUBLISHER_CODE) ?? null),
+    language: sanitizeMetadataValue(byCode.get(LANGUAGE_CODE) ?? null),
+    format: sanitizeMetadataValue(byCode.get(FORMAT_CODE) ?? null),
+    series: sanitizeMetadataValue(byCode.get(SERIES_CODE) ?? null),
+    publicationYear: pubYearRaw !== undefined ? parsePublicationYear(pubYearRaw) : null,
+    isbn: isbnRaw !== undefined ? normalizeIsbn(isbnRaw) : null,
+  };
+}
+
+/**
+ * Extract description + edition metadata from a Vivat *product* page in a
+ * single `__NEXT_DATA__` read (book-metadata PRD, generalizing W9a F2's
+ * description-only pass — zero additional HTTP requests).
+ * Pure function — no IO, never throws.
+ */
+export function extractVivatProductDetails(html: string): ExtractedProductDetails {
+  const product = readProductObject(html);
+  if (product === null) return { description: null, metadata: null };
+
+  return {
+    description: extractDescription(product),
+    metadata: extractMetadata(product),
+  };
+}
+
 /**
  * Parse price and availability from a Vivat *product* page (W10.4).
  * Pure function — no IO, no throwing. Reads the `__NEXT_DATA__` JSON
- * (same technique as extractVivatProductDescription).
+ * (same technique as extractVivatProductDetails).
  *
  * Field names in props.pageProps.product are representative — must be
  * re-verified against live product HTML before production use (W10.4).

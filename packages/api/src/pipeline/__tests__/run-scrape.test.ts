@@ -757,6 +757,30 @@ describe('runScrapePipeline', () => {
     });
 
     expect(scraper.lastOptions?.skipDescriptionUrls).toEqual(new Set(['https://yakaboo.ua/kobzar']));
+    // Description-only provider — the skip-set query does not require metadata.
+    expect(db.providerListing.findMany).toHaveBeenCalledWith({
+      where: { provider: 'YAKABOO', description: { not: null } },
+      select: { url: true },
+    });
+  });
+
+  it('requires stored metadata, not just a description, in the vivat skip-set query', async () => {
+    const { db } = makeFakePrisma();
+    const scraper = new FakeScraper('vivat', { ...makeScraperResult([]), provider: 'vivat' });
+
+    await runScrapePipeline({
+      prisma: db as unknown as PrismaClient,
+      providers: [scraper],
+      scraperOptions: { enrichDescriptions: true },
+    });
+
+    // Vivat's extractor also finds edition metadata (book-metadata PRD), so a
+    // listing is only skippable once it has a description AND a publisher —
+    // re-runs backfill metadata on description-only listings.
+    expect(db.providerListing.findMany).toHaveBeenCalledWith({
+      where: { provider: 'VIVAT', description: { not: null }, publisher: { not: null } },
+      select: { url: true },
+    });
   });
 
   it('does not query for a skip-set when enrichment is off', async () => {

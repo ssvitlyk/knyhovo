@@ -24,6 +24,11 @@ interface FakeListing {
   isbn: string | null;
   coverUrl: string | null;
   description: string | null;
+  publisher: string | null;
+  language: string | null;
+  format: string | null;
+  series: string | null;
+  publicationYear: number | null;
 }
 
 interface FindUniqueArgs {
@@ -59,7 +64,12 @@ function listing(
   priceAmount: number,
   availability: FakeListing['availability'] = 'IN_STOCK',
   url = 'https://example.com',
-  extras: Partial<Pick<FakeListing, 'isbn' | 'coverUrl' | 'description'>> = {},
+  extras: Partial<
+    Pick<
+      FakeListing,
+      'isbn' | 'coverUrl' | 'description' | 'publisher' | 'language' | 'format' | 'series' | 'publicationYear'
+    >
+  > = {},
 ): FakeListing {
   return {
     canonicalBookId,
@@ -72,6 +82,11 @@ function listing(
     isbn: null,
     coverUrl: null,
     description: null,
+    publisher: null,
+    language: null,
+    format: null,
+    series: null,
+    publicationYear: null,
     ...extras,
   };
 }
@@ -109,6 +124,11 @@ describe('GET /api/books/:id', () => {
       isbn: '978-0-00-000000-0',
       description: null,
       coverUrl: null,
+      publisher: null,
+      language: null,
+      format: null,
+      series: null,
+      publicationYear: null,
       lowestPrice: { amount: 29900, currency: 'UAH' },
       offersCount: 2,
       providers: [
@@ -185,6 +205,34 @@ describe('GET /api/books/:id', () => {
     expect(body.description).toBe('Опис від Yakaboo');
     // Canonical row has no ISBN → cheapest listing's ISBN backfills it.
     expect(body.isbn).toBe('9786176795063');
+  });
+
+  it('200: edition metadata flows through from listings by provider priority', async () => {
+    const books = [book(BOOK_UUID_A, 'Test', 'Author', null)];
+    const listings = [
+      listing(BOOK_UUID_A, 'BOOK_CLUB', 15000, 'IN_STOCK', 'https://book-club.example', {
+        publisher: 'КСД',
+        series: 'Серія КСД',
+      }),
+      listing(BOOK_UUID_A, 'YAKABOO', 34900, 'IN_STOCK', 'https://yakaboo.example', {
+        publisher: 'Vivat',
+        language: 'Українська',
+        format: 'Тверда',
+        publicationYear: 2023,
+      }),
+    ];
+    const app = appWith(books, listings);
+    const res = await app.inject({ method: 'GET', url: `/api/books/${BOOK_UUID_A}` });
+
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    // Each field selected independently by provider priority (yakaboo first);
+    // fields the priority provider lacks fall through to the next candidate.
+    expect(body.publisher).toBe('Vivat');
+    expect(body.language).toBe('Українська');
+    expect(body.format).toBe('Тверда');
+    expect(body.publicationYear).toBe(2023);
+    expect(body.series).toBe('Серія КСД');
   });
 
   it('400: invalid UUID in path → BAD_REQUEST', async () => {

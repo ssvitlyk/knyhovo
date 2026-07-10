@@ -44,6 +44,31 @@ export interface BookDetailsDto {
    * provider priority (W9a F1). null when no listing carries a cover.
    */
   readonly coverUrl: string | null;
+  /**
+   * Publisher selected across the book's provider listings by provider
+   * priority (book-metadata PRD). null when no provider supplied a value.
+   */
+  readonly publisher: string | null;
+  /**
+   * Language selected across the book's provider listings by provider
+   * priority (book-metadata PRD). null when no provider supplied a value.
+   */
+  readonly language: string | null;
+  /**
+   * Format/cover type selected across the book's provider listings by
+   * provider priority (book-metadata PRD). null when no provider supplied a value.
+   */
+  readonly format: string | null;
+  /**
+   * Series selected across the book's provider listings by provider
+   * priority (book-metadata PRD). null when no provider supplied a value.
+   */
+  readonly series: string | null;
+  /**
+   * Publication year selected across the book's provider listings by
+   * provider priority (book-metadata PRD). null when no provider supplied a value.
+   */
+  readonly publicationYear: number | null;
   /** Minimum available provider price. null when there are no available offers. */
   readonly lowestPrice: MoneyDto | null;
   /** Number of available provider offers included in `providers`. */

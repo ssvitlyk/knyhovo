@@ -5,7 +5,7 @@ import { PlaywrightHtmlFetcher } from '../../http/playwright-html-fetcher.js';
 import { browserManager } from '../../http/browser-manager.js';
 import { BOOK_YE_CATALOG_URL, PRODUCT_CARD_SELECTOR, CLOUDFLARE_CHALLENGE_SELECTOR } from './constants.js';
 import { parseBookYePage, extractBookYeProductDescription } from './book-ye.parser.js';
-import { enrichDescriptions } from '../../lib/enrich-descriptions.js';
+import { enrichProductDetails, type ExtractedProductDetails } from '../../lib/enrich-product-details.js';
 import { classifyBlockedPage } from '../../http/blocked-page.js';
 
 const DEFAULT_MAX_PAGES = 50;
@@ -90,14 +90,24 @@ export class BookYeScraper implements ScraperProvider {
     // Opt-in per-book product-page description enrichment (W9a F2). Off by
     // default. Книгарня «Є» needs Playwright per page (Cloudflare), so callers
     // should pass a larger descriptionDelayMs than the catalog delay.
+    // Книгарня «Є» has no verified structured metadata source yet (book-metadata
+    // PRD §3) — metadata stays null, description-only behavior is unchanged.
     if (options?.enrichDescriptions) {
-      await enrichDescriptions(allListings, this.fetcher, extractBookYeProductDescription, {
-        timeoutMs,
-        delayMs: options.descriptionDelayMs ?? delayMs,
-        errors,
-        logger: options.logger ?? { info: () => {} },
-        ...(options.skipDescriptionUrls ? { skipUrls: options.skipDescriptionUrls } : {}),
-      });
+      await enrichProductDetails(
+        allListings,
+        this.fetcher,
+        (html): ExtractedProductDetails => ({
+          description: extractBookYeProductDescription(html),
+          metadata: null,
+        }),
+        {
+          timeoutMs,
+          delayMs: options.descriptionDelayMs ?? delayMs,
+          errors,
+          logger: options.logger ?? { info: () => {} },
+          ...(options.skipDescriptionUrls ? { skipUrls: options.skipDescriptionUrls } : {}),
+        },
+      );
     }
 
     return { provider: 'book-ye', listings: allListings, scrapedAt, errors };

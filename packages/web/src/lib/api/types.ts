@@ -64,6 +64,16 @@ export interface BookDetailsDto {
   readonly isbn: string | null;
   readonly description: string | null;
   readonly coverUrl: string | null;
+  /** Publisher selected across provider listings by provider priority (book-metadata PRD); null when no provider supplied one. */
+  readonly publisher: string | null;
+  /** Language as provider text (book-metadata PRD); null when no provider supplied one. */
+  readonly language: string | null;
+  /** Format/cover type as provider text (book-metadata PRD); null when no provider supplied one. */
+  readonly format: string | null;
+  /** Series as provider text (book-metadata PRD); null when no provider supplied one. */
+  readonly series: string | null;
+  /** Publication year (book-metadata PRD); null when no provider supplied one. */
+  readonly publicationYear: number | null;
   readonly lowestPrice: MoneyDto | null;
   readonly offersCount: number;
   readonly providers: readonly BookProviderDto[];

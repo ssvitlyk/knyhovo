@@ -3,6 +3,7 @@ import type { BookListingRow, BookDetailsRow } from './repository.js';
 import type { BookProviderDto, BookDetailsDto, MoneyDto } from './dto.js';
 import { selectDescription } from '../discovery/description-selection.js';
 import { selectCoverUrl } from '../discovery/cover-selection.js';
+import { selectBookMetadata } from '../discovery/metadata-selection.js';
 
 /** Reverse map from the persisted provider enum to its public slug. */
 const PROVIDER_SLUG: Record<BookListingRow['provider'], ProviderName> = {
@@ -76,6 +77,20 @@ export function toBookDetails(row: BookDetailsRow): BookDetailsDto {
     })),
   );
 
+  // Edition metadata (book-metadata PRD) — same all-listings, provider-priority
+  // selection as description/cover, each field chosen independently.
+  const metadata = selectBookMetadata(
+    row.listings.map((l) => ({
+      provider: PROVIDER_SLUG[l.provider],
+      priceAmount: l.priceAmount,
+      publisher: l.publisher,
+      language: l.language,
+      format: l.format,
+      series: l.series,
+      publicationYear: l.publicationYear,
+    })),
+  );
+
   // The canonical ISBN wins; when enrichment has only backfilled listing-level
   // ISBNs (the canonical row is created before product-page enrichment runs),
   // fall back to the cheapest listing that carries one.
@@ -88,6 +103,11 @@ export function toBookDetails(row: BookDetailsRow): BookDetailsDto {
     isbn,
     description,
     coverUrl,
+    publisher: metadata.publisher,
+    language: metadata.language,
+    format: metadata.format,
+    series: metadata.series,
+    publicationYear: metadata.publicationYear,
     lowestPrice,
     offersCount,
     providers,
