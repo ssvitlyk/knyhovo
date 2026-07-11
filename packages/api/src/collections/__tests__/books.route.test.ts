@@ -1,8 +1,14 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { buildApp } from '../../app.js';
 import { clearCache } from '../cache.js';
 import { emptyDb, makeFakePrisma, book, listing, collection, itemsFor } from './fake-prisma.js';
 import type { FakeDb } from './fake-prisma.js';
+
+vi.mock('../repository.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../repository.js')>();
+  const { fakeFeedRepositoryOverrides } = await import('./fake-feed-repository.js');
+  return { ...actual, ...fakeFeedRepositoryOverrides() };
+});
 
 const FIXED_DATE = new Date('2026-07-03T00:00:00.000Z');
 const DAY_MS = 24 * 60 * 60 * 1000;

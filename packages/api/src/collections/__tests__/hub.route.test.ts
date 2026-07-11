@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Mock } from 'vitest';
 import { buildApp } from '../../app.js';
 import { clearCache } from '../cache.js';
@@ -11,6 +11,12 @@ import {
   itemsFor,
 } from './fake-prisma.js';
 import type { FakeDb } from './fake-prisma.js';
+
+vi.mock('../repository.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../repository.js')>();
+  const { fakeFeedRepositoryOverrides } = await import('./fake-feed-repository.js');
+  return { ...actual, ...fakeFeedRepositoryOverrides() };
+});
 
 /** Loosely-typed vitest mock function, for asserting call counts on the fake Prisma spies. */
 type MockFn = Mock<(...args: unknown[]) => unknown>;

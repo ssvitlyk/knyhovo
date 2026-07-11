@@ -129,6 +129,7 @@ model CanonicalBook {
 
   @@index([isbn])
   @@index([genreId])
+  @@index([createdAt])
   @@map("canonical_books")
 }
 
@@ -317,6 +318,7 @@ model WishlistItem {
   alert         Alert?
 
   @@unique([userId, canonicalBookId])
+  @@index([canonicalBookId])
   @@map("wishlist_items")
 }
 
