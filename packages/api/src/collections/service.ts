@@ -98,56 +98,57 @@ function defaultSort(type: CollectionRow['type']): SortOption {
 // ── Feed resolution (SQL page/count per collection row) ─────────────────────
 
 interface FeedResolution {
-  readonly getPage: (filters: FeedFilterParams, sort: SortOption, page: number, perPage: number, now: Date) => Promise<string[]>;
-  readonly getCount: (filters: FeedFilterParams, now: Date) => Promise<number>;
+  readonly getPage: (filters: FeedFilterParams, sort: SortOption, page: number, perPage: number) => Promise<string[]>;
+  readonly getCount: (filters: FeedFilterParams) => Promise<number>;
 }
 
 /**
- * Resolve a `CollectionRow` to its SQL feed page/count functions. Every read
- * path goes through this — no full-catalog fetch (kills `findAllCanonicalBooks`
- * / `buildHubComputeContext`; C1 §1).
+ * Resolve a `CollectionRow` to its SQL feed page/count functions, for a fixed
+ * `now`. Every read path goes through this — no full-catalog fetch (kills
+ * `findAllCanonicalBooks` / `buildHubComputeContext`; C1 §1).
  */
-function resolveFeed(prisma: PrismaClient, row: CollectionRow): FeedResolution {
+async function resolveFeed(prisma: PrismaClient, row: CollectionRow, now: Date): Promise<FeedResolution> {
   if (row.type === 'TAXONOMIC') {
     return {
-      getPage: (filters, sort, page, perPage, now) =>
+      getPage: (filters, sort, page, perPage) =>
         queryTaxonomicFeedIds(prisma, row.id, { priceMin: filters.priceMin, priceMax: filters.priceMax, inStockOnly: filters.inStockOnly, sort, page, perPage, now }),
-      getCount: (filters, now) => countTaxonomicFeed(prisma, row.id, filters, now),
+      getCount: (filters) => countTaxonomicFeed(prisma, row.id, filters, now),
     };
   }
 
   if (row.type === 'DYNAMIC' && row.slug === 'novynky') {
+    // `novynkyPoolMeta`/`planNovynkyPool` computed once here and captured by both
+    // closures below — `getPage`/`getCount` run concurrently (Promise.all in
+    // `buildCollectionBooksResponse`), so two independent calls would read the
+    // window/total-priced counts at slightly different instants and could plan
+    // a different window/fallback split for the page vs. the count.
+    const meta = await novynkyPoolMeta(prisma, now);
+    const plan = planNovynkyPool(meta.windowCount, meta.totalPriced);
     return {
-      getPage: async (filters, sort, page, perPage, now) => {
-        const meta = await novynkyPoolMeta(prisma, now);
-        const plan = planNovynkyPool(meta.windowCount, meta.totalPriced);
-        return queryNovynkyIds(prisma, { ...filters, sort, page, perPage, now }, plan.windowLimit, plan.fallbackLimit);
-      },
-      getCount: async (filters, now) => {
-        const meta = await novynkyPoolMeta(prisma, now);
-        const plan = planNovynkyPool(meta.windowCount, meta.totalPriced);
-        return countNovynky(prisma, filters, now, plan.windowLimit, plan.fallbackLimit);
-      },
+      getPage: (filters, sort, page, perPage) =>
+        queryNovynkyIds(prisma, { ...filters, sort, page, perPage, now }, plan.windowLimit, plan.fallbackLimit),
+      getCount: (filters) => countNovynky(prisma, filters, now, plan.windowLimit, plan.fallbackLimit),
     };
   }
 
   if (row.type === 'DYNAMIC' && KNOWN_DYNAMIC_SLUGS.has(row.slug as DynamicFeedSlug)) {
     const slug = row.slug as Exclude<DynamicFeedSlug, 'novynky'>;
     return {
-      getPage: (filters, sort, page, perPage, now) => queryDynamicFeedIds(prisma, slug, { ...filters, sort, page, perPage, now }),
-      getCount: (filters, now) => countDynamicFeed(prisma, slug, filters, now),
+      getPage: (filters, sort, page, perPage) => queryDynamicFeedIds(prisma, slug, { ...filters, sort, page, perPage, now }),
+      getCount: (filters) => countDynamicFeed(prisma, slug, filters, now),
     };
   }
 
   // EDITORIAL, or any DYNAMIC row without a known compute function: pool = CollectionItem membership.
   return {
-    getPage: (filters, sort, page, perPage, now) => queryEditorialFeedIds(prisma, row.id, { ...filters, sort, page, perPage, now }),
-    getCount: (filters, now) => countEditorialFeed(prisma, row.id, filters, now),
+    getPage: (filters, sort, page, perPage) => queryEditorialFeedIds(prisma, row.id, { ...filters, sort, page, perPage, now }),
+    getCount: (filters) => countEditorialFeed(prisma, row.id, filters, now),
   };
 }
 
 async function feedTotalCount(prisma: PrismaClient, row: CollectionRow, now: Date): Promise<number> {
-  return resolveFeed(prisma, row).getCount({}, now);
+  const feed = await resolveFeed(prisma, row, now);
+  return feed.getCount({});
 }
 
 function toBookDtos(rows: Awaited<ReturnType<typeof findCanonicalBooksByIds>>, wishlistCounts: Map<string, number>): CollectionBookDto[] {
@@ -161,6 +162,19 @@ async function mapPage(prisma: PrismaClient, ids: readonly string[]): Promise<Co
     findWishlistCountsByIds(prisma, ids),
   ]);
   return toBookDtos(rows, wishlistCounts);
+}
+
+/**
+ * Re-read `wishlistCount` live for a page of (possibly cached) book DTOs.
+ * `wishlistCount` is never allowed to sit stale for the books/hub cache's TTL
+ * (up to 30 min for scrape-derived feeds, PRD §3.2 — it has a different
+ * lifecycle than scrape data) — same "decorate after the cache read" pattern
+ * already used for `isWishlisted` below.
+ */
+async function withLiveWishlistCounts(prisma: PrismaClient, books: readonly CollectionBookDto[]): Promise<CollectionBookDto[]> {
+  if (books.length === 0) return [...books];
+  const counts = await findWishlistCountsByIds(prisma, books.map((b) => b.id));
+  return books.map((b) => ({ ...b, wishlistCount: counts.get(b.id) ?? 0 }));
 }
 
 // ── Hub ──────────────────────────────────────────────────────────────────────
@@ -210,19 +224,23 @@ async function buildHub(prisma: PrismaClient): Promise<HubResponseDto> {
 /**
  * `userId` is decorated onto the (user-agnostic, cached) hub payload after
  * the cache read — `isWishlisted` is never part of the cache key/value.
- * `null` (guest, or no `authDeps` configured) short-circuits to the cached
- * payload as-is (`isWishlisted: false` on every book, from the mapper).
+ * `wishlistCount` is likewise re-read live after every cache hit (see
+ * {@link withLiveWishlistCounts}) — it must never sit stale for the cache's
+ * TTL, unlike `isWishlisted` this happens regardless of `userId`.
  */
 export async function getHub(prisma: PrismaClient, userId: string | null): Promise<HubResponseDto> {
   const cached = await getOrSet('hub', HUB_CACHE_TTL_MS, () => buildHub(prisma));
-  if (!userId || !cached.featured) return cached;
+  if (!cached.featured) return cached;
+
+  const previewBooks = await withLiveWishlistCounts(prisma, cached.featured.previewBooks);
+  if (!userId) return { ...cached, featured: { ...cached.featured, previewBooks } };
 
   const saved = await findWishlistedBookIds(prisma, userId);
   return {
     ...cached,
     featured: {
       ...cached.featured,
-      previewBooks: cached.featured.previewBooks.map((b) => ({ ...b, isWishlisted: saved.has(b.id) })),
+      previewBooks: previewBooks.map((b) => ({ ...b, isWishlisted: saved.has(b.id) })),
     },
   };
 }
@@ -271,11 +289,11 @@ async function buildCollectionBooksResponse(
     inStockOnly: params.in_stock === 1,
   };
   const sort = params.sort ?? defaultSort(row.type);
-  const feed = resolveFeed(prisma, row);
+  const feed = await resolveFeed(prisma, row, now);
 
   const [ids, total] = await Promise.all([
-    feed.getPage(filters, sort, params.page, PER_PAGE, now),
-    feed.getCount(filters, now),
+    feed.getPage(filters, sort, params.page, PER_PAGE),
+    feed.getCount(filters),
   ]);
   const books = await mapPage(prisma, ids);
   const totalPages = total === 0 ? 0 : Math.ceil(total / PER_PAGE);
@@ -299,12 +317,13 @@ export async function getCollectionBooks(
   const ttl = booksTtlFor(row);
   const cacheKey = `books:${slug}:${JSON.stringify(params)}`;
   const cached = await getOrSet(cacheKey, ttl, () => buildCollectionBooksResponse(prisma, row, params));
-  if (!userId) return cached;
+  const books = await withLiveWishlistCounts(prisma, cached.books);
+  if (!userId) return { ...cached, books };
 
   const saved = await findWishlistedBookIds(prisma, userId);
   return {
     ...cached,
-    books: cached.books.map((b) => ({ ...b, isWishlisted: saved.has(b.id) })),
+    books: books.map((b) => ({ ...b, isWishlisted: saved.has(b.id) })),
   };
 }
 
