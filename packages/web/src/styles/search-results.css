@@ -53,9 +53,21 @@
 .results__sort { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
 .results__sort-label { font-size: var(--fs-sm); color: var(--text-muted); margin-right: var(--space-1); }
 
+/* Desktop (≥768px): chips; mobile (<768px): dropdown (search-sort PRD). */
+.results__sort-chips { display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.results__sort-dd { display: none; }
+
 /* minmax(0,1fr) + min-width:0 on items: a long nowrap author line must ellipsize, not raise the track's min-content floor (grid blowout) */
 .results__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-5); }
 .results__card-link { display: block; text-decoration: none; color: inherit; min-width: 0; }
+/* Equal card heights: the grid stretches the link wrapper to the row height; the card
+   fills it, and BookCard's margin-top:auto price row aligns across the row. */
+.results__card-link .kn-book { height: 100%; }
+/* A badge occupies the title's reserved second line (badge ~27px ≈ 2.4em − one line),
+   so badge cards stay the same cover-driven height as badge-less ones. The wrapper is
+   flex so it hugs the pill instead of adding the inherited line-box slack. */
+.results__grid .kn-book__badge { display: flex; }
+.results__grid .kn-book:has(.kn-book__badge) .kn-book__title { min-height: 0; }
 
 /* ---------- Pagination ---------- */
 .kn-pagination {
@@ -151,19 +163,41 @@
 
 /* ---------- Responsive (frozen spec) ----------
    Desktop ≥768px: 2-column grid, horizontal BookCards, full pagination.
-   Mobile  <768px: 1 column, vertical BookCards, full-width search, 44px touch targets. */
+   Mobile  <768px: 1 column, compact horizontal row cards (Variant A), full-width search, 44px touch targets. */
 @media (max-width: 900px) {
   .results__toolbar { flex-direction: column; align-items: flex-start; }
   .kn-empty__mascot { height: 180px; }
 }
 @media (max-width: 767px) {
-  .results__grid { grid-template-columns: minmax(0, 1fr); max-width: none; }
+  .results__sort-chips { display: none; }
+  .results__sort-dd { display: block; width: 100%; }
+  .results__sort-dd .cd-sort { width: 100%; }
+  .results__sort-dd .cd-sort__btn { width: 100%; min-height: 44px; }
+  .results__grid { grid-template-columns: minmax(0, 1fr); max-width: none; gap: var(--space-3); }
   .results__search { max-width: none; }
-  /* BookCards go vertical via page-level override; BookCard component itself is NOT modified */
+  /* Compact mobile header zone: tighter eyebrow/title/search/toolbar rhythm;
+     sort label + dropdown share one row (label left, dropdown fills the rest). */
+  .results { padding-top: var(--space-5); }
+  .results__eyebrow { margin-bottom: var(--space-2); }
+  .results__title { font-size: var(--fs-h3); margin-bottom: var(--space-4); }
+  .results__search { margin-bottom: var(--space-5); }
+  .results__toolbar { padding-top: var(--space-4); margin-bottom: var(--space-4); gap: var(--space-3); }
+  .results__sort { width: 100%; flex-wrap: nowrap; }
+  .results__sort-dd { flex: 1 1 auto; min-width: 0; }
+  /* Variant A «Компактні рядки» (frozen 2026-07-10): the card keeps its horizontal
+     anatomy as a compact row — one card per row, 4–5 books per screen. */
   .results__grid .kn-book,
-  .results__grid .kn-skeleton { flex-direction: column; }
+  .results__grid .kn-skeleton { padding: 12px; gap: 14px; }
   .results__grid .kn-book__coverwrap,
-  .results__grid .kn-skeleton__cover { width: 104px; height: 150px; }
+  .results__grid .kn-skeleton__cover { width: 72px; height: 104px; }
+  .results__grid .kn-book__title { font-size: 16.5px; line-height: 1.25; min-height: 0; }
+  /* On the narrow mobile row a badge takes the title's second line: clamp badge-card
+     titles to one line and compact the pill so every card keeps the same cover-driven height. */
+  .results__grid .kn-book:has(.kn-book__badge) .kn-book__title { -webkit-line-clamp: 1; }
+  .results__grid .kn-book__badge .kn-badge { font-size: 11px; padding: 2px 8px; }
+  .results__grid .kn-book__author { font-size: 13px; }
+  .results__grid .kn-book__price { font-size: 19px; font-weight: 700; }
+  .results__grid .kn-book__store { font-size: 13px; }
   .kn-skeleton { min-height: 0; }
   .kn-pagination { flex-wrap: wrap; gap: var(--space-3); }
   .kn-pagination .kn-btn { min-height: 44px; min-width: 44px; } /* 44px touch targets */
