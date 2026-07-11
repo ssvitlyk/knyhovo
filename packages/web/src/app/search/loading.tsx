@@ -1,5 +1,6 @@
 import { SearchBarSkeleton, SkeletonGrid } from '@/components/search/Skeletons';
 import { SortControls } from '@/components/search/SortControls';
+import { DEFAULT_SEARCH_SORT } from '@/components/search/constants';
 
 /**
  * Route-level loading fallback (frozen loading state): SearchBar skeleton +
@@ -16,7 +17,7 @@ export default function SearchLoading(): React.JSX.Element {
         <p className="results__summary" aria-live="polite">
           Шукаємо найкращі ціни…
         </p>
-        <SortControls />
+        <SortControls query="" sort={DEFAULT_SEARCH_SORT} />
       </div>
       <SkeletonGrid />
     </main>

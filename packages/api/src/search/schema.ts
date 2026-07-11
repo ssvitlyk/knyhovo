@@ -4,10 +4,12 @@ import { ValidationError } from '../errors.js';
 /**
  * Validation for `GET /api/search` query parameters.
  *
- * Rules (Search Results v1.0):
+ * Rules (Search Results v1.0, sort extended by Search Sort v1.1):
  * - `q`: required; trimmed; must be non-empty after trimming.
  * - `page`: integer >= 1; defaults to 1.
  * - `pageSize`: integer in [1, 50]; defaults to 20.
+ * - `sort`: one of `price_asc` | `popular` | `newest`; defaults to `price_asc`
+ *   (backwards-compatible with the pre-sort behaviour).
  *
  * Query string values arrive as strings, so numeric params are coerced.
  */
@@ -15,6 +17,7 @@ const searchQuerySchema = z.object({
   q: z.string().trim().min(1),
   page: z.coerce.number().int().min(1).default(1),
   pageSize: z.coerce.number().int().min(1).max(50).default(20),
+  sort: z.enum(['price_asc', 'popular', 'newest']).default('price_asc'),
 });
 
 export type SearchParams = z.infer<typeof searchQuerySchema>;

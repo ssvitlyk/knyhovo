@@ -49,5 +49,6 @@ Web: `pnpm --filter @knyhovo/web dev` (потребує API на :3000 для р
 | [docs/prd/knigoland-provider.md](docs/prd/knigoland-provider.md) | Чорновик |
 | [docs/prd/bookclub-provider.md](docs/prd/bookclub-provider.md) | Чорновик |
 | [docs/prd/book-metadata.md](docs/prd/book-metadata.md) | Затверджено |
+| [docs/prd/search-sort.md](docs/prd/search-sort.md) | Затверджено |
 | [docs/prd/nashformat-provider.md](docs/prd/nashformat-provider.md) | Deferred/Blocked |
 | [docs/prd/ai-discovery.md](docs/prd/ai-discovery.md) | Stub (future) |

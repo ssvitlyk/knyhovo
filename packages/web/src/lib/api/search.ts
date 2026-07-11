@@ -1,6 +1,13 @@
 import { apiBaseUrl } from './env';
 import type { SearchResponseDto } from './types';
 
+/**
+ * `sort` values accepted by `GET /api/search` (search-sort PRD); UI ids map
+ * 1:1 to the API. Single source of truth — reused by `SortControls`,
+ * `Pagination` and the `/search` page for URL parsing.
+ */
+export type SearchSort = 'price_asc' | 'popular' | 'newest';
+
 /** API default page size (packages/api/src/search/schema.ts). */
 export const DEFAULT_PAGE_SIZE = 20;
 
@@ -22,6 +29,7 @@ export interface SearchArgs {
   readonly q: string;
   readonly page?: number;
   readonly pageSize?: number;
+  readonly sort?: SearchSort;
 }
 
 /**
@@ -34,8 +42,10 @@ export async function searchBooks({
   q,
   page = 1,
   pageSize = DEFAULT_PAGE_SIZE,
+  sort,
 }: SearchArgs): Promise<SearchResponseDto> {
   const params = new URLSearchParams({ q, page: String(page), pageSize: String(pageSize) });
+  if (sort) params.set('sort', sort);
   const url = `${apiBaseUrl()}/api/search?${params.toString()}`;
 
   const controller = new AbortController();

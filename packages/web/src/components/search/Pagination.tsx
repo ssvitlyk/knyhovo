@@ -3,25 +3,29 @@
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ds/Button';
 import { getPageItems, PAGINATION_ELLIPSIS } from '@/lib/pagination';
+import type { SearchSort } from '@/lib/api/search';
 
 export interface PaginationProps {
   readonly query: string;
   readonly page: number;
   readonly totalPages: number;
+  /** Current sort (search-sort PRD); preserved across page navigation, omitted when default (`price_asc`). */
+  readonly sort?: SearchSort;
 }
 
 /**
  * Frozen pagination control. Page links update the `page` URL param (preserving
- * `q`) and smooth-scroll to top. Prev/next are `secondary sm`, page numbers
- * `ghost sm`, the current page `primary sm` with `aria-current="page"`. Hidden
- * when there is a single page.
+ * `q` and, when non-default, `sort`) and smooth-scroll to top. Prev/next are
+ * `secondary sm`, page numbers `ghost sm`, the current page `primary sm` with
+ * `aria-current="page"`. Hidden when there is a single page.
  */
-export function Pagination({ query, page, totalPages }: PaginationProps): React.JSX.Element | null {
+export function Pagination({ query, page, totalPages, sort }: PaginationProps): React.JSX.Element | null {
   const router = useRouter();
   if (totalPages <= 1) return null;
 
   const goTo = (next: number): void => {
-    router.push(`/search?q=${encodeURIComponent(query)}&page=${next}`);
+    const sortParam = sort && sort !== 'price_asc' ? `&sort=${sort}` : '';
+    router.push(`/search?q=${encodeURIComponent(query)}&page=${next}${sortParam}`);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
