@@ -31,6 +31,20 @@ describe('Pagination', () => {
     expect(push).toHaveBeenCalledWith('/search?q=%D0%BF%D1%81%D0%B8%D1%85%D0%BE%D0%BB%D0%BE%D0%B3%D1%96%D1%8F&page=2');
   });
 
+  it('preserves a non-default sort in page navigation', () => {
+    render(<Pagination query="психологія" page={4} totalPages={24} sort="popular" />);
+    fireEvent.click(screen.getByRole('button', { name: '2' }));
+    expect(push).toHaveBeenCalledWith(
+      '/search?q=%D0%BF%D1%81%D0%B8%D1%85%D0%BE%D0%BB%D0%BE%D0%B3%D1%96%D1%8F&page=2&sort=popular',
+    );
+  });
+
+  it('omits the sort param for the default price_asc', () => {
+    render(<Pagination query="психологія" page={4} totalPages={24} sort="price_asc" />);
+    fireEvent.click(screen.getByRole('button', { name: '2' }));
+    expect(push).toHaveBeenCalledWith('/search?q=%D0%BF%D1%81%D0%B8%D1%85%D0%BE%D0%BB%D0%BE%D0%B3%D1%96%D1%8F&page=2');
+  });
+
   it('disables Назад on the first page and Далі on the last', () => {
     const { rerender } = render(<Pagination query="x" page={1} totalPages={24} />);
     expect(screen.getByRole('button', { name: '← Назад' })).toBeDisabled();

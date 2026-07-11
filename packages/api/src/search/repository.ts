@@ -20,6 +20,7 @@ export interface CanonicalBookRow {
   readonly id: string;
   readonly title: string;
   readonly author: string;
+  readonly createdAt: Date;
   readonly listings: readonly ListingRow[];
 }
 
@@ -45,4 +46,32 @@ export async function searchCanonicalBooks(
     },
     include: { listings: true },
   });
+}
+
+/**
+ * Wishlist count per canonical book, for the given book ids only.
+ *
+ * Used exclusively by the `sort=popular` ordering in the service layer — never
+ * fetched otherwise, since it's an extra query beyond the base search match.
+ * Mirrors the `findWishlistCounts` pattern in the collections repository
+ * (same `groupBy`/`_count` shape) but is kept local to search so the two
+ * modules don't share an import.
+ */
+export async function findWishlistCountsForBooks(
+  prisma: PrismaClient,
+  bookIds: readonly string[],
+): Promise<Map<string, number>> {
+  if (bookIds.length === 0) {
+    return new Map();
+  }
+  const rows = await prisma.wishlistItem.groupBy({
+    by: ['canonicalBookId'],
+    where: { canonicalBookId: { in: [...bookIds] } },
+    _count: { _all: true },
+  });
+  const counts = new Map<string, number>();
+  for (const row of rows) {
+    counts.set(row.canonicalBookId, row._count._all);
+  }
+  return counts;
 }

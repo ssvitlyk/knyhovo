@@ -29,7 +29,19 @@ interface FindManyArgs {
   where?: { OR?: { title?: { contains?: string }; author?: { contains?: string } }[] };
 }
 
-function makeFakePrisma(books: FakeBook[], listings: FakeListing[]): PrismaClient {
+interface GroupByArgs {
+  by: ['canonicalBookId'];
+  where?: { canonicalBookId?: { in?: string[] } };
+  _count: { _all: true };
+}
+
+// wishlist items keyed by canonicalBookId → count; set per-test via the
+// `wishlistCounts` map passed to `makeFakePrisma`.
+function makeFakePrisma(
+  books: FakeBook[],
+  listings: FakeListing[],
+  wishlistCounts: Record<string, number> = {},
+): PrismaClient {
   const db = {
     canonicalBook: {
       findMany: vi.fn(async (args: FindManyArgs) => {
@@ -47,14 +59,22 @@ function makeFakePrisma(books: FakeBook[], listings: FakeListing[]): PrismaClien
           }));
       }),
     },
+    wishlistItem: {
+      groupBy: vi.fn(async (args: GroupByArgs) => {
+        const ids = args.where?.canonicalBookId?.in ?? [];
+        return ids
+          .filter((id) => (wishlistCounts[id] ?? 0) > 0)
+          .map((id) => ({ canonicalBookId: id, _count: { _all: wishlistCounts[id]! } }));
+      }),
+    },
   };
   return db as unknown as PrismaClient;
 }
 
 const FIXED_DATE = new Date('2026-01-01T00:00:00.000Z');
 
-function book(id: string, title: string, author: string): FakeBook {
-  return { id, title, author, isbn: null, createdAt: FIXED_DATE };
+function book(id: string, title: string, author: string, createdAt: Date = FIXED_DATE): FakeBook {
+  return { id, title, author, isbn: null, createdAt };
 }
 
 function listing(
@@ -83,8 +103,12 @@ const LISTINGS = [
   listing('l3', 'b', 'YAKABOO', 15000),
 ];
 
-function appWith(books: FakeBook[], listings: FakeListing[]) {
-  return buildApp(makeFakePrisma(books, listings));
+function appWith(
+  books: FakeBook[],
+  listings: FakeListing[],
+  wishlistCounts: Record<string, number> = {},
+) {
+  return buildApp(makeFakePrisma(books, listings, wishlistCounts));
 }
 
 describe('GET /api/search', () => {
@@ -330,5 +354,137 @@ describe('GET /api/search', () => {
       query: { q: 'Кобзар', pageSize: '0' },
     });
     expect(res.statusCode).toBe(400);
+  });
+
+  // ── sort ─────────────────────────────────────────────────────────────────
+  it('returns 400 for an invalid sort value', async () => {
+    const app = appWith(BOOKS, LISTINGS);
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/search',
+      query: { q: 'Кобзар', sort: 'bogus' },
+    });
+    expect(res.statusCode).toBe(400);
+  });
+
+  it('sorts by ascending lowest price when sort=price_asc is explicit (same as default)', async () => {
+    const books = [
+      book('x', 'Sort X', 'A'),
+      book('y', 'Sort Y', 'B'),
+      book('z', 'Sort Z', 'C'),
+    ];
+    const listings = [
+      listing('lx', 'x', 'YAKABOO', 50000),
+      listing('ly', 'y', 'YAKABOO', 10000),
+      listing('lz', 'z', 'YAKABOO', 30000),
+    ];
+    const app = appWith(books, listings);
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/search',
+      query: { q: 'Sort', sort: 'price_asc' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().items.map((i: { id: string }) => i.id)).toEqual(['y', 'z', 'x']);
+  });
+
+  it('sorts by descending wishlist count for sort=popular', async () => {
+    const books = [
+      book('p1', 'Popular One', 'A'),
+      book('p2', 'Popular Two', 'B'),
+      book('p3', 'Popular Three', 'C'),
+    ];
+    const listings = [
+      listing('pl1', 'p1', 'YAKABOO', 10000),
+      listing('pl2', 'p2', 'YAKABOO', 20000),
+      listing('pl3', 'p3', 'YAKABOO', 30000),
+    ];
+    // p2 most wishlisted, p3 least (zero → not present in groupBy rows at all).
+    const app = appWith(books, listings, { p1: 2, p2: 5 });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/search',
+      query: { q: 'Popular', sort: 'popular' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().items.map((i: { id: string }) => i.id)).toEqual(['p2', 'p1', 'p3']);
+  });
+
+  it('breaks popular ties by ascending price, then ascending id', async () => {
+    const books = [
+      book('tie-b', 'Popular Tie', 'A'),
+      book('tie-a', 'Popular Tie', 'B'),
+      book('tie-c', 'Popular Tie', 'C'),
+    ];
+    const listings = [
+      // Same wishlist count (1) for all three; tie-b and tie-a share price too.
+      listing('tl-b', 'tie-b', 'YAKABOO', 10000),
+      listing('tl-a', 'tie-a', 'YAKABOO', 10000),
+      listing('tl-c', 'tie-c', 'YAKABOO', 5000),
+    ];
+    const app = appWith(books, listings, { 'tie-b': 1, 'tie-a': 1, 'tie-c': 1 });
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/search',
+      query: { q: 'Popular Tie', sort: 'popular' },
+    });
+    expect(res.statusCode).toBe(200);
+    // Same count → cheapest price first (tie-c), then price tie broken by id asc.
+    expect(res.json().items.map((i: { id: string }) => i.id)).toEqual([
+      'tie-c',
+      'tie-a',
+      'tie-b',
+    ]);
+  });
+
+  it('sorts by descending createdAt for sort=newest', async () => {
+    const older = new Date('2025-01-01T00:00:00.000Z');
+    const newer = new Date('2026-06-01T00:00:00.000Z');
+    const newest = new Date('2026-07-01T00:00:00.000Z');
+    const books = [
+      book('n1', 'Newest One', 'A', older),
+      book('n2', 'Newest Two', 'B', newest),
+      book('n3', 'Newest Three', 'C', newer),
+    ];
+    const listings = [
+      listing('nl1', 'n1', 'YAKABOO', 10000),
+      listing('nl2', 'n2', 'YAKABOO', 20000),
+      listing('nl3', 'n3', 'YAKABOO', 30000),
+    ];
+    const app = appWith(books, listings);
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/search',
+      query: { q: 'Newest', sort: 'newest' },
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().items.map((i: { id: string }) => i.id)).toEqual(['n2', 'n3', 'n1']);
+  });
+
+  it('breaks newest ties by ascending price, then ascending id', async () => {
+    const same = new Date('2026-01-01T00:00:00.000Z');
+    const books = [
+      book('nt-b', 'Newest Tie', 'A', same),
+      book('nt-a', 'Newest Tie', 'B', same),
+      book('nt-c', 'Newest Tie', 'C', same),
+    ];
+    const listings = [
+      listing('ntl-b', 'nt-b', 'YAKABOO', 10000),
+      listing('ntl-a', 'nt-a', 'YAKABOO', 10000),
+      listing('ntl-c', 'nt-c', 'YAKABOO', 5000),
+    ];
+    const app = appWith(books, listings);
+    const res = await app.inject({
+      method: 'GET',
+      url: '/api/search',
+      query: { q: 'Newest Tie', sort: 'newest' },
+    });
+    expect(res.statusCode).toBe(200);
+    // Same createdAt → cheapest price first (nt-c), then price tie broken by id asc.
+    expect(res.json().items.map((i: { id: string }) => i.id)).toEqual([
+      'nt-c',
+      'nt-a',
+      'nt-b',
+    ]);
   });
 });

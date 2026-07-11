@@ -3,6 +3,7 @@ import { knBookWord } from '@/lib/format';
 import { lookupCorrection, type Correction } from '@/lib/search/corrections';
 import { findAuthorMatch } from '@/lib/search/authorMatch';
 import { readPartialIndexMeta } from '@/lib/search/partialIndex';
+import { resolveSearchSort, type SearchSort } from '@/components/search/constants';
 import { SearchControl } from '@/components/search/SearchControl';
 import { SortControls } from '@/components/search/SortControls';
 import { ResultsGrid } from '@/components/search/ResultsGrid';
@@ -30,6 +31,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps): Pro
   const params = await searchParams;
   const query = firstParam(params['q']).trim();
   const page = parsePage(firstParam(params['page']));
+  const sort = resolveSearchSort(firstParam(params['sort']) || undefined);
 
   // W7a auto-correction: a curated static typo → corrected query. The `exact=1`
   // flag (set by the reversible "натомість шукати оригінал" link) disables it.
@@ -53,7 +55,7 @@ export default async function SearchPage({ searchParams }: SearchPageProps): Pro
       <SearchControl initialQuery={query} />
 
       {query ? (
-        await Results({ query: effectiveQuery, page, correction })
+        await Results({ query: effectiveQuery, page, sort, correction })
       ) : (
         <EmptyState title="Почніть пошук книг" text="Введіть назву книги, автора або ISBN у поле вище." />
       )}
@@ -65,13 +67,15 @@ export default async function SearchPage({ searchParams }: SearchPageProps): Pro
 async function Results({
   query,
   page,
+  sort,
   correction,
 }: {
   query: string;
   page: number;
+  sort: SearchSort;
   correction: Correction | null;
 }): Promise<React.JSX.Element> {
-  const data = await searchBooks({ q: query, page });
+  const data = await searchBooks({ q: query, page, sort: sort === 'price_asc' ? undefined : sort });
   const isEmpty = data.totalItems === 0;
 
   // Optional progressive enhancement: only renders when the API exposes
@@ -90,7 +94,7 @@ async function Results({
         <p className="results__summary" aria-live="polite">
           {isEmpty ? 'Нічого не знайдено' : `Знайдено ${data.totalItems} ${knBookWord(data.totalItems)}`}
         </p>
-        <SortControls />
+        <SortControls query={query} sort={sort} />
       </div>
 
       {partial ? <PartialIndexNotice responded={partial.responded} total={partial.total} /> : null}
@@ -101,7 +105,7 @@ async function Results({
         <>
           {authorMatch ? <AuthorJump author={authorMatch} /> : null}
           <ResultsGrid items={data.items} />
-          <Pagination query={query} page={data.page} totalPages={data.totalPages} />
+          <Pagination query={query} page={data.page} totalPages={data.totalPages} sort={sort} />
         </>
       )}
     </>
