@@ -129,6 +129,7 @@ model CanonicalBook {
 
   @@index([isbn])
   @@index([genreId])
+  @@index([createdAt])
   @@map("canonical_books")
 }
 
@@ -205,6 +206,13 @@ model ProviderListing {
 
   @@unique([provider, url])
   @@index([provider, canonicalBookId])
+  // `canonical_books ⋈ provider_listings` on canonicalBookId alone is the join
+  // backbone of every collections feed query (repository.ts `candidateCte`) —
+  // the composite index above is led by `provider` and can't serve a lookup
+  // keyed purely on canonicalBookId (PRD C1 §3.3 flagged this as optional
+  // pending EXPLAIN; in practice every feed query depends on it, not just the
+  // min-price aggregate).
+  @@index([canonicalBookId])
   @@map("provider_listings")
 }
 
@@ -317,6 +325,7 @@ model WishlistItem {
   alert         Alert?
 
   @@unique([userId, canonicalBookId])
+  @@index([canonicalBookId])
   @@map("wishlist_items")
 }
 

@@ -146,6 +146,16 @@ export function itemsFor(collectionId: string, bookIds: string[]): FakeCollectio
   return bookIds.map((id, i) => ({ collectionId, canonicalBookId: id, sortOrder: i }));
 }
 
+/** Backing `FakeDb` for a client built by {@link makeFakePrisma}, for test-only repository mocking (see `fake-feed-repository.ts`). */
+const dbByClient = new WeakMap<object, FakeDb>();
+
+/** Retrieve the `FakeDb` a fake Prisma client was built from. Throws if `prisma` isn't a fake client. */
+export function fakeDbOf(prisma: unknown): FakeDb {
+  const db = dbByClient.get(prisma as object);
+  if (!db) throw new Error('fakeDbOf: not a fake Prisma client (was it built by makeFakePrisma?)');
+  return db;
+}
+
 export function makeFakePrisma(db: FakeDb): PrismaClient {
   const client = {
     canonicalBook: {
@@ -175,11 +185,22 @@ export function makeFakePrisma(db: FakeDb): PrismaClient {
       findUnique: vi.fn(async ({ where }: { where: { slug: string } }) => {
         return db.collections.find((c) => c.slug === where.slug) ?? null;
       }),
+      findFirst: vi.fn(async ({ where }: { where: { slug?: string; type?: string } }) => {
+        return (
+          db.collections.find(
+            (c) => (where.slug === undefined || c.slug === where.slug) && (where.type === undefined || c.type === where.type),
+          ) ?? null
+        );
+      }),
       findMany: vi.fn(
-        async (args: { where?: { type?: string; isActive?: boolean } }) => {
+        async (args: { where?: { type?: string; isActive?: boolean; slug?: { in: string[] } } }) => {
           let rows = db.collections;
           if (args?.where?.type) rows = rows.filter((c) => c.type === args.where?.type);
           if (args?.where?.isActive) rows = rows.filter((c) => c.isActive);
+          if (args?.where?.slug?.in) {
+            const slugs = new Set(args.where.slug.in);
+            rows = rows.filter((c) => slugs.has(c.slug));
+          }
           return [...rows].sort((a, b) => {
             if (a.type !== b.type) return a.type < b.type ? -1 : 1;
             return a.displayOrder - b.displayOrder;
@@ -194,11 +215,25 @@ export function makeFakePrisma(db: FakeDb): PrismaClient {
           .sort((a, b) => a.sortOrder - b.sortOrder)
           .map((i) => ({ canonicalBookId: i.canonicalBookId }));
       }),
+      groupBy: vi.fn(async ({ where }: { where?: { collectionId?: { in: string[] } } } = {}) => {
+        const ids = where?.collectionId?.in ? new Set(where.collectionId.in) : null;
+        const counts = new Map<string, number>();
+        for (const i of db.collectionItems) {
+          if (ids && !ids.has(i.collectionId)) continue;
+          counts.set(i.collectionId, (counts.get(i.collectionId) ?? 0) + 1);
+        }
+        return [...counts.entries()].map(([collectionId, count]) => ({
+          collectionId,
+          _count: { _all: count },
+        }));
+      }),
     },
     wishlistItem: {
-      groupBy: vi.fn(async () => {
+      groupBy: vi.fn(async ({ where }: { where?: { canonicalBookId?: { in: string[] } } } = {}) => {
+        const ids = where?.canonicalBookId?.in ? new Set(where.canonicalBookId.in) : null;
         const counts = new Map<string, number>();
         for (const w of db.wishlistItems) {
+          if (ids && !ids.has(w.canonicalBookId)) continue;
           counts.set(w.canonicalBookId, (counts.get(w.canonicalBookId) ?? 0) + 1);
         }
         return [...counts.entries()].map(([canonicalBookId, count]) => ({
@@ -239,5 +274,6 @@ export function makeFakePrisma(db: FakeDb): PrismaClient {
       }),
     },
   };
+  dbByClient.set(client, db);
   return client as unknown as PrismaClient;
 }

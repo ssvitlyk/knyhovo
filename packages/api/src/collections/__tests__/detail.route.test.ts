@@ -1,7 +1,13 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { buildApp } from '../../app.js';
 import { clearCache } from '../cache.js';
 import { emptyDb, makeFakePrisma, book, listing, collection } from './fake-prisma.js';
+
+vi.mock('../repository.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../repository.js')>();
+  const { fakeFeedRepositoryOverrides } = await import('./fake-feed-repository.js');
+  return { ...actual, ...fakeFeedRepositoryOverrides() };
+});
 
 async function buildTestApp(db: ReturnType<typeof emptyDb>) {
   const prisma = makeFakePrisma(db);

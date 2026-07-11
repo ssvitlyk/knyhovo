@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { Mock } from 'vitest';
 import { buildApp } from '../../app.js';
 import { clearCache } from '../cache.js';
@@ -11,6 +11,12 @@ import {
   itemsFor,
 } from './fake-prisma.js';
 import type { FakeDb } from './fake-prisma.js';
+
+vi.mock('../repository.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../repository.js')>();
+  const { fakeFeedRepositoryOverrides } = await import('./fake-feed-repository.js');
+  return { ...actual, ...fakeFeedRepositoryOverrides() };
+});
 
 /** Loosely-typed vitest mock function, for asserting call counts on the fake Prisma spies. */
 type MockFn = Mock<(...args: unknown[]) => unknown>;
@@ -175,7 +181,7 @@ describe('GET /api/collections/hub', () => {
     });
   });
 
-  it('single-scan perf: canonicalBook.findMany <= 2, wishlistItem.groupBy and canonicalBook.groupBy exactly 1', async () => {
+  it('single-scan perf: canonicalBook.findMany <= 2, canonicalBook.groupBy exactly 1, wishlistItem.groupBy exactly 2 (cache build + live re-read)', async () => {
     const db = fullHubDb();
     const prisma = makeFakePrisma(db);
     const spies = prisma as unknown as {
@@ -187,7 +193,10 @@ describe('GET /api/collections/hub', () => {
     expect(res.statusCode).toBe(200);
 
     expect(spies.canonicalBook.findMany.mock.calls.length).toBeLessThanOrEqual(2);
-    expect(spies.wishlistItem.groupBy.mock.calls.length).toBe(1);
+    // 1 call while building the cached hub payload (mapPage's preview books) +
+    // 1 more from `getHub`'s live wishlistCount re-read after the cache read —
+    // wishlistCount must never sit stale for the hub cache's TTL (PRD §3.2).
+    expect(spies.wishlistItem.groupBy.mock.calls.length).toBe(2);
     expect(spies.canonicalBook.groupBy.mock.calls.length).toBe(1);
   });
 });

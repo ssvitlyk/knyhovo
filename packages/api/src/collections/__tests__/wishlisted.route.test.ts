@@ -1,7 +1,13 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { buildApp } from '../../app.js';
 import { clearCache } from '../cache.js';
 import type { AuthDeps } from '../../auth/service.js';
+
+vi.mock('../repository.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../repository.js')>();
+  const { fakeFeedRepositoryOverrides } = await import('./fake-feed-repository.js');
+  return { ...actual, ...fakeFeedRepositoryOverrides() };
+});
 import type { AuthConfig } from '../../auth/config.js';
 import type { Mailer } from '../../auth/mailer.js';
 import { hashToken } from '../../auth/crypto.js';
