@@ -330,12 +330,23 @@ function candidateCte(joinKind: 'INNER' | 'LEFT', lookbackCutoff: Date): Prisma.
           WHERE ph2.provider_listing_id = lp.listing_id AND ph2.recorded_at <= ${lookbackCutoff}
           ORDER BY ph2.recorded_at DESC LIMIT 1
         ) AS lookback_price,
+        -- The first two prices are enough to prove both conditions: the listing has
+        -- ≥2 history points, and its smallest historical price is not below the
+        -- current price. ORDER BY + LIMIT can stop after two entries in the
+        -- (provider_listing_id, price_amount) index regardless of history depth.
         (
-          SELECT COUNT(*)::int FROM price_history ph3 WHERE ph3.provider_listing_id = lp.listing_id
-        ) AS history_count,
-        (
-          SELECT MIN(ph4.price_amount) FROM price_history ph4 WHERE ph4.provider_listing_id = lp.listing_id
-        ) AS min_historical
+          SELECT h.cnt >= 2 AND h.mn >= lp.price_amount
+          FROM (
+            SELECT COUNT(*)::int AS cnt, MIN(t.price_amount) AS mn
+            FROM (
+              SELECT ph3.price_amount
+              FROM price_history ph3
+              WHERE ph3.provider_listing_id = lp.listing_id
+              ORDER BY ph3.price_amount ASC
+              LIMIT 2
+            ) t
+          ) h
+        ) AS is_all_time_low
       FROM listing_pick lp
       LEFT JOIN wishlist_counts wc ON wc.canonical_book_id = lp.book_id
     ),
@@ -348,8 +359,7 @@ function candidateCte(joinKind: 'INNER' | 'LEFT', lookbackCutoff: Date): Prisma.
         -- value stays a mapper concern (DTO discountPercent), never an ORDER BY key.
         CASE WHEN e.highest_historical IS NOT NULL
           THEN (e.highest_historical - e.price_amount)::float8 / e.highest_historical
-          ELSE NULL END AS discount_exact,
-        (e.history_count >= 2 AND LEAST(e.min_historical, e.price_amount) = e.price_amount) AS is_all_time_low
+          ELSE NULL END AS discount_exact
       FROM enriched e
     )
   `;
