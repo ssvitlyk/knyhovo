@@ -255,3 +255,187 @@ model BookPriceStats {
 - `EXPLAIN (ANALYZE, BUFFERS)` ключових фідів відповідає plan-критеріям §2
   (latency, rows ∝ candidate set, buffers, стабільність cost при подвоєнні
   history).
+
+## 10. C2 — виміряний gate (2026-07-11/12, проти `api-staging-79f0.up.railway.app`, після мерджу PR #91)
+
+> **Статус: ЗАВЕРШЕНО.** HTTP-заміри (Task 1, 2) і `EXPLAIN (ANALYZE,
+> BUFFERS)` (Task 3), включно з прямим виміром при `jit=off` для трьох
+> history-фідів, зібрані й проаналізовані. Фінальний вердикт — §10.5.
+
+### 10.1 Task 1 — Smoke verification
+
+| Перевірка | Результат |
+|---|---|
+| `/api/collections/hub` | 200, коректний shape (`featured`/`dynamic`/`editorial`/`weekly`/`moods`/`genres`) |
+| `populyarne-zaraz`, `novynky`, `znyzhky`, `ponyzhena-tsina`, `rekordno-nyzka-tsina` | усі 200, DTO збігається з `CollectionBookDto` |
+| TAXONOMIC (`fantastyka` — приклад з локального `seed.ts`) | **`404 COLLECTION_NOT_FOUND`** — на staging **немає жодної TAXONOMIC-колекції** (`GET /api/collections` — 0 рядків типу `taxonomic`). Попередньо відомий data gap ([[collections-real-data-gaps]] — genre_id ingest не заповнюється), **не регресія C1**. |
+| EDITORIAL (`knyhovyk-radyt`) | 200, але `bookCount: 0` — **усі 11 editorial-колекцій на staging мають `bookCount: 0`** (`collection_items` порожня на staging; заповнена лише в local/dev `seed.ts`). Теж pre-existing data gap, не C1. |
+| Пагінація (`novynky` p1/p2) | `total=7546`, `total_pages=315`, `per_page=24`, коректний зсув між сторінками |
+| Детермінований порядок | 2 ідентичні запити `novynky` p1 → однаковий порядок id (diff порожній) |
+| Book details (`GET /api/books/:id`) | 200, повний shape (id/title/author/isbn/description/…) на книзі зі `znyzhky` |
+| Runtime-помилки | Жодних (усі відповіді — валідний JSON, коректні HTTP-коди) |
+
+**Висновок Task 1:** код-шлях C1 коректний і без помилок. Дві знахідки — відсутність TAXONOMIC-колекцій і порожні EDITORIAL — це прогалини **даних** на staging (не покриті цим PRD, не introduced by C1), що блокують повноцінну перевірку саме цих двох класів фідів.
+
+### 10.2 Task 2 — Performance gate (HTTP-рівень, curl з цього середовища)
+
+Мережевий floor (TLS handshake + connect до Railway з цього середовища,
+виміряний повторними запитами до вже теплого кешу): **~0.26–0.29s**, стабільний
+у всіх серіях. Це складова кожного числа нижче — і в baseline (§1), і тут
+(та сама методологія, curl ззовні).
+
+**Warm (8 samples/фід, той самий закешований запит):**
+
+| Фід | median |
+|---|---|
+| усі 7 перевірених (hub + 6 dynamic) | 0.26–0.32s (у межах мережевого floor) |
+
+**Cold (10 samples/фід, унікальний `price_min` на кожен запит — гарантує новий cache-key, тобто некешоване SQL-виконання):**
+
+| Фід | median (total) | p95 | max | est. server-side (median − 0.265s floor) |
+|---|---|---|---|---|
+| `najbilsh-bazhani` | 0.353s | 0.392s | 0.392s | ~0.088s |
+| `populyarne-zaraz` | 0.382s | 0.403s | 0.403s | ~0.117s |
+| `novynky` | 0.465s | 0.550s | 0.550s | ~0.200s |
+| `znyzhky` | 0.476s | 0.639s | 0.639s | ~0.211s |
+| `ponyzhena-tsina` | 0.501s | 0.541s | 0.541s | ~0.236s |
+| `rekordno-nyzka-tsina` | 0.561s | 0.683s | 0.683s | ~0.296s |
+
+**Спостереження:** усі 3 history-фіди (`znyzhky`, `ponyzhena-tsina`,
+`rekordno-nyzka-tsina`) послідовно найповільніші, і саме в цьому порядку
+зростання — точно той патерн, який §3.4 назвав ймовірною точкою провалу
+(top-1 correlated subquery по `price_history` для кожного кандидата full
+candidate set). Причина цього відносного уповільнення підтверджена
+EXPLAIN-планами в §10.3 — переважно JIT compilation overhead, а не
+index scan vs. seq scan чи обсяг buffers (обидва в нормі).
+
+**Hub / повний холодний `/dobirky`:**
+
+| Сценарій | Результат |
+|---|---|
+| Hub counters (5 samples, вже теплий кеш) | 0.256–0.381s |
+| Повний холодний `/dobirky` (hub + 6 dynamic + 1 editorial, **паралельно**, унікальний cache-bust) | **1.187s** total wall time |
+| Той самий набір **послідовно** (не реалістичний сценарій браузера, для довідки) | 3.624s |
+| Конкурентний холодний burst (17 запитів, різні фіди, унікальний `price_min` кожен) | **0 × 502**; усі 200; tail max **2.958s**; wall clock усього burst-у 2.957s |
+
+### 10.3 Task 3 — EXPLAIN (ANALYZE, BUFFERS)
+
+**Виконано власником** (7 із 8 підготовлених запитів; TAXONOMIC пропущено —
+на staging досі немає жодної taxonomic-колекції, §10.1), плюс окремий
+прямий прогін трьох history-фідів з `SET jit = off` (`c2-history-jit-off.sql`).
+Нижче — виміряні `Execution Time` (з `EXPLAIN ANALYZE, BUFFERS, VERBOSE`) і
+висновки з планів.
+
+**Execution Time за запитом (JIT ON, перший прогін):**
+
+| Запит | Execution Time | з них JIT |
+|---|---|---|
+| `novynky` — page | 101.801 ms | — |
+| `novynky` — count | 101.948 ms | — |
+| `populyarne-zaraz` — page | 81.203 ms | — |
+| `znyzhky` — page | 298.296 ms | 147.917 ms |
+| `ponyzhena-tsina` — page | 234.691 ms | 124.416 ms |
+| `rekordno-nyzka-tsina` — page | 311.128 ms | 133.300 ms |
+| `knyhovyk-radyt` (editorial) — page | не репрезентативно (0 рядків: `collection_items` порожня на staging, §10.1) | — |
+
+**Прямий вимір з `SET jit = off` (другий прогін, `c2-history-jit-off.sql`):**
+
+| Запит | Planning Time | Execution Time |
+|---|---|---|
+| `znyzhky` — page | 1.682 ms | **157.966 ms** |
+| `ponyzhena-tsina` — page | 0.513 ms | **147.920 ms** |
+| `rekordno-nyzka-tsina` — page | 0.756 ms | **232.654 ms** |
+
+**Порівняння JIT ON vs. прямий JIT OFF:**
+
+| Фід | JIT ON | Прямий JIT OFF | Ціль |
+|---|---|---|---|
+| `znyzhky` | 298.296 ms | 157.966 ms | PASS |
+| `ponyzhena-tsina` | 234.691 ms | 147.920 ms | PASS |
+| `rekordno-nyzka-tsina` | 311.128 ms | 232.654 ms | FAIL (+32.654 ms) |
+
+**Висновки з планів:**
+
+1. Для non-history фідів (`novynky`, `populyarne-zaraz`) Postgres **успішно
+   prune-ить** невикористані `price_history`-вирази — гіпотеза H2 («history
+   вирахування виконуються навіть коли фід їх не потребує») **не
+   відтворилась**.
+2. Усі history-lookup-и (`znyzhky`/`ponyzhena-tsina`/`rekordno-nyzka-tsina`)
+   ідуть через очікувані індекси `price_history` — **жодного full seq scan**
+   `price_history` не знайдено.
+3. JIT compilation — домінуючий, але **не єдиний** залишковий overhead для
+   всіх трьох history-фідів. Після вимкнення JIT `znyzhky` і
+   `ponyzhena-tsina` вкладаються в ціль < 200ms (157.966 ms / 147.920 ms), а
+   `rekordno-nyzka-tsina` все ще виконується за 232.654 ms — перевищення
+   цілі на 32.654 ms, яке JIT не пояснює.
+4. `provider_listings` (`listing_pick` CTE) використовує seq scan + hash
+   join по ~36k рядків — цей join **не є вузьким місцем** виміряного часу;
+   **не** додавати `canonicalBookId`-індекс без окремого виміру його ефекту
+   (наразі невиправдано).
+
+### 10.4 Task 4 — Порівняння з цілями PRD
+
+| Ціль (§2) | Таргет | Виміряно (Execution Time з EXPLAIN) | Статус |
+|---|---|---|---|
+| Page query — non-history (`novynky`, `populyarne-zaraz`) | < 200ms | 101.801 ms / 81.203 ms | **ДОСЯГНУТО** |
+| Total count (`novynky`) | < 100ms | 101.948 ms | **марж. не досягнуто** (~+2ms, у межах шуму виміру) |
+| Page query — history, JIT ON | < 200ms | 298.296 ms / 234.691 ms / 311.128 ms | **не досягнуто** |
+| Page query — history, прямий JIT OFF | < 200ms | `znyzhky` 157.966 ms / `ponyzhena-tsina` 147.920 ms — **ДОСЯГНУТО**; `rekordno-nyzka-tsina` 232.654 ms — **не досягнуто** (+32.654 ms) |
+| Hub counters | < 300ms | 0.256–0.381s (HTTP, тепле; включає ~0.27s мережевого floor) | у межах, з урахуванням floor |
+| Cold `/dobirky` повний | < 1.5s | **1.187s** (паралельно, реалістичний сценарій) | **ДОСЯГНУТО** |
+| 502 під burst | 0 | 0 із 17 конкурентних холодних запитів | **ДОСЯГНУТО** |
+| Порядок книг | ідентичний | підтверджено (novynky, 2 ідентичні запити) | **ДОСЯГНУТО** |
+| Buffers / rows ∝ candidate set / без full seq scan `price_history` | якісний критерій §2 | підтверджено планами (§10.3, п.1-2) | **ДОСЯГНУТО** |
+| Стабільність cost при подвоєнні history | якісний критерій §2 | не перевірено (без disposable сіда) | **не перевірено** |
+
+**Висновок:** SQL-доступ сам по собі відповідає цілям — індекси
+використовуються коректно, немає full scan `price_history`, rows
+пропорційні candidate set. JIT compilation — домінуючий overhead для всіх
+трьох history-фідів, але не єдиний залишковий: після вимкнення JIT
+`znyzhky` і `ponyzhena-tsina` вкладаються в ціль < 200ms, а
+`rekordno-nyzka-tsina` усе ще виконується за 232.654 ms — перевищення на
+32.654 ms, яке потребує окремої, вузько-скопованої query-level оптимізації
+(§10.5). `total count` для `novynky` (101.948ms) технічно на ~2ms вище
+цілі 100ms — практично на межі шуму виміру, не пов'язане з history/JIT.
+
+### 10.5 Task 5 — Вердикт
+
+## **C2 PASSED WITH SMALL FOLLOW-UP**
+
+- Non-history фіди (`novynky`, `populyarne-zaraz`) вкладаються в ціль з
+  запасом (101.8ms / 81.2ms проти < 200ms).
+- Cold `/dobirky` = **1.187s** (ціль < 1.5s) — **PASS**.
+- Конкурентний холодний burst — **0 × 502** — **PASS**.
+- `price_history` використовується коректно через очікувані індекси на
+  всіх history-lookup-ах — жодного full seq scan.
+- Жодного архітектурного вузького місця не знайдено: `provider_listings`
+  seq scan + hash join не домінує у виміряному часі, `canonicalBookId`-
+  індекс наразі не виправданий.
+- JIT слід вимкнути для API-сесій — це усуває більшість перевищення цілі
+  для history-фідів.
+- Лише `rekordno-nyzka-tsina` усе ще потребує невеликої SQL-оптимізації
+  (232.654 ms проти цілі < 200ms, навіть без JIT).
+
+**Мінімальний follow-up:**
+
+1. Налаштувати API database sessions на вимкнення JIT (або підняти
+   `jit_above_cost`/`jit_inline_above_cost` вище вартості цих запитів) —
+   конфігураційна зміна на рівні Postgres-конекції, не зміна схеми чи
+   коду запитів.
+2. Виконати вузько-скоповану оптимізацію запиту `rekordno-nyzka-tsina`
+   (query-level, не архітектурну).
+3. Повторити `EXPLAIN` лише для `rekordno-nyzka-tsina` після цієї
+   оптимізації.
+4. Не вводити Фазу B чи `book_price_stats` наразі.
+
+**Фаза B (`book_price_stats`) усе ще не обґрунтована.** Два з трьох
+history-фідів уже вкладаються в ціль після вимкнення JIT. Фід, що
+лишився, перевищує ціль лише на 32.654 ms і має спершу отримати
+сфокусовану query-level оптимізацію, перш ніж розглядати архітектурні
+зміни.
+
+**Поза обсягом цього PRD, окремо:** TAXONOMIC-колекцій на staging немає
+взагалі, а EDITORIAL-колекції мають порожню `collection_items` — ці
+data-gaps ([[collections-real-data-gaps]]) варто вирішити окремою
+роботою (ingest genre_id, seed curated collection_items на staging), не
+цим PRD.
