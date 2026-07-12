@@ -19,6 +19,7 @@
     "scrape": "turbo run build --filter=@knyhovo/scrapers && tsx src/scripts/run-scrape.ts",
     "scrape:wishlist": "turbo run build --filter=@knyhovo/scrapers && tsx src/scripts/run-wishlist-refresh.ts",
     "genres:sync": "tsx src/scripts/run-genre-sync.ts",
+    "genres:backfill": "tsx src/scripts/run-genre-backfill.ts",
     "build": "tsc",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
