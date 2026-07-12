@@ -173,6 +173,33 @@ describe.skipIf(!TEST_DATABASE_URL)('collections SQL feeds — Postgres equivale
         createdAt: daysAgo(55),
         listing: { priceAmount: 5040, history: [{ priceAmount: 5040, recordedAt: daysAgo(1) }] },
       },
+      // C2 follow-up (bounded two-row history probe -> is_all_time_low):
+      // >= 2 points, min-historical *equals* the current price (tie, still a low).
+      {
+        id: 'p-atl-tie',
+        title: 'All Time Low Tie',
+        createdAt: daysAgo(52),
+        listing: {
+          priceAmount: 4550,
+          history: [
+            { priceAmount: 4550, recordedAt: daysAgo(30) },
+            { priceAmount: 5500, recordedAt: daysAgo(15) },
+          ],
+        },
+      },
+      // >= 2 points, min-historical is *below* the current price -> not a new low.
+      {
+        id: 'p-atl-not-low',
+        title: 'All Time Low Not Low',
+        createdAt: daysAgo(51),
+        listing: {
+          priceAmount: 4600,
+          history: [
+            { priceAmount: 3000, recordedAt: daysAgo(30) },
+            { priceAmount: 5500, recordedAt: daysAgo(15) },
+          ],
+        },
+      },
       // Deliberate ROUNDED-discount collision: both round to 24%, but differ as
       // exact ratios — 23.636...% vs exactly 24.0%. The pre-C1 JS znyzhky order
       // used the exact float, so p-disc-round-b (24.0%) must rank above
@@ -294,6 +321,25 @@ describe.skipIf(!TEST_DATABASE_URL)('collections SQL feeds — Postgres equivale
       now: FIXED_NOW,
     });
     expect(ids).not.toContain('p-scraped-once');
+    expect(ids).toContain('p-all-time-low');
+  });
+
+  it('rekordno-nyzka-tsina: is_all_time_low equivalence cases (C2 follow-up: bounded two-row probe)', async () => {
+    const ids = await queryDynamicFeedIds(prisma, 'rekordno-nyzka-tsina', {
+      sort: 'relevance',
+      page: 1,
+      perPage: 24,
+      now: FIXED_NOW,
+    });
+    // Case 1: zero history rows (e.g. p-plain-1) -> never a low.
+    expect(ids).not.toContain('p-plain-1');
+    // Case 2: exactly 1 history row -> not enough points, regardless of price.
+    expect(ids).not.toContain('p-scraped-once');
+    // Case 4: min-historical == current price (tie) -> still an all-time low.
+    expect(ids).toContain('p-atl-tie');
+    // Case 5: min-historical < current price -> not a new low.
+    expect(ids).not.toContain('p-atl-not-low');
+    // Case 6: min-historical > current price -> an all-time low.
     expect(ids).toContain('p-all-time-low');
   });
 
