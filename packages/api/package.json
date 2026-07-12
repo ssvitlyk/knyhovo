@@ -18,6 +18,7 @@
     "start": "prisma migrate deploy && turbo run build --filter=@knyhovo/scrapers && tsx src/server.ts",
     "scrape": "turbo run build --filter=@knyhovo/scrapers && tsx src/scripts/run-scrape.ts",
     "scrape:wishlist": "turbo run build --filter=@knyhovo/scrapers && tsx src/scripts/run-wishlist-refresh.ts",
+    "genres:sync": "tsx src/scripts/run-genre-sync.ts",
     "build": "tsc",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
