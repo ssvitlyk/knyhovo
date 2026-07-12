@@ -129,8 +129,8 @@ export interface GenreBackfillResult {
   readonly ambiguousReport: AmbiguousReportAccumulator | null;
 }
 
-/** The book row shape the pass selects (PRD §8.1 step 2). */
-interface BackfillBookRow {
+/** The book row shape the pass selects (PRD §8.1 step 2). Reused by the G5 post-scrape hook. */
+export interface BackfillBookRow {
   readonly id: string;
   readonly title: string;
   readonly isbn: string | null;
@@ -149,7 +149,26 @@ interface PendingWrite {
   readonly decision: AssignmentDecision;
 }
 
-function classify(
+/** Fresh zero-valued counters. Shared with the G5 post-scrape hook. */
+export function createEmptyBackfillCounters(): BackfillCounters {
+  return {
+    processed: 0,
+    assigned: 0,
+    changed: 0,
+    cleared: 0,
+    unchanged: 0,
+    manualSkipped: 0,
+    noSignal: 0,
+    unmappedBooks: 0,
+  };
+}
+
+/**
+ * Bucket one book's decision into the running counters. Exported so the G5
+ * post-scrape hook reports the exact same counter semantics without
+ * reimplementing the classification rules.
+ */
+export function classify(
   counters: BackfillCounters,
   decision: AssignmentDecision,
   book: BackfillBookRow,
@@ -200,16 +219,7 @@ export async function runGenreBackfill(
   const unmappedReport = options.collectReports === true ? new UnmappedReportAccumulator() : null;
   const ambiguousReport = options.collectReports === true ? new AmbiguousReportAccumulator() : null;
 
-  const counters: BackfillCounters = {
-    processed: 0,
-    assigned: 0,
-    changed: 0,
-    cleared: 0,
-    unchanged: 0,
-    manualSkipped: 0,
-    noSignal: 0,
-    unmappedBooks: 0,
-  };
+  const counters: BackfillCounters = createEmptyBackfillCounters();
   const coverage: BackfillCoverage = {
     booksWithSignal: 0,
     booksWithGenre: 0,

@@ -91,7 +91,7 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      results.push({ provider: provider.name, metrics, scrapeErrors: [message] });
+      results.push({ provider: provider.name, metrics, scrapeErrors: [message], affectedCanonicalBookIds: [] });
       continue;
     }
 
@@ -118,6 +118,12 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
     );
 
     const scrapedAt = new Date(scrapeResult.scrapedAt);
+
+    // Genres-taxonomy PRD G5 §1: only books whose *category* signal could have
+    // changed this run — i.e. a real listing create/update, never an
+    // availability-only refresh (markUnavailable never touches rawCategories),
+    // and never a skipped/conflicting/failed listing.
+    const affectedCanonicalBookIds = new Set<string>();
 
     let processed = 0;
     for (const listing of scrapeResult.listings) {
@@ -174,6 +180,7 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
           metrics.providerListingsUpdated++;
           metrics.matched++;
         }
+        affectedCanonicalBookIds.add(outcome.canonicalBookId);
 
         if (outcome.priceHistoryCreated) {
           metrics.priceHistoryCreated++;
@@ -190,7 +197,12 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
       `${provider.name}: canonical matching + persist done — ` +
         `${processed}/${scrapeResult.listings.length} listings processed`,
     );
-    results.push({ provider: provider.name, metrics, scrapeErrors: scrapeResult.errors });
+    results.push({
+      provider: provider.name,
+      metrics,
+      scrapeErrors: scrapeResult.errors,
+      affectedCanonicalBookIds: [...affectedCanonicalBookIds],
+    });
   }
 
   return { results };
