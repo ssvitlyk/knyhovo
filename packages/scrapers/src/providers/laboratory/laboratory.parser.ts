@@ -2,6 +2,7 @@ import * as cheerio from 'cheerio';
 import type { RawProviderListing, Availability, Money } from '@knyhovo/shared';
 import { normalizeIsbn } from '../../canonical/isbn.js';
 import { sanitizeDescription } from '../../lib/sanitize-description.js';
+import { finalizeRawCategories } from '../../lib/extract-breadcrumbs.js';
 import { JSON_LD_SELECTOR, buildCoverUrl } from './constants.js';
 import type { ParsedProductState } from '../single-product.js';
 
@@ -33,6 +34,7 @@ interface LaboratoryBook {
   readonly bookFormat?: unknown;
   readonly url?: unknown;
   readonly description?: unknown;
+  readonly genre?: unknown;
 }
 
 /**
@@ -152,6 +154,7 @@ function findByType(parsed: unknown, wanted: string): Record<string, unknown> | 
  * never thrown.
  */
 function readBlocks(html: string): {
+  $: cheerio.CheerioAPI;
   product: LaboratoryProduct | null;
   book: LaboratoryBook | null;
   errors: string[];
@@ -160,7 +163,7 @@ function readBlocks(html: string): {
   const $ = cheerio.load(html);
   const blocks = $(JSON_LD_SELECTOR).toArray();
   if (blocks.length === 0) {
-    return { product: null, book: null, errors: ['no JSON-LD script found'] };
+    return { $, product: null, book: null, errors: ['no JSON-LD script found'] };
   }
 
   let product: LaboratoryProduct | null = null;
@@ -180,7 +183,55 @@ function readBlocks(html: string): {
     if (book === null) book = findByType(parsed, 'Book') as LaboratoryBook | null;
   }
 
-  return { product, book, errors };
+  return { $, product, book, errors };
+}
+
+/**
+ * Resolve a Laboratory JSON-LD `Book.genre` value to raw category strings.
+ * Real pages always carry a single string (e.g. "Військова справа"), but the
+ * schema.org `Book.genre` property also permits an array of strings — trivial
+ * to support without extra scope, so both shapes are handled.
+ */
+function resolveGenre(genre: unknown): string[] {
+  if (typeof genre === 'string') {
+    const trimmed = genre.trim();
+    return trimmed !== '' ? [trimmed] : [];
+  }
+  if (Array.isArray(genre)) {
+    return finalizeRawCategories(genre.filter((g): g is string => typeof g === 'string'));
+  }
+  return [];
+}
+
+/**
+ * Fallback extraction of raw categories from Laboratory's HTML breadcrumb
+ * microdata (schema.org `ListItem` with `itemprop="position"`/`itemprop="name"`),
+ * used only when `Book.genre` carries no signal. Not the JSON-LD `BreadcrumbList`
+ * shape handled by extract-breadcrumbs.ts — Laboratory genuinely uses old-style
+ * microdata markup (confirmed in fixtures).
+ */
+function extractBreadcrumbMicrodata($: cheerio.CheerioAPI, title: string): string[] {
+  const entries: { name: string; position: number | null }[] = [];
+  $('[itemtype$="ListItem"], [itemtype*="schema.org/ListItem"]').each((_, el) => {
+    const name = $(el).find('[itemprop="name"]').first().text().trim();
+    if (!name) return;
+    const posAttr = $(el).find('[itemprop="position"]').first().attr('content');
+    const position =
+      posAttr != null && posAttr.trim() !== '' && Number.isFinite(Number(posAttr))
+        ? Number(posAttr)
+        : null;
+    entries.push({ name, position });
+  });
+  const allHavePosition = entries.length > 0 && entries.every((e) => e.position !== null);
+  const ordered = allHavePosition
+    ? [...entries].sort((a, b) => (a.position as number) - (b.position as number))
+    : entries;
+  let names = ordered.map((e) => e.name);
+  names = names.slice(1); // drop the home/store crumb — always first
+  if (names.length > 0 && names[names.length - 1]!.trim().toLowerCase() === title.trim().toLowerCase()) {
+    names = names.slice(0, -1);
+  }
+  return finalizeRawCategories(names);
 }
 
 /**
@@ -190,7 +241,7 @@ function readBlocks(html: string): {
  * failure is collected into `errors` and yields `listing: null`.
  */
 export function parseLaboratoryListing(html: string): ParseResult {
-  const { product, book, errors } = readBlocks(html);
+  const { $, product, book, errors } = readBlocks(html);
   if (product === null && book === null) {
     if (errors.length === 0) errors.push('no Product/Book JSON-LD found');
     return { listing: null, errors };
@@ -226,6 +277,10 @@ export function parseLaboratoryListing(html: string): ParseResult {
     // Description cascade: Product.description → Book.description.
     const rawDescription = readString(product?.description) ?? readString(book?.description);
 
+    const genreCategories = resolveGenre(book?.genre);
+    const rawCategories =
+      genreCategories.length > 0 ? genreCategories : extractBreadcrumbMicrodata($, title);
+
     const listing: RawProviderListing = {
       provider: 'laboratory',
       title,
@@ -243,6 +298,7 @@ export function parseLaboratoryListing(html: string): ParseResult {
       description: sanitizeDescription(
         rawDescription !== null ? decodeDoubleEncodedDescription(rawDescription) : null,
       ),
+      rawCategories,
     };
     return { listing, errors };
   } catch (err) {

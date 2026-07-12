@@ -226,6 +226,17 @@ describe('parseKnigolandListing — product-instock.html (real)', () => {
       'https://admin.knigoland.com.ua/assets/1f8db213-00cb-4b8c-aee0-ec7c26d87616.png',
     );
   });
+
+  it('extracts rawCategories from the breadcrumb, never the WebSite.genre tagline (genres-taxonomy G2)', () => {
+    expect(listing?.rawCategories).toEqual([
+      'Книги',
+      'Художня література',
+      'Білінгва. Книги іноземними мовами',
+    ]);
+    expect(listing?.rawCategories).not.toContain(
+      'Книголенд - Інтернет-магазин книг, подарунків і дитячих товарів.',
+    );
+  });
 });
 
 describe('parseKnigolandListing — product-instock-2.html (real)', () => {
@@ -241,6 +252,13 @@ describe('parseKnigolandListing — product-instock-2.html (real)', () => {
       url: 'https://knigoland.com.ua/gra-v-biser-item',
       availability: 'in-stock',
     });
+  });
+
+  it('extracts rawCategories from the breadcrumb, never the WebSite.genre tagline (genres-taxonomy G2)', () => {
+    expect(listing?.rawCategories).toEqual(['Книги', 'Художня література', 'Класична проза']);
+    expect(listing?.rawCategories).not.toContain(
+      'Книголенд - Інтернет-магазин книг, подарунків і дитячих товарів.',
+    );
   });
 });
 
@@ -258,6 +276,17 @@ describe('parseKnigolandListing — product-outofstock.html (real)', () => {
       availability: 'out-of-stock',
     });
   });
+
+  it('extracts rawCategories from the breadcrumb, never the WebSite.genre tagline (genres-taxonomy G2)', () => {
+    expect(listing?.rawCategories).toEqual([
+      'Книги',
+      'Художня література',
+      'Фантастика. Фентезі. Містика',
+    ]);
+    expect(listing?.rawCategories).not.toContain(
+      'Книголенд - Інтернет-магазин книг, подарунків і дитячих товарів.',
+    );
+  });
 });
 
 // ──────────────────────────────────────────────────────────────
@@ -266,6 +295,9 @@ describe('parseKnigolandListing — product-outofstock.html (real)', () => {
 
 describe('parseKnigolandListing — paper-book filter', () => {
   it('silently skips a real non-book (spec-table barcode, not Bookland-prefixed)', () => {
+    // Non-book fixtures are filtered out before the rawCategories extraction
+    // code path is ever reached — listing is null, so there is no
+    // rawCategories to assert on here (genres-taxonomy G2).
     const { listing, errors } = parseKnigolandListing(loadFixture('product-nonbook.html'));
     expect(listing).toBeNull();
     expect(errors).toEqual([]);

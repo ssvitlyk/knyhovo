@@ -101,7 +101,7 @@ export function buildCatalogProductsQuery(page: number, perPage: number): string
 
 /** Fields fetched per product in the alias-batch enrichment query. */
 const PRODUCT_PAGE_FIELDS =
-  'name isbn code type cost crossed_out_cost available in_stock authors { name surname } image { small { format url } }';
+  'name isbn code type cost crossed_out_cost available in_stock authors { name surname } image { small { format url } } categories { slug name }';
 
 /**
  * Build an alias-batch `productPage` query for up to 30 slugs.
@@ -139,6 +139,7 @@ export interface BookClubProductPage {
   readonly in_stock?: unknown;
   readonly authors?: unknown;
   readonly image?: unknown;
+  readonly categories?: unknown;
 }
 
 /** Raw catalog card shape from catalogProducts.data[] (all fields untrusted). */

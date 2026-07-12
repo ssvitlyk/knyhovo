@@ -161,6 +161,10 @@ describe('parseLaboratoryListing — product-instock.html (real)', () => {
       'https://laboratory.ua/files/products/pro_vijnu_cover_1000.330x300.jpg.webp',
     );
   });
+
+  it('resolves rawCategories from Book.genre (genres-taxonomy G2)', () => {
+    expect(listing?.rawCategories).toEqual(['Військова справа']);
+  });
 });
 
 describe('parseLaboratoryListing — product-paperback.html (real)', () => {
@@ -176,6 +180,10 @@ describe('parseLaboratoryListing — product-paperback.html (real)', () => {
       url: 'https://laboratory.ua/products/krasyvi-divchata-tezh-pomyrayut',
       availability: 'in-stock',
     });
+  });
+
+  it('resolves rawCategories from Book.genre (genres-taxonomy G2)', () => {
+    expect(listing?.rawCategories).toEqual(['детектив']);
   });
 });
 
@@ -193,6 +201,10 @@ describe('parseLaboratoryListing — product-outofstock.html (real)', () => {
       url: 'https://laboratory.ua/products/abrykosy-donbasu',
       availability: 'out-of-stock',
     });
+  });
+
+  it('resolves rawCategories from Book.genre (genres-taxonomy G2)', () => {
+    expect(listing?.rawCategories).toEqual(['поезія']);
   });
 });
 
@@ -392,6 +404,79 @@ describe('parseLaboratoryListing — container shapes', () => {
     const html = `<html><head><script type="application/ld+json">${JSON.stringify({ '@graph': [product, book] })}</script></head></html>`;
     const { listing } = parseLaboratoryListing(html);
     expect(listing).toMatchObject({ title: 'Контейнер', author: 'Автор', availability: 'in-stock' });
+  });
+});
+
+// ──────────────────────────────────────────────────────────────
+// parseLaboratoryListing — rawCategories: Book.genre vs breadcrumb microdata
+// fallback (genres-taxonomy G2). product-instock.html carries both a
+// Book.genre value and breadcrumb microdata; genre/breadcrumb are stripped
+// from the real fixture in-memory to exercise each branch.
+// ──────────────────────────────────────────────────────────────
+
+describe('parseLaboratoryListing — rawCategories genre/breadcrumb fallback', () => {
+  const realInstock = loadFixture('product-instock.html');
+
+  function stripBreadcrumb(html: string): string {
+    return html.replace(/<ol[^>]*breadcrumbs[^>]*>[\s\S]*?<\/ol>/, '');
+  }
+
+  it('genre wins when both Book.genre and breadcrumb are present', () => {
+    const { listing } = parseLaboratoryListing(realInstock);
+    expect(listing?.rawCategories).toEqual(['Військова справа']);
+  });
+
+  it('falls back to breadcrumb microdata when Book.genre is an empty string', () => {
+    const html = realInstock.replace('"genre": "Військова справа"', '"genre": ""');
+    const { listing } = parseLaboratoryListing(html);
+    expect(listing?.rawCategories).toEqual(['Каталог книжок', 'Нон-фікшн']);
+  });
+
+  it('falls back to breadcrumb microdata when Book.genre is absent', () => {
+    const html = realInstock.replace('"genre": "Військова справа",', '');
+    const { listing } = parseLaboratoryListing(html);
+    expect(listing?.rawCategories).toEqual(['Каталог книжок', 'Нон-фікшн']);
+  });
+
+  it('falls back to breadcrumb microdata when Book.genre is a malformed type (number)', () => {
+    const html = realInstock.replace('"genre": "Військова справа"', '"genre": 123');
+    const { listing } = parseLaboratoryListing(html);
+    expect(listing?.rawCategories).toEqual(['Каталог книжок', 'Нон-фікшн']);
+  });
+
+  it('uses Book.genre only when the breadcrumb is absent from the document', () => {
+    const html = stripBreadcrumb(realInstock);
+    const { listing } = parseLaboratoryListing(html);
+    expect(listing?.rawCategories).toEqual(['Військова справа']);
+  });
+
+  it('yields rawCategories: [] when both Book.genre and the breadcrumb are absent', () => {
+    const html = stripBreadcrumb(realInstock).replace('"genre": "Військова справа",', '');
+    const { listing } = parseLaboratoryListing(html);
+    expect(listing?.rawCategories).toEqual([]);
+  });
+
+  it('uses Book.genre array as-is (order preserved) when it has valid values', () => {
+    const html = realInstock.replace('"genre": "Військова справа"', '"genre": ["Фентезі", "Пригоди"]');
+    const { listing } = parseLaboratoryListing(html);
+    expect(listing?.rawCategories).toEqual(['Фентезі', 'Пригоди']);
+    // Not the breadcrumb-fallback value — genre array won.
+    expect(listing?.rawCategories).not.toEqual(['Каталог книжок', 'Нон-фікшн']);
+  });
+
+  it('cleans Book.genre array entries (trims, drops empty strings, dedupes)', () => {
+    const html = realInstock.replace(
+      '"genre": "Військова справа"',
+      '"genre": ["Фентезі", "", "Фентезі", "  Пригоди  "]',
+    );
+    const { listing } = parseLaboratoryListing(html);
+    expect(listing?.rawCategories).toEqual(['Фентезі', 'Пригоди']);
+  });
+
+  it('falls back to breadcrumb microdata when Book.genre array cleans down to fully empty', () => {
+    const html = realInstock.replace('"genre": "Військова справа"', '"genre": ["", "   "]');
+    const { listing } = parseLaboratoryListing(html);
+    expect(listing?.rawCategories).toEqual(['Каталог книжок', 'Нон-фікшн']);
   });
 });
 

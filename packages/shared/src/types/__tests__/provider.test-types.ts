@@ -104,6 +104,7 @@ const _listing: ProviderListing = {
   format: null,
   series: null,
   publicationYear: null,
+  rawCategories: [],
 };
 
 // ProviderListing rejects unknown provider
@@ -125,6 +126,7 @@ const _badListing: ProviderListing = {
   format: null,
   series: null,
   publicationYear: null,
+  rawCategories: [],
 };
 
 // ScraperProvider shape — scrape accepts optional ScraperOptions

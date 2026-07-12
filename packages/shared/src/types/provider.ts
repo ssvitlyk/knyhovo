@@ -134,6 +134,12 @@ export interface RawProviderListing {
    * unless the opt-in product-page enrichment pass ran and found one.
    */
   readonly publicationYear?: number | null;
+  /**
+   * Raw provider-native category/breadcrumb signals, root→leaf, uncanonicalized
+   * (genres-taxonomy PRD G2). Optional/nullable: omitted/null when the provider
+   * has no extraction wired up or the page carried no signal this scrape.
+   */
+  readonly rawCategories?: readonly string[] | null;
 }
 
 /**
@@ -187,6 +193,11 @@ export interface ProviderListing {
    * Publication year (book-metadata PRD). null when not yet enriched.
    */
   readonly publicationYear: number | null;
+  /**
+   * Raw provider-native category/breadcrumb signals, root→leaf
+   * (genres-taxonomy PRD G2). [] when no signal has been collected yet.
+   */
+  readonly rawCategories: readonly string[];
 }
 
 /**
