@@ -100,6 +100,7 @@ describe('pipeline integration — metrics recording', () => {
           provider: providers[0]!.name,
           metrics: makeMetrics({ scraped: 20, providerListingsCreated: 8, providerListingsUpdated: 4, created: 8, matched: 4, priceHistoryCreated: 12 }),
           scrapeErrors: [],
+          affectedCanonicalBookIds: [],
         },
       ],
     }));
@@ -123,7 +124,9 @@ describe('pipeline integration — metrics recording', () => {
 
   it('observes run duration from the injected clock', async () => {
     mockPipeline.mockImplementation(async ({ providers }) => ({
-      results: [{ provider: providers[0]!.name, metrics: makeMetrics({ scraped: 1 }), scrapeErrors: [] }],
+      results: [
+        { provider: providers[0]!.name, metrics: makeMetrics({ scraped: 1 }), scrapeErrors: [], affectedCanonicalBookIds: [] },
+      ],
     }));
 
     const metrics = new ProductionMetricsRegistry();
@@ -161,7 +164,14 @@ describe('pipeline integration — metrics recording', () => {
 
   it('records the rate-limit signal', async () => {
     mockPipeline.mockResolvedValue({
-      results: [{ provider: 'yakaboo', metrics: makeMetrics({ scraped: 5, providerListingsUpdated: 2 }), scrapeErrors: ['HTTP 429 Too Many Requests'] }],
+      results: [
+        {
+          provider: 'yakaboo',
+          metrics: makeMetrics({ scraped: 5, providerListingsUpdated: 2 }),
+          scrapeErrors: ['HTTP 429 Too Many Requests'],
+          affectedCanonicalBookIds: [],
+        },
+      ],
     });
 
     const metrics = new ProductionMetricsRegistry();
@@ -180,7 +190,9 @@ describe('pipeline integration — metrics recording', () => {
 
   it('does nothing when no registry is supplied (behavior unchanged)', async () => {
     mockPipeline.mockImplementation(async ({ providers }) => ({
-      results: [{ provider: providers[0]!.name, metrics: makeMetrics({ scraped: 10 }), scrapeErrors: [] }],
+      results: [
+        { provider: providers[0]!.name, metrics: makeMetrics({ scraped: 10 }), scrapeErrors: [], affectedCanonicalBookIds: [] },
+      ],
     }));
 
     const result = await runFullCatalogRefresh({

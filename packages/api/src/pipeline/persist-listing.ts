@@ -149,7 +149,7 @@ export async function persistListing(
       recordedAt: scrapedAt,
     });
 
-    return { kind: 'listing-created', createdCanonical, priceHistoryCreated: true };
+    return { kind: 'listing-created', createdCanonical, canonicalBookId, priceHistoryCreated: true };
   } else {
     // EXISTING listing — do NOT change canonicalBookId
     const updateData: {
@@ -239,7 +239,7 @@ export async function persistListing(
       recordedAt: scrapedAt,
     });
 
-    return { kind: 'listing-updated', priceHistoryCreated: created };
+    return { kind: 'listing-updated', canonicalBookId: existing.canonicalBookId, priceHistoryCreated: created };
   }
 }
 

@@ -39,6 +39,8 @@ export interface ProviderRefreshOutcome {
   readonly scrapeErrors: readonly string[];
   /** True when the provider hit an HTTP 429/503 signal during this run. */
   readonly rateLimited: boolean;
+  /** canonicalBookIds this provider's run actually persisted (genres-taxonomy PRD G5 §1). */
+  readonly affectedCanonicalBookIds: readonly string[];
 }
 
 export interface FullCatalogRefreshResult {
@@ -163,6 +165,7 @@ async function refreshProvider(
       metrics: result.metrics,
       scrapeErrors: result.scrapeErrors,
       rateLimited,
+      affectedCanonicalBookIds: result.affectedCanonicalBookIds,
     };
   } catch (err) {
     // Provider isolation: one provider's failure must not stop the rest.
@@ -211,6 +214,7 @@ async function refreshProvider(
       metrics,
       scrapeErrors: [message],
       rateLimited,
+      affectedCanonicalBookIds: [],
     };
   }
 }

@@ -6,6 +6,7 @@ import { runFullCatalogRefresh } from './full-catalog.refresh.js';
 import type { ProviderRefreshOutcome } from './full-catalog.refresh.js';
 import { RefreshAlreadyRunningError } from './concurrency-guard.js';
 import type { ProductionMetricsRegistry } from '../metrics/index.js';
+import { runPostScrapeGenreAssignment } from '../genres/post-scrape-assignment.js';
 
 /**
  * Production runner: a thin, testable contract around `runFullCatalogRefresh`
@@ -49,6 +50,15 @@ export interface RunProductionScrapeDeps {
   readonly refresh?: typeof runFullCatalogRefresh;
   /** Optional production metrics registry; passed through to the refresh layer. */
   readonly metrics?: ProductionMetricsRegistry;
+  /**
+   * Genres-taxonomy PRD G5: run post-scrape genre assignment for the books
+   * this refresh touched. Env-gated (`GENRE_ASSIGN_AFTER_SCRAPE=true`),
+   * default disabled — the CLI resolves the env var and passes the result
+   * here so this function stays a pure, injectable contract.
+   */
+  readonly genreAssignAfterScrape?: boolean;
+  /** Injectable genre-assignment implementation for deterministic tests. */
+  readonly runGenreAssignment?: typeof runPostScrapeGenreAssignment;
 }
 
 /** Default alert channel for PR1: emit a structured error line. Real email/Slack is PR3. */
@@ -61,11 +71,54 @@ function defaultAlertHook(logger: Logger): IngestionAlertHook {
   };
 }
 
+/**
+ * Genres-taxonomy PRD G5: optional post-scrape genre assignment, scoped to
+ * exactly the books this refresh touched. Isolated on purpose — a failure
+ * here is logged and swallowed; it never changes `exitCode`, `outcomes`, or
+ * `anySucceeded`, and it never runs at all when disabled or when nothing was
+ * affected (no DB access in that case, not even `loadEngineContext`).
+ */
+async function runPostScrapeAssignmentHook(
+  deps: RunProductionScrapeDeps,
+  outcomes: readonly ProviderRefreshOutcome[],
+  runGenreAssignment: typeof runPostScrapeGenreAssignment,
+): Promise<void> {
+  const affected = new Set<string>();
+  for (const o of outcomes) {
+    for (const id of o.affectedCanonicalBookIds) affected.add(id);
+  }
+  if (affected.size === 0) return;
+
+  const runContext = outcomes.map((o) => `${o.provider}:${o.runId ?? 'null'}`).join(',');
+  deps.logger.info(
+    `genre assignment (post-scrape) enabled — runs=[${runContext}] affectedBookCount=${affected.size}`,
+  );
+
+  const startedAt = Date.now();
+  try {
+    const result = await runGenreAssignment(deps.prisma, [...affected]);
+    const { counters } = result;
+    deps.logger.info(
+      `genre assignment (post-scrape) done — processed=${counters.processed} assigned=${counters.assigned} ` +
+        `changed=${counters.changed} cleared=${counters.cleared} unchanged=${counters.unchanged} ` +
+        `manual-skipped=${counters.manualSkipped} no-signal=${counters.noSignal} ` +
+        `unmapped=${counters.unmappedBooks} durationMs=${result.durationMs}`,
+    );
+  } catch (err) {
+    const durationMs = Date.now() - startedAt;
+    deps.logger.error(
+      `genre assignment (post-scrape) failed — runs=[${runContext}] affectedBookCount=${affected.size} ` +
+        `durationMs=${durationMs}: ${err instanceof Error ? err.stack ?? err.message : String(err)}`,
+    );
+  }
+}
+
 export async function runProductionScrape(
   deps: RunProductionScrapeDeps,
 ): Promise<ProductionRunResult> {
   const refresh = deps.refresh ?? runFullCatalogRefresh;
   const alertHook = deps.alertHook ?? defaultAlertHook(deps.logger);
+  const runGenreAssignment = deps.runGenreAssignment ?? runPostScrapeGenreAssignment;
 
   try {
     const { outcomes, anySucceeded } = await refresh({
@@ -77,6 +130,10 @@ export async function runProductionScrape(
       ...(deps.now !== undefined ? { now: deps.now } : {}),
       ...(deps.metrics !== undefined ? { metrics: deps.metrics } : {}),
     });
+
+    if (deps.genreAssignAfterScrape === true) {
+      await runPostScrapeAssignmentHook(deps, outcomes, runGenreAssignment);
+    }
 
     if (anySucceeded) {
       return { exitCode: 0, skipped: false, outcomes };

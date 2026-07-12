@@ -87,6 +87,7 @@ function successResult(name: ScraperProvider['name']) {
         provider: name,
         metrics: makeMetrics({ scraped: 10, providerListingsCreated: 5 }),
         scrapeErrors: [] as string[],
+        affectedCanonicalBookIds: [] as string[],
       },
     ],
   };
@@ -130,7 +131,11 @@ describe('runFullCatalogRefresh', () => {
     mockPipeline.mockImplementation(async ({ providers }) => {
       const name = providers[0]!.name;
       if (name === 'vivat') {
-        return { results: [{ provider: 'vivat', metrics: makeMetrics(), scrapeErrors: ['boom'] }] };
+        return {
+          results: [
+            { provider: 'vivat', metrics: makeMetrics(), scrapeErrors: ['boom'], affectedCanonicalBookIds: [] },
+          ],
+        };
       }
       return successResult(name);
     });
@@ -216,7 +221,7 @@ describe('runFullCatalogRefresh', () => {
   it('passes the exact metrics to finishScrapeRun', async () => {
     const metrics = makeMetrics({ scraped: 42, providerListingsUpdated: 7, priceHistoryCreated: 3 });
     mockPipeline.mockResolvedValue({
-      results: [{ provider: 'yakaboo', metrics, scrapeErrors: [] }],
+      results: [{ provider: 'yakaboo', metrics, scrapeErrors: [], affectedCanonicalBookIds: [] }],
     });
 
     await runFullCatalogRefresh({
@@ -261,6 +266,7 @@ describe('runFullCatalogRefresh', () => {
               provider: 'yakaboo',
               metrics: makeMetrics(),
               scrapeErrors: ['HTTP 429 Too Many Requests'],
+              affectedCanonicalBookIds: [],
             },
           ],
         };
@@ -294,6 +300,7 @@ describe('runFullCatalogRefresh', () => {
           provider: 'yakaboo',
           metrics: makeMetrics({ scraped: 5, providerListingsUpdated: 2 }),
           scrapeErrors: ['HTTP 503 Service Unavailable'],
+          affectedCanonicalBookIds: [],
         },
       ],
     });
@@ -334,6 +341,43 @@ describe('runFullCatalogRefresh', () => {
 
     // No provider scrape_runs should be started
     expect(mockStart).not.toHaveBeenCalled();
+  });
+
+  it('propagates affectedCanonicalBookIds from the pipeline result onto the outcome', async () => {
+    mockPipeline.mockResolvedValue({
+      results: [
+        {
+          provider: 'yakaboo',
+          metrics: makeMetrics(),
+          scrapeErrors: [],
+          affectedCanonicalBookIds: ['book-1', 'book-2'],
+        },
+      ],
+    });
+
+    const result = await runFullCatalogRefresh({
+      prisma,
+      providers: [new FakeScraper('yakaboo')],
+      triggeredBy: ScrapeRunTrigger.MANUAL,
+      logger: silentLogger,
+      now,
+    });
+
+    expect(result.outcomes[0]!.affectedCanonicalBookIds).toEqual(['book-1', 'book-2']);
+  });
+
+  it('reports an empty affectedCanonicalBookIds when the provider run throws', async () => {
+    mockPipeline.mockRejectedValue(new Error('network down'));
+
+    const result = await runFullCatalogRefresh({
+      prisma,
+      providers: [new FakeScraper('yakaboo')],
+      triggeredBy: ScrapeRunTrigger.MANUAL,
+      logger: silentLogger,
+      now,
+    });
+
+    expect(result.outcomes[0]!.affectedCanonicalBookIds).toEqual([]);
   });
 
   it('guard: releaseRefreshLock is called in the finally block on happy path', async () => {

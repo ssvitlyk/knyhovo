@@ -20,6 +20,7 @@ function outcome(
   provider: ProviderName,
   status: ScrapeRunStatus,
   runId: string | null = `run-${provider}`,
+  affectedCanonicalBookIds: readonly string[] = [],
 ): ProviderRefreshOutcome {
   return {
     provider,
@@ -28,6 +29,7 @@ function outcome(
     metrics: createMetrics(),
     scrapeErrors: status === ScrapeRunStatus.FAILED ? ['boom'] : [],
     rateLimited: false,
+    affectedCanonicalBookIds,
   };
 }
 
@@ -155,5 +157,154 @@ describe('runProductionScrape', () => {
     });
 
     await expect(runProductionScrape(baseDeps(refresh))).rejects.toThrow('db gone');
+  });
+});
+
+// ── Genres-taxonomy PRD G5: optional post-scrape genre assignment ─────────────
+
+function fakeGenreCounters() {
+  return {
+    processed: 0,
+    assigned: 0,
+    changed: 0,
+    cleared: 0,
+    unchanged: 0,
+    manualSkipped: 0,
+    noSignal: 0,
+    unmappedBooks: 0,
+  };
+}
+
+describe('runProductionScrape — post-scrape genre assignment hook (G5)', () => {
+  it('does not call the processor when genreAssignAfterScrape is disabled', async () => {
+    const refresh = fakeRefresh({
+      outcomes: [outcome('yakaboo', ScrapeRunStatus.SUCCESS, 'run-1', ['book-1'])],
+      anySucceeded: true,
+    });
+    const runGenreAssignment = vi.fn();
+
+    await runProductionScrape({ ...baseDeps(refresh), runGenreAssignment });
+
+    expect(runGenreAssignment).not.toHaveBeenCalled();
+  });
+
+  it('does not call the processor when enabled but nothing was affected', async () => {
+    const refresh = fakeRefresh({
+      outcomes: [outcome('yakaboo', ScrapeRunStatus.SUCCESS, 'run-1', [])],
+      anySucceeded: true,
+    });
+    const runGenreAssignment = vi.fn();
+
+    await runProductionScrape({
+      ...baseDeps(refresh),
+      genreAssignAfterScrape: true,
+      runGenreAssignment,
+    });
+
+    expect(runGenreAssignment).not.toHaveBeenCalled();
+  });
+
+  it('calls the processor once with the deduped affected ids across providers', async () => {
+    const refresh = fakeRefresh({
+      outcomes: [
+        outcome('yakaboo', ScrapeRunStatus.SUCCESS, 'run-1', ['book-1', 'book-2']),
+        outcome('vivat', ScrapeRunStatus.SUCCESS, 'run-2', ['book-2', 'book-3']),
+      ],
+      anySucceeded: true,
+    });
+    const runGenreAssignment = vi.fn(
+      async (_prisma: unknown, ids: readonly string[]) => ({
+        counters: fakeGenreCounters(),
+        affectedBookCount: ids.length,
+        batches: 1,
+        durationMs: 5,
+      }),
+    );
+
+    await runProductionScrape({
+      ...baseDeps(refresh),
+      genreAssignAfterScrape: true,
+      runGenreAssignment: runGenreAssignment as unknown as RunProductionScrapeDeps['runGenreAssignment'],
+    });
+
+    expect(runGenreAssignment).toHaveBeenCalledTimes(1);
+    const [, calledIds] = runGenreAssignment.mock.calls[0]!;
+    expect(new Set(calledIds)).toEqual(new Set(['book-1', 'book-2', 'book-3']));
+  });
+
+  it('does not change exitCode/outcomes when the processor throws (failure isolation)', async () => {
+    const logger = makeLogger();
+    const refresh = fakeRefresh({
+      outcomes: [outcome('yakaboo', ScrapeRunStatus.SUCCESS, 'run-1', ['book-1'])],
+      anySucceeded: true,
+    });
+    const runGenreAssignment = vi.fn(async () => {
+      throw new Error('engine exploded');
+    });
+
+    const result = await runProductionScrape({
+      ...baseDeps(refresh),
+      logger,
+      genreAssignAfterScrape: true,
+      runGenreAssignment,
+    });
+
+    expect(result.exitCode).toBe(0);
+    expect(result.outcomes).toHaveLength(1);
+    expect(logger.error).toHaveBeenCalledWith(
+      expect.stringContaining('genre assignment (post-scrape) failed'),
+    );
+    expect(logger.error).toHaveBeenCalledWith(expect.stringContaining('engine exploded'));
+  });
+
+  it('does not affect exitCode=1 (all-failed) path when the hook also runs', async () => {
+    const refresh = fakeRefresh({
+      outcomes: [outcome('yakaboo', ScrapeRunStatus.FAILED, 'run-1', ['book-1'])],
+      anySucceeded: false,
+    });
+    const runGenreAssignment = vi.fn(async () => ({
+      counters: fakeGenreCounters(),
+      affectedBookCount: 1,
+      batches: 1,
+      durationMs: 1,
+    }));
+
+    const result = await runProductionScrape({
+      ...baseDeps(refresh),
+      genreAssignAfterScrape: true,
+      runGenreAssignment,
+    });
+
+    expect(result.exitCode).toBe(1);
+    expect(runGenreAssignment).toHaveBeenCalledTimes(1);
+  });
+
+  it('logs a done summary with counters on success', async () => {
+    const logger = makeLogger();
+    const refresh = fakeRefresh({
+      outcomes: [outcome('yakaboo', ScrapeRunStatus.SUCCESS, 'run-1', ['book-1'])],
+      anySucceeded: true,
+    });
+    const runGenreAssignment = vi.fn(async () => ({
+      counters: { ...fakeGenreCounters(), processed: 1, assigned: 1 },
+      affectedBookCount: 1,
+      batches: 1,
+      durationMs: 7,
+    }));
+
+    await runProductionScrape({
+      ...baseDeps(refresh),
+      logger,
+      genreAssignAfterScrape: true,
+      runGenreAssignment,
+    });
+
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringContaining('genre assignment (post-scrape) enabled'),
+    );
+    expect(logger.info).toHaveBeenCalledWith(
+      expect.stringContaining('genre assignment (post-scrape) done'),
+    );
+    expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('assigned=1'));
   });
 });

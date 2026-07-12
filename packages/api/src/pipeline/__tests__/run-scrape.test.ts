@@ -981,4 +981,112 @@ describe('runScrapePipeline', () => {
       lines.some((l) => l.includes('canonical matching + persist done — 1/1 listings processed')),
     ).toBe(true);
   });
+
+  // Genres-taxonomy PRD G5 §1: affected canonicalBookIds for the post-scrape hook.
+  describe('affectedCanonicalBookIds', () => {
+    it('adds the canonicalBookId of a newly-created listing', async () => {
+      const { db, canonicalBooks } = makeFakePrisma();
+      const scraper = new FakeScraper('yakaboo', makeScraperResult([makeListing({ isbn: null })]));
+
+      const { results } = await runScrapePipeline({
+        prisma: db as unknown as PrismaClient,
+        providers: [scraper],
+      });
+
+      expect(results[0]!.affectedCanonicalBookIds).toEqual([canonicalBooks[0]!.id]);
+    });
+
+    it('adds the canonicalBookId of an updated (matched) listing', async () => {
+      const existingCanonical: FakeCanonicalRow = {
+        id: 'book-matched',
+        title: 'Кобзар',
+        author: 'Тарас Шевченко',
+        isbn: '9786177933105',
+        createdAt: FIXED_DATE,
+      };
+      const existingListing: FakeProviderListingRow = {
+        id: 'pl-existing',
+        canonicalBookId: 'book-matched',
+        provider: 'YAKABOO',
+        title: 'Кобзар',
+        author: 'Тарас Шевченко',
+        isbn: '9786177933105',
+        priceAmount: 20000,
+        priceCurrency: 'UAH',
+        url: 'https://yakaboo.ua/kobzar',
+        lastSeenAt: FIXED_DATE,
+        availability: 'IN_STOCK',
+      };
+      const { db } = makeFakePrisma([existingCanonical], [existingListing]);
+      const listing = makeListing({ isbn: '9786177933105', price: { amount: 21000, currency: 'UAH' } });
+      const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+      const { results } = await runScrapePipeline({
+        prisma: db as unknown as PrismaClient,
+        providers: [scraper],
+      });
+
+      expect(results[0]!.affectedCanonicalBookIds).toEqual(['book-matched']);
+    });
+
+    it('does not add an id for an ISBN_CONFLICT listing (never persisted)', async () => {
+      // Same title+author (near-identical, tSim ≥ 0.92) but a different ISBN
+      // triggers the matcher's ISBN_CONFLICT path (match-canonical.ts) — unlike
+      // a low title-similarity pair, which just creates a new, unrelated book.
+      const existingCanonical: FakeCanonicalRow = {
+        id: 'book-conflict',
+        title: 'Кобзар',
+        author: 'Тарас Шевченко',
+        isbn: '9780061120084',
+        createdAt: FIXED_DATE,
+      };
+      const { db } = makeFakePrisma([existingCanonical]);
+      const listing = makeListing({
+        title: 'Кобзар',
+        author: 'Тарас Шевченко',
+        isbn: '9786177933105',
+        url: 'https://yakaboo.ua/kobzar-conflict',
+      });
+      const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+      const { results } = await runScrapePipeline({
+        prisma: db as unknown as PrismaClient,
+        providers: [scraper],
+      });
+
+      expect(results[0]!.metrics.conflictsByReason.ISBN_CONFLICT).toBe(1);
+      expect(results[0]!.affectedCanonicalBookIds).toEqual([]);
+    });
+
+    it('does not add an id for a skipped null-price listing (availability-only, no signal change)', async () => {
+      const { db } = makeFakePrisma();
+      const listing = makeListing({ price: null });
+      const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+      const { results } = await runScrapePipeline({
+        prisma: db as unknown as PrismaClient,
+        providers: [scraper],
+      });
+
+      expect(results[0]!.affectedCanonicalBookIds).toEqual([]);
+    });
+
+    it('dedupes multiple listings that resolve to the same canonical book', async () => {
+      const { db } = makeFakePrisma();
+      const listingA = makeListing({ isbn: '9786177933105', url: 'https://yakaboo.ua/a' });
+      const listingB = makeListing({
+        isbn: '9786177933105',
+        url: 'https://yakaboo.ua/b',
+        title: 'Кобзар (2-е видання)',
+      });
+      const scraper = new FakeScraper('yakaboo', makeScraperResult([listingA, listingB]));
+
+      const { results } = await runScrapePipeline({
+        prisma: db as unknown as PrismaClient,
+        providers: [scraper],
+      });
+
+      expect(results[0]!.affectedCanonicalBookIds).toHaveLength(1);
+    });
+  });
 });

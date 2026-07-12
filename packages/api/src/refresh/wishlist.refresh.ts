@@ -3,6 +3,13 @@
  * price/availability transitions, persists to provider_listings/price_history,
  * runs cross-provider alert dedup, and writes scrape_runs rows. Provider
  * isolation, throttle, and stop-on-429/503 mirror full-catalog.refresh.ts (W10.2).
+ *
+ * Genres-taxonomy PRD G5: this flow does NOT run the post-scrape genre
+ * assignment hook, and never will by accident — `persistRefreshedListing`
+ * (`persist-refresh.ts`) only touches price/availability, never
+ * `rawCategories`, so a wishlist refresh can never change a book's category
+ * signal. The hook is wired only into `production-runner.ts`
+ * (FULL_CATALOG path, which does collect `rawCategories`).
  */
 import type { PrismaClient, ScrapeRunTrigger, Provider } from '@prisma/client';
 import { ScrapeRunKind, ScrapeRunStatus } from '@prisma/client';

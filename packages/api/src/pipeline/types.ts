@@ -46,6 +46,12 @@ export interface ProviderRunResult {
   provider: ProviderName;
   metrics: ScrapeMetrics;
   scrapeErrors: string[];
+  /**
+   * Unique canonicalBookId of every successfully-persisted listing this run
+   * touched (created or updated), excluding availability-only updates that
+   * never carry a category signal (genres-taxonomy PRD G5 §1).
+   */
+  affectedCanonicalBookIds: string[];
 }
 
 export interface PipelineResult {
@@ -60,8 +66,13 @@ export interface RunScrapeOptions {
 }
 
 export type ListingPersistOutcome =
-  | { kind: 'listing-created'; createdCanonical: CanonicalBook | null; priceHistoryCreated: boolean }
-  | { kind: 'listing-updated'; priceHistoryCreated: boolean };
+  | {
+      kind: 'listing-created';
+      createdCanonical: CanonicalBook | null;
+      canonicalBookId: string;
+      priceHistoryCreated: boolean;
+    }
+  | { kind: 'listing-updated'; canonicalBookId: string; priceHistoryCreated: boolean };
 
 export type UnavailableOutcome =
   | { kind: 'availability-updated'; priceHistoryCreated: boolean }
