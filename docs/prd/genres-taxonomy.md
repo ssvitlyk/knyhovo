@@ -1,6 +1,6 @@
 # Genres / TAXONOMIC Collections PRD
 
-> **Тип:** PRD (feature). **Статус:** Чорновик (2026-07-12).
+> **Тип:** PRD (feature). **Статус:** Затверджено (2026-07-12).
 > **Гілка:** `feat/genres-taxonomy`.
 >
 > **Правило проєкту:** код під цю фічу **не пишеться** до підтвердження цього PRD (фаза G0).
@@ -477,12 +477,12 @@ WHERE genre_source = 'provider-mapping';
 
 ### G1 — Схема + таксономія + sync (PR 1)
 - **Scope:** міграція §5.1 (enum `GenreSource`, 3 колонки `canonical_books`,
-  `raw_categories`, таблиця `genre_mappings`); `genres/taxonomy.ts`, `genres/normalize.ts`,
+  `raw_categories`, таблиця `genre_mappings`); `genres/taxonomy.ts`,
   `genres/sync.ts`, `run-genre-sync.ts`; рефактор `seed.ts` на імпорт таксономії.
 - **Залежності:** немає. **Міграції:** одна адитивна.
 - **Команди:** `pnpm --filter @knyhovo/api exec prisma migrate dev`,
   `pnpm --filter @knyhovo/api genres:sync --dry-run`.
-- **Тести:** `normalize.test.ts`; `taxonomy.test.ts` (17 slug-ів заморожені, унікальність
+- **Тести:** `taxonomy.test.ts` (17 slug-ів заморожені, унікальність
   slug/key); ідемпотентність sync (подвійний запуск = no diff; rename міняє name, не slug) —
   pg-патерн `collections/__tests__/feeds.pg.test.ts`.
 - **Acceptance:** staging змігрований; 17 TAXONOMIC-рядків існують; hub досі показує 0 жанрів
@@ -503,12 +503,14 @@ WHERE genre_source = 'provider-mapping';
 - **Rollback:** revert scraper-змін; зібрані дані інертні й нешкідливі.
 
 ### G3 — Mapping engine + curated mappings (PR 3)
-- **Scope:** `mapping-engine.ts`, `mappings.seed.ts` (курований з distinct-репорту staging),
+- **Scope:** `genres/normalize.ts` (§5.3 — `normalizeCategoryKey`, `leafFirst`;
+  застосовується при пошуку в мапінг-індексі, який тепер тут і з'являється),
+  `mapping-engine.ts`, `mappings.seed.ts` (курований з distinct-репорту staging),
   `assignment.ts`, `report.ts`; sync розширюється upsert-ом мапінгів.
 - **Залежності:** G2-дані на staging (для курації). **Міграції:** немає.
-- **Тести:** table-driven `mapping-engine.test.ts` (один провайдер; згода перемагає пріоритет;
-  leaf над root; ignore-мапінги; alias-fallback; tie-breaks); unit-тести правил перезапису
-  `assignment.ts` (патерн `fake-prisma.ts`). Coverage ≥80% модуля.
+- **Тести:** `normalize.test.ts`; table-driven `mapping-engine.test.ts` (один провайдер;
+  згода перемагає пріоритет; leaf над root; ignore-мапінги; alias-fallback; tie-breaks);
+  unit-тести правил перезапису `assignment.ts` (патерн `fake-prisma.ts`). Coverage ≥80% модуля.
 - **Acceptance:** dry-run по staging-знімку мапить ≥60% книг із сигналом; unmapped-репорт
   переглянутий.
 - **Rollback:** чистий код, revert PR.

@@ -107,6 +107,14 @@ enum ScrapeRunTrigger {
   @@map("scrape_run_trigger")
 }
 
+enum GenreSource {
+  SEED             @map("seed")
+  PROVIDER_MAPPING @map("provider-mapping")
+  MANUAL           @map("manual")
+
+  @@map("genre_source")
+}
+
 // ---------------------------------------------------------------------------
 // Models
 // ---------------------------------------------------------------------------
@@ -121,6 +129,13 @@ model CanonicalBook {
   /// has not been assigned to a genre. Column name kept as `genre_id` for
   /// migration simplicity — genres are now just Collection rows.
   genreId   String?  @map("genre_id")
+  /// How the current genreId was assigned (seed / provider-mapping / manual).
+  /// Null for pre-existing rows without an assignment source.
+  genreSource     GenreSource? @map("genre_source")
+  /// 0-100 confidence at the moment genreId was assigned; null for SEED/MANUAL.
+  genreConfidence Int?         @map("genre_confidence")
+  /// When genreId was last (re)assigned; null until first assignment.
+  genreUpdatedAt  DateTime?    @map("genre_updated_at")
   createdAt DateTime @default(now()) @map("created_at")
 
   listings      ProviderListing[]
@@ -149,6 +164,8 @@ model Collection {
   items CollectionItem[]
   /// Books assigned to this collection when it's a TAXONOMIC (genre) row.
   genreBooks CanonicalBook[] @relation("CanonicalBookGenre")
+  /// Provider category → genre mapping rules that resolve to this genre (TAXONOMIC rows only).
+  genreMappings GenreMapping[] @relation("GenreMappingGenre")
 
   @@index([type, displayOrder])
   @@map("collections")
@@ -200,6 +217,11 @@ model ProviderListing {
   series          String?  @map("series")
   /// Publication year (book-metadata PRD); enrichment never overwrites a known value with null.
   publicationYear Int?     @map("publication_year")
+  /// Raw category/breadcrumb signal, root→leaf (breadcrumb providers) or unordered
+  /// (KSD categories). Provider-native text (trim/whitespace-collapse only). Empty
+  /// means no signal collected yet; a scrape without categories never clears a
+  /// previously collected value.
+  rawCategories String[] @default([]) @map("raw_categories")
 
   canonicalBook CanonicalBook       @relation(fields: [canonicalBookId], references: [id])
   priceHistory  PriceHistoryPoint[]
@@ -408,4 +430,26 @@ model NotificationDelivery {
   @@index([userId, createdAt])
   @@index([alertId])
   @@map("notification_deliveries")
+}
+
+model GenreMapping {
+  id       String   @id @default(uuid())
+  provider Provider
+  /// Normalized key (genres/normalize.ts): for book-club — category slug,
+  /// for breadcrumb providers — lowercased whitespace-collapsed name.
+  sourceCategory String @map("source_category")
+  /// FK to a TAXONOMIC `Collection` row. NULL = explicit "ignore" (known junk
+  /// like "Акції" drops out of the unmapped report).
+  genreId String? @map("genre_id")
+  /// 0-100. Leaf/specific categories 90-100, broad roots ("Художня література") 40-60.
+  confidence Int      @default(100)
+  notes      String?
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  genre Collection? @relation("GenreMappingGenre", fields: [genreId], references: [id])
+
+  @@unique([provider, sourceCategory])
+  @@index([genreId])
+  @@map("genre_mappings")
 }
