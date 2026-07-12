@@ -21,7 +21,7 @@ async function main(): Promise<void> {
   try {
     const result = await syncGenres(prisma, { dryRun });
     logger.info(
-      `genres:sync result: created=${result.created} updated=${result.updated} deactivated=${result.deactivated} dryRun=${result.dryRun}`,
+      `genres:sync result: created=${result.created} updated=${result.updated} deactivated=${result.deactivated} mappingsCreated=${result.mappingsCreated} mappingsUpdated=${result.mappingsUpdated} dryRun=${result.dryRun}`,
     );
     process.exitCode = 0;
   } catch (err: unknown) {

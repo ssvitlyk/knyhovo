@@ -24,6 +24,26 @@ export function mapProviderName(
   return PROVIDER_NAME_MAP[name];
 }
 
+const PROVIDER_SLUG_MAP: Record<
+  'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY' | 'KNIGOLAND',
+  ProviderName
+> = {
+  YAKABOO: 'yakaboo',
+  BOOK_CLUB: 'book-club',
+  VIVAT: 'vivat',
+  BOOK_YE: 'book-ye',
+  BOOKCHEF: 'bookchef',
+  LABORATORY: 'laboratory',
+  KNIGOLAND: 'knigoland',
+};
+
+/** Inverse of {@link mapProviderName}: Prisma `Provider` enum → shared slug. */
+export function unmapProviderName(
+  provider: 'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY' | 'KNIGOLAND',
+): ProviderName {
+  return PROVIDER_SLUG_MAP[provider];
+}
+
 const CURRENCY_MAP: Record<Currency, 'UAH'> = {
   UAH: 'UAH',
 };
