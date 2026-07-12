@@ -2,6 +2,7 @@ import * as cheerio from 'cheerio';
 import type { RawProviderListing, Availability, Money } from '@knyhovo/shared';
 import { normalizeIsbn } from '../../canonical/isbn.js';
 import { sanitizeDescription } from '../../lib/sanitize-description.js';
+import { extractBreadcrumbs } from '../../lib/extract-breadcrumbs.js';
 import {
   JSON_LD_SELECTOR,
   CATALOG_PRODUCTS_SITEMAP_PATTERN,
@@ -19,7 +20,12 @@ export interface ParseResult {
   readonly errors: string[];
 }
 
-/** Shape of a Knigoland JSON-LD `@type:Product` block (all fields untrusted). */
+/**
+ * Shape of a Knigoland JSON-LD `@type:Product` block (all fields untrusted).
+ * `Product.genre` is deliberately not modeled here — it is a fixed store
+ * tagline ("Книголенд - Інтернет-магазин книг, подарунків і дитячих товарів."),
+ * not a real category signal, verified across every fixture.
+ */
 interface KnigolandProduct {
   readonly '@type'?: unknown;
   readonly name?: unknown;
@@ -257,6 +263,7 @@ export function parseKnigolandListing(html: string): ParseResult {
       // sitemap-driven provider already fetches the product page for every listing,
       // so the description comes for free — no extra request like W9a F2 enrichment.
       description: sanitizeDescription(readString(product.description)),
+      rawCategories: extractBreadcrumbs(html, title),
     };
     return { listing, errors };
   } catch (err) {

@@ -2,6 +2,7 @@ import * as cheerio from 'cheerio';
 import type { RawProviderListing, Availability, Money } from '@knyhovo/shared';
 import { normalizeIsbn } from '../../canonical/isbn.js';
 import { sanitizeDescription } from '../../lib/sanitize-description.js';
+import { extractBreadcrumbs } from '../../lib/extract-breadcrumbs.js';
 import { JSON_LD_SELECTOR, buildCoverUrl } from './constants.js';
 import type { ParsedProductState } from '../single-product.js';
 
@@ -200,6 +201,7 @@ export function parseBookChefListing(html: string): ParseResult {
       description: sanitizeDescription(
         typeof product.description === 'string' ? product.description : null,
       ),
+      rawCategories: extractBreadcrumbs(html, title),
     };
     return { listing, errors };
   } catch (err) {

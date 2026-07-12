@@ -45,6 +45,7 @@ type FakeProviderListingRow = {
   lastSeenAt: Date;
   availability: string;
   description?: string | null;
+  rawCategories?: string[];
 };
 
 type FakePriceHistoryRow = {
@@ -655,6 +656,169 @@ describe('runScrapePipeline', () => {
 
     expect(providerListings[0]!.description).toBe('Збережений опис.');
     expect(providerListings[0]!.priceAmount).toBe(39900); // other fields still update
+  });
+
+  // rawCategories persistence (genres-taxonomy PRD G2): insert writes the raw categories.
+  it('persists rawCategories on a new listing', async () => {
+    const { db, providerListings } = makeFakePrisma();
+
+    const listing = makeListing({ rawCategories: ['Фентезі', 'Художня література'] });
+    const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+    await runScrapePipeline({ prisma: db as unknown as PrismaClient, providers: [scraper] });
+
+    expect(providerListings).toHaveLength(1);
+    expect(providerListings[0]!.rawCategories).toEqual(['Фентезі', 'Художня література']);
+  });
+
+  // rawCategories persistence: a new listing with no signal yields [] (never null/undefined).
+  it('persists rawCategories: [] on a new listing with no signal', async () => {
+    const { db, providerListings } = makeFakePrisma();
+
+    const listing = makeListing();
+    const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+    await runScrapePipeline({ prisma: db as unknown as PrismaClient, providers: [scraper] });
+
+    expect(providerListings).toHaveLength(1);
+    expect(providerListings[0]!.rawCategories).toEqual([]);
+  });
+
+  // rawCategories persistence: a re-scrape with a non-empty array refreshes it.
+  it('refreshes rawCategories when the re-scrape provides a non-empty array', async () => {
+    const existingCanonical: FakeCanonicalRow = {
+      id: 'book-cat-1',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: null,
+      createdAt: FIXED_DATE,
+    };
+    const existingListing: FakeProviderListingRow = {
+      id: 'pl-cat-1',
+      canonicalBookId: 'book-cat-1',
+      provider: 'YAKABOO',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: null,
+      priceAmount: 34900,
+      priceCurrency: 'UAH',
+      url: 'https://yakaboo.ua/kobzar',
+      lastSeenAt: FIXED_DATE,
+      availability: 'IN_STOCK',
+      rawCategories: ['Стара категорія'],
+    };
+    const { db, providerListings } = makeFakePrisma([existingCanonical], [existingListing]);
+
+    const listing = makeListing({ rawCategories: ['Нова категорія'] });
+    const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+    await runScrapePipeline({ prisma: db as unknown as PrismaClient, providers: [scraper] });
+
+    expect(providerListings[0]!.rawCategories).toEqual(['Нова категорія']);
+  });
+
+  // rawCategories persistence: a re-scrape WITHOUT categories never clears an existing array.
+  it('keeps existing rawCategories when the re-scrape carries none (no empty-overwrite)', async () => {
+    const existingCanonical: FakeCanonicalRow = {
+      id: 'book-cat-2',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: null,
+      createdAt: FIXED_DATE,
+    };
+    const existingListing: FakeProviderListingRow = {
+      id: 'pl-cat-2',
+      canonicalBookId: 'book-cat-2',
+      provider: 'YAKABOO',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: null,
+      priceAmount: 34900,
+      priceCurrency: 'UAH',
+      url: 'https://yakaboo.ua/kobzar',
+      lastSeenAt: FIXED_DATE,
+      availability: 'IN_STOCK',
+      rawCategories: ['Збережена категорія'],
+    };
+    const { db, providerListings } = makeFakePrisma([existingCanonical], [existingListing]);
+
+    // Catalog-only re-scrape: no rawCategories field (no signal this scrape).
+    const listing = makeListing({ price: { amount: 39900, currency: 'UAH' } });
+    const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+    await runScrapePipeline({ prisma: db as unknown as PrismaClient, providers: [scraper] });
+
+    expect(providerListings[0]!.rawCategories).toEqual(['Збережена категорія']);
+    expect(providerListings[0]!.priceAmount).toBe(39900); // other fields still update
+  });
+
+  // Regression: raw array is non-empty by .length but cleans to nothing (whitespace/empty
+  // entries only) — must NOT overwrite a previously-known rawCategories with [].
+  it('keeps existing rawCategories when the re-scrape carries only whitespace/empty entries', async () => {
+    const existingCanonical: FakeCanonicalRow = {
+      id: 'book-cat-3',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: null,
+      createdAt: FIXED_DATE,
+    };
+    const existingListing: FakeProviderListingRow = {
+      id: 'pl-cat-3',
+      canonicalBookId: 'book-cat-3',
+      provider: 'YAKABOO',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: null,
+      priceAmount: 34900,
+      priceCurrency: 'UAH',
+      url: 'https://yakaboo.ua/kobzar',
+      lastSeenAt: FIXED_DATE,
+      availability: 'IN_STOCK',
+      rawCategories: ['Збережена категорія'],
+    };
+    const { db, providerListings } = makeFakePrisma([existingCanonical], [existingListing]);
+
+    // Non-empty by raw .length, but every entry is whitespace-only or empty.
+    const listing = makeListing({ rawCategories: ['   ', ''] });
+    const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+    await runScrapePipeline({ prisma: db as unknown as PrismaClient, providers: [scraper] });
+
+    expect(providerListings[0]!.rawCategories).toEqual(['Збережена категорія']);
+  });
+
+  // Cleaned non-empty array updates: trimming/dedupe/empty-drop happen before the
+  // non-empty check, and the persisted value reflects the cleaned result.
+  it('updates rawCategories to the cleaned (trimmed, deduped, empty-dropped) result', async () => {
+    const existingCanonical: FakeCanonicalRow = {
+      id: 'book-cat-4',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: null,
+      createdAt: FIXED_DATE,
+    };
+    const existingListing: FakeProviderListingRow = {
+      id: 'pl-cat-4',
+      canonicalBookId: 'book-cat-4',
+      provider: 'YAKABOO',
+      title: 'Кобзар',
+      author: 'Тарас Шевченко',
+      isbn: null,
+      priceAmount: 34900,
+      priceCurrency: 'UAH',
+      url: 'https://yakaboo.ua/kobzar',
+      lastSeenAt: FIXED_DATE,
+      availability: 'IN_STOCK',
+      rawCategories: ['Стара'],
+    };
+    const { db, providerListings } = makeFakePrisma([existingCanonical], [existingListing]);
+
+    const listing = makeListing({ rawCategories: ['  Нова  ', 'Нова', ''] });
+    const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+    await runScrapePipeline({ prisma: db as unknown as PrismaClient, providers: [scraper] });
+
+    expect(providerListings[0]!.rawCategories).toEqual(['Нова']);
   });
 
   // Test 9: one listing failure does not stop the run

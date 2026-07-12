@@ -42,6 +42,18 @@ export function mapAvailability(a: Availability): 'IN_STOCK' | 'OUT_OF_STOCK' | 
   return AVAILABILITY_MAP[a];
 }
 
+function cleanRawCategories(raw: readonly string[]): string[] {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const entry of raw) {
+    const trimmed = entry.trim();
+    if (trimmed === '' || seen.has(trimmed)) continue;
+    seen.add(trimmed);
+    result.push(trimmed);
+  }
+  return result;
+}
+
 export async function persistListing(
   tx: Prisma.TransactionClient,
   ctx: { listing: RawProviderListing; result: MatchResult; scrapedAt: Date },
@@ -106,6 +118,7 @@ export async function persistListing(
         format: listing.format ?? null,
         series: listing.series ?? null,
         publicationYear: listing.publicationYear ?? null,
+        rawCategories: cleanRawCategories(listing.rawCategories ?? []),
       },
     });
 
@@ -134,6 +147,7 @@ export async function persistListing(
       format?: string;
       series?: string;
       publicationYear?: number;
+      rawCategories?: string[];
     } = {
       priceAmount,
       priceCurrency,
@@ -176,6 +190,16 @@ export async function persistListing(
     }
     if (listing.publicationYear != null) {
       updateData.publicationYear = listing.publicationYear;
+    }
+
+    // Refresh categories only when the CLEANED result is non-empty — never
+    // overwrite previously-known raw_categories with an empty array (graceful
+    // enrichment; genres-taxonomy PRD G2).
+    if (listing.rawCategories != null) {
+      const cleaned = cleanRawCategories(listing.rawCategories);
+      if (cleaned.length > 0) {
+        updateData.rawCategories = cleaned;
+      }
     }
 
     await tx.providerListing.update({

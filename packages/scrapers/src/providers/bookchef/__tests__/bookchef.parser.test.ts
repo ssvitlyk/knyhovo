@@ -106,6 +106,10 @@ describe('parseBookChefListing — product-instock.html (real)', () => {
   it('resolves an absolute cover URL', () => {
     expect(listing?.coverUrl).toMatch(/^https:\/\/bookchef\.ua\/storage\//);
   });
+
+  it('extracts rawCategories from the breadcrumb (genres-taxonomy G2)', () => {
+    expect(listing?.rawCategories).toEqual(['Художня Література', 'Фентезі']);
+  });
 });
 
 describe('parseBookChefListing — product-preorder.html (real)', () => {
@@ -122,6 +126,10 @@ describe('parseBookChefListing — product-preorder.html (real)', () => {
       availability: 'in-stock',
     });
   });
+
+  it('extracts rawCategories from the breadcrumb (genres-taxonomy G2)', () => {
+    expect(listing?.rawCategories).toEqual(['Художня Література', 'Романи', 'Історичний роман']);
+  });
 });
 
 describe('parseBookChefListing — product-outofstock.html (real)', () => {
@@ -137,6 +145,10 @@ describe('parseBookChefListing — product-outofstock.html (real)', () => {
       url: 'https://bookchef.ua/aliaska',
       availability: 'out-of-stock',
     });
+  });
+
+  it('extracts rawCategories from the breadcrumb (genres-taxonomy G2)', () => {
+    expect(listing?.rawCategories).toEqual(['Дитяча Література', 'Художня Література', 'Дитячі пригоди']);
   });
 });
 

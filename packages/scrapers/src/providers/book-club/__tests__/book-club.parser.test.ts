@@ -281,3 +281,75 @@ describe('parseProductPageBatch — perturbed cases', () => {
     expect(result.listings[0]!.isbn).toBeNull();
   });
 });
+
+describe('parseProductPageBatch — categories (genres-taxonomy G2)', () => {
+  function makeProductBatch(overrides: Record<string, unknown>): GraphqlResponse {
+    return {
+      data: {
+        p0: {
+          name: 'Тест книга',
+          isbn: '9786171520073',
+          type: 'paper',
+          cost: 200,
+          available: true,
+          in_stock: 5,
+          authors: [{ name: 'Автор', surname: 'Тестовий' }],
+          image: {
+            small: [{ format: 'jpg', url: '/covers/test.jpg' }],
+          },
+          ...overrides,
+        },
+      },
+    };
+  }
+
+  it('multiple categories → rawCategories in API order using name', () => {
+    const resp = makeProductBatch({
+      categories: [{ slug: 'fiction', name: 'Художня література' }, { slug: 'fantasy', name: 'Фентезі' }],
+    });
+    const result = parseProductPageBatch(resp, ['test-slug']);
+    expect(result.listings[0]!.rawCategories).toEqual(['Художня література', 'Фентезі']);
+  });
+
+  it('empty categories array → rawCategories: []', () => {
+    const resp = makeProductBatch({ categories: [] });
+    const result = parseProductPageBatch(resp, ['test-slug']);
+    expect(result.listings[0]!.rawCategories).toEqual([]);
+  });
+
+  it('categories: null → rawCategories: []', () => {
+    const resp = makeProductBatch({ categories: null });
+    const result = parseProductPageBatch(resp, ['test-slug']);
+    expect(result.listings[0]!.rawCategories).toEqual([]);
+  });
+
+  it('categories field entirely absent → rawCategories: []', () => {
+    const resp = makeProductBatch({});
+    const result = parseProductPageBatch(resp, ['test-slug']);
+    expect(result.listings[0]!.rawCategories).toEqual([]);
+  });
+
+  it('duplicate category names → deduped', () => {
+    const resp = makeProductBatch({
+      categories: [{ slug: 'fiction', name: 'Художня література' }, { slug: 'fiction-2', name: 'Художня література' }],
+    });
+    const result = parseProductPageBatch(resp, ['test-slug']);
+    expect(result.listings[0]!.rawCategories).toEqual(['Художня література']);
+  });
+
+  it('empty/missing name falls back to slug', () => {
+    const resp = makeProductBatch({
+      categories: [{ slug: 'fantasy', name: '' }],
+    });
+    const result = parseProductPageBatch(resp, ['test-slug']);
+    expect(result.listings[0]!.rawCategories).toEqual(['fantasy']);
+  });
+
+  it('both name and slug empty/missing → entry skipped entirely', () => {
+    const resp = makeProductBatch({
+      categories: [{ slug: '', name: '' }, { name: 'Фентезі' }],
+    });
+    const result = parseProductPageBatch(resp, ['test-slug']);
+    expect(result.listings[0]!.rawCategories).toEqual(['Фентезі']);
+  });
+});

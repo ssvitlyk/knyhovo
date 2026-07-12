@@ -2,6 +2,7 @@ import type { RawProviderListing, Availability, Money } from '@knyhovo/shared';
 import { normalizeIsbn } from '../../canonical/isbn.js';
 import type { GraphqlResponse } from './graphql-client.js';
 import { buildProductUrl, buildCoverUrl } from './constants.js';
+import { finalizeRawCategories } from '../../lib/extract-breadcrumbs.js';
 
 // ─── Price ───────────────────────────────────────────────────────────────────
 
@@ -46,6 +47,24 @@ function resolveAuthors(authors: unknown): string | null {
     if (full) names.push(full);
   }
   return names.length > 0 ? names.join(', ') : null;
+}
+
+/**
+ * Resolve a KSD `categories[]` array (objects with `slug`/`name`) to raw
+ * category strings, root→leaf per API order. `name` is preferred; `slug` is
+ * used only as a fallback when `name` is absent/empty (provider-native text
+ * contract — categories are display text, not internal keys).
+ */
+function resolveCategories(categories: unknown): string[] {
+  if (!Array.isArray(categories)) return [];
+  const names: string[] = [];
+  for (const entry of categories) {
+    if (typeof entry !== 'object' || entry === null) continue;
+    const c = entry as { slug?: unknown; name?: unknown };
+    const name = readString(c.name) ?? readString(c.slug);
+    if (name !== null) names.push(name);
+  }
+  return finalizeRawCategories(names);
 }
 
 // ─── Catalog discovery ───────────────────────────────────────────────────────
@@ -166,6 +185,7 @@ function mapProductPage(raw: Record<string, unknown>, slug: string): MappedProdu
     availability,
     coverUrl: buildCoverUrl(raw['image']),
     description: null,
+    rawCategories: resolveCategories(raw['categories']),
   };
 
   return { listing, error: null };
