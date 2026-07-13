@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import type { Mock } from 'vitest';
 import { buildApp } from '../../app.js';
 import { clearCache } from '../cache.js';
@@ -198,6 +198,39 @@ describe('GET /api/collections/hub', () => {
     // wishlistCount must never sit stale for the hub cache's TTL (PRD §3.2).
     expect(spies.wishlistItem.groupBy.mock.calls.length).toBe(2);
     expect(spies.canonicalBook.groupBy.mock.calls.length).toBe(1);
+  });
+});
+
+describe('GET /api/collections/hub — COLLECTIONS_MIN_GENRE_BOOK_COUNT override', () => {
+  const SAVED = process.env['COLLECTIONS_MIN_GENRE_BOOK_COUNT'];
+
+  beforeEach(() => clearCache());
+  afterEach(() => {
+    if (SAVED === undefined) delete process.env['COLLECTIONS_MIN_GENRE_BOOK_COUNT'];
+    else process.env['COLLECTIONS_MIN_GENRE_BOOK_COUNT'] = SAVED;
+  });
+
+  it('lowers the eligibility threshold when the env var is set (e.g. staging = 5)', async () => {
+    process.env['COLLECTIONS_MIN_GENRE_BOOK_COUNT'] = '5';
+    const db = fullHubDb();
+    const app = await buildTestApp(db);
+    const res = await app.inject({ method: 'GET', url: '/api/collections/hub' });
+    const body = res.json();
+
+    const genreSlugs = body.genres.map((g: { slug: string }) => g.slug);
+    // The thin genre has 5 books — now clears the lowered threshold.
+    expect(genreSlugs).toContain('genre-thin');
+  });
+
+  it('falls back to the default (30) for an invalid override', async () => {
+    process.env['COLLECTIONS_MIN_GENRE_BOOK_COUNT'] = 'not-a-number';
+    const db = fullHubDb();
+    const app = await buildTestApp(db);
+    const res = await app.inject({ method: 'GET', url: '/api/collections/hub' });
+    const body = res.json();
+
+    const genreSlugs = body.genres.map((g: { slug: string }) => g.slug);
+    expect(genreSlugs).not.toContain('genre-thin');
   });
 });
 
