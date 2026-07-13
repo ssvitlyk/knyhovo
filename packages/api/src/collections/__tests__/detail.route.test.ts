@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { buildApp } from '../../app.js';
 import { clearCache } from '../cache.js';
 import { emptyDb, makeFakePrisma, book, listing, collection } from './fake-prisma.js';
@@ -68,6 +68,31 @@ describe('GET /api/collections/:slug', () => {
     const res = await app.inject({ method: 'GET', url: '/api/collections/ok-genre' });
     expect(res.statusCode).toBe(200);
     expect(res.json().collection.bookCount).toBe(30);
+  });
+});
+
+describe('GET /api/collections/:slug — COLLECTIONS_MIN_GENRE_BOOK_COUNT override', () => {
+  const SAVED = process.env['COLLECTIONS_MIN_GENRE_BOOK_COUNT'];
+
+  beforeEach(() => clearCache());
+  afterEach(() => {
+    if (SAVED === undefined) delete process.env['COLLECTIONS_MIN_GENRE_BOOK_COUNT'];
+    else process.env['COLLECTIONS_MIN_GENRE_BOOK_COUNT'] = SAVED;
+  });
+
+  it('returns 200 (not a redirect) below the default 30 once the threshold is lowered', async () => {
+    process.env['COLLECTIONS_MIN_GENRE_BOOK_COUNT'] = '5';
+    const db = emptyDb();
+    const thin = collection('genre-thin', 'thin-genre', 'TAXONOMIC', { displayOrder: 1 });
+    db.collections.push(thin);
+    for (let i = 0; i < 10; i += 1) {
+      db.books.push(book(`t${i}`, `Book ${i}`, 'Author', { genreId: thin.id, listings: [listing(5000)] }));
+    }
+
+    const app = await buildTestApp(db);
+    const res = await app.inject({ method: 'GET', url: '/api/collections/thin-genre' });
+    expect(res.statusCode).toBe(200);
+    expect(res.json().collection.bookCount).toBe(10);
   });
 });
 

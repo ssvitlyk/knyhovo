@@ -36,13 +36,11 @@ import type {
 import type { BooksQueryParams } from './schema.js';
 import { getOrSet } from './cache.js';
 import { planNovynkyPool } from './feed-constants.js';
+import { parseMinGenreBookCountFromEnv } from './genre-threshold-env.js';
 
 const PER_PAGE = 24;
 
-/** Minimum live book count for a taxonomic (genre) collection to be publicly browsable. */
-const MIN_GENRE_BOOK_COUNT = 30;
-
-/** Redirect target for a taxonomic collection below {@link MIN_GENRE_BOOK_COUNT}. */
+/** Redirect target for a taxonomic collection below the minimum genre book count. */
 export const THIN_GENRE_REDIRECT = '/dobirky';
 
 export const FEATURED_SLUG = 'knyhovyk-radyt';
@@ -215,7 +213,8 @@ async function buildHub(prisma: PrismaClient): Promise<HubResponseDto> {
   const weekly = bySlugDtos(WEEKLY_SLUGS);
   const moods = bySlugDtos(MOOD_SLUGS);
 
-  const eligibleGenreRows = taxonomicRows.filter((row) => (genreCounts.get(row.id) ?? 0) >= MIN_GENRE_BOOK_COUNT);
+  const minGenreBookCount = parseMinGenreBookCountFromEnv(process.env);
+  const eligibleGenreRows = taxonomicRows.filter((row) => (genreCounts.get(row.id) ?? 0) >= minGenreBookCount);
   const genres = eligibleGenreRows.map((row) => toCollectionDto(row, genreCounts.get(row.id) ?? 0));
 
   return { featured, dynamic, editorial, weekly, moods, genres };
@@ -254,7 +253,7 @@ export interface CollectionDetailResult {
 
 async function buildCollectionDetail(prisma: PrismaClient, row: CollectionRow, now: Date): Promise<CollectionDetailResult> {
   const count = await feedTotalCount(prisma, row, now);
-  if (row.type === 'TAXONOMIC' && count < MIN_GENRE_BOOK_COUNT) {
+  if (row.type === 'TAXONOMIC' && count < parseMinGenreBookCountFromEnv(process.env)) {
     return { response: { collection: toCollectionDto(row, count) }, redirect: THIN_GENRE_REDIRECT };
   }
   return { response: { collection: toCollectionDto(row, count) } };
