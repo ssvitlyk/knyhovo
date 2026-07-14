@@ -20,8 +20,8 @@ const NOOP_LOGGER: ScraperLogger = { info: () => {} };
 // with no other output between the sitemap-plan log and the final result —
 // indistinguishable from a hang in production. Emit a progress line every
 // FETCH_PROGRESS_EVERY pages instead. At ~1s/page this is roughly one line
-// every 4 minutes.
-const FETCH_PROGRESS_EVERY = 250;
+// every 1.5–2 minutes.
+const FETCH_PROGRESS_EVERY = 100;
 
 /**
  * BookChef scraper (Tier A). Discovery is sitemap-driven: the catalog is
@@ -108,15 +108,27 @@ export class BookChefScraper implements ScraperProvider {
     //    loop continues — unlike catalog pagination, which breaks on the gap.
     const seenUrls = new Set<string>();
     const fetchStartedMs = Date.now();
+    const debugFetchStages = options?.debugFetchStages ?? false;
 
     for (let i = 0; i < targets.length; i++) {
       const entry = targets[i];
       const productUrl = entry.url;
 
+      if (debugFetchStages) {
+        logger.info(`bookchef: [stage] fetch started ${i + 1}/${targets.length} ${productUrl}`);
+      }
+
       let html: string | undefined;
+      const fetchStartMs = Date.now();
       try {
         html = await this.fetcher.fetch(productUrl, timeoutMs);
+        if (debugFetchStages) {
+          logger.info(`bookchef: [stage] fetch completed ${i + 1} (${Date.now() - fetchStartMs}ms)`);
+        }
       } catch (err) {
+        if (debugFetchStages) {
+          logger.info(`bookchef: [stage] fetch failed ${i + 1} (${Date.now() - fetchStartMs}ms)`);
+        }
         errors.push(
           `Product ${productUrl}: fetch error — ${err instanceof Error ? err.message : String(err)}`,
         );
@@ -134,20 +146,28 @@ export class BookChefScraper implements ScraperProvider {
         }
       }
 
+      if (debugFetchStages) {
+        logger.info(`bookchef: [stage] parse completed ${i + 1}`);
+      }
+
       if ((i + 1) % FETCH_PROGRESS_EVERY === 0) {
         const elapsedMs = Date.now() - fetchStartedMs;
         const elapsedSec = Math.round(elapsedMs / 1000);
+        const avgMs = Math.round(elapsedMs / (i + 1));
         const etaSec = Math.round(
           (elapsedMs / (i + 1)) * (targets.length - (i + 1)) / 1000,
         );
         logger.info(
-          `bookchef: fetch progress ${i + 1}/${targets.length} ok=${allListings.length} ` +
-            `errors=${errors.length} elapsed=${elapsedSec}s eta=${etaSec}s`,
+          `BookChef progress: current=${i + 1} total=${targets.length} ok=${allListings.length} ` +
+            `errors=${errors.length} elapsed=${elapsedSec}s avgPerPage=${avgMs}ms ETA=${etaSec}s`,
         );
       }
 
       if (i < targets.length - 1 && delayMs > 0) {
         await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+        if (debugFetchStages) {
+          logger.info(`bookchef: [stage] sleep completed ${i + 1}`);
+        }
       }
     }
 

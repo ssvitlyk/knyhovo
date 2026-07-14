@@ -64,6 +64,45 @@ describe('parseScraperOptionsFromEnv', () => {
   it('returns undefined when only the delay is set and enrichment is off', () => {
     expect(parseScraperOptionsFromEnv({ SCRAPE_DESCRIPTION_DELAY_MS: '2500' })).toBeUndefined();
   });
+
+  it('returns undefined when SCRAPE_DEBUG_FETCH_STAGES is absent', () => {
+    expect(parseScraperOptionsFromEnv({})).toBeUndefined();
+  });
+
+  it("enables debugFetchStages when SCRAPE_DEBUG_FETCH_STAGES is 'true'", () => {
+    expect(parseScraperOptionsFromEnv({ SCRAPE_DEBUG_FETCH_STAGES: 'true' })).toEqual({
+      debugFetchStages: true,
+    });
+  });
+
+  it("enables debugFetchStages when SCRAPE_DEBUG_FETCH_STAGES is '1'", () => {
+    expect(parseScraperOptionsFromEnv({ SCRAPE_DEBUG_FETCH_STAGES: '1' })).toEqual({
+      debugFetchStages: true,
+    });
+  });
+
+  it('returns undefined when SCRAPE_DEBUG_FETCH_STAGES is an unrecognised value', () => {
+    expect(parseScraperOptionsFromEnv({ SCRAPE_DEBUG_FETCH_STAGES: 'yes' })).toBeUndefined();
+  });
+
+  it('composes debugFetchStages with enrichDescriptions and descriptionDelayMs', () => {
+    expect(
+      parseScraperOptionsFromEnv({
+        SCRAPE_ENRICH_DESCRIPTIONS: 'true',
+        SCRAPE_DESCRIPTION_DELAY_MS: '2500',
+        SCRAPE_DEBUG_FETCH_STAGES: '1',
+      }),
+    ).toEqual({ enrichDescriptions: true, descriptionDelayMs: 2500, debugFetchStages: true });
+  });
+
+  it('composes debugFetchStages alone when enrichment is off', () => {
+    expect(
+      parseScraperOptionsFromEnv({
+        SCRAPE_DEBUG_FETCH_STAGES: 'true',
+        SCRAPE_DESCRIPTION_DELAY_MS: '2500',
+      }),
+    ).toEqual({ debugFetchStages: true });
+  });
 });
 
 describe('getScrapeStateRetentionDays', () => {
