@@ -3,6 +3,7 @@ import type { RawProviderListing, Availability, Money } from '@knyhovo/shared';
 import { normalizeIsbn } from '../../canonical/isbn.js';
 import { sanitizeDescription } from '../../lib/sanitize-description.js';
 import { extractBreadcrumbs } from '../../lib/extract-breadcrumbs.js';
+import { parseSitemapEntries } from '../../sitemap/parse-sitemap.js';
 import { JSON_LD_SELECTOR, buildCoverUrl } from './constants.js';
 import type { ParsedProductState } from '../single-product.js';
 
@@ -241,28 +242,17 @@ export interface SitemapResult {
 }
 
 /**
- * Parse a BookChef product sitemap (`<urlset>` of `<loc>` product URLs) into a
- * deduplicated list of product-page URLs. Pure function — no IO, never throws.
- * Empty/blank input or a sitemap with no `<loc>` entries yields `urls: []` and
- * an error message.
+ * Parse a BookChef product sitemap (`<urlset>` of `<loc>` product URLs, with
+ * optional `<lastmod>`) into a deduplicated list of product-page URLs.
+ * Pure function — no IO, never throws. Empty/blank input or a sitemap with no
+ * `<loc>` entries yields `urls: []` and an error message.
+ *
+ * Thin backward-compat wrapper over the shared {@link parseSitemapEntries} —
+ * kept for callers that only need URLs (lastmod is dropped here). The scraper
+ * itself uses `parseSitemapEntries` directly to keep the lastmod signal for
+ * incremental fetching.
  */
 export function parseBookChefSitemap(xml: string): SitemapResult {
-  const trimmed = typeof xml === 'string' ? xml.trim() : '';
-  if (!trimmed) {
-    return { urls: [], errors: ['empty sitemap'] };
-  }
-
-  const $ = cheerio.load(trimmed, { xml: true });
-  const urls: string[] = [];
-  const seen = new Set<string>();
-  $('loc').each((_, el) => {
-    const loc = $(el).text().trim();
-    if (loc && !seen.has(loc)) {
-      seen.add(loc);
-      urls.push(loc);
-    }
-  });
-
-  const errors = urls.length === 0 ? ['no <loc> entries found in sitemap'] : [];
-  return { urls, errors };
+  const { entries, error } = parseSitemapEntries(xml);
+  return { urls: entries.map((entry) => entry.url), errors: error ? [error] : [] };
 }

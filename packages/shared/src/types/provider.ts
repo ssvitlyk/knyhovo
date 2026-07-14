@@ -77,7 +77,26 @@ export interface ScraperOptions {
    * Ignored when enrichDescriptions is off.
    */
   skipDescriptionUrls?: ReadonlySet<string>;
+  /**
+   * Per-URL watermark of the last successfully processed sitemap `lastmod`
+   * (ISO 8601 string), keyed by product URL. When provided, a sitemap-incremental
+   * scraper fetches only sitemap entries that are new or whose `lastmod` is newer
+   * than the known value; everything else is skipped as unchanged. Omitted →
+   * full scrape (existing behavior, every discovered URL is fetched).
+   */
+  knownSourceLastmod?: ReadonlyMap<string, string>;
 }
+
+/**
+ * A single `<url>` entry from a provider's sitemap: the product `<loc>` and its
+ * optional `<lastmod>`, normalized to ISO 8601 UTC. `lastmod` is null when the
+ * sitemap omitted it or it could not be parsed — callers must treat that as "no
+ * signal" (fail open to fetching), never as "unchanged".
+ */
+export type SitemapEntry = {
+  readonly url: string;
+  readonly lastmod: string | null;
+};
 
 /**
  * Raw listing data as returned by the scraper layer, before canonical matching or DB persistence.
@@ -140,6 +159,13 @@ export interface RawProviderListing {
    * has no extraction wired up or the page carried no signal this scrape.
    */
   readonly rawCategories?: readonly string[] | null;
+  /**
+   * Sitemap `lastmod` (ISO 8601, normalized to UTC) of the sitemap entry this
+   * listing was discovered from, for sitemap-incremental scrapers. Optional and
+   * nullable: omitted/null for non-sitemap-driven providers or when the sitemap
+   * entry carried no `lastmod`.
+   */
+  readonly sourceLastmod?: string | null;
 }
 
 /**
@@ -224,4 +250,12 @@ export interface ScraperResult {
   readonly scrapedAt: string;
   /** Human-readable error messages for any listings that failed to parse or pages that failed to fetch. */
   readonly errors: string[];
+  /**
+   * The full presence list from a successfully parsed sitemap, for
+   * sitemap-driven providers. Always the complete sitemap (never just the
+   * fetched subset), regardless of full vs. incremental mode — the pipeline
+   * uses it for presence bookkeeping and shadow validation. Omitted when the
+   * provider is not sitemap-driven or the sitemap failed to parse.
+   */
+  readonly sitemap?: { readonly entries: ReadonlyArray<SitemapEntry> };
 }

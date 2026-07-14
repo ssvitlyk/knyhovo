@@ -22,6 +22,7 @@ export type {
   ProviderListing,
   ScraperProvider,
   ScraperResult,
+  SitemapEntry,
 } from './types/provider.js';
 
 export type { PriceHistoryPoint } from './types/price-history.js';

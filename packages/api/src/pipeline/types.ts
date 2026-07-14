@@ -1,5 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import type { ScraperProvider, ScraperOptions, ProviderName, CanonicalBook } from '@knyhovo/shared';
+import type { ScraperProvider, ScraperOptions, ProviderName, CanonicalBook, SitemapEntry } from '@knyhovo/shared';
 import type { ConflictReason } from '@knyhovo/scrapers';
 
 export type { ConflictReason };
@@ -52,6 +52,23 @@ export interface ProviderRunResult {
    * never carry a category signal (genres-taxonomy PRD G5 §1).
    */
   affectedCanonicalBookIds: string[];
+  /** The full sitemap presence list for this run, when the provider is sitemap-driven. Undefined otherwise. */
+  sitemap?: { readonly entries: ReadonlyArray<SitemapEntry> };
+  /**
+   * Wall-clock duration of the `provider.scrape()` call, in milliseconds.
+   * Used to derive an average per-listing fetch time for the incremental
+   * efficiency metric (bookchef-incremental-scraping PRD §5). Always
+   * populated by runScrapePipeline; optional so existing out-of-scope
+   * fixtures of ProviderRunResult remain valid.
+   */
+  scrapeDurationMs?: number;
+  /**
+   * URLs of listings this run actually recorded a price/availability change
+   * for (a later phase's shadow-validation input). Optional so existing
+   * fixtures/mocks of ProviderRunResult in out-of-scope test suites (refresh/*)
+   * remain valid; runScrapePipeline itself always populates it.
+   */
+  changedListingUrls?: string[];
 }
 
 export interface PipelineResult {

@@ -53,6 +53,10 @@ function makeFakePrisma(
       findMany: vi.fn(async () => runs),
     },
     providerListing: { groupBy },
+    // The route now also runs a raw-SQL stale-count join for incremental-capable
+    // providers (bookchef) — an empty result keeps the plain groupBy-derived
+    // stale count as-is for these fixtures (none of them exercise BookChef staleness).
+    $queryRaw: vi.fn(async () => []),
   } as unknown as PrismaClient;
 }
 
@@ -64,6 +68,7 @@ function makeScenarioRuns(): ScrapeRun[] {
     fakeRun({ id: 'run-2', provider: Provider.BOOK_CLUB, status: ScrapeRunStatus.SUCCESS }),
     fakeRun({ id: 'run-3', provider: Provider.VIVAT, status: ScrapeRunStatus.SUCCESS }),
     fakeRun({ id: 'run-4', provider: Provider.BOOK_YE, status: ScrapeRunStatus.SUCCESS }),
+    fakeRun({ id: 'run-5', provider: Provider.BOOKCHEF, status: ScrapeRunStatus.SUCCESS }),
   ];
 }
 
@@ -96,7 +101,7 @@ describe('GET /api/refresh/health', () => {
       };
     };
 
-    expect(body.providers).toHaveLength(4);
+    expect(body.providers).toHaveLength(5);
     for (const p of body.providers) {
       expect(p).toHaveProperty('provider');
       expect(p).toHaveProperty('status');
@@ -164,6 +169,7 @@ describe('GET /api/refresh/health', () => {
       fakeRun({ id: 'r2', provider: Provider.BOOK_CLUB, status: ScrapeRunStatus.SUCCESS }),
       fakeRun({ id: 'r3', provider: Provider.VIVAT, status: ScrapeRunStatus.SUCCESS }),
       fakeRun({ id: 'r4', provider: Provider.BOOK_YE, status: ScrapeRunStatus.SUCCESS }),
+      fakeRun({ id: 'r5', provider: Provider.BOOKCHEF, status: ScrapeRunStatus.SUCCESS }),
     ];
     const prisma = makeFakePrisma(allSuccess);
     const app = buildApp(prisma);

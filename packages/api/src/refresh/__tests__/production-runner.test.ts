@@ -307,4 +307,36 @@ describe('runProductionScrape — post-scrape genre assignment hook (G5)', () =>
     );
     expect(logger.info).toHaveBeenCalledWith(expect.stringContaining('assigned=1'));
   });
+
+  // ── bookchef-incremental-scraping PRD: mode/retentionDays threading ─────────
+
+  it('passes mode and retentionDays through to the refresh layer when provided', async () => {
+    const refresh = fakeRefresh({
+      outcomes: [outcome('bookchef', ScrapeRunStatus.SUCCESS)],
+      anySucceeded: true,
+    });
+
+    await runProductionScrape({
+      ...baseDeps(refresh),
+      mode: 'incremental',
+      retentionDays: 30,
+    });
+
+    expect(refresh).toHaveBeenCalledWith(
+      expect.objectContaining({ mode: 'incremental', retentionDays: 30 }),
+    );
+  });
+
+  it('omits mode and retentionDays from the refresh call when not provided (no behavior change)', async () => {
+    const refresh = fakeRefresh({
+      outcomes: [outcome('yakaboo', ScrapeRunStatus.SUCCESS)],
+      anySucceeded: true,
+    });
+
+    await runProductionScrape(baseDeps(refresh));
+
+    const call = vi.mocked(refresh!).mock.calls[0]![0];
+    expect(call).not.toHaveProperty('mode');
+    expect(call).not.toHaveProperty('retentionDays');
+  });
 });

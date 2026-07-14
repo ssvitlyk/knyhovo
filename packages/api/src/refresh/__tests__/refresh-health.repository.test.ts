@@ -181,4 +181,66 @@ describe('fetchListingFreshness', () => {
     const result = await fetchListingFreshness(prisma, STALE_BEFORE);
     expect(result).toEqual([]);
   });
+
+  // ── bookchef-incremental-scraping PRD §3: incremental-providers stale override ──
+
+  describe('incremental-capable providers (bookchef-incremental-scraping PRD §3)', () => {
+    it('does not run the raw-SQL join query when no incremental providers are given', async () => {
+      const groupBy = vi.fn(async () => []);
+      const queryRaw = vi.fn(async () => []);
+      const prisma = { providerListing: { groupBy }, $queryRaw: queryRaw } as unknown as PrismaClient;
+
+      await fetchListingFreshness(prisma, STALE_BEFORE);
+      expect(queryRaw).not.toHaveBeenCalled();
+    });
+
+    it('overrides the plain-groupBy stale count with the join-based count for an incremental provider', async () => {
+      const totalsRow = {
+        provider: Provider.BOOKCHEF,
+        _count: { _all: 500 },
+        _max: { lastSeenAt: LAST_SEEN },
+      };
+      // Plain groupBy says 400 stale (would false-positive under incremental scraping).
+      const staleRow = { provider: Provider.BOOKCHEF, _count: { _all: 400 } };
+      const groupBy = vi.fn().mockResolvedValueOnce([totalsRow]).mockResolvedValueOnce([staleRow]);
+      // The join query (only counting rows with no fresh sitemap-presence either) says 20.
+      const queryRaw = vi.fn(async () => [{ provider: Provider.BOOKCHEF, stale_count: 20n }]);
+      const prisma = { providerListing: { groupBy }, $queryRaw: queryRaw } as unknown as PrismaClient;
+
+      const result = await fetchListingFreshness(
+        prisma,
+        STALE_BEFORE,
+        new Set([Provider.BOOKCHEF]),
+      );
+
+      expect(queryRaw).toHaveBeenCalledOnce();
+      expect(result).toHaveLength(1);
+      expect(result[0]!.provider).toBe(Provider.BOOKCHEF);
+      expect(result[0]!.totalListings).toBe(500);
+      expect(result[0]!.staleListings).toBe(20);
+    });
+
+    it('resets an incremental provider to 0 stale when the join query returns no row for it', async () => {
+      const totalsRow = { provider: Provider.BOOKCHEF, _count: { _all: 100 }, _max: { lastSeenAt: LAST_SEEN } };
+      const staleRow = { provider: Provider.BOOKCHEF, _count: { _all: 90 } }; // plain groupBy: mostly stale
+      const groupBy = vi.fn().mockResolvedValueOnce([totalsRow]).mockResolvedValueOnce([staleRow]);
+      const queryRaw = vi.fn(async () => []); // join query: nothing is actually stale
+      const prisma = { providerListing: { groupBy }, $queryRaw: queryRaw } as unknown as PrismaClient;
+
+      const result = await fetchListingFreshness(prisma, STALE_BEFORE, new Set([Provider.BOOKCHEF]));
+      expect(result[0]!.staleListings).toBe(0);
+    });
+
+    it('leaves a non-incremental provider\'s plain-groupBy stale count untouched', async () => {
+      const totalsRow = { provider: Provider.YAKABOO, _count: { _all: 100 }, _max: { lastSeenAt: LAST_SEEN } };
+      const staleRow = { provider: Provider.YAKABOO, _count: { _all: 60 } };
+      const groupBy = vi.fn().mockResolvedValueOnce([totalsRow]).mockResolvedValueOnce([staleRow]);
+      const queryRaw = vi.fn(async () => []); // only queried for incremental providers; irrelevant here
+      const prisma = { providerListing: { groupBy }, $queryRaw: queryRaw } as unknown as PrismaClient;
+
+      const result = await fetchListingFreshness(prisma, STALE_BEFORE, new Set([Provider.BOOKCHEF]));
+      expect(result[0]!.provider).toBe(Provider.YAKABOO);
+      expect(result[0]!.staleListings).toBe(60);
+    });
+  });
 });

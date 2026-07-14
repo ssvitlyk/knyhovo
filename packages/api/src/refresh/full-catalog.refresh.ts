@@ -1,7 +1,7 @@
-import type { PrismaClient, ScrapeRunTrigger } from '@prisma/client';
+import type { PrismaClient, ScrapeRunTrigger, Prisma } from '@prisma/client';
 import { ScrapeRunKind, ScrapeRunStatus } from '@prisma/client';
 import type { ScraperProvider, ScraperOptions, ProviderName } from '@knyhovo/shared';
-import { isRateLimited } from '@knyhovo/scrapers';
+import { isRateLimited, planIncrementalFetch } from '@knyhovo/scrapers';
 import {
   runScrapePipeline,
   formatSummary,
@@ -10,9 +10,17 @@ import {
   bindContext,
 } from '../pipeline/index.js';
 import type { ScrapeMetrics, Logger } from '../pipeline/index.js';
+import {
+  loadKnownSourceLastmod,
+  recordSitemapPresence,
+  countVanished,
+  sweepStaleState,
+} from '../pipeline/scrape-state.repository.js';
 import { startScrapeRun, finishScrapeRun, deriveRunStatus } from './scrape-run.repository.js';
 import { acquireRefreshLock, releaseRefreshLock } from './concurrency-guard.js';
 import type { ProductionMetricsRegistry } from '../metrics/index.js';
+import { INCREMENTAL_SITEMAP_PROVIDERS } from './incremental-providers.js';
+import { shouldAutoEscalateToFull, findPreviousFullSitemapTotal } from './auto-escalation.js';
 
 export interface FullCatalogRefreshOptions {
   readonly prisma: PrismaClient;
@@ -28,6 +36,19 @@ export interface FullCatalogRefreshOptions {
    * only — it never alters control flow or persistence.
    */
   readonly metrics?: ProductionMetricsRegistry;
+  /**
+   * Requested scrape mode (bookchef-incremental-scraping PRD §5). Only affects
+   * providers in `INCREMENTAL_SITEMAP_PROVIDERS` — every other provider always
+   * runs a full scrape regardless of this value. Omitted behaves exactly like
+   * `'full'` (no behavior change for existing callers).
+   */
+  readonly mode?: 'full' | 'incremental';
+  /**
+   * TTL (days) for stale `provider_scrape_state` rows, swept after a
+   * successful full run for an incremental-capable provider. Defaults to 90
+   * (see `getScrapeStateRetentionDays` in `scripts/scrape-env.ts`).
+   */
+  readonly retentionDays?: number;
 }
 
 export interface ProviderRefreshOutcome {
@@ -124,10 +145,39 @@ async function refreshProvider(
     // Structured-log context for everything this provider's run emits.
     const providerLogger = bindContext(logger, { runId, provider: dbProvider });
 
+    // bookchef-incremental-scraping PRD: only sitemap-diff-capable providers
+    // get a known-watermark map / incremental mode. Every other provider's
+    // scraperOptions stay byte-identical to `opts.scraperOptions`.
+    const isIncrementalCapable = INCREMENTAL_SITEMAP_PROVIDERS.has(provider.name);
+    let knownSnapshot: Map<string, string> = new Map();
+    let effectiveMode: 'full' | 'incremental' = 'full';
+
+    if (isIncrementalCapable) {
+      // Loaded regardless of requested mode — needed both to drive an
+      // incremental scrape AND as the shadow-validation prediction basis on
+      // full runs (§7).
+      knownSnapshot = await loadKnownSourceLastmod(opts.prisma, dbProvider);
+
+      if (opts.mode === 'incremental') {
+        const autoFull = await shouldAutoEscalateToFull(opts.prisma, dbProvider, knownSnapshot, clock());
+        effectiveMode = autoFull ? 'full' : 'incremental';
+        if (autoFull) {
+          providerLogger.error(
+            `${provider.name}: auto-escalated incremental→full (self-heal — empty state or stale/missing last full run)`,
+          );
+        }
+      }
+    }
+
+    const scraperOptionsForProvider: ScraperOptions | undefined =
+      effectiveMode === 'incremental'
+        ? { ...opts.scraperOptions, knownSourceLastmod: knownSnapshot }
+        : opts.scraperOptions;
+
     const { results } = await runScrapePipeline({
       prisma: opts.prisma,
       providers: [provider],
-      ...(opts.scraperOptions !== undefined ? { scraperOptions: opts.scraperOptions } : {}),
+      ...(scraperOptionsForProvider !== undefined ? { scraperOptions: scraperOptionsForProvider } : {}),
       logger: providerLogger,
     });
     const result = results[0]!;
@@ -137,12 +187,102 @@ async function refreshProvider(
     const rateLimited = result.scrapeErrors.some(isRateLimited);
 
     const finishedAt = clock();
+
+    let metadata: Record<string, unknown> | undefined;
+    if (isIncrementalCapable && result.sitemap?.entries !== undefined) {
+      const entries = result.sitemap.entries;
+      const seenAt = finishedAt;
+      await recordSitemapPresence(opts.prisma, dbProvider, entries, seenAt);
+      const vanishedFromSitemap = await countVanished(
+        opts.prisma,
+        dbProvider,
+        new Set(entries.map((e) => e.url)),
+        seenAt,
+      );
+
+      const shadowPlan = planIncrementalFetch(entries, knownSnapshot);
+      const toFetch = effectiveMode === 'incremental' ? shadowPlan.toFetch.length : entries.length;
+      const unchangedSkipped = effectiveMode === 'incremental' ? shadowPlan.unchangedCount : 0;
+
+      const allLastmodNull = entries.length > 0 && entries.every((e) => e.lastmod === null);
+      if (allLastmodNull) {
+        providerLogger.error(
+          `${provider.name}: sitemap parsed with zero lastmod values across ${entries.length} entries — lastmod signal may have disappeared`,
+        );
+      }
+
+      metadata = {
+        mode: effectiveMode,
+        sitemapTotal: entries.length,
+        toFetch,
+        unchangedSkipped,
+        vanishedFromSitemap,
+        ...(allLastmodNull ? { allLastmodMissing: true } : {}),
+      };
+
+      if (effectiveMode === 'incremental') {
+        const savedFetches = entries.length - toFetch;
+        const savedPercent = entries.length > 0 ? savedFetches / entries.length : 0;
+        const fetchedListingsCount = result.metrics.scraped;
+        const avgFetchMs = (result.scrapeDurationMs ?? 0) / Math.max(fetchedListingsCount, 1);
+        const estimatedSavedTimeMs = savedFetches * avgFetchMs;
+        metadata['efficiency'] = { savedFetches, savedPercent, estimatedSavedTimeMs };
+        providerLogger.info(
+          `${provider.name}: incremental efficiency — savedFetches=${savedFetches} ` +
+            `savedPercent=${(savedPercent * 100).toFixed(1)}% estimatedSavedTimeMs=${Math.round(estimatedSavedTimeMs)}`,
+        );
+      }
+
+      if (effectiveMode === 'full' && knownSnapshot.size > 0) {
+        const predicted = new Set(shadowPlan.toFetch.map((e) => e.url));
+        const actualChanged = new Set(result.changedListingUrls ?? []);
+        const intersection = [...actualChanged].filter((u) => predicted.has(u));
+        const missedUrls = [...actualChanged].filter((u) => !predicted.has(u));
+        const predictedCount = predicted.size;
+        const actualChangedCount = actualChanged.size;
+        const recall = actualChangedCount === 0 ? 1 : intersection.length / actualChangedCount;
+        const precision = predictedCount === 0 ? null : intersection.length / predictedCount;
+        metadata['validation'] = {
+          predictedCount,
+          actualChangedCount,
+          missedUrls: missedUrls.slice(0, 50),
+          recall,
+          precision,
+        };
+        providerLogger.info(
+          `${provider.name}: shadow validation — predicted=${predictedCount} actualChanged=${actualChangedCount} ` +
+            `recall=${recall.toFixed(3)} precision=${precision === null ? 'n/a' : precision.toFixed(3)}` +
+            `${missedUrls.length > 0 ? ` MISSED=${missedUrls.length}` : ''}`,
+        );
+      }
+
+      // TTL sweep: only after a successful (SUCCESS) FULL run.
+      if (effectiveMode === 'full' && status === ScrapeRunStatus.SUCCESS) {
+        const previousFullSitemapTotal = await findPreviousFullSitemapTotal(opts.prisma, dbProvider, runId);
+        const guardOk = previousFullSitemapTotal === null || entries.length >= previousFullSitemapTotal * 0.5;
+        if (guardOk) {
+          const retentionDays = opts.retentionDays ?? 90;
+          const cutoff = new Date(clock().getTime() - retentionDays * 24 * 3_600_000);
+          const deleted = await sweepStaleState(opts.prisma, dbProvider, cutoff);
+          providerLogger.info(
+            `${provider.name}: TTL sweep deleted ${deleted} stale provider_scrape_state rows (cutoff ${cutoff.toISOString()})`,
+          );
+        } else {
+          providerLogger.error(
+            `${provider.name}: TTL sweep skipped — this run's sitemapTotal (${entries.length}) is less than half ` +
+              `the previous full run's (${previousFullSitemapTotal}), possible sitemap generation problem`,
+          );
+        }
+      }
+    }
+
     await finishScrapeRun(opts.prisma, runId, {
       startedAt,
       finishedAt,
       status,
       metrics: result.metrics,
       scrapeErrors: result.scrapeErrors,
+      ...(metadata !== undefined ? { metadata: metadata as Prisma.InputJsonValue } : {}),
     });
 
     providerLogger.info(formatSummary(result.provider, result.metrics, result.scrapeErrors));

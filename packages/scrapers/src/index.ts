@@ -33,3 +33,14 @@ export type {
 } from './lib/enrich-product-details.js';
 export { SINGLE_PRODUCT_PARSERS } from './providers/single-product.js';
 export type { SingleProductParser, ParsedProductState } from './providers/single-product.js';
+export {
+  parseSitemapEntries,
+  parseSitemapIndexEntries,
+  normalizeLastmod,
+  planIncrementalFetch,
+} from './sitemap/index.js';
+export type {
+  ParseSitemapResult,
+  ParseSitemapIndexResult,
+  IncrementalFetchPlan,
+} from './sitemap/index.js';
