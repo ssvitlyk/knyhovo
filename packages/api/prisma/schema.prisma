@@ -359,6 +359,8 @@ model ScrapeRun {
   /// What initiated this run: scheduled cron, an explicit manual trigger, or an internal system process.
   triggeredBy         ScrapeRunTrigger @map("triggered_by")
   startedAt           DateTime         @map("started_at")
+  /// Liveness signal updated periodically during a run; null only on rows created before this migration.
+  lastHeartbeatAt     DateTime?        @map("last_heartbeat_at")
   finishedAt          DateTime?        @map("finished_at")
   durationMs          Int?             @map("duration_ms")
   itemsFound          Int              @default(0) @map("items_found")

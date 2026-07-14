@@ -8,6 +8,11 @@ import { loadAlertConfig } from '../alerts/config.js';
 import { createAlertMailer } from '../alerts/mailer-factory.js';
 import { dispatchPendingDeliveries } from '../alerts/dispatch.js';
 import { generateToken } from '../auth/crypto.js';
+import {
+  getHeartbeatIntervalSeconds,
+  getHeartbeatTimeoutMinutes,
+  getLegacyStaleTimeoutHours,
+} from './scrape-env.js';
 
 /**
  * Parse the SCRAPE_TRIGGERED_BY environment variable into a ScrapeRunTrigger
@@ -44,6 +49,11 @@ async function main(): Promise<void> {
       prisma,
       fetcher,
       triggeredBy,
+      heartbeatIntervalMs: getHeartbeatIntervalSeconds(process.env) * 1000,
+      staleReap: {
+        heartbeatTimeoutMs: getHeartbeatTimeoutMinutes(process.env) * 60_000,
+        legacyStartedAtTimeoutMs: getLegacyStaleTimeoutHours(process.env) * 3_600_000,
+      },
       dispatch: (p, now) =>
         dispatchPendingDeliveries(p, {
           mailer: alertMailer,

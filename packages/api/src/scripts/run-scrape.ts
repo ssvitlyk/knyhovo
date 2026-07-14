@@ -18,7 +18,13 @@ import type { ScraperProvider } from '@knyhovo/shared';
 import { ScrapeRunTrigger } from '@prisma/client';
 import { createLogger } from '../pipeline/index.js';
 import { runProductionScrape } from '../refresh/production-runner.js';
-import { parseScraperOptionsFromEnv, getScrapeStateRetentionDays } from './scrape-env.js';
+import {
+  parseScraperOptionsFromEnv,
+  getScrapeStateRetentionDays,
+  getHeartbeatIntervalSeconds,
+  getHeartbeatTimeoutMinutes,
+  getLegacyStaleTimeoutHours,
+} from './scrape-env.js';
 import { isGenreAssignAfterScrapeEnabled } from './genre-assign-env.js';
 import { parseModeArg } from './run-scrape-args.js';
 
@@ -58,6 +64,11 @@ async function main(): Promise<void> {
   const genreAssignAfterScrape = isGenreAssignAfterScrapeEnabled(process.env);
   const mode = parseModeArg(process.argv.slice(2));
   const retentionDays = getScrapeStateRetentionDays(process.env);
+  const heartbeatIntervalMs = getHeartbeatIntervalSeconds(process.env) * 1000;
+  const staleReap = {
+    heartbeatTimeoutMs: getHeartbeatTimeoutMinutes(process.env) * 60_000,
+    legacyStartedAtTimeoutMs: getLegacyStaleTimeoutHours(process.env) * 3_600_000,
+  };
   const startedAt = Date.now();
   logger.info(
     `run-scrape starting at ${new Date(startedAt).toISOString()} (triggeredBy=${triggeredBy}, mode=${mode}, retentionDays=${retentionDays})`,
@@ -77,6 +88,8 @@ async function main(): Promise<void> {
       genreAssignAfterScrape,
       mode,
       retentionDays,
+      heartbeatIntervalMs,
+      staleReap,
       ...(scraperOptions !== undefined ? { scraperOptions } : {}),
     });
     process.exitCode = result.exitCode;

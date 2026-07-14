@@ -16,8 +16,9 @@ import { ScrapeRunKind, ScrapeRunStatus } from '@prisma/client';
 import { isRateLimited } from '@knyhovo/scrapers';
 import { createMetrics } from '../pipeline/index.js';
 import type { ScrapeMetrics, Logger } from '../pipeline/index.js';
-import { startScrapeRun, finishScrapeRun, deriveRunStatus } from './scrape-run.repository.js';
+import { startScrapeRun, finishScrapeRun, deriveRunStatus, startHeartbeat } from './scrape-run.repository.js';
 import { acquireRefreshLock, releaseRefreshLock } from './concurrency-guard.js';
+import type { StaleReapConfig } from './concurrency-guard.js';
 import { collectRefreshTargets } from './refresh-targets.js';
 import type { RefreshTarget } from './refresh-targets.js';
 import { detectAlertEvents } from './events.js';
@@ -83,6 +84,18 @@ export interface WishlistRefreshOptions {
    * when email delivery is disabled.
    */
   readonly dispatch?: (prisma: PrismaClient, now: Date) => Promise<DispatchSummary>;
+  /**
+   * Liveness-heartbeat interval (ms) for the running-scrape timer
+   * (stale-scrape-recovery PRD §2.2). Defaults to 60000
+   * (see `getHeartbeatIntervalSeconds` in `scripts/scrape-env.ts`).
+   */
+  readonly heartbeatIntervalMs?: number;
+  /**
+   * Stale-reap thresholds used by `acquireRefreshLock` to recover a RUNNING
+   * row left behind by a killed process (stale-scrape-recovery PRD §2.3).
+   * Defaults to `DEFAULT_STALE_REAP_CONFIG`.
+   */
+  readonly staleReap?: StaleReapConfig;
 }
 
 export interface WishlistProviderRefreshOutcome {
@@ -129,7 +142,10 @@ export async function runWishlistRefresh(
   // W10.6 concurrency guard: refuse to start when another FULL_CATALOG or
   // WISHLIST_REFRESH run is already RUNNING (cron-overlap). Throws
   // RefreshAlreadyRunningError, which the CLI treats as an idempotent skip.
-  const lock = await acquireRefreshLock(opts.prisma, ScrapeRunKind.WISHLIST_REFRESH, { now: clock });
+  const lock = await acquireRefreshLock(opts.prisma, ScrapeRunKind.WISHLIST_REFRESH, {
+    now: clock,
+    ...(opts.staleReap !== undefined ? { staleReap: opts.staleReap } : {}),
+  });
 
   try {
     const allTargets = await loadTargets(opts.prisma);
@@ -239,6 +255,9 @@ async function refreshProviderTargets(
 ): Promise<WishlistProviderRefreshOutcome> {
   let runId: string | null = null;
   let startedAt: Date | null = null;
+  // stale-scrape-recovery PRD: stopped in the `finally` below on every path
+  // (success or provider failure) so the timer never outlives this run.
+  let stopHeartbeat: (() => void) | null = null;
 
   try {
     const started = await startScrapeRun(opts.prisma, {
@@ -250,6 +269,10 @@ async function refreshProviderTargets(
     });
     runId = started.id;
     startedAt = started.startedAt;
+    stopHeartbeat = startHeartbeat(opts.prisma, runId, {
+      ...(opts.heartbeatIntervalMs !== undefined ? { intervalMs: opts.heartbeatIntervalMs } : {}),
+      now: clock,
+    });
 
     const metrics = createMetrics();
     const events: AlertEvent[] = [];
@@ -375,5 +398,7 @@ async function refreshProviderTargets(
       rateLimited: isRateLimited(err),
       targetCount: targets.length,
     };
+  } finally {
+    stopHeartbeat?.();
   }
 }

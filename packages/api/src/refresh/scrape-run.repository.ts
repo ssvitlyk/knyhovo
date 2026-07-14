@@ -105,11 +105,68 @@ export async function startScrapeRun(
       status: ScrapeRunStatusEnum.RUNNING,
       triggeredBy: params.triggeredBy,
       startedAt,
+      lastHeartbeatAt: startedAt,
       ...(params.metadata !== undefined ? { metadata: params.metadata } : {}),
     },
     select: { id: true, startedAt: true },
   });
   return { id: run.id, startedAt: run.startedAt };
+}
+
+/**
+ * Best-effort liveness signal for a RUNNING scrape run (stale-scrape-recovery
+ * PRD). Gated on `status: RUNNING` so a run already closed (FAILED/SUCCESS/
+ * PARTIAL) — including one just reaped by a concurrent process — is never
+ * resurrected by a late-arriving heartbeat. MUST NOT throw: a failed
+ * heartbeat write is swallowed and reported as `false`, never allowed to
+ * kill the run it is monitoring.
+ */
+export async function heartbeatScrapeRun(
+  prisma: PrismaClient,
+  runId: string,
+  now: () => Date = () => new Date(),
+): Promise<boolean> {
+  try {
+    const result = await prisma.scrapeRun.updateMany({
+      where: { id: runId, status: ScrapeRunStatusEnum.RUNNING },
+      data: { lastHeartbeatAt: now() },
+    });
+    return result.count > 0;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Start an interval timer that calls `heartbeatScrapeRun` every
+ * `opts.intervalMs` (default 60s) for the lifetime of a scrape run. The timer
+ * is `unref()`-ed so it never keeps the process alive on its own, and errors
+ * from each heartbeat tick are swallowed by `heartbeatScrapeRun` itself.
+ *
+ * Returns an idempotent stop function; call it in a `finally` block around
+ * the run so the timer is always cleared, on both success and failure.
+ */
+export function startHeartbeat(
+  prisma: PrismaClient,
+  runId: string,
+  opts?: { intervalMs?: number; now?: () => Date },
+): () => void {
+  const intervalMs = opts?.intervalMs ?? 60_000;
+  const now = opts?.now ?? (() => new Date());
+
+  const timer = setInterval(() => {
+    void heartbeatScrapeRun(prisma, runId, now);
+  }, intervalMs);
+  if (typeof timer.unref === 'function') {
+    timer.unref();
+  }
+
+  let stopped = false;
+  return (): void => {
+    if (stopped) return;
+    stopped = true;
+    clearInterval(timer);
+  };
 }
 
 /**

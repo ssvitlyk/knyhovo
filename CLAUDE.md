@@ -46,6 +46,7 @@ Web: `pnpm --filter @knyhovo/web dev` (потребує API на :3000 для р
 | [docs/prd/canonical-matching.md](docs/prd/canonical-matching.md) | Чорновик |
 | [docs/prd/bookchef-provider.md](docs/prd/bookchef-provider.md) | Чорновик |
 | [docs/prd/bookchef-incremental-scraping.md](docs/prd/bookchef-incremental-scraping.md) | Затверджено |
+| [docs/prd/stale-scrape-recovery.md](docs/prd/stale-scrape-recovery.md) | Затверджено |
 | [docs/prd/laboratory-provider.md](docs/prd/laboratory-provider.md) | Чорновик |
 | [docs/prd/knigoland-provider.md](docs/prd/knigoland-provider.md) | Чорновик |
 | [docs/prd/bookclub-provider.md](docs/prd/bookclub-provider.md) | Чорновик |

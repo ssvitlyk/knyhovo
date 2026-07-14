@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { PrismaClient, ScrapeRun } from '@prisma/client';
 import {
   ScrapeRunKind,
@@ -12,6 +12,8 @@ import {
   startScrapeRun,
   finishScrapeRun,
   latestHealthByProvider,
+  heartbeatScrapeRun,
+  startHeartbeat,
 } from '../scrape-run.repository.js';
 import type { ScrapeMetrics } from '../../pipeline/types.js';
 
@@ -50,6 +52,7 @@ function makeFakePrisma() {
     status: ScrapeRunStatus.RUNNING,
     triggeredBy: ScrapeRunTrigger.MANUAL,
     startedAt: STARTED_AT,
+    lastHeartbeatAt: STARTED_AT,
     finishedAt: null,
     durationMs: null,
     itemsFound: 0,
@@ -63,8 +66,12 @@ function makeFakePrisma() {
 
   return {
     scrapeRun: {
-      create: vi.fn(async () => ({ id: fakeRun.id, startedAt: fakeRun.startedAt })),
+      create: vi.fn(async ({ data }: { data: { startedAt: Date } }) => ({
+        id: fakeRun.id,
+        startedAt: data.startedAt,
+      })),
       update: vi.fn(async () => fakeRun),
+      updateMany: vi.fn(async () => ({ count: 1 })),
       findMany: vi.fn(async () => [fakeRun]),
     },
   } as unknown as PrismaClient;
@@ -183,6 +190,20 @@ describe('startScrapeRun', () => {
     expect(callArgs.data.startedAt).toEqual(STARTED_AT);
   });
 
+  it('writes lastHeartbeatAt = startedAt on the create call', async () => {
+    const prisma = makeFakePrisma();
+
+    await startScrapeRun(prisma, {
+      provider: Provider.YAKABOO,
+      kind: ScrapeRunKind.FULL_CATALOG,
+      triggeredBy: ScrapeRunTrigger.CRON,
+      startedAt: STARTED_AT,
+    });
+
+    const callArgs = vi.mocked(prisma.scrapeRun.create).mock.calls[0]![0];
+    expect(callArgs.data.lastHeartbeatAt).toEqual(STARTED_AT);
+  });
+
   it('returns { id, startedAt } from the created row', async () => {
     const prisma = makeFakePrisma();
     const result = await startScrapeRun(prisma, {
@@ -263,5 +284,107 @@ describe('latestHealthByProvider', () => {
     const rows = await latestHealthByProvider(prisma);
     expect(rows).toHaveLength(1);
     expect(rows[0]!.provider).toBe(Provider.YAKABOO);
+  });
+});
+
+// ── heartbeatScrapeRun ────────────────────────────────────────────────────────
+
+describe('heartbeatScrapeRun', () => {
+  function makeHeartbeatPrisma(updateManyImpl: () => Promise<{ count: number }> | never) {
+    return {
+      scrapeRun: {
+        updateMany: vi.fn(updateManyImpl),
+      },
+    } as unknown as PrismaClient;
+  }
+
+  it('issues updateMany gated on status RUNNING and returns true on count=1', async () => {
+    const prisma = makeHeartbeatPrisma(async () => ({ count: 1 }));
+    const now = (): Date => STARTED_AT;
+
+    const result = await heartbeatScrapeRun(prisma, 'run-1', now);
+
+    expect(result).toBe(true);
+    const callArgs = vi.mocked(prisma.scrapeRun.updateMany).mock.calls[0]![0];
+    expect(callArgs.where).toEqual({ id: 'run-1', status: ScrapeRunStatus.RUNNING });
+    expect(callArgs.data.lastHeartbeatAt).toEqual(STARTED_AT);
+  });
+
+  it('returns false when updateMany reports count=0 (run no longer RUNNING)', async () => {
+    const prisma = makeHeartbeatPrisma(async () => ({ count: 0 }));
+
+    const result = await heartbeatScrapeRun(prisma, 'run-1');
+
+    expect(result).toBe(false);
+  });
+
+  it('returns false (does not throw) when updateMany rejects', async () => {
+    const prisma = makeHeartbeatPrisma(async () => {
+      throw new Error('connection reset');
+    });
+
+    await expect(heartbeatScrapeRun(prisma, 'run-1')).resolves.toBe(false);
+  });
+});
+
+// ── startHeartbeat ────────────────────────────────────────────────────────────
+
+describe('startHeartbeat', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('fires heartbeatScrapeRun (via updateMany) on every interval tick', async () => {
+    const updateMany = vi.fn(async () => ({ count: 1 }));
+    const prisma = { scrapeRun: { updateMany } } as unknown as PrismaClient;
+
+    const stop = startHeartbeat(prisma, 'run-1', { intervalMs: 1000, now: () => STARTED_AT });
+
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(updateMany).toHaveBeenCalledTimes(1);
+
+    await vi.advanceTimersByTimeAsync(2000);
+    expect(updateMany).toHaveBeenCalledTimes(3);
+
+    stop();
+  });
+
+  it('stop() halts further heartbeat calls', async () => {
+    const updateMany = vi.fn(async () => ({ count: 1 }));
+    const prisma = { scrapeRun: { updateMany } } as unknown as PrismaClient;
+
+    const stop = startHeartbeat(prisma, 'run-1', { intervalMs: 1000, now: () => STARTED_AT });
+    await vi.advanceTimersByTimeAsync(1000);
+    expect(updateMany).toHaveBeenCalledTimes(1);
+
+    stop();
+    await vi.advanceTimersByTimeAsync(5000);
+    expect(updateMany).toHaveBeenCalledTimes(1);
+  });
+
+  it('stop() is idempotent (calling it twice does not throw)', async () => {
+    const updateMany = vi.fn(async () => ({ count: 1 }));
+    const prisma = { scrapeRun: { updateMany } } as unknown as PrismaClient;
+
+    const stop = startHeartbeat(prisma, 'run-1', { intervalMs: 1000, now: () => STARTED_AT });
+    stop();
+    expect(() => stop()).not.toThrow();
+  });
+
+  it('defaults intervalMs to 60000 when not provided', async () => {
+    const updateMany = vi.fn(async () => ({ count: 1 }));
+    const prisma = { scrapeRun: { updateMany } } as unknown as PrismaClient;
+
+    const stop = startHeartbeat(prisma, 'run-1');
+    await vi.advanceTimersByTimeAsync(59_999);
+    expect(updateMany).not.toHaveBeenCalled();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(updateMany).toHaveBeenCalledTimes(1);
+
+    stop();
   });
 });
