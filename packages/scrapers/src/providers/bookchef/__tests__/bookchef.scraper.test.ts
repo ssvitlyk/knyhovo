@@ -191,3 +191,117 @@ describe('BookChefScraper.scrape — incremental mode (knownSourceLastmod provid
     expect(info).toHaveBeenCalledWith(expect.stringContaining('unchangedSkipped=1'));
   });
 });
+
+// Fetch-progress logging (bookchef-fetch-progress-logging): a full run walks
+// up to ~15k pages over multiple hours with zero output between the
+// sitemap-plan log and the final result. These tests generate large synthetic
+// sitemaps (well past FETCH_PROGRESS_EVERY = 100) to verify progress lines
+// fire on both healthy and all-erroring runs, and that a final summary always
+// logs. `delayMs: 0` keeps the tests fast.
+describe('BookChefScraper.scrape — fetch progress logging', () => {
+  function buildManySitemap(n: number): { xml: string; urls: string[] } {
+    const urls = Array.from({ length: n }, (_, i) => `https://bookchef.ua/product-${i}`);
+    const xml = buildSitemap(urls.map((url) => ({ url, lastmod: null })));
+    return { xml, urls };
+  }
+
+  it('logs progress every 100 pages plus a final summary on a healthy run', async () => {
+    const { xml, urls } = buildManySitemap(200);
+    const responses: Record<string, string> = { [BOOKCHEF_PRODUCTS_SITEMAP_URL]: xml };
+    // Each product must carry a distinct URL in its JSON-LD `offers.url` (what
+    // `listing.url` is read from) — otherwise the scraper's own same-URL
+    // dedup (see bookchef.scraper.ts) would collapse all 200 into one listing.
+    for (const url of urls) responses[url] = INSTOCK.replaceAll(INSTOCK_URL, url);
+    const fetcher = makeFetcher(responses);
+    const info = vi.fn();
+    const scraper = new BookChefScraper(fetcher);
+    const result = await scraper.scrape({ delayMs: 0, logger: { info } });
+
+    const lines = info.mock.calls.map((call) => call[0] as string);
+    expect(
+      lines.some((l) => l.includes('BookChef progress: current=100 total=200 ok=100 errors=0')),
+    ).toBe(true);
+    expect(
+      lines.some((l) => l.includes('BookChef progress: current=200 total=200 ok=200 errors=0')),
+    ).toBe(true);
+    expect(
+      lines.some((l) => l.includes('bookchef: fetch complete — 200 listings, 0 errors in')),
+    ).toBe(true);
+    expect(result.listings).toHaveLength(200);
+    expect(result.errors).toHaveLength(0);
+  }, 20_000);
+
+  it('counts error iterations toward progress and the final summary', async () => {
+    const { xml, urls } = buildManySitemap(100);
+    const responses: Record<string, string | (() => never)> = {
+      [BOOKCHEF_PRODUCTS_SITEMAP_URL]: xml,
+    };
+    for (const url of urls) {
+      responses[url] = () => {
+        throw new Error('boom');
+      };
+    }
+    const fetcher = makeFetcher(responses);
+    const info = vi.fn();
+    const scraper = new BookChefScraper(fetcher);
+    const result = await scraper.scrape({ delayMs: 0, logger: { info } });
+
+    const lines = info.mock.calls.map((call) => call[0] as string);
+    expect(
+      lines.some((l) => l.includes('BookChef progress: current=100 total=100 ok=0 errors=100')),
+    ).toBe(true);
+    expect(
+      lines.some((l) => l.includes('bookchef: fetch complete — 0 listings, 100 errors in')),
+    ).toBe(true);
+    expect(result.listings).toHaveLength(0);
+    expect(result.errors).toHaveLength(100);
+  });
+});
+
+// Per-stage debug logging (debugFetchStages): identifies exactly which await
+// a hung production process is sitting on. Zero behavior change when off.
+describe('BookChefScraper.scrape — debugFetchStages', () => {
+  function buildManySitemap(n: number): { xml: string; urls: string[] } {
+    const urls = Array.from({ length: n }, (_, i) => `https://bookchef.ua/product-${i}`);
+    const xml = buildSitemap(urls.map((url) => ({ url, lastmod: null })));
+    return { xml, urls };
+  }
+
+  it('emits fetch/parse/sleep stage lines in order per page when enabled', async () => {
+    const { xml, urls } = buildManySitemap(3);
+    const responses: Record<string, string> = { [BOOKCHEF_PRODUCTS_SITEMAP_URL]: xml };
+    for (const url of urls) responses[url] = INSTOCK.replaceAll(INSTOCK_URL, url);
+    const fetcher = makeFetcher(responses);
+    const info = vi.fn();
+    const scraper = new BookChefScraper(fetcher);
+    await scraper.scrape({ delayMs: 1, logger: { info }, debugFetchStages: true });
+
+    const lines = info.mock.calls.map((call) => call[0] as string).filter((l) => l.includes('[stage]'));
+    expect(lines).toEqual([
+      expect.stringContaining('bookchef: [stage] fetch started 1/3'),
+      expect.stringMatching(/bookchef: \[stage\] fetch completed 1 \(\d+ms\)/),
+      'bookchef: [stage] parse completed 1',
+      'bookchef: [stage] sleep completed 1',
+      expect.stringContaining('bookchef: [stage] fetch started 2/3'),
+      expect.stringMatching(/bookchef: \[stage\] fetch completed 2 \(\d+ms\)/),
+      'bookchef: [stage] parse completed 2',
+      'bookchef: [stage] sleep completed 2',
+      expect.stringContaining('bookchef: [stage] fetch started 3/3'),
+      expect.stringMatching(/bookchef: \[stage\] fetch completed 3 \(\d+ms\)/),
+      'bookchef: [stage] parse completed 3',
+    ]);
+  });
+
+  it('emits no [stage] lines when the flag is absent', async () => {
+    const { xml, urls } = buildManySitemap(2);
+    const responses: Record<string, string> = { [BOOKCHEF_PRODUCTS_SITEMAP_URL]: xml };
+    for (const url of urls) responses[url] = INSTOCK.replaceAll(INSTOCK_URL, url);
+    const fetcher = makeFetcher(responses);
+    const info = vi.fn();
+    const scraper = new BookChefScraper(fetcher);
+    await scraper.scrape({ delayMs: 0, logger: { info } });
+
+    const lines = info.mock.calls.map((call) => call[0] as string);
+    expect(lines.some((l) => l.includes('[stage]'))).toBe(false);
+  });
+});

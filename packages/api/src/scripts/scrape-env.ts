@@ -1,29 +1,41 @@
 import type { ScraperOptions } from '@knyhovo/shared';
 
 /**
- * Parse environment variables into a `ScraperOptions` fragment for the
- * opt-in description-enrichment pass (W9a F2).
+ * Parse environment variables into a `ScraperOptions` fragment. Composes two
+ * independent opt-in features:
  *
- * Pure function — no IO, no mutation of `env`. Reads:
- *   - `SCRAPE_ENRICH_DESCRIPTIONS`: `'true'` or `'1'` enables the pass;
- *     any other value (or absence) leaves it disabled.
- *   - `SCRAPE_DESCRIPTION_DELAY_MS`: a positive-integer string sets the
- *     delay between product-page requests, in ms. Invalid or absent values
- *     are ignored. Only meaningful together with the enrich flag — if the
- *     delay is set but enrichment is off, no options are produced.
+ *   - Description enrichment (W9a F2):
+ *     - `SCRAPE_ENRICH_DESCRIPTIONS`: `'true'` or `'1'` enables the pass;
+ *       any other value (or absence) leaves it disabled.
+ *     - `SCRAPE_DESCRIPTION_DELAY_MS`: a positive-integer string sets the
+ *       delay between product-page requests, in ms. Invalid or absent values
+ *       are ignored. Only meaningful together with the enrich flag — if the
+ *       delay is set but enrichment is off, no options are produced.
+ *   - Per-page stage debug logging (hang diagnosis):
+ *     - `SCRAPE_DEBUG_FETCH_STAGES`: `'true'` or `'1'` enables it; any other
+ *       value (or absence) leaves it disabled.
  *
+ * Pure function — no IO, no mutation of `env`. Either feature may be enabled
+ * independently; when both are set, both appear on the returned options.
  * Returns `undefined` when nothing is enabled, so callers can spread the
  * result exactly like the existing `...(x !== undefined ? { x } : {})` pattern.
  */
 export function parseScraperOptionsFromEnv(env: NodeJS.ProcessEnv): ScraperOptions | undefined {
   const enrichDescriptions = env['SCRAPE_ENRICH_DESCRIPTIONS'] === 'true' || env['SCRAPE_ENRICH_DESCRIPTIONS'] === '1';
-  if (!enrichDescriptions) return undefined;
+  const debugFetchStages = env['SCRAPE_DEBUG_FETCH_STAGES'] === 'true' || env['SCRAPE_DEBUG_FETCH_STAGES'] === '1';
 
-  const options: ScraperOptions = { enrichDescriptions: true };
+  let options: ScraperOptions | undefined;
 
-  const rawDelay = env['SCRAPE_DESCRIPTION_DELAY_MS'];
-  if (rawDelay !== undefined && /^[1-9]\d*$/.test(rawDelay)) {
-    return { ...options, descriptionDelayMs: Number(rawDelay) };
+  if (enrichDescriptions) {
+    options = { enrichDescriptions: true };
+    const rawDelay = env['SCRAPE_DESCRIPTION_DELAY_MS'];
+    if (rawDelay !== undefined && /^[1-9]\d*$/.test(rawDelay)) {
+      options = { ...options, descriptionDelayMs: Number(rawDelay) };
+    }
+  }
+
+  if (debugFetchStages) {
+    options = { ...options, debugFetchStages: true };
   }
 
   return options;

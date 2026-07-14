@@ -85,6 +85,11 @@ export interface ScraperOptions {
    * full scrape (existing behavior, every discovered URL is fetched).
    */
   knownSourceLastmod?: ReadonlyMap<string, string>;
+  /**
+   * Temporary per-page stage logging (fetch/parse/sleep) for hang diagnosis.
+   * Scrapers may ignore it. Off by default.
+   */
+  debugFetchStages?: boolean;
 }
 
 /**
