@@ -16,8 +16,9 @@ import {
   countVanished,
   sweepStaleState,
 } from '../pipeline/scrape-state.repository.js';
-import { startScrapeRun, finishScrapeRun, deriveRunStatus } from './scrape-run.repository.js';
+import { startScrapeRun, finishScrapeRun, deriveRunStatus, startHeartbeat } from './scrape-run.repository.js';
 import { acquireRefreshLock, releaseRefreshLock } from './concurrency-guard.js';
+import type { StaleReapConfig } from './concurrency-guard.js';
 import type { ProductionMetricsRegistry } from '../metrics/index.js';
 import { INCREMENTAL_SITEMAP_PROVIDERS } from './incremental-providers.js';
 import { shouldAutoEscalateToFull, findPreviousFullSitemapTotal } from './auto-escalation.js';
@@ -49,6 +50,18 @@ export interface FullCatalogRefreshOptions {
    * (see `getScrapeStateRetentionDays` in `scripts/scrape-env.ts`).
    */
   readonly retentionDays?: number;
+  /**
+   * Liveness-heartbeat interval (ms) for the running-scrape timer
+   * (stale-scrape-recovery PRD §2.2). Defaults to 60000
+   * (see `getHeartbeatIntervalSeconds` in `scripts/scrape-env.ts`).
+   */
+  readonly heartbeatIntervalMs?: number;
+  /**
+   * Stale-reap thresholds used by `acquireRefreshLock` to recover a RUNNING
+   * row left behind by a killed process (stale-scrape-recovery PRD §2.3).
+   * Defaults to `DEFAULT_STALE_REAP_CONFIG`.
+   */
+  readonly staleReap?: StaleReapConfig;
 }
 
 export interface ProviderRefreshOutcome {
@@ -97,7 +110,10 @@ export async function runFullCatalogRefresh(
   // W10.6 concurrency guard: refuse to start when another FULL_CATALOG or
   // WISHLIST_REFRESH run is already RUNNING (cron-overlap). Throws
   // RefreshAlreadyRunningError, which the CLI treats as an idempotent skip.
-  const lock = await acquireRefreshLock(opts.prisma, ScrapeRunKind.FULL_CATALOG, { now: clock });
+  const lock = await acquireRefreshLock(opts.prisma, ScrapeRunKind.FULL_CATALOG, {
+    now: clock,
+    ...(opts.staleReap !== undefined ? { staleReap: opts.staleReap } : {}),
+  });
 
   try {
     const outcomes: ProviderRefreshOutcome[] = [];
@@ -131,6 +147,9 @@ async function refreshProvider(
   const dbProvider = mapProviderName(provider.name);
   let runId: string | null = null;
   let startedAt: Date | null = null;
+  // stale-scrape-recovery PRD: stopped in the `finally` below on every path
+  // (success or provider failure) so the timer never outlives this run.
+  let stopHeartbeat: (() => void) | null = null;
 
   try {
     const started = await startScrapeRun(opts.prisma, {
@@ -141,6 +160,10 @@ async function refreshProvider(
     });
     runId = started.id;
     startedAt = started.startedAt;
+    stopHeartbeat = startHeartbeat(opts.prisma, runId, {
+      ...(opts.heartbeatIntervalMs !== undefined ? { intervalMs: opts.heartbeatIntervalMs } : {}),
+      now: clock,
+    });
 
     // Structured-log context for everything this provider's run emits.
     const providerLogger = bindContext(logger, { runId, provider: dbProvider });
@@ -356,5 +379,7 @@ async function refreshProvider(
       rateLimited,
       affectedCanonicalBookIds: [],
     };
+  } finally {
+    stopHeartbeat?.();
   }
 }

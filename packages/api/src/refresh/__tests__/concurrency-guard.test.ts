@@ -5,8 +5,10 @@ import {
   isRefreshRunning,
   acquireRefreshLock,
   releaseRefreshLock,
+  reapStaleRuns,
   RefreshAlreadyRunningError,
   GUARDED_KINDS,
+  DEFAULT_STALE_REAP_CONFIG,
 } from '../concurrency-guard.js';
 
 // ---------------------------------------------------------------------------
@@ -23,25 +25,31 @@ const clockNow = (): Date => NOW;
 function makeFakePrisma(overrides?: {
   findFirst?: () => Promise<unknown>;
   updateMany?: () => Promise<{ count: number }>;
+  findMany?: () => Promise<unknown[]>;
 }) {
   return {
     scrapeRun: {
       findFirst: vi.fn(overrides?.findFirst ?? (async () => null)),
       updateMany: vi.fn(overrides?.updateMany ?? (async () => ({ count: 0 }))),
+      findMany: vi.fn(overrides?.findMany ?? (async () => [])),
     },
   } as unknown as PrismaClient;
 }
 
 // A minimal RUNNING row fixture
 function makeRunningRow(overrides?: {
+  id?: string;
   kind?: ScrapeRunKind;
   provider?: Provider;
+  startedAt?: Date;
+  lastHeartbeatAt?: Date | null;
 }) {
   return {
-    id: 'run-abc',
+    id: overrides?.id ?? 'run-abc',
     provider: overrides?.provider ?? Provider.YAKABOO,
     kind: overrides?.kind ?? ScrapeRunKind.FULL_CATALOG,
-    startedAt: new Date('2025-12-31T20:00:00.000Z'),
+    startedAt: overrides?.startedAt ?? new Date('2025-12-31T20:00:00.000Z'),
+    lastHeartbeatAt: overrides?.lastHeartbeatAt ?? overrides?.startedAt ?? new Date('2025-12-31T20:00:00.000Z'),
     status: ScrapeRunStatus.RUNNING,
     triggeredBy: ScrapeRunTrigger.CRON,
     finishedAt: null,
@@ -179,6 +187,211 @@ describe('acquireRefreshLock — lock collision', () => {
     await expect(
       acquireRefreshLock(prisma, ScrapeRunKind.WISHLIST_REFRESH, { now: clockNow }),
     ).rejects.toThrow(RefreshAlreadyRunningError);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// reapStaleRuns
+// ---------------------------------------------------------------------------
+
+describe('reapStaleRuns', () => {
+  it('reaps a candidate whose heartbeat is older than heartbeatTimeoutMs', async () => {
+    const staleHeartbeat = new Date(NOW.getTime() - 20 * 60_000); // 20 min ago (> 15 min default)
+    const candidate = makeRunningRow({
+      startedAt: new Date(NOW.getTime() - 30 * 60_000),
+      lastHeartbeatAt: staleHeartbeat,
+    });
+    const prisma = makeFakePrisma({
+      findMany: async () => [candidate],
+      updateMany: async () => ({ count: 1 }),
+    });
+
+    const result = await reapStaleRuns(prisma, DEFAULT_STALE_REAP_CONFIG, { now: clockNow });
+
+    expect(result).toEqual({ candidates: 1, reaped: 1, staleRows: [expect.objectContaining({ id: 'run-abc' })] });
+
+    expect(prisma.scrapeRun.updateMany).toHaveBeenCalledOnce();
+    const call = vi.mocked(prisma.scrapeRun.updateMany).mock.calls[0]![0];
+    expect(call.where?.id).toBe('run-abc');
+    expect(call.where?.status).toBe(ScrapeRunStatus.RUNNING);
+    // staleness condition repeated in the where clause
+    expect(call.where?.OR).toBeDefined();
+    expect(call.data?.status).toBe(ScrapeRunStatus.FAILED);
+    expect(call.data?.errorSummary).toBe('Reaped stale heartbeat');
+    expect(call.data?.finishedAt).toEqual(NOW);
+  });
+
+  it('reaps a legacy candidate (lastHeartbeatAt=null) only when startedAt is older than legacyStartedAtTimeoutMs', async () => {
+    const oldStartedAt = new Date(NOW.getTime() - 25 * 3_600_000); // 25h ago (> 24h default)
+    const candidate = makeRunningRow({ startedAt: oldStartedAt, lastHeartbeatAt: null });
+    const prisma = makeFakePrisma({
+      findMany: async () => [candidate],
+      updateMany: async () => ({ count: 1 }),
+    });
+
+    const result = await reapStaleRuns(prisma, DEFAULT_STALE_REAP_CONFIG, { now: clockNow });
+
+    expect(result.candidates).toBe(1);
+    expect(result.reaped).toBe(1);
+  });
+
+  it('does not reap when updateMany reports count=0 (concurrent reap or live heartbeat)', async () => {
+    const staleHeartbeat = new Date(NOW.getTime() - 20 * 60_000);
+    const candidate = makeRunningRow({
+      startedAt: new Date(NOW.getTime() - 30 * 60_000),
+      lastHeartbeatAt: staleHeartbeat,
+    });
+    const prisma = makeFakePrisma({
+      findMany: async () => [candidate],
+      updateMany: async () => ({ count: 0 }),
+    });
+
+    const result = await reapStaleRuns(prisma, DEFAULT_STALE_REAP_CONFIG, { now: clockNow });
+
+    expect(result).toEqual({ candidates: 1, reaped: 0, staleRows: [expect.objectContaining({ id: 'run-abc' })] });
+  });
+
+  it('returns zero candidates when findMany finds nothing stale', async () => {
+    const prisma = makeFakePrisma({ findMany: async () => [] });
+
+    const result = await reapStaleRuns(prisma, DEFAULT_STALE_REAP_CONFIG, { now: clockNow });
+
+    expect(result).toEqual({ candidates: 0, reaped: 0, staleRows: [] });
+    expect(prisma.scrapeRun.updateMany).not.toHaveBeenCalled();
+  });
+
+  it('passes the correct heartbeat and legacy cutoffs in the findMany where clause', async () => {
+    const prisma = makeFakePrisma({ findMany: async () => [] });
+
+    await reapStaleRuns(prisma, DEFAULT_STALE_REAP_CONFIG, { now: clockNow });
+
+    const call = vi.mocked(prisma.scrapeRun.findMany).mock.calls[0]![0]!;
+    const or = call.where?.OR as Array<Record<string, unknown>>;
+    const heartbeatBranch = or[0] as { lastHeartbeatAt: { lt: Date } };
+    const legacyBranch = or[1] as { startedAt: { lt: Date } };
+
+    expect(heartbeatBranch.lastHeartbeatAt.lt).toEqual(new Date(NOW.getTime() - 15 * 60_000));
+    expect(legacyBranch.startedAt.lt).toEqual(new Date(NOW.getTime() - 24 * 3_600_000));
+  });
+});
+
+// ---------------------------------------------------------------------------
+// acquireRefreshLock — stale-run recovery (stale-scrape-recovery PRD §3)
+// ---------------------------------------------------------------------------
+
+describe('acquireRefreshLock — stale-run recovery', () => {
+  it('reaps a stale RUNNING row and acquires the lock', async () => {
+    const staleHeartbeat = new Date(NOW.getTime() - 20 * 60_000);
+    const candidate = makeRunningRow({
+      startedAt: new Date(NOW.getTime() - 30 * 60_000),
+      lastHeartbeatAt: staleHeartbeat,
+    });
+    const prisma = makeFakePrisma({
+      findMany: async () => [candidate],
+      updateMany: async () => ({ count: 1 }),
+      findFirst: async () => null, // no longer RUNNING after reap
+    });
+
+    const lock = await acquireRefreshLock(prisma, ScrapeRunKind.FULL_CATALOG, { now: clockNow });
+
+    expect(lock.kind).toBe(ScrapeRunKind.FULL_CATALOG);
+    const call = vi.mocked(prisma.scrapeRun.updateMany).mock.calls[0]![0];
+    expect(call.data?.status).toBe(ScrapeRunStatus.FAILED);
+    expect(call.data?.errorSummary).toBe('Reaped stale heartbeat');
+  });
+
+  it('does not reclaim a live run: fresh heartbeat + old startedAt, RUNNING still present → throws', async () => {
+    // findMany finds nothing stale (fresh heartbeat), but a RUNNING row still exists.
+    const liveRow = makeRunningRow({
+      startedAt: new Date(NOW.getTime() - 5 * 3_600_000), // 5h ago — would exceed a naive age threshold
+      lastHeartbeatAt: new Date(NOW.getTime() - 30_000), // 30s ago — very fresh
+    });
+    const prisma = makeFakePrisma({
+      findMany: async () => [], // nothing stale
+      findFirst: async () => liveRow,
+    });
+
+    await expect(
+      acquireRefreshLock(prisma, ScrapeRunKind.FULL_CATALOG, { now: clockNow }),
+    ).rejects.toThrow(RefreshAlreadyRunningError);
+  });
+
+  it('legacy fallback: lastHeartbeatAt=null, startedAt within 24h → NOT stale, still RUNNING → throws', async () => {
+    const liveRow = makeRunningRow({
+      startedAt: new Date(NOW.getTime() - 1 * 3_600_000), // 1h ago, within 24h legacy window
+      lastHeartbeatAt: null,
+    });
+    const prisma = makeFakePrisma({
+      findMany: async () => [], // 1h old legacy row is not stale (< 24h)
+      findFirst: async () => liveRow,
+    });
+
+    await expect(
+      acquireRefreshLock(prisma, ScrapeRunKind.FULL_CATALOG, { now: clockNow }),
+    ).rejects.toThrow(RefreshAlreadyRunningError);
+  });
+
+  it('legacy fallback: lastHeartbeatAt=null, startedAt older than 24h → reaped, lock acquired', async () => {
+    const candidate = makeRunningRow({
+      startedAt: new Date(NOW.getTime() - 25 * 3_600_000),
+      lastHeartbeatAt: null,
+    });
+    const prisma = makeFakePrisma({
+      findMany: async () => [candidate],
+      updateMany: async () => ({ count: 1 }),
+      findFirst: async () => null,
+    });
+
+    const lock = await acquireRefreshLock(prisma, ScrapeRunKind.FULL_CATALOG, { now: clockNow });
+    expect(lock.kind).toBe(ScrapeRunKind.FULL_CATALOG);
+  });
+
+  it('concurrent start: reap-updateMany count=0, a subsequent findFirst still sees RUNNING → throws with that row', async () => {
+    const staleHeartbeat = new Date(NOW.getTime() - 20 * 60_000);
+    const candidate = makeRunningRow({
+      startedAt: new Date(NOW.getTime() - 30 * 60_000),
+      lastHeartbeatAt: staleHeartbeat,
+    });
+    const winnerRow = makeRunningRow({
+      id: 'run-winner',
+      startedAt: new Date(NOW.getTime() - 5_000),
+      lastHeartbeatAt: new Date(NOW.getTime() - 1_000),
+    });
+    const prisma = makeFakePrisma({
+      findMany: async () => [candidate],
+      updateMany: async () => ({ count: 0 }), // lost the race
+      findFirst: async () => winnerRow,
+    });
+
+    let thrown: RefreshAlreadyRunningError | null = null;
+    try {
+      await acquireRefreshLock(prisma, ScrapeRunKind.FULL_CATALOG, { now: clockNow });
+    } catch (err) {
+      if (err instanceof RefreshAlreadyRunningError) thrown = err;
+    }
+    expect(thrown).not.toBeNull();
+  });
+
+  it('concurrent start: reap-updateMany count=0, subsequent findFirst sees null (already reaped by winner) → throws from stale candidate', async () => {
+    const staleHeartbeat = new Date(NOW.getTime() - 20 * 60_000);
+    const candidate = makeRunningRow({
+      startedAt: new Date(NOW.getTime() - 30 * 60_000),
+      lastHeartbeatAt: staleHeartbeat,
+    });
+    const prisma = makeFakePrisma({
+      findMany: async () => [candidate],
+      updateMany: async () => ({ count: 0 }), // the winning concurrent acquirer got it first
+      findFirst: async () => null, // already reaped to FAILED by the winner
+    });
+
+    let thrown: RefreshAlreadyRunningError | null = null;
+    try {
+      await acquireRefreshLock(prisma, ScrapeRunKind.FULL_CATALOG, { now: clockNow });
+    } catch (err) {
+      if (err instanceof RefreshAlreadyRunningError) thrown = err;
+    }
+    expect(thrown).not.toBeNull();
+    expect(thrown?.running.id).toBe('run-abc'); // built from the stale candidate, not fabricated
   });
 });
 

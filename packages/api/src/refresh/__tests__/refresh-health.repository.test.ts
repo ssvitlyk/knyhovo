@@ -19,6 +19,7 @@ const FAKE_RUN: ScrapeRun = {
   status: ScrapeRunStatus.SUCCESS,
   triggeredBy: ScrapeRunTrigger.CRON,
   startedAt: STARTED_AT,
+  lastHeartbeatAt: STARTED_AT,
   finishedAt: null,
   durationMs: null,
   itemsFound: 500,

@@ -5,6 +5,7 @@ import type { Logger } from '../pipeline/index.js';
 import { runFullCatalogRefresh } from './full-catalog.refresh.js';
 import type { ProviderRefreshOutcome } from './full-catalog.refresh.js';
 import { RefreshAlreadyRunningError } from './concurrency-guard.js';
+import type { StaleReapConfig } from './concurrency-guard.js';
 import type { ProductionMetricsRegistry } from '../metrics/index.js';
 import { runPostScrapeGenreAssignment } from '../genres/post-scrape-assignment.js';
 
@@ -63,6 +64,10 @@ export interface RunProductionScrapeDeps {
   readonly mode?: 'full' | 'incremental';
   /** TTL (days) for stale `provider_scrape_state` rows; passed through to the refresh layer. */
   readonly retentionDays?: number;
+  /** Liveness-heartbeat interval (ms); passed through to the refresh layer. */
+  readonly heartbeatIntervalMs?: number;
+  /** Stale-reap thresholds; passed through to the refresh layer. */
+  readonly staleReap?: StaleReapConfig;
 }
 
 /** Default alert channel for PR1: emit a structured error line. Real email/Slack is PR3. */
@@ -135,6 +140,8 @@ export async function runProductionScrape(
       ...(deps.metrics !== undefined ? { metrics: deps.metrics } : {}),
       ...(deps.mode !== undefined ? { mode: deps.mode } : {}),
       ...(deps.retentionDays !== undefined ? { retentionDays: deps.retentionDays } : {}),
+      ...(deps.heartbeatIntervalMs !== undefined ? { heartbeatIntervalMs: deps.heartbeatIntervalMs } : {}),
+      ...(deps.staleReap !== undefined ? { staleReap: deps.staleReap } : {}),
     });
 
     if (deps.genreAssignAfterScrape === true) {

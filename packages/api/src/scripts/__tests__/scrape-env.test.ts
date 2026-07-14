@@ -3,6 +3,9 @@ import {
   parseScraperOptionsFromEnv,
   getScrapeStateRetentionDays,
   getLastmodPrecisionMin,
+  getHeartbeatIntervalSeconds,
+  getHeartbeatTimeoutMinutes,
+  getLegacyStaleTimeoutHours,
 } from '../scrape-env.js';
 
 describe('parseScraperOptionsFromEnv', () => {
@@ -95,5 +98,54 @@ describe('getLastmodPrecisionMin', () => {
     expect(getLastmodPrecisionMin({ SCRAPE_LASTMOD_PRECISION_MIN: 'not-a-number' })).toBe(0.05);
     expect(getLastmodPrecisionMin({ SCRAPE_LASTMOD_PRECISION_MIN: '-0.1' })).toBe(0.05);
     expect(getLastmodPrecisionMin({ SCRAPE_LASTMOD_PRECISION_MIN: '1.5' })).toBe(0.05);
+  });
+});
+
+describe('getHeartbeatIntervalSeconds', () => {
+  it('returns the default (60) when absent', () => {
+    expect(getHeartbeatIntervalSeconds({})).toBe(60);
+  });
+
+  it('returns the custom value when a positive integer string is set', () => {
+    expect(getHeartbeatIntervalSeconds({ SCRAPE_HEARTBEAT_INTERVAL_SECONDS: '30' })).toBe(30);
+  });
+
+  it('falls back to the default on invalid values', () => {
+    expect(getHeartbeatIntervalSeconds({ SCRAPE_HEARTBEAT_INTERVAL_SECONDS: '0' })).toBe(60);
+    expect(getHeartbeatIntervalSeconds({ SCRAPE_HEARTBEAT_INTERVAL_SECONDS: '-5' })).toBe(60);
+    expect(getHeartbeatIntervalSeconds({ SCRAPE_HEARTBEAT_INTERVAL_SECONDS: 'not-a-number' })).toBe(60);
+    expect(getHeartbeatIntervalSeconds({ SCRAPE_HEARTBEAT_INTERVAL_SECONDS: '3.5' })).toBe(60);
+  });
+});
+
+describe('getHeartbeatTimeoutMinutes', () => {
+  it('returns the default (15) when absent', () => {
+    expect(getHeartbeatTimeoutMinutes({})).toBe(15);
+  });
+
+  it('returns the custom value when a positive integer string is set', () => {
+    expect(getHeartbeatTimeoutMinutes({ SCRAPE_HEARTBEAT_TIMEOUT_MINUTES: '5' })).toBe(5);
+  });
+
+  it('falls back to the default on invalid values', () => {
+    expect(getHeartbeatTimeoutMinutes({ SCRAPE_HEARTBEAT_TIMEOUT_MINUTES: '0' })).toBe(15);
+    expect(getHeartbeatTimeoutMinutes({ SCRAPE_HEARTBEAT_TIMEOUT_MINUTES: '-5' })).toBe(15);
+    expect(getHeartbeatTimeoutMinutes({ SCRAPE_HEARTBEAT_TIMEOUT_MINUTES: 'not-a-number' })).toBe(15);
+  });
+});
+
+describe('getLegacyStaleTimeoutHours', () => {
+  it('returns the default (24) when absent', () => {
+    expect(getLegacyStaleTimeoutHours({})).toBe(24);
+  });
+
+  it('returns the custom value when a positive integer string is set', () => {
+    expect(getLegacyStaleTimeoutHours({ SCRAPE_STALE_STARTEDAT_TIMEOUT_HOURS: '48' })).toBe(48);
+  });
+
+  it('falls back to the default on invalid values', () => {
+    expect(getLegacyStaleTimeoutHours({ SCRAPE_STALE_STARTEDAT_TIMEOUT_HOURS: '0' })).toBe(24);
+    expect(getLegacyStaleTimeoutHours({ SCRAPE_STALE_STARTEDAT_TIMEOUT_HOURS: '-5' })).toBe(24);
+    expect(getLegacyStaleTimeoutHours({ SCRAPE_STALE_STARTEDAT_TIMEOUT_HOURS: 'not-a-number' })).toBe(24);
   });
 });
