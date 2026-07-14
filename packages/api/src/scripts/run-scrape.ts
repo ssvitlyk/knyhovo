@@ -18,8 +18,9 @@ import type { ScraperProvider } from '@knyhovo/shared';
 import { ScrapeRunTrigger } from '@prisma/client';
 import { createLogger } from '../pipeline/index.js';
 import { runProductionScrape } from '../refresh/production-runner.js';
-import { parseScraperOptionsFromEnv } from './scrape-env.js';
+import { parseScraperOptionsFromEnv, getScrapeStateRetentionDays } from './scrape-env.js';
 import { isGenreAssignAfterScrapeEnabled } from './genre-assign-env.js';
+import { parseModeArg } from './run-scrape-args.js';
 
 // Register new providers here — the pipeline is provider-agnostic and needs no changes.
 // Vivat is server-rendered Next.js, so the default FetchHtmlFetcher works (no Cloudflare).
@@ -55,8 +56,12 @@ async function main(): Promise<void> {
   const triggeredBy = parseTriggeredBy(process.env['SCRAPE_TRIGGERED_BY']);
   const scraperOptions = parseScraperOptionsFromEnv(process.env);
   const genreAssignAfterScrape = isGenreAssignAfterScrapeEnabled(process.env);
+  const mode = parseModeArg(process.argv.slice(2));
+  const retentionDays = getScrapeStateRetentionDays(process.env);
   const startedAt = Date.now();
-  logger.info(`run-scrape starting at ${new Date(startedAt).toISOString()} (triggeredBy=${triggeredBy})`);
+  logger.info(
+    `run-scrape starting at ${new Date(startedAt).toISOString()} (triggeredBy=${triggeredBy}, mode=${mode}, retentionDays=${retentionDays})`,
+  );
   if (scraperOptions?.enrichDescriptions === true) {
     logger.info(
       `description enrichment enabled (descriptionDelayMs=${scraperOptions.descriptionDelayMs ?? 'provider default'})`,
@@ -70,6 +75,8 @@ async function main(): Promise<void> {
       triggeredBy,
       logger,
       genreAssignAfterScrape,
+      mode,
+      retentionDays,
       ...(scraperOptions !== undefined ? { scraperOptions } : {}),
     });
     process.exitCode = result.exitCode;

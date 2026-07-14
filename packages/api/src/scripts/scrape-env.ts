@@ -28,3 +28,40 @@ export function parseScraperOptionsFromEnv(env: NodeJS.ProcessEnv): ScraperOptio
 
   return options;
 }
+
+/** Default retention window (days) for stale `provider_scrape_state` rows (bookchef-incremental-scraping PRD §2.1). */
+const DEFAULT_SCRAPE_STATE_RETENTION_DAYS = 90;
+
+/** Default minimum acceptable shadow-validation precision (bookchef-incremental-scraping PRD §7). */
+const DEFAULT_LASTMOD_PRECISION_MIN = 0.05;
+
+/**
+ * Parse `SCRAPE_STATE_RETENTION_DAYS` — the TTL (in days) for stale
+ * `provider_scrape_state` rows swept after a successful full run. Any
+ * non-positive-integer value (absent, non-numeric, zero, negative,
+ * fractional) falls back to the default. Always returns a number.
+ */
+export function getScrapeStateRetentionDays(env: NodeJS.ProcessEnv): number {
+  const raw = env['SCRAPE_STATE_RETENTION_DAYS'];
+  if (raw !== undefined && /^[1-9]\d*$/.test(raw)) {
+    return Number(raw);
+  }
+  return DEFAULT_SCRAPE_STATE_RETENTION_DAYS;
+}
+
+/**
+ * Parse `SCRAPE_LASTMOD_PRECISION_MIN` — the minimum shadow-validation
+ * precision below which the `low-lastmod-precision` health warning fires.
+ * Any value that doesn't parse as a finite number in `[0, 1]` falls back to
+ * the default. Always returns a number.
+ */
+export function getLastmodPrecisionMin(env: NodeJS.ProcessEnv): number {
+  const raw = env['SCRAPE_LASTMOD_PRECISION_MIN'];
+  if (raw !== undefined) {
+    const parsed = Number(raw);
+    if (Number.isFinite(parsed) && parsed >= 0 && parsed <= 1) {
+      return parsed;
+    }
+  }
+  return DEFAULT_LASTMOD_PRECISION_MIN;
+}

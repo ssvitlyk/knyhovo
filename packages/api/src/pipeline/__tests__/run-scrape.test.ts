@@ -143,6 +143,18 @@ function makeFakePrisma(
         return row;
       }),
     },
+    // BookChef incremental scraping (scrape-state.repository): a minimal stub so
+    // any listing carrying `sourceLastmod` doesn't crash the watermark-advance
+    // call, whether it happens inside `$transaction` or standalone.
+    providerScrapeState: {
+      upsert: vi.fn(
+        async (args: {
+          where: { provider_url: { provider: string; url: string } };
+          create: { sourceLastmod: Date | null; lastFetchedAt: Date; lastSeenInSitemapAt: Date };
+          update: { sourceLastmod: Date | null; lastFetchedAt: Date; lastSeenInSitemapAt: Date };
+        }) => args.create,
+      ),
+    },
     $transaction: vi.fn(async (fn: (tx: unknown) => Promise<unknown>) => fn(db)),
   };
 
@@ -1087,6 +1099,166 @@ describe('runScrapePipeline', () => {
       });
 
       expect(results[0]!.affectedCanonicalBookIds).toHaveLength(1);
+    });
+  });
+
+  // BookChef incremental scraping: per-URL watermark advance (scrape-state.repository).
+  describe('watermark advance (sourceLastmod)', () => {
+    it('advances the watermark standalone when a no-price new listing carries sourceLastmod', async () => {
+      const { db } = makeFakePrisma();
+      const listing = makeListing({
+        price: null,
+        sourceLastmod: '2026-07-01T00:00:00.000Z',
+        url: 'https://bookchef.com.ua/new-no-price',
+      });
+      const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+      const { results } = await runScrapePipeline({
+        prisma: db as unknown as PrismaClient,
+        providers: [scraper],
+      });
+
+      expect(results[0]!.metrics.skippedNoPrice).toBe(1);
+      expect(db.providerScrapeState.upsert).toHaveBeenCalledOnce();
+      const callArgs = vi.mocked(db.providerScrapeState.upsert).mock.calls[0]![0];
+      expect(callArgs.create.sourceLastmod).toEqual(new Date('2026-07-01T00:00:00.000Z'));
+      expect(callArgs.update.sourceLastmod).toEqual(new Date('2026-07-01T00:00:00.000Z'));
+    });
+
+    it('does not advance the watermark for a no-price new listing without sourceLastmod (existing providers)', async () => {
+      const { db } = makeFakePrisma();
+      const listing = makeListing({ price: null });
+      const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+      await runScrapePipeline({
+        prisma: db as unknown as PrismaClient,
+        providers: [scraper],
+      });
+
+      expect(db.providerScrapeState.upsert).not.toHaveBeenCalled();
+    });
+
+    it('advances the watermark when a listing with sourceLastmod is newly created', async () => {
+      const { db } = makeFakePrisma();
+      const listing = makeListing({
+        isbn: null,
+        sourceLastmod: '2026-07-05T00:00:00.000Z',
+      });
+      const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+      await runScrapePipeline({
+        prisma: db as unknown as PrismaClient,
+        providers: [scraper],
+      });
+
+      expect(db.providerScrapeState.upsert).toHaveBeenCalledOnce();
+      const callArgs = vi.mocked(db.providerScrapeState.upsert).mock.calls[0]![0];
+      expect(callArgs.create.sourceLastmod).toEqual(new Date('2026-07-05T00:00:00.000Z'));
+    });
+
+    it('advances the watermark when a listing with sourceLastmod updates an existing listing', async () => {
+      const existingCanonical: FakeCanonicalRow = {
+        id: 'book-wm-1',
+        title: 'Кобзар',
+        author: 'Тарас Шевченко',
+        isbn: '9786177933105',
+        createdAt: FIXED_DATE,
+      };
+      const existingListing: FakeProviderListingRow = {
+        id: 'pl-wm-1',
+        canonicalBookId: 'book-wm-1',
+        provider: 'YAKABOO',
+        title: 'Кобзар',
+        author: 'Тарас Шевченко',
+        isbn: '9786177933105',
+        priceAmount: 20000,
+        priceCurrency: 'UAH',
+        url: 'https://yakaboo.ua/kobzar',
+        lastSeenAt: FIXED_DATE,
+        availability: 'IN_STOCK',
+      };
+      const { db } = makeFakePrisma([existingCanonical], [existingListing]);
+
+      const listing = makeListing({
+        isbn: '9786177933105',
+        sourceLastmod: '2026-07-06T00:00:00.000Z',
+      });
+      const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+      await runScrapePipeline({
+        prisma: db as unknown as PrismaClient,
+        providers: [scraper],
+      });
+
+      expect(db.providerScrapeState.upsert).toHaveBeenCalledOnce();
+      const callArgs = vi.mocked(db.providerScrapeState.upsert).mock.calls[0]![0];
+      expect(callArgs.update.sourceLastmod).toEqual(new Date('2026-07-06T00:00:00.000Z'));
+    });
+
+    it('advances the watermark with sourceLastmod: null when the listing carries an explicit null', async () => {
+      const { db } = makeFakePrisma();
+      const listing = makeListing({ isbn: null, sourceLastmod: null });
+      const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+      await runScrapePipeline({
+        prisma: db as unknown as PrismaClient,
+        providers: [scraper],
+      });
+
+      expect(db.providerScrapeState.upsert).toHaveBeenCalledOnce();
+      const callArgs = vi.mocked(db.providerScrapeState.upsert).mock.calls[0]![0];
+      expect(callArgs.create.sourceLastmod).toBeNull();
+    });
+  });
+
+  // BookChef incremental scraping: changedListingUrls + sitemap pass-through on ProviderRunResult.
+  describe('changedListingUrls and sitemap pass-through', () => {
+    it('includes the URL of a listing whose price change was recorded', async () => {
+      const existingCanonical: FakeCanonicalRow = {
+        id: 'book-changed',
+        title: 'Кобзар',
+        author: 'Тарас Шевченко',
+        isbn: '9786177933105',
+        createdAt: FIXED_DATE,
+      };
+      const existingListing: FakeProviderListingRow = {
+        id: 'pl-changed',
+        canonicalBookId: 'book-changed',
+        provider: 'YAKABOO',
+        title: 'Кобзар',
+        author: 'Тарас Шевченко',
+        isbn: '9786177933105',
+        priceAmount: 20000,
+        priceCurrency: 'UAH',
+        url: 'https://yakaboo.ua/kobzar',
+        lastSeenAt: FIXED_DATE,
+        availability: 'IN_STOCK',
+      };
+      const { db } = makeFakePrisma([existingCanonical], [existingListing]);
+
+      const listing = makeListing({ isbn: '9786177933105', price: { amount: 34900, currency: 'UAH' } });
+      const scraper = new FakeScraper('yakaboo', makeScraperResult([listing]));
+
+      const { results } = await runScrapePipeline({
+        prisma: db as unknown as PrismaClient,
+        providers: [scraper],
+      });
+
+      expect(results[0]!.changedListingUrls).toEqual(['https://yakaboo.ua/kobzar']);
+    });
+
+    it('passes the sitemap field through from the ScraperResult unchanged', async () => {
+      const { db } = makeFakePrisma();
+      const sitemap = { entries: [{ url: 'https://x', lastmod: '2026-07-01' }] };
+      const scraperResult: ScraperResult = { ...makeScraperResult([]), sitemap };
+      const scraper = new FakeScraper('yakaboo', scraperResult);
+
+      const { results } = await runScrapePipeline({
+        prisma: db as unknown as PrismaClient,
+        providers: [scraper],
+      });
+
+      expect(results[0]!.sitemap).toEqual(sitemap);
     });
   });
 });

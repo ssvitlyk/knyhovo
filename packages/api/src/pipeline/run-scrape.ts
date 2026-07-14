@@ -5,6 +5,7 @@ import { Prisma } from '@prisma/client';
 import type { RunScrapeOptions, PipelineResult, ProviderRunResult, Logger } from './types.js';
 import { createMetrics } from './metrics.js';
 import { persistListing, markUnavailable, mapProviderName } from './persist-listing.js';
+import { advanceWatermark } from './scrape-state.repository.js';
 import { bindContext } from '../logging/logger.js';
 
 /**
@@ -81,6 +82,7 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
     }
 
     let scrapeResult: ScraperResult;
+    const scrapeStartedAt = Date.now();
     try {
       // Thread the scrape-phase logger into the provider so its progress/metrics
       // surface in production; an explicit scraperOptions.logger still wins.
@@ -91,9 +93,17 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
       });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      results.push({ provider: provider.name, metrics, scrapeErrors: [message], affectedCanonicalBookIds: [] });
+      results.push({
+        provider: provider.name,
+        metrics,
+        scrapeErrors: [message],
+        affectedCanonicalBookIds: [],
+        changedListingUrls: [],
+        scrapeDurationMs: Date.now() - scrapeStartedAt,
+      });
       continue;
     }
+    const scrapeDurationMs = Date.now() - scrapeStartedAt;
 
     metrics.scraped = scrapeResult.listings.length;
     scrapeLogger.info(
@@ -124,6 +134,7 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
     // availability-only refresh (markUnavailable never touches rawCategories),
     // and never a skipped/conflicting/failed listing.
     const affectedCanonicalBookIds = new Set<string>();
+    const changedListingUrls: string[] = [];
 
     let processed = 0;
     for (const listing of scrapeResult.listings) {
@@ -145,9 +156,19 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
           metrics.availabilityUpdated++;
           if (outcome.priceHistoryCreated) {
             metrics.priceHistoryCreated++;
+            changedListingUrls.push(listing.url);
           }
         } else {
           metrics.skippedNoPrice++;
+          if (listing.sourceLastmod !== undefined) {
+            await advanceWatermark(
+              opts.prisma,
+              mapProviderName(listing.provider),
+              listing.url,
+              listing.sourceLastmod ?? null,
+              scrapedAt,
+            );
+          }
         }
         continue;
       }
@@ -184,6 +205,7 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
 
         if (outcome.priceHistoryCreated) {
           metrics.priceHistoryCreated++;
+          changedListingUrls.push(listing.url);
         }
       } catch (err) {
         metrics.errors++;
@@ -202,6 +224,9 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
       metrics,
       scrapeErrors: scrapeResult.errors,
       affectedCanonicalBookIds: [...affectedCanonicalBookIds],
+      sitemap: scrapeResult.sitemap,
+      changedListingUrls: [...changedListingUrls],
+      scrapeDurationMs,
     });
   }
 

@@ -59,6 +59,10 @@ export interface RunProductionScrapeDeps {
   readonly genreAssignAfterScrape?: boolean;
   /** Injectable genre-assignment implementation for deterministic tests. */
   readonly runGenreAssignment?: typeof runPostScrapeGenreAssignment;
+  /** Requested scrape mode (bookchef-incremental-scraping PRD §5); passed through to the refresh layer. */
+  readonly mode?: 'full' | 'incremental';
+  /** TTL (days) for stale `provider_scrape_state` rows; passed through to the refresh layer. */
+  readonly retentionDays?: number;
 }
 
 /** Default alert channel for PR1: emit a structured error line. Real email/Slack is PR3. */
@@ -129,6 +133,8 @@ export async function runProductionScrape(
       ...(deps.scraperOptions !== undefined ? { scraperOptions: deps.scraperOptions } : {}),
       ...(deps.now !== undefined ? { now: deps.now } : {}),
       ...(deps.metrics !== undefined ? { metrics: deps.metrics } : {}),
+      ...(deps.mode !== undefined ? { mode: deps.mode } : {}),
+      ...(deps.retentionDays !== undefined ? { retentionDays: deps.retentionDays } : {}),
     });
 
     if (deps.genreAssignAfterScrape === true) {

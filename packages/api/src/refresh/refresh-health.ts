@@ -1,4 +1,4 @@
-import type { ScrapeRun, PrismaClient } from '@prisma/client';
+import type { ScrapeRun, PrismaClient, Prisma } from '@prisma/client';
 import { Provider, ScrapeRunStatus, ScrapeRunKind } from '@prisma/client';
 import type { ProviderName } from '@knyhovo/shared';
 import {
@@ -6,6 +6,7 @@ import {
   fetchListingFreshness,
 } from './refresh-health.repository.js';
 import { GUARDED_KINDS } from './concurrency-guard.js';
+import { INCREMENTAL_SITEMAP_PROVIDERS } from './incremental-providers.js';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -22,7 +23,9 @@ export type RefreshHealthIssueType =
   | 'high-error-count'
   | 'stale-listings'
   | 'running-too-long'
-  | 'refresh-lock-stuck';
+  | 'refresh-lock-stuck'
+  | 'lastmod-missed-changes'
+  | 'low-lastmod-precision';
 
 export interface RefreshHealthIssue {
   type: RefreshHealthIssueType;
@@ -79,6 +82,13 @@ export interface RefreshHealthConfig {
   fillRateDropRatio: number;
   /** A RUNNING run older than this many hours is flagged as stuck (W10.6). */
   runningTooLongHours: number;
+  /**
+   * Minimum acceptable shadow-validation precision for incremental-capable
+   * providers (bookchef-incremental-scraping PRD §7). Below this, the
+   * `low-lastmod-precision` warning fires. Default 0.05 (5%), overridable via
+   * `SCRAPE_LASTMOD_PRECISION_MIN`.
+   */
+  lastmodPrecisionMin: number;
 }
 
 export const DEFAULT_HEALTH_CONFIG: RefreshHealthConfig = {
@@ -89,7 +99,36 @@ export const DEFAULT_HEALTH_CONFIG: RefreshHealthConfig = {
   staleProviderRatio: 0.5,
   fillRateDropRatio: 0.5,
   runningTooLongHours: 6,
+  lastmodPrecisionMin: 0.05,
 };
+
+/** Minimum sample size before `low-lastmod-precision` is evaluated (PRD §7). */
+const MIN_VALIDATION_SAMPLE = 100;
+
+/** Narrow, `any`-free read of a FULL run's shadow-validation metadata block. */
+function readValidationMetadata(
+  metadata: Prisma.JsonValue | null,
+): { missedUrls?: string[]; precision?: number | null; predictedCount?: number } | null {
+  if (metadata === null || typeof metadata !== 'object' || Array.isArray(metadata)) {
+    return null;
+  }
+  const validation = (metadata as Record<string, unknown>)['validation'];
+  if (validation === null || typeof validation !== 'object' || Array.isArray(validation)) {
+    return null;
+  }
+  const v = validation as Record<string, unknown>;
+  const result: { missedUrls?: string[]; precision?: number | null; predictedCount?: number } = {};
+  if (Array.isArray(v['missedUrls'])) {
+    result.missedUrls = v['missedUrls'].filter((u): u is string => typeof u === 'string');
+  }
+  if (v['precision'] === null || typeof v['precision'] === 'number') {
+    result.precision = v['precision'] as number | null;
+  }
+  if (typeof v['predictedCount'] === 'number') {
+    result.predictedCount = v['predictedCount'];
+  }
+  return result;
+}
 
 /** Input shape for per-provider listing freshness (decoupled from the DB layer). */
 export interface ProviderListingFreshness {
@@ -118,6 +157,11 @@ const ALL_PROVIDERS: Provider[] = [
   Provider.BOOK_CLUB,
   Provider.VIVAT,
   Provider.BOOK_YE,
+  // BookChef is an actively-scraped provider today (registered in
+  // scripts/run-scrape.ts) that was simply missing from health reporting —
+  // added so the bookchef-incremental-scraping PRD's health warnings
+  // (lastmod-missed-changes, low-lastmod-precision) have any effect.
+  Provider.BOOKCHEF,
 ];
 
 // ---------------------------------------------------------------------------
@@ -311,6 +355,38 @@ export function deriveProviderHealth(input: {
     });
   }
 
+  // 9 & 10. lastmod-missed-changes / low-lastmod-precision (bookchef-incremental-scraping
+  // PRD §7) — only meaningful for sitemap-diff-capable providers, and only once a FULL
+  // run has actually recorded shadow-validation metadata (pre-shadow-week: no-op).
+  if (INCREMENTAL_SITEMAP_PROVIDERS.has(PROVIDER_SLUG[provider])) {
+    const latestFullRun = runs.find((r) => r.kind === ScrapeRunKind.FULL_CATALOG) ?? null;
+    const validation = latestFullRun ? readValidationMetadata(latestFullRun.metadata) : null;
+
+    if (validation !== null) {
+      if (validation.missedUrls !== undefined && validation.missedUrls.length > 0) {
+        issues.push({
+          type: 'lastmod-missed-changes',
+          severity: 'warning',
+          message: `Latest FULL run's shadow validation missed ${validation.missedUrls.length} changed listing(s) that lastmod predicted as unchanged.`,
+        });
+      }
+
+      if (
+        validation.predictedCount !== undefined &&
+        validation.predictedCount >= MIN_VALIDATION_SAMPLE &&
+        validation.precision !== undefined &&
+        validation.precision !== null &&
+        validation.precision < config.lastmodPrecisionMin
+      ) {
+        issues.push({
+          type: 'low-lastmod-precision',
+          severity: 'warning',
+          message: `Shadow-validation precision ${(validation.precision * 100).toFixed(1)}% is below the ${(config.lastmodPrecisionMin * 100).toFixed(0)}% threshold — lastmod may be generation-time, not update-time.`,
+        });
+      }
+    }
+  }
+
   // ── Status roll-up ─────────────────────────────────────────────────────────
   const hasCritical = issues.some((i) => i.severity === 'critical');
   const hasWarning = issues.some((i) => i.severity === 'warning');
@@ -381,9 +457,13 @@ export async function getRefreshHealth(
 
   const staleBefore = new Date(now.getTime() - config.staleListingHours * 3_600_000);
 
+  const incrementalProviders = new Set(
+    ALL_PROVIDERS.filter((provider) => INCREMENTAL_SITEMAP_PROVIDERS.has(PROVIDER_SLUG[provider])),
+  );
+
   const [allRuns, freshnessRows] = await Promise.all([
     fetchRecentRuns(prisma),
-    fetchListingFreshness(prisma, staleBefore),
+    fetchListingFreshness(prisma, staleBefore, incrementalProviders),
   ]);
 
   const freshnessMap = new Map<Provider, ProviderListingFreshness>(

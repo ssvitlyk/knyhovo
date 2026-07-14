@@ -447,6 +447,130 @@ describe('deriveProviderHealth — refresh-lock-stuck (W10.6)', () => {
   });
 });
 
+// ── bookchef-incremental-scraping PRD: lastmod-missed-changes / low-lastmod-precision ──
+
+describe('deriveProviderHealth — incremental-capable provider (bookchef) validation warnings', () => {
+  function healthForBookchef(
+    runs: ScrapeRun[],
+    config: RefreshHealthConfig = DEFAULT_HEALTH_CONFIG,
+  ): ReturnType<typeof deriveProviderHealth> {
+    return deriveProviderHealth({
+      provider: Provider.BOOKCHEF,
+      runs,
+      freshness: null,
+      now: NOW,
+      config,
+    });
+  }
+
+  it('fires lastmod-missed-changes when the latest FULL run has non-empty missedUrls', () => {
+    const run = fakeRun({
+      provider: Provider.BOOKCHEF,
+      status: ScrapeRunStatus.SUCCESS,
+      startedAt: RECENT,
+      metadata: { mode: 'full', validation: { missedUrls: ['u1'], predictedCount: 5, precision: 0.5 } },
+    });
+    const result = healthForBookchef([run]);
+    const types = result.issues.map((i) => i.type);
+    expect(types).toContain('lastmod-missed-changes');
+    expect(result.issues.find((i) => i.type === 'lastmod-missed-changes')!.severity).toBe('warning');
+  });
+
+  it('does NOT fire lastmod-missed-changes when missedUrls is empty', () => {
+    const run = fakeRun({
+      provider: Provider.BOOKCHEF,
+      status: ScrapeRunStatus.SUCCESS,
+      startedAt: RECENT,
+      metadata: { mode: 'full', validation: { missedUrls: [], predictedCount: 5, precision: 1 } },
+    });
+    const result = healthForBookchef([run]);
+    const types = result.issues.map((i) => i.type);
+    expect(types).not.toContain('lastmod-missed-changes');
+  });
+
+  it('does NOT fire either warning when there is no validation metadata yet (pre-shadow-week)', () => {
+    const run = fakeRun({
+      provider: Provider.BOOKCHEF,
+      status: ScrapeRunStatus.SUCCESS,
+      startedAt: RECENT,
+      metadata: { mode: 'full', sitemapTotal: 100 },
+    });
+    const result = healthForBookchef([run]);
+    const types = result.issues.map((i) => i.type);
+    expect(types).not.toContain('lastmod-missed-changes');
+    expect(types).not.toContain('low-lastmod-precision');
+  });
+
+  it('does NOT crash when there is no FULL run at all', () => {
+    expect(() => healthForBookchef([])).not.toThrow();
+    const result = healthForBookchef([]);
+    const types = result.issues.map((i) => i.type);
+    expect(types).not.toContain('lastmod-missed-changes');
+    expect(types).not.toContain('low-lastmod-precision');
+  });
+
+  it('fires low-lastmod-precision when predictedCount >= 100 and precision below threshold', () => {
+    const run = fakeRun({
+      provider: Provider.BOOKCHEF,
+      status: ScrapeRunStatus.SUCCESS,
+      startedAt: RECENT,
+      metadata: { mode: 'full', validation: { missedUrls: [], predictedCount: 150, precision: 0.02 } },
+    });
+    const result = healthForBookchef([run]);
+    const types = result.issues.map((i) => i.type);
+    expect(types).toContain('low-lastmod-precision');
+  });
+
+  it('does NOT fire low-lastmod-precision when predictedCount < 100 (sample too small)', () => {
+    const run = fakeRun({
+      provider: Provider.BOOKCHEF,
+      status: ScrapeRunStatus.SUCCESS,
+      startedAt: RECENT,
+      metadata: { mode: 'full', validation: { missedUrls: [], predictedCount: 50, precision: 0.01 } },
+    });
+    const result = healthForBookchef([run]);
+    const types = result.issues.map((i) => i.type);
+    expect(types).not.toContain('low-lastmod-precision');
+  });
+
+  it('does NOT fire low-lastmod-precision when precision is null', () => {
+    const run = fakeRun({
+      provider: Provider.BOOKCHEF,
+      status: ScrapeRunStatus.SUCCESS,
+      startedAt: RECENT,
+      metadata: { mode: 'full', validation: { missedUrls: [], predictedCount: 150, precision: null } },
+    });
+    const result = healthForBookchef([run]);
+    const types = result.issues.map((i) => i.type);
+    expect(types).not.toContain('low-lastmod-precision');
+  });
+
+  it('does NOT fire low-lastmod-precision when precision is at/above a custom threshold', () => {
+    const run = fakeRun({
+      provider: Provider.BOOKCHEF,
+      status: ScrapeRunStatus.SUCCESS,
+      startedAt: RECENT,
+      metadata: { mode: 'full', validation: { missedUrls: [], predictedCount: 150, precision: 0.2 } },
+    });
+    const result = healthForBookchef([run], { ...DEFAULT_HEALTH_CONFIG, lastmodPrecisionMin: 0.1 });
+    const types = result.issues.map((i) => i.type);
+    expect(types).not.toContain('low-lastmod-precision');
+  });
+
+  it('non-incremental providers never evaluate these warnings, even with matching metadata shape', () => {
+    const run = fakeRun({
+      provider: Provider.YAKABOO,
+      status: ScrapeRunStatus.SUCCESS,
+      startedAt: RECENT,
+      metadata: { mode: 'full', validation: { missedUrls: ['u1'], predictedCount: 150, precision: 0.01 } },
+    });
+    const result = healthFor([run]);
+    const types = result.issues.map((i) => i.type);
+    expect(types).not.toContain('lastmod-missed-changes');
+    expect(types).not.toContain('low-lastmod-precision');
+  });
+});
+
 // ── deriveSummary ─────────────────────────────────────────────────────────────
 
 describe('deriveSummary', () => {

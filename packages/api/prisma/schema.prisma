@@ -432,6 +432,27 @@ model NotificationDelivery {
   @@map("notification_deliveries")
 }
 
+/// Per-URL crawl bookkeeping for sitemap-driven incremental scraping
+/// (bookchef-incremental-scraping PRD §2). Deliberately no relation/FK to
+/// `ProviderListing` — this state tracks URLs that may never get a business
+/// row (e.g. a sitemap entry whose product page has no price yet).
+model ProviderScrapeState {
+  provider Provider @map("provider")
+  url      String
+  /// Watermark: sitemap <lastmod> of the last successfully processed fetch
+  /// for this URL. Null until a fetch succeeds.
+  sourceLastmod DateTime? @map("source_lastmod")
+  /// When this URL was last seen present in a successfully-parsed sitemap
+  /// (presence bookkeeping, independent of fetch success).
+  lastSeenInSitemapAt DateTime @map("last_seen_in_sitemap_at")
+  /// When this URL's page was last actually fetched (regardless of persist outcome).
+  lastFetchedAt DateTime? @map("last_fetched_at")
+
+  @@id([provider, url])
+  @@index([provider, lastSeenInSitemapAt])
+  @@map("provider_scrape_state")
+}
+
 model GenreMapping {
   id       String   @id @default(uuid())
   provider Provider

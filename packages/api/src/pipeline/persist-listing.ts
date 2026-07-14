@@ -4,6 +4,7 @@ import type { MatchResult } from '@knyhovo/scrapers';
 import { Prisma } from '@prisma/client';
 import type { ListingPersistOutcome, UnavailableOutcome } from './types.js';
 import { recordPriceChange } from '../price-history/service.js';
+import { advanceWatermark } from './scrape-state.repository.js';
 
 const PROVIDER_NAME_MAP: Record<
   ProviderName,
@@ -149,6 +150,10 @@ export async function persistListing(
       recordedAt: scrapedAt,
     });
 
+    if (listing.sourceLastmod !== undefined) {
+      await advanceWatermark(tx, provider, listing.url, listing.sourceLastmod ?? null, scrapedAt);
+    }
+
     return { kind: 'listing-created', createdCanonical, canonicalBookId, priceHistoryCreated: true };
   } else {
     // EXISTING listing — do NOT change canonicalBookId
@@ -239,6 +244,10 @@ export async function persistListing(
       recordedAt: scrapedAt,
     });
 
+    if (listing.sourceLastmod !== undefined) {
+      await advanceWatermark(tx, provider, listing.url, listing.sourceLastmod ?? null, scrapedAt);
+    }
+
     return { kind: 'listing-updated', canonicalBookId: existing.canonicalBookId, priceHistoryCreated: created };
   }
 }
@@ -282,6 +291,10 @@ export async function markUnavailable(
     },
     recordedAt: scrapedAt,
   });
+
+  if (listing.sourceLastmod !== undefined) {
+    await advanceWatermark(tx, provider, listing.url, listing.sourceLastmod ?? null, scrapedAt);
+  }
 
   return { kind: 'availability-updated', priceHistoryCreated: created };
 }
