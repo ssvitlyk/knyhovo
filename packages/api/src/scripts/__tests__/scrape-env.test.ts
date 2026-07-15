@@ -103,6 +103,46 @@ describe('parseScraperOptionsFromEnv', () => {
       }),
     ).toEqual({ debugFetchStages: true });
   });
+
+  it('sets sitemapTimeoutMs alone when a valid positive integer is set', () => {
+    expect(parseScraperOptionsFromEnv({ SCRAPE_SITEMAP_TIMEOUT_MS: '60000' })).toEqual({
+      sitemapTimeoutMs: 60000,
+    });
+  });
+
+  it('ignores invalid SCRAPE_SITEMAP_TIMEOUT_MS values', () => {
+    expect(parseScraperOptionsFromEnv({ SCRAPE_SITEMAP_TIMEOUT_MS: '0' })).toBeUndefined();
+    expect(parseScraperOptionsFromEnv({ SCRAPE_SITEMAP_TIMEOUT_MS: '-5' })).toBeUndefined();
+    expect(parseScraperOptionsFromEnv({ SCRAPE_SITEMAP_TIMEOUT_MS: 'abc' })).toBeUndefined();
+    expect(parseScraperOptionsFromEnv({ SCRAPE_SITEMAP_TIMEOUT_MS: '1.5' })).toBeUndefined();
+  });
+
+  it('sets maxConsecutiveFetchFailures alone when a valid positive integer is set', () => {
+    expect(parseScraperOptionsFromEnv({ SCRAPE_MAX_CONSECUTIVE_FETCH_FAILURES: '20' })).toEqual({
+      maxConsecutiveFetchFailures: 20,
+    });
+  });
+
+  it('ignores invalid SCRAPE_MAX_CONSECUTIVE_FETCH_FAILURES values', () => {
+    expect(parseScraperOptionsFromEnv({ SCRAPE_MAX_CONSECUTIVE_FETCH_FAILURES: '0' })).toBeUndefined();
+    expect(parseScraperOptionsFromEnv({ SCRAPE_MAX_CONSECUTIVE_FETCH_FAILURES: '-5' })).toBeUndefined();
+    expect(parseScraperOptionsFromEnv({ SCRAPE_MAX_CONSECUTIVE_FETCH_FAILURES: 'abc' })).toBeUndefined();
+    expect(parseScraperOptionsFromEnv({ SCRAPE_MAX_CONSECUTIVE_FETCH_FAILURES: '1.5' })).toBeUndefined();
+  });
+
+  it('combines sitemapTimeoutMs and maxConsecutiveFetchFailures with SCRAPE_DEBUG_FETCH_STAGES', () => {
+    expect(
+      parseScraperOptionsFromEnv({
+        SCRAPE_SITEMAP_TIMEOUT_MS: '45000',
+        SCRAPE_MAX_CONSECUTIVE_FETCH_FAILURES: '15',
+        SCRAPE_DEBUG_FETCH_STAGES: '1',
+      }),
+    ).toEqual({
+      debugFetchStages: true,
+      sitemapTimeoutMs: 45000,
+      maxConsecutiveFetchFailures: 15,
+    });
+  });
 });
 
 describe('getScrapeStateRetentionDays', () => {

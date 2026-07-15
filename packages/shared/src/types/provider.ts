@@ -90,6 +90,17 @@ export interface ScraperOptions {
    * Scrapers may ignore it. Off by default.
    */
   debugFetchStages?: boolean;
+  /**
+   * Per-request timeout in milliseconds for the sitemap discovery fetch of
+   * sitemap-driven providers. Provider default applies when omitted.
+   */
+  sitemapTimeoutMs?: number;
+  /**
+   * Circuit-breaker threshold: abort the run after this many consecutive
+   * network/timeout product-fetch failures in a row. Provider default
+   * applies when omitted.
+   */
+  maxConsecutiveFetchFailures?: number;
 }
 
 /**

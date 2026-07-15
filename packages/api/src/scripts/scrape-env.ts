@@ -14,11 +14,20 @@ import type { ScraperOptions } from '@knyhovo/shared';
  *   - Per-page stage debug logging (hang diagnosis):
  *     - `SCRAPE_DEBUG_FETCH_STAGES`: `'true'` or `'1'` enables it; any other
  *       value (or absence) leaves it disabled.
+ *   - Sitemap fetch timeout (bookchef silent-stall fix):
+ *     - `SCRAPE_SITEMAP_TIMEOUT_MS`: a positive-integer string sets
+ *       `sitemapTimeoutMs`. Invalid or absent values are ignored (provider
+ *       default applies).
+ *   - Circuit-breaker threshold (bookchef silent-stall fix):
+ *     - `SCRAPE_MAX_CONSECUTIVE_FETCH_FAILURES`: a positive-integer string
+ *       sets `maxConsecutiveFetchFailures`. Invalid or absent values are
+ *       ignored (provider default applies).
  *
- * Pure function — no IO, no mutation of `env`. Either feature may be enabled
- * independently; when both are set, both appear on the returned options.
- * Returns `undefined` when nothing is enabled, so callers can spread the
- * result exactly like the existing `...(x !== undefined ? { x } : {})` pattern.
+ * Pure function — no IO, no mutation of `env`. Every feature above may be
+ * enabled independently of the others; when several are set, all appear on
+ * the returned options. Returns `undefined` when nothing is enabled, so
+ * callers can spread the result exactly like the existing
+ * `...(x !== undefined ? { x } : {})` pattern.
  */
 export function parseScraperOptionsFromEnv(env: NodeJS.ProcessEnv): ScraperOptions | undefined {
   const enrichDescriptions = env['SCRAPE_ENRICH_DESCRIPTIONS'] === 'true' || env['SCRAPE_ENRICH_DESCRIPTIONS'] === '1';
@@ -36,6 +45,16 @@ export function parseScraperOptionsFromEnv(env: NodeJS.ProcessEnv): ScraperOptio
 
   if (debugFetchStages) {
     options = { ...options, debugFetchStages: true };
+  }
+
+  const rawSitemapTimeout = env['SCRAPE_SITEMAP_TIMEOUT_MS'];
+  if (rawSitemapTimeout !== undefined && /^[1-9]\d*$/.test(rawSitemapTimeout)) {
+    options = { ...options, sitemapTimeoutMs: Number(rawSitemapTimeout) };
+  }
+
+  const rawMaxConsecutiveFailures = env['SCRAPE_MAX_CONSECUTIVE_FETCH_FAILURES'];
+  if (rawMaxConsecutiveFailures !== undefined && /^[1-9]\d*$/.test(rawMaxConsecutiveFailures)) {
+    options = { ...options, maxConsecutiveFetchFailures: Number(rawMaxConsecutiveFailures) };
   }
 
   return options;

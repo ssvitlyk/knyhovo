@@ -5,6 +5,14 @@ import { BookChefScraper } from '../bookchef.scraper.js';
 import { BOOKCHEF_PRODUCTS_SITEMAP_URL } from '../constants.js';
 import type { HtmlFetcher } from '../../../http/html-fetcher.js';
 
+const NOOP_SLEEP = { sleep: async (): Promise<void> => {} };
+
+function abortError(message = 'This operation was aborted'): Error {
+  const e = new Error(message);
+  e.name = 'AbortError';
+  return e;
+}
+
 const FIXTURES_DIR = resolve(import.meta.dirname, '../__fixtures__');
 
 function loadFixture(name: string): string {
@@ -303,5 +311,188 @@ describe('BookChefScraper.scrape — debugFetchStages', () => {
 
     const lines = info.mock.calls.map((call) => call[0] as string);
     expect(lines.some((l) => l.includes('[stage]'))).toBe(false);
+  });
+});
+
+// Sitemap retry policy (bookchef silent-stall fix): the sitemap fetch is
+// separated from the product-page fetch (its own longer timeout) and retried
+// with backoff on transient failures via the shared `fetchWithRetry` helper.
+describe('BookChefScraper.scrape — sitemap retry policy', () => {
+  it('fetches the sitemap once with its own 60s timeout, separate from the 10s product timeout', async () => {
+    const sitemap = buildSitemap([{ url: INSTOCK_URL, lastmod: null }]);
+    const fetcher = makeFetcher({
+      [BOOKCHEF_PRODUCTS_SITEMAP_URL]: sitemap,
+      [INSTOCK_URL]: INSTOCK,
+    });
+    const scraper = new BookChefScraper(fetcher, undefined, undefined, NOOP_SLEEP);
+    const result = await scraper.scrape({ delayMs: 0 });
+
+    expect(result.listings).toHaveLength(1);
+    const calls = (fetcher.fetch as ReturnType<typeof vi.fn>).mock.calls;
+    expect(calls.filter(([url]) => url === BOOKCHEF_PRODUCTS_SITEMAP_URL)).toHaveLength(1);
+    expect(fetcher.fetch).toHaveBeenCalledWith(BOOKCHEF_PRODUCTS_SITEMAP_URL, 60_000);
+    expect(fetcher.fetch).toHaveBeenCalledWith(INSTOCK_URL, 10_000);
+  });
+
+  it('retries the sitemap fetch and succeeds on the 3rd attempt', async () => {
+    const sitemap = buildSitemap([{ url: INSTOCK_URL, lastmod: null }]);
+    let sitemapCalls = 0;
+    const fetcher: HtmlFetcher = {
+      fetch: vi.fn(async (url: string) => {
+        if (url === BOOKCHEF_PRODUCTS_SITEMAP_URL) {
+          sitemapCalls++;
+          if (sitemapCalls < 3) throw abortError();
+          return sitemap;
+        }
+        return INSTOCK;
+      }),
+    };
+    const info = vi.fn();
+    const scraper = new BookChefScraper(fetcher, undefined, undefined, NOOP_SLEEP);
+    const result = await scraper.scrape({ delayMs: 0, logger: { info } });
+
+    expect(result.listings).toHaveLength(1);
+    expect(result.errors).toHaveLength(0);
+    expect(sitemapCalls).toBe(3);
+
+    const lines = info.mock.calls.map((call) => call[0] as string);
+    expect(lines.some((l) => l.includes('sitemap attempt 1/3'))).toBe(true);
+    expect(lines.some((l) => l.includes('sitemap attempt 2/3'))).toBe(true);
+    expect(lines.some((l) => l.includes('attempt 3/3') || l.includes('on attempt 3'))).toBe(true);
+  });
+
+  it('gives up after 3 attempts, all aborting, and returns an empty result with no sitemap field', async () => {
+    const fetcher: HtmlFetcher = {
+      fetch: vi.fn(async () => {
+        throw abortError();
+      }),
+    };
+    const scraper = new BookChefScraper(fetcher, undefined, undefined, NOOP_SLEEP);
+    const result = await scraper.scrape({ delayMs: 0 });
+
+    expect(result.listings).toEqual([]);
+    expect(result.sitemap).toBeUndefined();
+    expect(result.errors[0]).toMatch(/Sitemap: network error after 3 attempt/);
+    const sitemapCalls = (fetcher.fetch as ReturnType<typeof vi.fn>).mock.calls.filter(
+      ([url]) => url === BOOKCHEF_PRODUCTS_SITEMAP_URL,
+    );
+    expect(sitemapCalls).toHaveLength(3);
+  });
+
+  it('does not retry a non-retryable HTTP 403 on the sitemap fetch', async () => {
+    const fetcher: HtmlFetcher = {
+      fetch: vi.fn(async () => {
+        throw new Error('HTTP 403 Forbidden');
+      }),
+    };
+    const scraper = new BookChefScraper(fetcher, undefined, undefined, NOOP_SLEEP);
+    const result = await scraper.scrape({ delayMs: 0 });
+
+    expect(fetcher.fetch).toHaveBeenCalledTimes(1);
+    expect(result.errors).toContain('BookChef blocked by HTTP 403, likely anti-bot protection');
+  });
+});
+
+// Circuit breaker (bookchef silent-stall fix): abort a run after too many
+// consecutive network/timeout product-fetch failures rather than silently
+// grinding through hours of dead air.
+describe('BookChefScraper.scrape — circuit breaker', () => {
+  function buildManySitemap(n: number): { xml: string; urls: string[] } {
+    const urls = Array.from({ length: n }, (_, i) => `https://bookchef.ua/product-${i}`);
+    const xml = buildSitemap(urls.map((url) => ({ url, lastmod: null })));
+    return { xml, urls };
+  }
+
+  it('trips after N consecutive network failures, discarding fetched listings', async () => {
+    const { xml } = buildManySitemap(30);
+    const fetcher: HtmlFetcher = {
+      fetch: vi.fn(async (url: string) => {
+        if (url === BOOKCHEF_PRODUCTS_SITEMAP_URL) return xml;
+        throw abortError();
+      }),
+    };
+    const scraper = new BookChefScraper(fetcher, undefined, undefined, NOOP_SLEEP);
+    const result = await scraper.scrape({ delayMs: 0, maxConsecutiveFetchFailures: 5 });
+
+    expect(result.listings).toEqual([]);
+    expect(result.sitemap).toBeUndefined();
+    expect(result.errors[0]).toMatch(/^Circuit breaker: aborted after 5 consecutive network failures/);
+    const calls = (fetcher.fetch as ReturnType<typeof vi.fn>).mock.calls;
+    const productCalls = calls.filter(([url]) => url !== BOOKCHEF_PRODUCTS_SITEMAP_URL);
+    expect(productCalls).toHaveLength(5);
+    expect(calls).toHaveLength(6); // 1 sitemap + 5 product attempts
+  });
+
+  it('resets the counter on a successful fetch, so intermittent failures never trip it', async () => {
+    const { xml, urls } = buildManySitemap(10);
+    const fetcher: HtmlFetcher = {
+      fetch: vi.fn(async (url: string) => {
+        if (url === BOOKCHEF_PRODUCTS_SITEMAP_URL) return xml;
+        const idx = urls.indexOf(url);
+        if ((idx + 1) % 3 === 0) return INSTOCK.replaceAll(INSTOCK_URL, url);
+        throw abortError();
+      }),
+    };
+    const scraper = new BookChefScraper(fetcher, undefined, undefined, NOOP_SLEEP);
+    const result = await scraper.scrape({ delayMs: 0, maxConsecutiveFetchFailures: 4 });
+
+    expect(result.sitemap).toBeDefined();
+    const successes = urls.filter((_, i) => (i + 1) % 3 === 0).length;
+    expect(result.listings).toHaveLength(successes);
+    expect(result.errors).toHaveLength(urls.length - successes);
+  });
+
+  it('resets the counter on a non-network error (e.g. HTTP 404), not just successes', async () => {
+    const { xml, urls } = buildManySitemap(10);
+    // Sequence per URL index: abort, abort, 404, abort, abort, then successes.
+    const behaviors: Array<'abort' | '404' | 'ok'> = [
+      'abort', 'abort', '404', 'abort', 'abort', 'ok', 'ok', 'ok', 'ok', 'ok',
+    ];
+    const fetcher: HtmlFetcher = {
+      fetch: vi.fn(async (url: string) => {
+        if (url === BOOKCHEF_PRODUCTS_SITEMAP_URL) return xml;
+        const idx = urls.indexOf(url);
+        const behavior = behaviors[idx];
+        if (behavior === 'abort') throw abortError();
+        if (behavior === '404') throw new Error('HTTP 404 Not Found');
+        return INSTOCK.replaceAll(INSTOCK_URL, url);
+      }),
+    };
+    const scraper = new BookChefScraper(fetcher, undefined, undefined, NOOP_SLEEP);
+    const result = await scraper.scrape({ delayMs: 0, maxConsecutiveFetchFailures: 3 });
+
+    // Never 3 consecutive network failures in a row (404 resets at index 2), so no trip.
+    expect(result.sitemap).toBeDefined();
+    expect(result.listings).toHaveLength(5);
+    expect(result.errors).toHaveLength(5);
+  });
+
+  it('trips when the same non-network-reset sequence has 3 real consecutive aborts', async () => {
+    const { xml, urls } = buildManySitemap(10);
+    const fetcher: HtmlFetcher = {
+      fetch: vi.fn(async (url: string) => {
+        if (url === BOOKCHEF_PRODUCTS_SITEMAP_URL) return xml;
+        throw abortError();
+      }),
+    };
+    const scraper = new BookChefScraper(fetcher, undefined, undefined, NOOP_SLEEP);
+    const result = await scraper.scrape({ delayMs: 0, maxConsecutiveFetchFailures: 3 });
+
+    expect(result.sitemap).toBeUndefined();
+    expect(result.errors[0]).toMatch(/^Circuit breaker: aborted after 3 consecutive network failures/);
+    void urls;
+  });
+
+  it('includes consecutiveErrors in the progress line', async () => {
+    const { xml, urls } = buildManySitemap(200);
+    const responses: Record<string, string> = { [BOOKCHEF_PRODUCTS_SITEMAP_URL]: xml };
+    for (const url of urls) responses[url] = INSTOCK.replaceAll(INSTOCK_URL, url);
+    const fetcher = makeFetcher(responses);
+    const info = vi.fn();
+    const scraper = new BookChefScraper(fetcher, undefined, undefined, NOOP_SLEEP);
+    await scraper.scrape({ delayMs: 0, logger: { info } });
+
+    const lines = info.mock.calls.map((call) => call[0] as string);
+    expect(lines.some((l) => l.includes('consecutiveErrors=0'))).toBe(true);
   });
 });

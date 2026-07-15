@@ -26,7 +26,7 @@ import {
   getLegacyStaleTimeoutHours,
 } from './scrape-env.js';
 import { isGenreAssignAfterScrapeEnabled } from './genre-assign-env.js';
-import { parseModeArg } from './run-scrape-args.js';
+import { parseModeArg, parseProviderArg } from './run-scrape-args.js';
 
 // Register new providers here — the pipeline is provider-agnostic and needs no changes.
 // Vivat is server-rendered Next.js, so the default FetchHtmlFetcher works (no Cloudflare).
@@ -63,6 +63,8 @@ async function main(): Promise<void> {
   const scraperOptions = parseScraperOptionsFromEnv(process.env);
   const genreAssignAfterScrape = isGenreAssignAfterScrapeEnabled(process.env);
   const mode = parseModeArg(process.argv.slice(2));
+  const providerFilter = parseProviderArg(process.argv.slice(2), providers.map((p) => p.name));
+  const selectedProviders = providerFilter === undefined ? providers : providers.filter((p) => p.name === providerFilter);
   const retentionDays = getScrapeStateRetentionDays(process.env);
   const heartbeatIntervalMs = getHeartbeatIntervalSeconds(process.env) * 1000;
   const staleReap = {
@@ -71,7 +73,7 @@ async function main(): Promise<void> {
   };
   const startedAt = Date.now();
   logger.info(
-    `run-scrape starting at ${new Date(startedAt).toISOString()} (triggeredBy=${triggeredBy}, mode=${mode}, retentionDays=${retentionDays})`,
+    `run-scrape starting at ${new Date(startedAt).toISOString()} (triggeredBy=${triggeredBy}, mode=${mode}, retentionDays=${retentionDays}, provider=${providerFilter ?? 'all'})`,
   );
   if (scraperOptions?.enrichDescriptions === true) {
     logger.info(
@@ -82,7 +84,7 @@ async function main(): Promise<void> {
   try {
     const result = await runProductionScrape({
       prisma,
-      providers,
+      providers: selectedProviders,
       triggeredBy,
       logger,
       genreAssignAfterScrape,

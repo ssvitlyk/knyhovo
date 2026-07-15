@@ -18,6 +18,32 @@ export const BOOKCHEF_PRODUCTS_SITEMAP_URL = `${BOOKCHEF_BASE_URL}/sitemap_produ
  */
 export const DEFAULT_MAX_PRODUCTS = Number.POSITIVE_INFINITY;
 
+/**
+ * Timeout for the sitemap discovery fetch, separate from the per-product-page
+ * timeout. The ~14.7k-URL sitemap is multi-MB XML; the shared 10s product-page
+ * timeout aborts mid-download on slow egress, failing the whole run before any
+ * product is even attempted.
+ */
+export const SITEMAP_TIMEOUT_MS = 60_000;
+
+/** Retries for the sitemap fetch after the first attempt (3 attempts total). */
+export const SITEMAP_MAX_RETRIES = 2;
+
+/** Sitemap retry backoff: base delay before the first retry, doubling each attempt. */
+export const SITEMAP_RETRY_BASE_DELAY_MS = 2_000;
+
+/** Sitemap retry backoff: cap on the delay (reached on the 2nd retry: 2s → 4s). */
+export const SITEMAP_RETRY_MAX_DELAY_MS = 8_000;
+
+/**
+ * Circuit-breaker default: abort the run after this many consecutive
+ * network/timeout product-fetch failures. At the 10s product timeout plus the
+ * 500ms inter-request delay, 20 consecutive failures is roughly 3.5 minutes of
+ * dead air — far outside the measured healthy profile (0.24-0.36s/page) but
+ * loose enough that short blips of a few failed pages never trip it.
+ */
+export const DEFAULT_MAX_CONSECUTIVE_FETCH_FAILURES = 20;
+
 /** Publisher/brand name as exposed in BookChef JSON-LD (`brand.name`). */
 export const BRAND = 'BookChef';
 

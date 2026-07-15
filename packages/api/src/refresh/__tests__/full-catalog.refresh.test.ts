@@ -777,6 +777,62 @@ describe('runFullCatalogRefresh', () => {
       expect(mockSweepStale).not.toHaveBeenCalled();
     });
 
+    // ── bookchef silent-stall fix: sitemap-retry / circuit-breaker failures ──
+    // must never advance the watermark (recordSitemapPresence is gated on
+    // `result.sitemap`, which is absent on these failure paths).
+
+    it('failed scrape (no sitemap field) does not touch provider_scrape_state', async () => {
+      mockPipeline.mockResolvedValue({
+        results: [
+          {
+            provider: 'bookchef' as const,
+            metrics: makeMetrics({ scraped: 0, errors: 1 }),
+            scrapeErrors: ['Sitemap: network error after 3 attempt(s) in 61234ms — This operation was aborted'],
+            affectedCanonicalBookIds: [] as string[],
+            // No `sitemap` field — mirrors BookChefScraper's sitemap-retry-exhausted
+            // and circuit-breaker return shapes.
+          },
+        ],
+      });
+
+      const result = await runFullCatalogRefresh({
+        prisma,
+        providers: [new FakeScraper('bookchef')],
+        triggeredBy: ScrapeRunTrigger.MANUAL,
+        logger: silentLogger,
+        now,
+      });
+
+      expect(result.outcomes[0]!.status).toBe(ScrapeRunStatus.FAILED);
+      expect(mockRecordPresence).not.toHaveBeenCalled();
+      expect(mockCountVanished).not.toHaveBeenCalled();
+      expect(mockSweepStale).not.toHaveBeenCalled();
+    });
+
+    it('successful full run with sitemap presence creates the watermark baseline', async () => {
+      mockLoadKnown.mockResolvedValue(new Map());
+      mockPipeline.mockImplementation(async () =>
+        sitemapResult({
+          entries: [{ url: 'https://bookchef.ua/a', lastmod: '2026-07-01T00:00:00.000Z' }],
+          scraped: 1,
+        }),
+      );
+
+      const result = await runFullCatalogRefresh({
+        prisma,
+        providers: [new FakeScraper('bookchef')],
+        triggeredBy: ScrapeRunTrigger.MANUAL,
+        logger: silentLogger,
+        now,
+      });
+
+      expect(result.outcomes[0]!.status).toBe(ScrapeRunStatus.SUCCESS);
+      expect(mockRecordPresence).toHaveBeenCalledOnce();
+      const [, provider, entries] = mockRecordPresence.mock.calls[0]!;
+      expect(provider).toBe(Provider.BOOKCHEF);
+      expect(entries).toEqual([{ url: 'https://bookchef.ua/a', lastmod: '2026-07-01T00:00:00.000Z' }]);
+    });
+
     it('(h) non-incremental providers are completely unaffected: no metadata, no extra queries', async () => {
       mockPipeline.mockImplementation(async ({ providers }) => successResult(providers[0]!.name));
 
