@@ -20,3 +20,25 @@ export function parseModeArg(argv: readonly string[]): 'full' | 'incremental' {
   }
   throw new Error(`Invalid --mode value '${value}' — expected 'full' or 'incremental'`);
 }
+
+/**
+ * Parse `--provider=<name>` from CLI args — restrict a run to a single
+ * provider. Absent flag → `undefined` (every registered provider runs, the
+ * pre-existing behavior). An unrecognised name is a hard error (strict
+ * validation, same rationale as `parseModeArg`): a typo here should not
+ * silently run every provider or silently run nothing.
+ *
+ * `validNames` comes from the runtime provider registry (not hardcoded here)
+ * so this stays a pure, dependency-free, unit-testable function.
+ */
+export function parseProviderArg(argv: readonly string[], validNames: readonly string[]): string | undefined {
+  const arg = argv.find((a) => a.startsWith('--provider='));
+  if (arg === undefined) {
+    return undefined;
+  }
+  const value = arg.slice('--provider='.length);
+  if (validNames.includes(value)) {
+    return value;
+  }
+  throw new Error(`Invalid --provider value '${value}' — expected one of: ${validNames.join(', ')}`);
+}

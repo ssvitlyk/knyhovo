@@ -7,9 +7,18 @@ import type {
 } from '@knyhovo/shared';
 import { FetchHtmlFetcher, type HtmlFetcher } from '../../http/html-fetcher.js';
 import { classifyBlockedPage, isForbiddenError } from '../../http/blocked-page.js';
+import { fetchWithRetry, isRetryableFetchError, type FetchWithRetryOptions } from '../../http/retry.js';
 import { parseSitemapEntries } from '../../sitemap/parse-sitemap.js';
 import { planIncrementalFetch } from '../../sitemap/plan-incremental-fetch.js';
-import { BOOKCHEF_PRODUCTS_SITEMAP_URL, DEFAULT_MAX_PRODUCTS } from './constants.js';
+import {
+  BOOKCHEF_PRODUCTS_SITEMAP_URL,
+  DEFAULT_MAX_PRODUCTS,
+  SITEMAP_TIMEOUT_MS,
+  SITEMAP_MAX_RETRIES,
+  SITEMAP_RETRY_BASE_DELAY_MS,
+  SITEMAP_RETRY_MAX_DELAY_MS,
+  DEFAULT_MAX_CONSECUTIVE_FETCH_FAILURES,
+} from './constants.js';
 import { parseBookChefListing } from './bookchef.parser.js';
 
 const DEFAULT_TIMEOUT_MS = 10_000;
@@ -42,6 +51,17 @@ const FETCH_PROGRESS_EVERY = 100;
  * carries the *full* sitemap presence list (`sitemap.entries`) for the
  * pipeline's presence bookkeeping and shadow validation, and each listing
  * carries `sourceLastmod` from its own sitemap entry.
+ *
+ * Sitemap fetch reliability: the ~14.7k-URL sitemap XML is multi-MB, so it
+ * gets its own longer timeout (`SITEMAP_TIMEOUT_MS`, separate from the
+ * per-product-page timeout) plus exponential-backoff retries via
+ * `fetchWithRetry` — a slow-egress abort no longer fails the whole run on the
+ * first attempt.
+ *
+ * Circuit breaker: consecutive network/timeout product-fetch failures are
+ * tracked and, past `maxConsecutiveFetchFailures`, abort the run and discard
+ * the listings gathered so far (no `sitemap` field on that result) so no
+ * watermark advances on a run that likely means the site is down.
  */
 export class BookChefScraper implements ScraperProvider {
   readonly name = 'bookchef' as const;
@@ -50,12 +70,16 @@ export class BookChefScraper implements ScraperProvider {
     private readonly fetcher: HtmlFetcher = new FetchHtmlFetcher(),
     private readonly sitemapUrl: string = BOOKCHEF_PRODUCTS_SITEMAP_URL,
     private readonly maxProducts: number = DEFAULT_MAX_PRODUCTS,
+    private readonly sitemapRetryOverrides: Partial<Pick<FetchWithRetryOptions, 'sleep'>> = {},
   ) {}
 
   async scrape(options?: ScraperOptions): Promise<ScraperResult> {
     const scrapedAt = new Date().toISOString();
     const maxProducts = options?.maxPages ?? this.maxProducts;
     const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
+    const sitemapTimeoutMs = options?.sitemapTimeoutMs ?? SITEMAP_TIMEOUT_MS;
+    const maxConsecutiveFetchFailures =
+      options?.maxConsecutiveFetchFailures ?? DEFAULT_MAX_CONSECUTIVE_FETCH_FAILURES;
     const delayMs = options?.delayMs ?? DEFAULT_DELAY_MS;
     const logger = options?.logger ?? NOOP_LOGGER;
 
@@ -63,16 +87,41 @@ export class BookChefScraper implements ScraperProvider {
     const errors: string[] = [];
 
     // 1. Discovery — fetch the product sitemap. A failure here yields an empty
-    //    run (never throws): there are no product URLs to walk.
+    //    run (never throws): there are no product URLs to walk. Retried on
+    //    transient failures (see class doc comment) — the sitemap is large
+    //    enough that a single slow-egress abort should not fail the whole run.
     let sitemapXml: string;
+    const sitemapFetchStartMs = Date.now();
+    let sitemapAttemptsMade = 1;
     try {
-      sitemapXml = await this.fetcher.fetch(this.sitemapUrl, timeoutMs);
+      const { html, attempts } = await fetchWithRetry(this.fetcher, this.sitemapUrl, sitemapTimeoutMs, {
+        maxRetries: SITEMAP_MAX_RETRIES,
+        baseDelayMs: SITEMAP_RETRY_BASE_DELAY_MS,
+        maxDelayMs: SITEMAP_RETRY_MAX_DELAY_MS,
+        ...this.sitemapRetryOverrides,
+        onRetry: (info) => {
+          sitemapAttemptsMade = info.attempt + 1;
+          const elapsedMs = Date.now() - sitemapFetchStartMs;
+          const msg = info.error instanceof Error ? info.error.message : String(info.error);
+          logger.info(
+            `bookchef: sitemap attempt ${info.attempt}/${SITEMAP_MAX_RETRIES + 1} failed after ${elapsedMs}ms — ${msg}; retrying in ${info.delayMs}ms`,
+          );
+        },
+      });
+      sitemapXml = html;
+      sitemapAttemptsMade = attempts;
+      if (attempts > 1) {
+        const elapsedMs = Date.now() - sitemapFetchStartMs;
+        logger.info(`bookchef: sitemap fetched on attempt ${attempts}/${SITEMAP_MAX_RETRIES + 1} in ${elapsedMs}ms`);
+      }
     } catch (err) {
       if (isForbiddenError(err)) {
         errors.push('BookChef blocked by HTTP 403, likely anti-bot protection');
       } else {
+        const elapsedMs = Date.now() - sitemapFetchStartMs;
+        const msg = err instanceof Error ? err.message : String(err);
         errors.push(
-          `Sitemap: network error — ${err instanceof Error ? err.message : String(err)}`,
+          `Sitemap: network error after ${sitemapAttemptsMade} attempt(s) in ${elapsedMs}ms — ${msg}`,
         );
       }
       return { provider: 'bookchef', listings: allListings, scrapedAt, errors };
@@ -109,6 +158,11 @@ export class BookChefScraper implements ScraperProvider {
     const seenUrls = new Set<string>();
     const fetchStartedMs = Date.now();
     const debugFetchStages = options?.debugFetchStages ?? false;
+    // Circuit breaker: consecutive network/timeout failures across product
+    // fetches. Reset on any success or non-network error (the site responded,
+    // so connectivity is fine); tripping means the site is likely unreachable
+    // and there is no point burning hours retrying every remaining page.
+    let consecutiveNetworkFailures = 0;
 
     for (let i = 0; i < targets.length; i++) {
       const entry = targets[i];
@@ -122,6 +176,7 @@ export class BookChefScraper implements ScraperProvider {
       const fetchStartMs = Date.now();
       try {
         html = await this.fetcher.fetch(productUrl, timeoutMs);
+        consecutiveNetworkFailures = 0;
         if (debugFetchStages) {
           logger.info(`bookchef: [stage] fetch completed ${i + 1} (${Date.now() - fetchStartMs}ms)`);
         }
@@ -132,6 +187,30 @@ export class BookChefScraper implements ScraperProvider {
         errors.push(
           `Product ${productUrl}: fetch error — ${err instanceof Error ? err.message : String(err)}`,
         );
+
+        if (isRetryableFetchError(err)) {
+          consecutiveNetworkFailures++;
+          if (consecutiveNetworkFailures >= maxConsecutiveFetchFailures) {
+            const msg = err instanceof Error ? err.message : String(err);
+            logger.info(
+              `bookchef: circuit breaker tripped — ${consecutiveNetworkFailures} consecutive network/timeout ` +
+                `failures at page ${i + 1}/${targets.length}; failing run and discarding ${allListings.length} ` +
+                `fetched listings so no watermark advances`,
+            );
+            const breakerSummary =
+              `Circuit breaker: aborted after ${consecutiveNetworkFailures} consecutive network failures ` +
+              `at ${i + 1}/${targets.length} — last error: ${msg}`;
+            return {
+              provider: 'bookchef',
+              listings: [],
+              scrapedAt,
+              errors: [breakerSummary, ...errors],
+            };
+          }
+        } else {
+          // HTTP-status error (e.g. 404) — the site responded, connectivity is fine.
+          consecutiveNetworkFailures = 0;
+        }
       }
 
       if (html !== undefined) {
@@ -159,7 +238,8 @@ export class BookChefScraper implements ScraperProvider {
         );
         logger.info(
           `BookChef progress: current=${i + 1} total=${targets.length} ok=${allListings.length} ` +
-            `errors=${errors.length} elapsed=${elapsedSec}s avgPerPage=${avgMs}ms ETA=${etaSec}s`,
+            `errors=${errors.length} elapsed=${elapsedSec}s avgPerPage=${avgMs}ms ETA=${etaSec}s ` +
+            `consecutiveErrors=${consecutiveNetworkFailures}`,
         );
       }
 

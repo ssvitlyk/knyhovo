@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseModeArg } from '../run-scrape-args.js';
+import { parseModeArg, parseProviderArg } from '../run-scrape-args.js';
 
 describe('parseModeArg', () => {
   it("defaults to 'full' when --mode is absent", () => {
@@ -22,5 +22,29 @@ describe('parseModeArg', () => {
     expect(() => parseModeArg(['--mode=bogus'])).toThrow(
       /Invalid --mode value 'bogus' — expected 'full' or 'incremental'/,
     );
+  });
+});
+
+describe('parseProviderArg', () => {
+  const validNames = ['yakaboo', 'vivat', 'bookchef'];
+
+  it('returns undefined when --provider is absent', () => {
+    expect(parseProviderArg([], validNames)).toBeUndefined();
+  });
+
+  it('returns the name when --provider=<valid name>', () => {
+    expect(parseProviderArg(['--provider=bookchef'], validNames)).toBe('bookchef');
+  });
+
+  it('throws for an unknown provider name, listing the valid ones', () => {
+    expect(() => parseProviderArg(['--provider=bogus'], validNames)).toThrow(
+      /Invalid --provider value 'bogus' — expected one of: yakaboo, vivat, bookchef/,
+    );
+  });
+
+  it('coexists with --mode in the same argv', () => {
+    const argv = ['--mode=incremental', '--provider=vivat'];
+    expect(parseModeArg(argv)).toBe('incremental');
+    expect(parseProviderArg(argv, validNames)).toBe('vivat');
   });
 });
