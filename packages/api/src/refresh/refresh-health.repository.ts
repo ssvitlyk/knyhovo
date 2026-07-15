@@ -1,6 +1,8 @@
 import type { Provider, PrismaClient, ScrapeRun } from '@prisma/client';
 import { Prisma } from '@prisma/client';
+import type { ProviderName } from '@knyhovo/shared';
 import type { ProviderListingFreshness } from './refresh-health.js';
+import { mapProviderName, unmapProviderName } from '../pipeline/persist-listing.js';
 
 /**
  * Fetch all scrape runs, optionally filtered to those started at or after
@@ -54,12 +56,16 @@ export async function fetchListingFreshness(
 
   if (incrementalProviders.size > 0) {
     const providerList = [...incrementalProviders];
+    // Prisma's generated `Provider` enum values equal its keys (e.g.
+    // "BOOKCHEF"), but a raw `::"provider"` cast needs the actual lowercase
+    // DB label (e.g. "bookchef") — @map only applies inside the typed query
+    // builder, never in raw SQL. Same bug class as scrape-state.repository.ts.
     const providerValues = Prisma.join(
-      providerList.map((p) => Prisma.sql`${p}::"provider"`),
+      providerList.map((p) => Prisma.sql`${unmapProviderName(p)}::"provider"`),
     );
 
-    const rows = await prisma.$queryRaw<Array<{ provider: Provider; stale_count: bigint }>>`
-      SELECT pl.provider AS provider, COUNT(*)::bigint AS stale_count
+    const rows = await prisma.$queryRaw<Array<{ provider: string; stale_count: bigint }>>`
+      SELECT pl.provider::text AS provider, COUNT(*)::bigint AS stale_count
       FROM provider_listings pl
       LEFT JOIN provider_scrape_state pss
         ON pss.provider = pl.provider AND pss.url = pl.url
@@ -76,7 +82,11 @@ export async function fetchListingFreshness(
       staleMap.set(provider, 0);
     }
     for (const row of rows) {
-      staleMap.set(row.provider, Number(row.stale_count));
+      // Raw SQL returns the lowercase DB label ('bookchef'), not the Prisma
+      // enum key ('BOOKCHEF') — map back before using it as a staleMap key,
+      // which is keyed by the Prisma enum (as returned by groupBy above).
+      const providerKey = mapProviderName(row.provider as ProviderName);
+      staleMap.set(providerKey, Number(row.stale_count));
     }
   }
 

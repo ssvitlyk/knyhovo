@@ -1,5 +1,6 @@
 import type { Provider, Prisma, PrismaClient } from '@prisma/client';
 import { Prisma as PrismaNs } from '@prisma/client';
+import { unmapProviderName } from './persist-listing.js';
 
 /** Batch size for the sitemap-presence upsert, to keep each statement's parameter count bounded. */
 const PRESENCE_UPSERT_CHUNK_SIZE = 2000;
@@ -42,10 +43,16 @@ export async function recordSitemapPresence(
     return;
   }
 
+  // Prisma's generated `Provider` enum values equal its keys (e.g. "BOOKCHEF"),
+  // but `@@map`/`@map` only rewrite the Postgres label for the query builder —
+  // a raw `::"provider"` cast still needs the actual lowercase DB label
+  // (e.g. "bookchef"), so unmap before interpolating.
+  const dbProviderLabel = unmapProviderName(provider);
+
   for (let i = 0; i < entries.length; i += PRESENCE_UPSERT_CHUNK_SIZE) {
     const chunk = entries.slice(i, i + PRESENCE_UPSERT_CHUNK_SIZE);
     const rows = PrismaNs.join(
-      chunk.map((entry) => PrismaNs.sql`(${provider}::"provider", ${entry.url}, ${seenAt})`),
+      chunk.map((entry) => PrismaNs.sql`(${dbProviderLabel}::"provider", ${entry.url}, ${seenAt})`),
     );
 
     await prisma.$executeRaw`
