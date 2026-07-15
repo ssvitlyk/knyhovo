@@ -205,7 +205,10 @@ describe('fetchListingFreshness', () => {
       const staleRow = { provider: Provider.BOOKCHEF, _count: { _all: 400 } };
       const groupBy = vi.fn().mockResolvedValueOnce([totalsRow]).mockResolvedValueOnce([staleRow]);
       // The join query (only counting rows with no fresh sitemap-presence either) says 20.
-      const queryRaw = vi.fn(async () => [{ provider: Provider.BOOKCHEF, stale_count: 20n }]);
+      // Raw SQL returns the lowercase DB label ('bookchef'), not the Prisma enum
+      // key — see genres/repository.ts's `listRawCategoryDistribution`, confirmed
+      // against real Postgres in backfill.pg.test.ts.
+      const queryRaw = vi.fn(async () => [{ provider: 'bookchef', stale_count: 20n }]);
       const prisma = { providerListing: { groupBy }, $queryRaw: queryRaw } as unknown as PrismaClient;
 
       const result = await fetchListingFreshness(
@@ -230,6 +233,31 @@ describe('fetchListingFreshness', () => {
 
       const result = await fetchListingFreshness(prisma, STALE_BEFORE, new Set([Provider.BOOKCHEF]));
       expect(result[0]!.staleListings).toBe(0);
+    });
+
+    // Regression: `Provider.BOOKCHEF` (the Prisma JS enum key) is the uppercase
+    // string "BOOKCHEF", but the Postgres `provider` enum's actual label is
+    // lowercase "bookchef" (see @map in schema.prisma). Interpolating the raw
+    // enum key into the `::"provider"` cast in the WHERE clause previously
+    // would have produced `invalid input value for enum provider: "BOOKCHEF"`,
+    // same as the scrape-state.repository.ts bug.
+    it('casts to the lowercase DB label ("bookchef"), never the uppercase enum key', async () => {
+      const totalsRow = { provider: Provider.BOOKCHEF, _count: { _all: 1 }, _max: { lastSeenAt: LAST_SEEN } };
+      const groupBy = vi.fn().mockResolvedValueOnce([totalsRow]).mockResolvedValueOnce([]);
+      const queryRaw = vi.fn(async () => []);
+      const prisma = { providerListing: { groupBy }, $queryRaw: queryRaw } as unknown as PrismaClient;
+
+      await fetchListingFreshness(prisma, STALE_BEFORE, new Set([Provider.BOOKCHEF]));
+
+      const callArgs = vi.mocked(queryRaw).mock.calls[0]!;
+      const interpolatedValues = callArgs.flatMap((arg) =>
+        arg !== null && typeof arg === 'object' && 'values' in arg
+          ? (arg as { values: unknown[] }).values
+          : [arg],
+      );
+
+      expect(interpolatedValues).toContain('bookchef');
+      expect(interpolatedValues).not.toContain('BOOKCHEF');
     });
 
     it('leaves a non-incremental provider\'s plain-groupBy stale count untouched', async () => {

@@ -85,6 +85,28 @@ describe('recordSitemapPresence', () => {
 
     expect(prisma.$executeRaw).not.toHaveBeenCalled();
   });
+
+  // Regression: `Provider.BOOKCHEF` (the Prisma JS enum key) is the uppercase
+  // string "BOOKCHEF", but the Postgres `provider` enum's actual label is
+  // lowercase "bookchef" (see @map in schema.prisma). Interpolating the raw
+  // enum key into a `::"provider"` cast previously produced
+  // `invalid input value for enum provider: "BOOKCHEF"` in production.
+  it('interpolates the lowercase DB label ("bookchef"), never the uppercase enum key', async () => {
+    const prisma = makeFakePrisma();
+    const entries = [{ url: 'https://x/1' }];
+
+    await recordSitemapPresence(prisma, Provider.BOOKCHEF, entries, SEEN_AT);
+
+    const callArgs = vi.mocked(prisma.$executeRaw).mock.calls[0]!;
+    const interpolatedValues = callArgs.flatMap((arg) =>
+      arg !== null && typeof arg === 'object' && 'values' in arg
+        ? (arg as { values: unknown[] }).values
+        : [arg],
+    );
+
+    expect(interpolatedValues).toContain('bookchef');
+    expect(interpolatedValues).not.toContain('BOOKCHEF');
+  });
 });
 
 // ── advanceWatermark ──────────────────────────────────────────────────────────
