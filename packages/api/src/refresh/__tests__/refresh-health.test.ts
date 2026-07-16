@@ -572,6 +572,67 @@ describe('deriveProviderHealth — incremental-capable provider (bookchef) valid
   });
 });
 
+// ── provider-enable-disable PRD: disabled provider ────────────────────────────
+
+describe('deriveProviderHealth — disabled provider (provider-enable-disable PRD)', () => {
+  it('status is disabled, issues empty, even with no runs at all', () => {
+    const result = deriveProviderHealth({
+      provider: Provider.BOOKCHEF,
+      runs: [],
+      freshness: null,
+      now: NOW,
+      config: DEFAULT_HEALTH_CONFIG,
+      disabled: true,
+    });
+    expect(result.status).toBe('disabled');
+    expect(result.issues).toHaveLength(0);
+  });
+
+  it('skips issue derivation even when the underlying data would otherwise be critical', () => {
+    // Old FAILED run + no success in window — would normally be 'down' with
+    // no-successful-run + latest-run-failed criticals.
+    const run = fakeRun({ status: ScrapeRunStatus.FAILED, startedAt: OLD });
+    const result = deriveProviderHealth({
+      provider: Provider.BOOKCHEF,
+      runs: [run],
+      freshness: null,
+      now: NOW,
+      config: DEFAULT_HEALTH_CONFIG,
+      disabled: true,
+    });
+    expect(result.status).toBe('disabled');
+    expect(result.issues).toHaveLength(0);
+  });
+
+  it('still populates informational fields (lastSuccessfulRunAt, totalListings, etc.) from real data', () => {
+    const run = fakeRun({
+      provider: Provider.BOOKCHEF,
+      status: ScrapeRunStatus.SUCCESS,
+      startedAt: RECENT,
+    });
+    const fr = freshness({ provider: Provider.BOOKCHEF, totalListings: 500, staleListings: 300 });
+    const result = deriveProviderHealth({
+      provider: Provider.BOOKCHEF,
+      runs: [run],
+      freshness: fr,
+      now: NOW,
+      config: DEFAULT_HEALTH_CONFIG,
+      disabled: true,
+    });
+    expect(result.status).toBe('disabled');
+    expect(result.lastSuccessfulRunAt).toBe(RECENT.toISOString());
+    expect(result.totalListings).toBe(500);
+    expect(result.staleListings).toBe(300);
+    expect(result.latestRun).not.toBeNull();
+    expect(result.issues).toHaveLength(0);
+  });
+
+  it('defaults to disabled=false (not disabled) when the flag is omitted, preserving prior behavior', () => {
+    const result = healthFor([]);
+    expect(result.status).toBe('down'); // unchanged existing behavior — no-successful-run
+  });
+});
+
 // ── deriveSummary ─────────────────────────────────────────────────────────────
 
 describe('deriveSummary', () => {
@@ -627,5 +688,38 @@ describe('deriveSummary', () => {
   it('lastUpdatedAt is NOW ISO', () => {
     const s = deriveSummary([], NOW);
     expect(s.lastUpdatedAt).toBe(NOW.toISOString());
+  });
+
+  // ── provider-enable-disable PRD: disabled providers excluded from roll-up ──
+
+  it('a disabled provider does not count toward degradedProviders', () => {
+    const providers = [makeProvider('healthy'), makeProvider('disabled')];
+    const s = deriveSummary(providers, NOW);
+    expect(s.degradedProviders).toBe(0);
+  });
+
+  it('a disabled provider with stale-listings issue does not count toward staleProviders', () => {
+    const providers = [makeProvider('disabled', true)];
+    const s = deriveSummary(providers, NOW);
+    expect(s.staleProviders).toBe(0);
+  });
+
+  it('all-healthy plus one disabled → overall status stays healthy (disabled does not drag it down)', () => {
+    const providers = [makeProvider('healthy'), makeProvider('healthy'), makeProvider('disabled')];
+    const s = deriveSummary(providers, NOW);
+    expect(s.status).toBe('healthy');
+  });
+
+  it('all-down plus one disabled → overall status stays down (disabled does not mask real outage)', () => {
+    const providers = [makeProvider('down'), makeProvider('down'), makeProvider('disabled')];
+    const s = deriveSummary(providers, NOW);
+    expect(s.status).toBe('down');
+  });
+
+  it('only-disabled providers → overall status is healthy (nothing active is unhealthy)', () => {
+    const providers = [makeProvider('disabled'), makeProvider('disabled')];
+    const s = deriveSummary(providers, NOW);
+    expect(s.status).toBe('healthy');
+    expect(s.degradedProviders).toBe(0);
   });
 });

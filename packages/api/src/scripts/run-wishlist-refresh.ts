@@ -13,6 +13,7 @@ import {
   getHeartbeatTimeoutMinutes,
   getLegacyStaleTimeoutHours,
 } from './scrape-env.js';
+import { getDisabledProviders } from '../config/provider-filter.js';
 
 /**
  * Parse the SCRAPE_TRIGGERED_BY environment variable into a ScrapeRunTrigger
@@ -49,6 +50,7 @@ async function main(): Promise<void> {
       prisma,
       fetcher,
       triggeredBy,
+      disabledProviders: getDisabledProviders(process.env),
       heartbeatIntervalMs: getHeartbeatIntervalSeconds(process.env) * 1000,
       staleReap: {
         heartbeatTimeoutMs: getHeartbeatTimeoutMinutes(process.env) * 60_000,

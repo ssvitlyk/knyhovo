@@ -42,3 +42,27 @@ export function parseProviderArg(argv: readonly string[], validNames: readonly s
   }
   throw new Error(`Invalid --provider value '${value}' — expected one of: ${validNames.join(', ')}`);
 }
+
+/**
+ * Parse `--force-provider=<name>` from CLI args — the explicit override that
+ * runs a single provider even if it is currently listed in
+ * `SCRAPE_DISABLED_PROVIDERS` (provider-enable-disable PRD §2.2). Absent flag
+ * → `undefined` (no override in effect). An unrecognised name is a hard error,
+ * same strict-validation rationale as `parseProviderArg` — a typo here should
+ * not silently start every provider or none.
+ *
+ * `run-scrape.ts` is responsible for rejecting `--provider=` and
+ * `--force-provider=` used together (mutually exclusive) — this function only
+ * parses its own flag and knows nothing about `--provider=`.
+ */
+export function parseForceProviderArg(argv: readonly string[], validNames: readonly string[]): string | undefined {
+  const arg = argv.find((a) => a.startsWith('--force-provider='));
+  if (arg === undefined) {
+    return undefined;
+  }
+  const value = arg.slice('--force-provider='.length);
+  if (validNames.includes(value)) {
+    return value;
+  }
+  throw new Error(`Invalid --force-provider value '${value}' — expected one of: ${validNames.join(', ')}`);
+}

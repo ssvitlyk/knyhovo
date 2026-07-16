@@ -14,7 +14,7 @@ import {
   BookClubScraper,
   browserManager,
 } from '@knyhovo/scrapers';
-import type { ScraperProvider } from '@knyhovo/shared';
+import type { ScraperProvider, ProviderName } from '@knyhovo/shared';
 import { ScrapeRunTrigger } from '@prisma/client';
 import { createLogger } from '../pipeline/index.js';
 import { runProductionScrape } from '../refresh/production-runner.js';
@@ -26,7 +26,8 @@ import {
   getLegacyStaleTimeoutHours,
 } from './scrape-env.js';
 import { isGenreAssignAfterScrapeEnabled } from './genre-assign-env.js';
-import { parseModeArg, parseProviderArg } from './run-scrape-args.js';
+import { parseModeArg, parseProviderArg, parseForceProviderArg } from './run-scrape-args.js';
+import { getDisabledProviders } from '../config/provider-filter.js';
 
 // Register new providers here — the pipeline is provider-agnostic and needs no changes.
 // Vivat is server-rendered Next.js, so the default FetchHtmlFetcher works (no Cloudflare).
@@ -63,8 +64,42 @@ async function main(): Promise<void> {
   const scraperOptions = parseScraperOptionsFromEnv(process.env);
   const genreAssignAfterScrape = isGenreAssignAfterScrapeEnabled(process.env);
   const mode = parseModeArg(process.argv.slice(2));
+
+  // provider-enable-disable PRD §2.1-2.2: SCRAPE_DISABLED_PROVIDERS is the single
+  // source of truth for which providers are voluntarily paused. `--provider=` no
+  // longer bypasses it — `--force-provider=` is the one explicit, named override.
+  const disabled = getDisabledProviders(process.env);
   const providerFilter = parseProviderArg(process.argv.slice(2), providers.map((p) => p.name));
-  const selectedProviders = providerFilter === undefined ? providers : providers.filter((p) => p.name === providerFilter);
+  const forceProvider = parseForceProviderArg(process.argv.slice(2), providers.map((p) => p.name));
+
+  if (providerFilter !== undefined && forceProvider !== undefined) {
+    throw new Error('--provider and --force-provider are mutually exclusive');
+  }
+
+  let selectedProviders: ScraperProvider[];
+  if (forceProvider !== undefined) {
+    // Explicit override: runs this provider even if it's in SCRAPE_DISABLED_PROVIDERS.
+    selectedProviders = providers.filter((p) => p.name === forceProvider);
+  } else if (providerFilter !== undefined) {
+    // `providerFilter` has already been validated by `parseProviderArg` against
+    // `providers.map(p => p.name)`, so it's guaranteed to be a real `ProviderName`.
+    if (disabled.has(providerFilter as ProviderName)) {
+      throw new Error(
+        `Provider '${providerFilter}' is disabled via SCRAPE_DISABLED_PROVIDERS. ` +
+          `Use --force-provider=${providerFilter} to run it explicitly.`,
+      );
+    }
+    selectedProviders = providers.filter((p) => p.name === providerFilter);
+  } else {
+    // Standard run (cron or manual with no flags): disabled providers are silently skipped.
+    selectedProviders = providers.filter((p) => !disabled.has(p.name));
+  }
+
+  const requestedProvider = forceProvider ?? providerFilter ?? 'all';
+  const forced = forceProvider !== undefined;
+  const enabledProviders = selectedProviders.map((p) => p.name);
+  const disabledProvidersList = Array.from(disabled);
+
   const retentionDays = getScrapeStateRetentionDays(process.env);
   const heartbeatIntervalMs = getHeartbeatIntervalSeconds(process.env) * 1000;
   const staleReap = {
@@ -73,7 +108,9 @@ async function main(): Promise<void> {
   };
   const startedAt = Date.now();
   logger.info(
-    `run-scrape starting at ${new Date(startedAt).toISOString()} (triggeredBy=${triggeredBy}, mode=${mode}, retentionDays=${retentionDays}, provider=${providerFilter ?? 'all'})`,
+    `run-scrape starting at ${new Date(startedAt).toISOString()} (requestedProvider=${requestedProvider}, forced=${forced}, ` +
+      `enabledProviders=[${enabledProviders.join(',')}], disabledProviders=[${disabledProvidersList.join(',')}], ` +
+      `activeProvidersCount=${selectedProviders.length}, mode=${mode}, triggeredBy=${triggeredBy}, retentionDays=${retentionDays})`,
   );
   if (scraperOptions?.enrichDescriptions === true) {
     logger.info(
