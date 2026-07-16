@@ -7,12 +7,13 @@ import {
 } from './refresh-health.repository.js';
 import { GUARDED_KINDS } from './concurrency-guard.js';
 import { INCREMENTAL_SITEMAP_PROVIDERS } from './incremental-providers.js';
+import { getDisabledProviders } from '../config/provider-filter.js';
 
 // ---------------------------------------------------------------------------
 // Public types
 // ---------------------------------------------------------------------------
 
-export type RefreshHealthStatus = 'healthy' | 'degraded' | 'down';
+export type RefreshHealthStatus = 'healthy' | 'degraded' | 'down' | 'disabled';
 export type RefreshHealthIssueSeverity = 'warning' | 'critical';
 export type RefreshHealthIssueType =
   | 'no-successful-run'
@@ -201,8 +202,16 @@ export function deriveProviderHealth(input: {
   freshness: ProviderListingFreshness | null;
   now: Date;
   config: RefreshHealthConfig;
+  /**
+   * `true` when this provider is currently listed in
+   * `SCRAPE_DISABLED_PROVIDERS` (provider-enable-disable PRD §2.4). Skips all
+   * issue detection/status derivation — a voluntarily paused provider isn't
+   * "broken" — but informational data (lastSuccessfulRunAt, totalListings,
+   * etc.) is still populated from the real runs/freshness data.
+   */
+  disabled?: boolean;
 }): ProviderRefreshHealth {
-  const { provider, freshness, now, config } = input;
+  const { provider, freshness, now, config, disabled = false } = input;
 
   // Sort newest first (non-destructive)
   const runs = [...input.runs].sort(
@@ -228,6 +237,23 @@ export function deriveProviderHealth(input: {
     } else {
       break;
     }
+  }
+
+  if (disabled) {
+    // Voluntarily paused (provider-enable-disable PRD §2.4): no issue is
+    // meaningful here (no-successful-run etc. would just be noise about an
+    // intentional pause), but "what was" data still reflects reality.
+    return {
+      provider: PROVIDER_SLUG[provider],
+      status: 'disabled',
+      latestRun: latestRun ? toLatestRun(latestRun) : null,
+      lastSuccessfulRunAt,
+      failureStreak,
+      totalListings: freshness?.totalListings ?? 0,
+      staleListings: freshness?.staleListings ?? 0,
+      lastListingSeenAt: freshness?.lastSeenAt?.toISOString() ?? null,
+      issues: [],
+    };
   }
 
   // ── Issue detection ────────────────────────────────────────────────────────
@@ -416,17 +442,26 @@ export function deriveSummary(
   providers: ProviderRefreshHealth[],
   now: Date,
 ): RefreshHealthSummary {
-  const degradedProviders = providers.filter((p) => p.status !== 'healthy').length;
-  const staleProviders = providers.filter((p) =>
+  // provider-enable-disable PRD §2.4: a voluntarily disabled provider must not
+  // drag the system into degraded/down, nor count as "degraded" itself —
+  // exclude it from the active roll-up entirely. It still appears in the
+  // full `providers[]` array returned to callers (handled by the caller).
+  const active = providers.filter((p) => p.status !== 'disabled');
+
+  const degradedProviders = active.filter((p) => p.status !== 'healthy').length;
+  const staleProviders = active.filter((p) =>
     p.issues.some((i) => i.type === 'stale-listings'),
   ).length;
 
   let status: RefreshHealthStatus;
-  if (providers.length === 0) {
-    status = 'down';
-  } else if (providers.every((p) => p.status === 'healthy')) {
+  if (active.length === 0) {
+    // Nothing active to be unhealthy: either there are no providers at all
+    // (existing 'down' behavior, unchanged) or every provider is disabled —
+    // in that case there's no active problem, so 'healthy' is the sane read.
+    status = providers.length === 0 ? 'down' : 'healthy';
+  } else if (active.every((p) => p.status === 'healthy')) {
     status = 'healthy';
-  } else if (providers.every((p) => p.status === 'down')) {
+  } else if (active.every((p) => p.status === 'down')) {
     status = 'down';
   } else {
     status = 'degraded';
@@ -450,10 +485,11 @@ export function deriveSummary(
  */
 export async function getRefreshHealth(
   prisma: PrismaClient,
-  deps?: { now?: Date; config?: RefreshHealthConfig },
+  deps?: { now?: Date; config?: RefreshHealthConfig; disabledProviders?: ReadonlySet<ProviderName> },
 ): Promise<RefreshHealthReport> {
   const now = deps?.now ?? new Date();
   const config = deps?.config ?? DEFAULT_HEALTH_CONFIG;
+  const disabledProviders = deps?.disabledProviders ?? getDisabledProviders(process.env);
 
   const staleBefore = new Date(now.getTime() - config.staleListingHours * 3_600_000);
 
@@ -477,6 +513,7 @@ export async function getRefreshHealth(
       freshness: freshnessMap.get(provider) ?? null,
       now,
       config,
+      disabled: disabledProviders.has(PROVIDER_SLUG[provider]),
     }),
   );
 

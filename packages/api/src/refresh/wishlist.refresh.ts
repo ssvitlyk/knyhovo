@@ -13,7 +13,9 @@
  */
 import type { PrismaClient, ScrapeRunTrigger, Provider } from '@prisma/client';
 import { ScrapeRunKind, ScrapeRunStatus } from '@prisma/client';
+import type { ProviderName } from '@knyhovo/shared';
 import { isRateLimited } from '@knyhovo/scrapers';
+import { unmapProviderName } from '../pipeline/persist-listing.js';
 import { createMetrics } from '../pipeline/index.js';
 import type { ScrapeMetrics, Logger } from '../pipeline/index.js';
 import { startScrapeRun, finishScrapeRun, deriveRunStatus, startHeartbeat } from './scrape-run.repository.js';
@@ -96,6 +98,13 @@ export interface WishlistRefreshOptions {
    * Defaults to `DEFAULT_STALE_REAP_CONFIG`.
    */
   readonly staleReap?: StaleReapConfig;
+  /**
+   * Providers to exclude from this refresh (provider-enable-disable PRD §2.2:
+   * "Wishlist refresh не звертається до BookChef під час стандартного
+   * прогону"). Defaults to an empty set — no-op, preserves current behavior
+   * for every existing caller/test that omits this option.
+   */
+  readonly disabledProviders?: ReadonlySet<ProviderName>;
 }
 
 export interface WishlistProviderRefreshOutcome {
@@ -165,7 +174,17 @@ export async function runWishlistRefresh(
         existing.push(target);
       }
     }
-    const sortedProviders = Array.from(byProvider.keys()).sort();
+    const disabledProviders = opts.disabledProviders ?? new Set<ProviderName>();
+    const allSortedProviders = Array.from(byProvider.keys()).sort();
+    const sortedProviders = allSortedProviders.filter(
+      (provider) => !disabledProviders.has(unmapProviderName(provider)),
+    );
+    const skippedProviders = allSortedProviders.filter((provider) => !sortedProviders.includes(provider));
+    if (skippedProviders.length > 0) {
+      logger.info(
+        `Wishlist refresh: skipping disabled provider(s): ${skippedProviders.map(unmapProviderName).join(', ')}`,
+      );
+    }
 
     // Collect all affected canonicalBookIds across all providers for cross-provider dedup.
     const affectedBookIds = new Set<string>();

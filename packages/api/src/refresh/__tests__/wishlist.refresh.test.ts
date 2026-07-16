@@ -731,6 +731,78 @@ describe('runWishlistRefresh', () => {
   // W10.4 headline: dedup across two consecutive runs (no duplicate notification)
   // ---------------------------------------------------------------------------
 
+  // ---------------------------------------------------------------------------
+  // provider-enable-disable PRD: disabledProviders exclusion
+  // ---------------------------------------------------------------------------
+
+  it('disabledProviders omitted: behaves exactly as before (no exclusion)', async () => {
+    const prisma = makeFakePrisma();
+    const fetcher: WishlistTargetFetcher = {
+      fetchTarget: vi.fn(async (): Promise<RefreshedListingState> => ({
+        kind: 'fetched',
+        priceAmount: 10000,
+        availability: Availability.IN_STOCK,
+      })),
+    };
+
+    const result = await runWishlistRefresh({
+      prisma,
+      fetcher,
+      triggeredBy: ScrapeRunTrigger.MANUAL,
+      loadTargets: async () => [yakabooTarget, vivatTarget],
+      sleep: noSleep,
+      now,
+      logger: silentLogger,
+      persistRefresh: noopPersist,
+      runAlertNotifications: noopNotify,
+    });
+
+    expect(result.outcomes).toHaveLength(2);
+    expect(prisma.scrapeRun.create).toHaveBeenCalledTimes(2);
+  });
+
+  it('a disabled provider is excluded entirely: no outcome, no ScrapeRun created for it', async () => {
+    const prisma = makeFakePrisma();
+    const fetcher: WishlistTargetFetcher = {
+      fetchTarget: vi.fn(async (): Promise<RefreshedListingState> => ({
+        kind: 'fetched',
+        priceAmount: 10000,
+        availability: Availability.IN_STOCK,
+      })),
+    };
+
+    const bookchefTarget = makeTarget({
+      provider: Provider.BOOKCHEF,
+      providerListingId: 'bc-1',
+    });
+
+    const result = await runWishlistRefresh({
+      prisma,
+      fetcher,
+      triggeredBy: ScrapeRunTrigger.MANUAL,
+      disabledProviders: new Set(['bookchef']),
+      loadTargets: async () => [yakabooTarget, bookchefTarget],
+      sleep: noSleep,
+      now,
+      logger: silentLogger,
+      persistRefresh: noopPersist,
+      runAlertNotifications: noopNotify,
+    });
+
+    // Only YAKABOO has an outcome — BOOKCHEF was excluded entirely.
+    expect(result.outcomes).toHaveLength(1);
+    expect(result.outcomes[0]?.provider).toBe(Provider.YAKABOO);
+
+    // No ScrapeRun created for the disabled provider.
+    for (const call of vi.mocked(prisma.scrapeRun.create).mock.calls) {
+      expect(call[0].data.provider).not.toBe(Provider.BOOKCHEF);
+    }
+    expect(prisma.scrapeRun.create).toHaveBeenCalledTimes(1);
+
+    // Skip is logged.
+    expect(silentLogger.info).toHaveBeenCalledWith(expect.stringContaining('bookchef'));
+  });
+
   it('dedup across runs: same low price on run2 enqueues the same key (created=false), no duplicate row', async () => {
     // Simulate the real runAlertNotificationsForBooks behaviour using injected deps
     // so this test is fully in-memory with no DB. In the W4b outbox model, dedup is

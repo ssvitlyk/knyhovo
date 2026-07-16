@@ -56,3 +56,4 @@ Web: `pnpm --filter @knyhovo/web dev` (потребує API на :3000 для р
 | [docs/prd/nashformat-provider.md](docs/prd/nashformat-provider.md) | Deferred/Blocked |
 | [docs/prd/genres-taxonomy.md](docs/prd/genres-taxonomy.md) | Затверджено |
 | [docs/prd/ai-discovery.md](docs/prd/ai-discovery.md) | Stub (future) |
+| [docs/prd/provider-enable-disable.md](docs/prd/provider-enable-disable.md) | Затверджено |
