@@ -5,10 +5,27 @@ import { Mail, MailCheck, RefreshCw, Shield } from 'lucide-react';
 import { Button } from '@/components/ds/Button';
 import { AlertNote } from '@/components/alerts/AlertNote';
 import { AlertToast } from '@/components/alerts/AlertToast';
-import { requestMagicLink } from '@/lib/api/auth';
+import { requestMagicLink, AuthError } from '@/lib/api/auth';
 
 /** Phases of the login flow. Mirrors the frozen design states. */
 type Phase = 'idle' | 'sending' | 'success' | 'error';
+
+/** Error flavour — same visual state, different copy so the user can act on it. */
+type ErrorKind = 'generic' | 'forbidden' | 'rate-limited';
+
+const ERROR_MESSAGES: Record<ErrorKind, string> = {
+  generic: 'Не вдалося надіслати посилання. Перевірте email і спробуйте ще раз.',
+  forbidden: 'Вхід на цьому середовищі обмежено. Ця адреса не має доступу.',
+  'rate-limited': 'Забагато спроб. Зачекайте приблизно 15 хвилин і спробуйте ще раз.',
+};
+
+function toErrorKind(err: unknown): ErrorKind {
+  if (err instanceof AuthError) {
+    if (err.status === 403) return 'forbidden';
+    if (err.status === 429) return 'rate-limited';
+  }
+  return 'generic';
+}
 
 /** Basic client-side email shape check (matches the design's validation). */
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -31,6 +48,7 @@ export interface LoginFormProps {
  */
 export function LoginForm({ returnTo = null, autoFocus = false }: LoginFormProps): React.JSX.Element {
   const [phase, setPhase] = useState<Phase>('idle');
+  const [errorKind, setErrorKind] = useState<ErrorKind>('generic');
   const [email, setEmail] = useState('');
   const [resentToast, setResentToast] = useState(false);
   const resendTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -45,8 +63,9 @@ export function LoginForm({ returnTo = null, autoFocus = false }: LoginFormProps
     try {
       await requestMagicLink(email.trim(), returnTo);
       setPhase('success');
-    } catch {
-      // Any failure (incl. rate-limit) surfaces the calm, generic error per design.
+    } catch (err) {
+      // Same calm error state per design; only the copy varies (403/429/generic).
+      setErrorKind(toErrorKind(err));
       setPhase('error');
     }
   }
@@ -57,7 +76,8 @@ export function LoginForm({ returnTo = null, autoFocus = false }: LoginFormProps
       setResentToast(true);
       if (resendTimer.current) clearTimeout(resendTimer.current);
       resendTimer.current = setTimeout(() => setResentToast(false), RESEND_TOAST_MS);
-    } catch {
+    } catch (err) {
+      setErrorKind(toErrorKind(err));
       setPhase('error');
     }
   }
@@ -113,9 +133,7 @@ export function LoginForm({ returnTo = null, autoFocus = false }: LoginFormProps
 
       {phase === 'error' && (
         <div className="ml-error">
-          <AlertNote kind="err">
-            Не вдалося надіслати посилання. Перевірте email і спробуйте ще раз.
-          </AlertNote>
+          <AlertNote kind="err">{ERROR_MESSAGES[errorKind]}</AlertNote>
         </div>
       )}
 

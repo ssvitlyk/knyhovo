@@ -65,3 +65,12 @@
 
 - Merge анонімного localStorage-wishlist → акаунт (W0 з wishlist PRD).
 - Повноцінна сторінка профілю / «Безпека та вхід».
+
+## Addendum (2026-07-17): Email allow-list для staging
+
+Затверджено owner-запитом: доступ до входу на середовищі можна обмежити списком пошт.
+
+- Env `AUTH_ALLOWED_EMAILS` — comma-separated список адрес (trim + lowercase).
+- Коли встановлено: `POST /api/auth/magic-link` і `POST /api/auth/request-code` для адреси поза списком → `403 FORBIDDEN` (без створення user-запису, без листа).
+- Коли не встановлено або порожньо — поведінка без змін (allow all). Production не задає цю змінну.
+- Web: стан помилки той самий (calm error), лише текст розрізняє 403 («вхід обмежено») і 429 («забагато спроб»).

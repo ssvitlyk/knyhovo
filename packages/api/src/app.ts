@@ -9,6 +9,7 @@ import {
   BadRequestError,
   BookNotFoundError,
   UnauthorizedError,
+  ForbiddenError,
   InvalidCredentialsError,
   RateLimitedError,
   WishlistItemNotFoundError,
@@ -122,6 +123,11 @@ export function buildApp(prisma: PrismaClient, authDeps?: AuthDeps): FastifyInst
     if (error instanceof UnauthorizedError) {
       const body: ErrorBody = { error: { code: error.code, message: error.message } };
       void reply.code(401).send(body);
+      return;
+    }
+    if (error instanceof ForbiddenError) {
+      const body: ErrorBody = { error: { code: error.code, message: error.message } };
+      void reply.code(403).send(body);
       return;
     }
     if (error instanceof InvalidCredentialsError) {

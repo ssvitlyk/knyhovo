@@ -16,6 +16,7 @@ function cfg(overrides: Partial<AuthConfig> = {}): AuthConfig {
     resendApiKey: null,
     fromEmail: 'Knyhovo <alerts@knyhovo.com>',
     linkBaseUrl: 'https://knyhovo.com',
+    allowedEmails: null,
     ...overrides,
   };
 }

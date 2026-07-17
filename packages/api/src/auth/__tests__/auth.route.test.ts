@@ -28,6 +28,7 @@ const TEST_CONFIG: AuthConfig = {
   resendApiKey: null,
   fromEmail: 'Knyhovo <test@example.com>',
   linkBaseUrl: 'https://knyhovo.test',
+  allowedEmails: null,
 };
 
 // ── Fake Mailer ───────────────────────────────────────────────────────────────
@@ -321,6 +322,25 @@ describe('POST /api/auth/request-code', () => {
     });
 
     expect(_users[0]?.email).toBe('user@example.com');
+  });
+
+  it('rejects a non-whitelisted email → 403 FORBIDDEN, no user, no code, no mail', async () => {
+    const { deps, mailer } = makeDeps({
+      config: { ...TEST_CONFIG, allowedEmails: new Set(['owner@example.com']) },
+    });
+    const app = appWith(deps);
+
+    const res = await app.inject({
+      method: 'POST',
+      url: '/api/auth/request-code',
+      payload: { email: TEST_EMAIL },
+    });
+
+    expect(res.statusCode).toBe(403);
+    expect(res.json().error.code).toBe('FORBIDDEN');
+    expect(_users).toHaveLength(0);
+    expect(_loginCodes).toHaveLength(0);
+    expect(mailer.lastEmail).toBeNull();
   });
 
   it('does not duplicate user on second request-code call', async () => {

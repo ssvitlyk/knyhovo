@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { LoginForm } from '../LoginForm';
-import { requestMagicLink } from '@/lib/api/auth';
+import { requestMagicLink, AuthError } from '@/lib/api/auth';
 
 vi.mock('@/lib/api/auth', () => ({
   requestMagicLink: vi.fn(),
@@ -70,6 +70,28 @@ describe('LoginForm', () => {
     await waitFor(() =>
       expect(screen.getByText(/Не вдалося надіслати посилання/)).toBeInTheDocument(),
     );
+  });
+
+  it('shows the whitelist message on 403', async () => {
+    mockedRequest.mockRejectedValue(new AuthError('forbidden', 403));
+    render(<LoginForm />);
+
+    fireEvent.change(emailInput(), { target: { value: 'stranger@example.com' } });
+    fireEvent.click(submitButton());
+
+    await waitFor(() =>
+      expect(screen.getByText(/Вхід на цьому середовищі обмежено/)).toBeInTheDocument(),
+    );
+  });
+
+  it('shows the rate-limit message on 429', async () => {
+    mockedRequest.mockRejectedValue(new AuthError('rate limited', 429));
+    render(<LoginForm />);
+
+    fireEvent.change(emailInput(), { target: { value: 'reader@example.com' } });
+    fireEvent.click(submitButton());
+
+    await waitFor(() => expect(screen.getByText(/Забагато спроб/)).toBeInTheDocument());
   });
 
   it('can change email from the success screen back to the form', async () => {
