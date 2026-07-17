@@ -28,6 +28,7 @@ const WISHLIST_RESPONSE: WishlistResponseDto = {
             lastSeenAt: '2026-06-13T08:00:00.000Z',
           },
         ],
+        genre: null,
       },
       createdAt: '2026-06-10T10:00:00.000Z',
       alert: null,

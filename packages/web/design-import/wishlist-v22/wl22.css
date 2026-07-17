@@ -1,60 +1,32 @@
-/* ============================================================
-   KNYHOVO · Wishlist (Бажанки) v2.2 — page-level layout
-   Ported from the frozen design reference
-   (design-import/incoming/wl22.css, see incoming/CLAUDE.md
-   "FROZEN — Knyhovo «Бажанки» (Wishlist) v2.2 — full page freeze").
-   Section rhythm (.sec/.band/.sec-head + friends/.sec-fresh), `.cd-sort` base recipe,
-   `.kn-pagination`, and the `.reveal`/kn-rise entrance rule are NOT duplicated
-   here — they already live in collections.css / search-results.css and are
-   reused as-is. `.bkc` (book card) is scoped under `.wl21-grid` because the
-   unscoped `.bkc` in collections.css owns a different (flex-body) recipe.
-   ============================================================ */
+/* ═══════════════════════════════════════════════════════════════════
+   wl21.css — Бажанки v2.1 «Polish pass» · 2026-07-05
+   База: wl2.css (v2.0). Зміни: Hero з KPI-блоком і 3 варіантами,
+   amber-ореол Поради Книговика, розвантажені ряди знижок з більшою
+   обкладинкою, жанровий фільтр + «Деталі» у сітці, мобільна легкість.
+   ═══════════════════════════════════════════════════════════════════ */
 
-:root { --kn-green-dk: #7FC9A3; }
+:root { --kn-rose: #BC5A57; --kn-heart-red: #E0332B; --kn-green-dk: #7FC9A3; }
 
-/* ---------- Page scaffold ---------- */
-.wishlist { padding: var(--space-8) 0 var(--space-16); min-height: 60vh; }
+*, *::before, *::after { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--text); font-family: var(--font-body); }
+.page { max-width: var(--container-wide, 1680px); margin: 0 auto; padding: 0 var(--gutter, 32px); }
 
-/* ---------- Auth-required state ---------- */
-.wl-auth-required {
-  display: flex; flex-direction: column; align-items: center; text-align: center;
-  padding: var(--space-12) var(--space-6) var(--space-10); gap: var(--space-4);
-}
-.wl-auth-required__title { font-size: var(--fs-h3); margin: 0; }
-.wl-auth-required__text { font-size: var(--fs-body); color: var(--text-body); max-width: 460px; margin: 0; }
-.wl-auth-required__note { font-size: var(--fs-sm); color: var(--text-muted); max-width: 380px; margin: 0; }
+/* ── Section rhythm (Collections recipe) ── */
+.sec { padding-block: 40px; }
+.band { padding-block: 40px; background: var(--band-bg); }
+[data-theme="light"] .band--green { --band-bg: color-mix(in oklab, var(--brand-green) 6%, var(--bg)); }
+[data-theme="dark"]  .band--green { --band-bg: color-mix(in oklab, var(--brand-green) 13%, var(--bg)); }
+.sec-head { display: flex; align-items: flex-end; justify-content: space-between; gap: 24px; margin-bottom: 18px; }
+.sec-head__left { display: flex; flex-direction: column; gap: 7px; min-width: 0; }
+.sec-eyebrow { display: inline-flex; align-items: center; gap: 7px; font-size: 11px; letter-spacing: 2px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); line-height: 1.6; }
+.sec-title { font-family: var(--font-display); font-size: 1.85rem; font-weight: 700; line-height: 1.14; letter-spacing: -0.01em; margin: 0; }
+.sec-sub { font-size: 14.5px; color: var(--text-muted); line-height: 1.55; max-width: 62ch; margin: 4px 0 0; text-wrap: pretty; }
+.band--green .sec-eyebrow { color: var(--brand-green); }
+[data-theme="dark"] .band--green .sec-eyebrow { color: var(--kn-green-dk); }
+.sec-fresh { display: inline-flex; align-items: center; gap: 7px; font-size: 12px; color: var(--text-muted); font-weight: 500; }
+.sec-fresh__dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; background: var(--brand-green); box-shadow: 0 0 0 3px color-mix(in oklab, var(--brand-green) 22%, transparent); }
 
-/* ---------- Empty state (Wishlist-specific) ---------- */
-.wl-empty {
-  display: flex; flex-direction: column; align-items: center; text-align: center;
-  padding: var(--space-12) var(--space-6) var(--space-10);
-}
-.wl-empty__mascot {
-  height: 230px; object-fit: contain; margin-bottom: var(--space-5);
-  -webkit-mask-image: radial-gradient(ellipse 68% 66% at 50% 52%, black 58%, transparent 97%);
-  mask-image: radial-gradient(ellipse 68% 66% at 50% 52%, black 58%, transparent 97%);
-}
-.wl-empty__title { font-size: var(--fs-h3); margin-bottom: var(--space-2); }
-.wl-empty__text { font-size: var(--fs-body); color: var(--text-body); max-width: 52ch; margin-bottom: var(--space-6); text-wrap: pretty; }
-
-/* Theme-aware mascot swap */
-.wl-empty__mascot--dark { display: none; }
-[data-theme="dark"] .wl-empty__mascot--light { display: none; }
-[data-theme="dark"] .wl-empty__mascot--dark { display: block; }
-
-@media (max-width: 900px) {
-  .wl-empty__mascot { height: 180px; }
-}
-
-/* ---------- Route-level loading skeleton (never cold greys) ---------- */
-.wl-sk { background: var(--surface-accent); border-radius: 12px; }
-.wl-sk--hero { height: 208px; border-radius: 18px; margin-top: 24px; }
-.wl-sk--line { border-radius: 6px; }
-.wl-sk--card { height: 170px; border-radius: 16px; }
-.wl-sk--tile { height: 260px; border-radius: 16px; }
-.wl-sk-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(218px, 1fr)); gap: 16px; }
-
-/* ══ 1 · HERO — frozen band colors (variant A is the shipping default) ══ */
+/* ══ 1 · HERO — frozen band colors, 3 композиції (A/B/C), KPI-блок ══ */
 .wl21-hero {
   display: grid; grid-template-columns: auto 1fr auto; align-items: center;
   gap: 32px; padding: 28px 40px; min-height: 208px; overflow: hidden;
@@ -62,31 +34,30 @@
   border-radius: 18px; box-shadow: var(--shadow-sm); margin-top: 24px;
 }
 [data-theme="dark"] .wl21-hero { background: #070606; border-color: #262019; }
-/* When «Порада Книговика» is hidden the tinted band directly follows the hero;
-   give its edge the same clearance the pick section (.sec padding-block) would
-   otherwise provide. Mirrors the 48px/30px section rhythm from collections.css. */
-.wl21-hero + .band,
-.wl-sk--hero + .band { margin-top: 48px; }
 .wl21-hero__mascot {
   width: 262px; height: 181px; object-fit: cover; flex-shrink: 0; display: block;
   -webkit-mask-image: radial-gradient(ellipse 60% 66% at 50% 50%, #000 46%, transparent 78%);
   mask-image: radial-gradient(ellipse 60% 66% at 50% 50%, #000 46%, transparent 78%);
 }
 [data-theme="dark"] .wl21-hero__mascot { filter: brightness(1.07) saturate(1.04); }
-/* Theme-aware mascot swap (two <img> variants; mirrors .wl-empty__mascot--dark). */
-.wl21-hero__mascot--dark { display: none; }
-[data-theme="dark"] .wl21-hero__mascot--light { display: none; }
-[data-theme="dark"] .wl21-hero__mascot--dark { display: block; }
 .wl21-hero__main { min-width: 0; }
 .wl21-hero__badge { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; letter-spacing: 1.5px; text-transform: uppercase; font-weight: 700; color: var(--accent); margin-bottom: 12px; }
 .wl21-hero__badge::before { content: ''; width: 6px; height: 6px; border-radius: 50%; background: var(--accent); flex-shrink: 0; }
 .wl21-hero__desc { font-size: 15px; color: var(--text-muted); line-height: 1.6; max-width: 52ch; margin: 10px 0 0; text-wrap: pretty; }
 [data-theme="dark"] .wl21-hero__desc { color: #B8AC9C; }
 
-/* Headline (Variant A — заголовок з вбудованим великим «M із N») */
+/* Variant A — заголовок з вбудованим великим «5 із 24» */
 .wl21-hero__title { font-family: var(--font-display); font-size: 1.9rem; font-weight: 700; margin: 0; line-height: 1.16; letter-spacing: -0.012em; max-width: 24ch; text-wrap: balance; }
 .wl21-hero__title b { color: var(--brand-green); font-size: 1.22em; white-space: nowrap; }
 [data-theme="dark"] .wl21-hero__title b { color: var(--kn-green-dk); }
+
+/* Variant B — число-домінанта */
+.wl21-hero__bignum { display: flex; align-items: baseline; gap: 14px; font-family: var(--font-display); color: var(--brand-green); line-height: 0.95; margin: 2px 0 6px; }
+[data-theme="dark"] .wl21-hero__bignum { color: var(--kn-green-dk); }
+.wl21-hero__bignum b { font-size: 4.4rem; font-weight: 700; letter-spacing: -0.02em; }
+.wl21-hero__bignum span { font-size: 1.7rem; font-weight: 600; color: color-mix(in oklab, var(--brand-green) 62%, var(--text-muted)); }
+[data-theme="dark"] .wl21-hero__bignum span { color: color-mix(in oklab, var(--kn-green-dk) 62%, var(--text-muted)); }
+.wl21-hero__bigsub { font-family: var(--font-display); font-size: 1.35rem; font-weight: 600; margin: 0; line-height: 1.2; }
 
 /* KPI-блок «Вже заощадили» — окрема панель на смузі hero */
 .wl21-hero__side { display: flex; flex-direction: column; align-items: flex-end; gap: 10px; flex-shrink: 0; }
@@ -100,29 +71,21 @@
 .wl21-kpi__label { font-size: 11px; letter-spacing: 1.4px; text-transform: uppercase; font-weight: 700; color: var(--text-muted); }
 .wl21-kpi__num { font-family: var(--font-display); font-size: 2.3rem; font-weight: 700; color: var(--brand-green); line-height: 1.02; }
 [data-theme="dark"] .wl21-kpi__num { color: var(--kn-green-dk); }
+.wl21-kpi--moment .wl21-kpi__num { font-size: 2rem; }
+.wl21-hero__kpiduo { display: flex; gap: 12px; }
 .wl21-hero__fresh { padding-right: 4px; }
 
-/* ---------- Порада Книговика — desktop/mobile visibility switch ----------
-   Server-rendered CSS switch (no matchMedia) — both .wl21-feat and .wl21-featm
-   are always in the DOM; CSS shows exactly one per breakpoint. */
-.wl-pick-desktop { display: block; }
-.wl-pick-mobile { display: none; }
-@media (max-width: 768px) {
-  .wl-pick-desktop { display: none; }
-  .wl-pick-mobile { display: block; }
-}
-
-/* ══ 2 · ПОРАДА КНИГОВИКА — головна CTA сторінки, amber-ореол (desktop) ══ */
+/* ══ 2 · ПОРАДА КНИГОВИКА — головна CTA сторінки, amber-ореол ══ */
 .wl21-feat {
-  position: relative; display: grid; grid-template-columns: 160px 1fr 300px; gap: 30px; align-items: center;
+  position: relative; display: grid; grid-template-columns: 148px 1fr 300px; gap: 30px; align-items: center;
   border: 1px solid var(--border); background: var(--surface);
-  border-radius: 20px; padding: 40px 40px 24px; box-shadow: var(--shadow-md);
+  border-radius: 20px; padding: 46px 40px 34px; box-shadow: var(--shadow-md);
 }
 .wl21-feat::before {
   content: ""; position: absolute; inset: 10px; border-radius: 13px; pointer-events: none;
   border: 1px dashed color-mix(in oklab, var(--accent) 40%, transparent);
 }
-.wl21-feat--nostamp { padding-top: 24px; }
+.wl21-feat--nostamp { padding-top: 34px; }
 .wl21-feat__stamp {
   position: absolute; top: 0; left: 50%; transform: translate(-50%, -50%) rotate(-6deg); z-index: 2;
   display: flex; flex-direction: column; align-items: center; gap: 5px;
@@ -144,7 +107,7 @@
 .wl21-feat__author { font-size: 13.5px; color: var(--text-muted); margin: 0 0 12px; }
 .wl21-feat__msg { font-family: var(--font-display); font-weight: 500; font-size: 16.5px; line-height: 1.55; color: var(--text-body); margin: 0; max-width: 52ch; text-wrap: pretty; }
 .wl21-feat__msg b { font-weight: 700; color: var(--text); }
-.wl21-feat__side { display: flex; flex-direction: column; align-items: stretch; gap: 6px; }
+.wl21-feat__side { display: flex; flex-direction: column; align-items: stretch; gap: 8px; }
 .wl21-feat__price { display: flex; align-items: baseline; justify-content: flex-end; gap: 10px; }
 .wl21-feat__price b { font-family: var(--font-display); font-size: 2.15rem; font-weight: 700; color: var(--brand-green); line-height: 1; }
 [data-theme="dark"] .wl21-feat__price b { color: var(--kn-green-dk); }
@@ -163,7 +126,7 @@
 .wl21-feat__details:hover { color: var(--accent); }
 .wl21-featm__measure { position: absolute; visibility: hidden; white-space: nowrap; pointer-events: none; }
 
-/* Badge pill — static (biля заголовка/спікера), НЕ на обкладинці */
+/* Badge pill — static (біля заголовка/спікера), НЕ на обкладинці */
 .wl21-badge {
   display: inline-flex; align-items: center; gap: 5px;
   font-size: 11.5px; font-weight: 600; padding: 5px 10px; border-radius: 999px; line-height: 1;
@@ -171,6 +134,34 @@
 }
 .wl21-badge--green { background: color-mix(in oklab, var(--brand-green) 15%, var(--surface)); border-color: color-mix(in oklab, var(--brand-green) 32%, var(--border)); color: var(--brand-green); }
 [data-theme="dark"] .wl21-badge--green { color: var(--kn-green-dk); }
+.wl21-badge--neutral { background: var(--text-muted); color: var(--bg); }
+/* абсолютний варіант лишається тільки для «немає в наявності» у сітці */
+.wl21-badge--float { position: absolute; top: -8px; left: -8px; z-index: 3; box-shadow: var(--shadow-sm); }
+
+/* ══ 3 · КНИГИ ЗІ ЗНИЖКАМИ — розвантажені ряди, більша обкладинка ══ */
+.wl21-rows { display: flex; flex-direction: column; gap: 12px; }
+.wl21-row {
+  display: grid; grid-template-columns: 76px minmax(220px, 1fr) 200px auto;
+  align-items: center; gap: 24px;
+  background: color-mix(in oklab, var(--brand-green) 4.5%, var(--surface));
+  border: 1px solid color-mix(in oklab, var(--brand-green) 34%, var(--border));
+  border-radius: 16px; padding: 16px 22px; box-shadow: var(--shadow-sm); min-height: 106px;
+  transition: transform 200ms ease-out, box-shadow 200ms ease-out;
+}
+.wl21-row:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+.wl21-row__coverclip { width: 76px; border-radius: 9px; overflow: hidden; aspect-ratio: 2 / 3; background: var(--surface-accent); box-shadow: var(--shadow-sm); }
+.wl21-row__coverclip img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.wl21-row__main { min-width: 0; }
+.wl21-row__title { font-family: var(--font-display); font-weight: 600; font-size: 16.5px; line-height: 1.28; color: var(--text); margin: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.wl21-row__author { font-size: 13px; color: var(--text-muted); margin: 4px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.wl21-row__pricecell { display: flex; flex-direction: column; align-items: flex-end; gap: 3px; }
+.wl21-row__price { font-family: var(--font-display); font-weight: 700; font-size: 21px; color: var(--brand-green); line-height: 1.1; }
+[data-theme="dark"] .wl21-row__price { color: var(--kn-green-dk); }
+.wl21-row__old { font-size: 13px; color: var(--text-faint); }
+.wl21-row__store { font-size: 12px; color: var(--text-muted); }
+.wl21-row__ctas { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+/* Мобільні елементи картки — на десктопі сховані */
+.wl21-row__meta, .wl21-row__buy-price { display: none; }
 
 /* Buttons (DS .kn-btn look) */
 .wl-btn { display: inline-flex; align-items: center; justify-content: center; gap: 7px; height: 40px; padding: 0 16px; border-radius: 10px; font-family: var(--font-body); font-size: 13.5px; font-weight: 600; text-decoration: none; cursor: pointer; border: 1px solid transparent; white-space: nowrap; transition: background 140ms ease-out, border-color 140ms ease-out, color 140ms ease-out, transform 100ms ease-out; }
@@ -178,8 +169,11 @@
 .wl-btn--primary { background: var(--accent); color: var(--text-on-accent, #fff); box-shadow: var(--shadow-accent, none); }
 .wl-btn--primary:hover { background: color-mix(in oklab, black 8%, var(--accent)); }
 [data-theme="dark"] .wl-btn--primary:hover { background: color-mix(in oklab, white 12%, var(--accent)); }
+.wl-btn--secondary { background: var(--surface); color: var(--text); border-color: var(--border-strong); }
+.wl-btn--secondary:hover { border-color: var(--accent); color: var(--accent); }
+.wl-btn--sm { height: 36px; padding: 0 13px; font-size: 12.5px; border-radius: 9px; }
 
-/* ══ 3 · ЗАРАЗ ВИГІДНО КУПИТИ (desktop) — преміальна viewport-карусель ══ */
+/* ══ 3b · ЗАРАЗ ВИГІДНО КУПИТИ — преміальна viewport-карусель ══ */
 .wl21-caro { position: relative; }
 .wl21-caro__nav { display: flex; gap: 10px; flex-shrink: 0; }
 .wl21-caro__arrow {
@@ -231,9 +225,10 @@
 [data-theme="dark"] .wl21-caro__bar span { background: var(--kn-green-dk); }
 .wl21-caro__count { align-self: flex-end; font-family: var(--font-display); font-size: 14px; font-weight: 600; letter-spacing: 0.02em; color: var(--text-muted); }
 
-/* Картка «на моменті» (desktop) — ціна-герой, знижка одразу помітна */
+/* Картка «на моменті» — ціна-герой, знижка одразу помітна */
+.wl21-caro__stack { display: flex; flex-direction: column; gap: 12px; }
 .wl21-sale {
-  display: grid; grid-template-columns: 108px 1fr; gap: 18px; align-items: stretch;
+  display: grid; grid-template-columns: 96px 1fr; gap: 18px; align-items: stretch;
   background: color-mix(in oklab, var(--brand-green) 5%, var(--surface));
   border: 1px solid color-mix(in oklab, var(--brand-green) 30%, var(--border));
   border-radius: 16px; padding: 16px; box-shadow: var(--shadow-sm);
@@ -241,7 +236,7 @@
 }
 .wl21-sale:hover { transform: translateY(-3px); box-shadow: var(--shadow-lg); border-color: color-mix(in oklab, var(--brand-green) 48%, var(--border)); }
 .wl21-sale__coverlink { display: block; align-self: center; text-decoration: none; }
-.wl21-sale__coverclip { display: block; width: 108px; aspect-ratio: 2 / 3; border-radius: 10px; overflow: hidden; background: var(--surface-accent); box-shadow: var(--shadow-sm); }
+.wl21-sale__coverclip { display: block; width: 96px; aspect-ratio: 2 / 3; border-radius: 10px; overflow: hidden; background: var(--surface-accent); box-shadow: var(--shadow-sm); }
 .wl21-sale__coverclip img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform 260ms ease-out; }
 .wl21-sale:hover .wl21-sale__coverclip img { transform: scale(1.045); }
 .wl21-sale__body { display: flex; flex-direction: column; min-width: 0; }
@@ -253,13 +248,11 @@
   color: var(--brand-green);
 }
 [data-theme="dark"] .wl21-sale__disc { color: var(--kn-green-dk); }
-/* min-height = рівно 2 рядки: назва в 1 рядок не «підтягує» автора/foot догори,
-   тож усі картки ряду мають ідентичну внутрішню геометрію. */
-.wl21-sale__title { font-family: var(--font-display); font-weight: 600; font-size: 17px; line-height: 1.28; margin: 0; min-height: 2.56em; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.wl21-sale__title { font-family: var(--font-display); font-weight: 600; font-size: 17px; line-height: 1.28; margin: 0; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 .wl21-sale__title a { color: var(--text); text-decoration: none; transition: color 140ms ease-out; }
 .wl21-sale__title a:hover { color: var(--accent); }
 .wl21-sale__author { font-size: 13px; color: var(--text-muted); margin: 4px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wl21-sale__foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin-top: auto; padding-top: 10px; }
+.wl21-sale__foot { display: flex; align-items: flex-end; justify-content: space-between; gap: 14px; margin-top: auto; padding-top: 16px; }
 .wl21-sale__pricecol { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .wl21-sale__priceline { display: flex; align-items: baseline; gap: 9px; flex-wrap: wrap; }
 .wl21-sale__price { font-family: var(--font-display); font-weight: 700; font-size: 27px; line-height: 1; color: var(--brand-green); white-space: nowrap; }
@@ -268,7 +261,8 @@
 .wl21-sale__store { font-size: 12.5px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .wl21-sale__buy { flex-shrink: 0; height: 42px; padding: 0 18px; }
 
-/* Порожній стан — коли жодна книга не пройшла рушій рекомендацій. */
+/* Порожній стан — коли жодна книга не пройшла рушій рекомендацій. Свідомо
+   НЕ штучно заповнюємо каруселі — чесний порожній стан замість фейку. */
 .wl21-saleempty { display: flex; flex-direction: column; align-items: center; text-align: center; gap: 8px; padding: 56px 24px; }
 .wl21-saleempty__icon { display: flex; align-items: center; justify-content: center; width: 52px; height: 52px; border-radius: 50%; margin-bottom: 6px; background: color-mix(in oklab, var(--brand-green) 14%, var(--surface)); color: var(--brand-green); }
 [data-theme="dark"] .wl21-saleempty__icon { color: var(--kn-green-dk); }
@@ -280,28 +274,46 @@
 .wl21-count { font-size: 13.5px; color: var(--text-muted); }
 .wl21-controls { display: flex; gap: 10px; flex-wrap: wrap; }
 
-/* `.cd-sort` base recipe lives in collections.css (dedupe) — these are the
-   wl22 deltas only, scoped under `.wl21-controls` so they never leak into
-   the Collections cd-sort instances. */
-.wl21-controls .cd-sort__menu { max-height: 380px; overflow-y: auto; }
-.wl21-controls .cd-sort__optcount { margin-left: auto; font-size: 12px; color: var(--text-faint); font-weight: 500; padding-left: 14px; }
+/* Dropdown (frozen cd-sort recipe) */
+.cd-sort { position: relative; flex-shrink: 0; }
+.cd-sort__btn { display: inline-flex; align-items: center; justify-content: space-between; gap: 10px; height: 40px; padding: 0 14px; min-width: 196px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; font-family: var(--font-body); font-size: 13.5px; font-weight: 600; color: var(--text); cursor: pointer; transition: border-color 140ms ease-out, color 140ms ease-out, box-shadow 140ms ease-out; }
+.cd-sort__btn:hover { border-color: var(--accent); }
+.cd-sort__btn:focus-visible { outline: none; box-shadow: var(--focus-ring); border-color: var(--accent); }
+.cd-sort__btn[aria-expanded="true"] { border-color: var(--accent); }
+.cd-sort__val { display: inline-flex; align-items: center; gap: 8px; white-space: nowrap; min-width: 0; }
+.cd-sort__val svg { color: var(--icon-muted, var(--text-muted)); flex-shrink: 0; }
+.cd-sort__caret { transition: transform 180ms ease-out; color: var(--text-muted); flex-shrink: 0; display: inline-flex; }
+.cd-sort__btn[aria-expanded="true"] .cd-sort__caret { transform: rotate(180deg); }
+.cd-sort__menu { position: absolute; top: calc(100% + 6px); right: 0; z-index: 80; min-width: 100%; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow-lg); padding: 6px; margin: 0; list-style: none; animation: cd-pop 160ms ease-out; max-height: 380px; overflow-y: auto; }
+.cd-sort__opt { display: flex; align-items: center; gap: 10px; width: 100%; padding: 9px 12px; border-radius: 8px; border: none; background: none; cursor: pointer; font-family: var(--font-body); font-size: 13.5px; font-weight: 500; color: var(--text-body, var(--text)); text-align: left; white-space: nowrap; transition: background 120ms ease-out, color 120ms ease-out; }
+.cd-sort__opt:hover { background: var(--surface-accent); color: var(--text); }
+.cd-sort__opt--active { color: var(--accent); font-weight: 600; }
+.cd-sort__check { width: 16px; flex-shrink: 0; color: var(--accent); display: inline-flex; }
+.cd-sort__check--hidden { visibility: hidden; }
+.cd-sort__optcount { margin-left: auto; font-size: 12px; color: var(--text-faint); font-weight: 500; padding-left: 14px; }
+@keyframes cd-pop { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: none; } }
+@media (prefers-reduced-motion: reduce) { .cd-sort__menu { animation: none; } .cd-sort__caret { transition: none; } }
 
-/* Compact book card — «Решта бажанок». Cover Frame System: fixed frame owns
-   radius/background/shadow, image is object-fit:contain (no crop). Scoped
-   under `.wl21-grid` because collections.css's unscoped `.bkc` uses a
-   different (flex-body) recipe — see file header. Frozen density defaults
-   (16.5px / 10px / 10px / 8px / 100:150) baked directly onto `.wl21-grid`. */
-.wl21-grid {
-  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; align-items: start;
-  --bkc-fs-base: 16.5px; --bkc-pad-base: 10px; --bkc-gap-base: 10px; --bkc-foot-base: 8px; --bkc-cover-ar: 100 / 150;
-}
-/* Full-width адаптивна сітка: фіксована кількість колонок на breakpoint,
-   картки завжди займають 100% ширини секції (minmax(0,1fr) — guard від
-   min-content trap). ≤768px — 2-up у мобільному блоці нижче. */
-@media (min-width: 900px)  { .wl21-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
-@media (min-width: 1180px) { .wl21-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); } }
-@media (min-width: 1440px) { .wl21-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
-.wl21-grid .bkc {
+/* Compact book card — «Решта бажанок» · редизайн 2026-07-13, geometry-hardened 2026-07-13.
+   Вся картка = один tappable-лінк (без «Деталі»). Cover Frame System:
+   фіксована рамка на всю ширину картки (aspect за замовч. 2:3), рамка володіє
+   радіусом/фоном/тінню, зображення — object-fit: contain по центру, без кропу.
+
+   ГЕОМЕТРІЯ — детермінована CSS Grid-структура, а не flow/flex:
+     .bkc        → row1 обкладинка (aspect-ratio, ширина картки визначає висоту)
+                   row2 .bkc__body
+     .bkc__body  → grid з 3 ФІКСОВАНИХ рядків: title / author / price.
+   Кожен рядок має жорстку висоту (--bkc-r-title/--bkc-r-author/--bkc-r-price),
+   тож автор завжди починається на ПОЧАТКУ рядка 2 — незалежно від того, зайняла
+   назва 1 чи 2 рядки — і ціна завжди починається на початку рядка 3. Це навмисно
+   НЕ flex-стек (де висота наступного елемента залежить від фактичної висоти
+   попереднього): flex-версія давала однакову ВИСОТУ картки, але сам рядок автора
+   «стрибав» вгору/вниз на ~19px залежно від довжини назви — саме це й читалось
+   як masonry. Grid-рядки фіксують позицію, а не лише сумарну висоту.
+   Тюнінг: CSS-змінні (--bkc-fs-base/--bkc-pad-base/--bkc-gap-base/--bkc-foot-base/
+   --bkc-cover-ar) виставляє Tweaks-панель на .wl21-grid. */
+.wl21-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(218px, 1fr)); gap: 16px; align-items: start; }
+.bkc {
   --bkc-title-fs: var(--bkc-fs-base, 16.5px);
   --bkc-author-fs: max(12px, calc(var(--bkc-fs-base, 16.5px) - 3.5px));
   --bkc-price-fs: 20px;
@@ -315,64 +327,90 @@
   box-shadow: var(--shadow-sm);
   transition: transform 180ms ease-out, box-shadow 180ms ease-out, border-color 180ms ease-out;
 }
-.wl21-grid .bkc:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: color-mix(in oklab, var(--accent) 30%, var(--border)); }
-.wl21-grid .bkc:active { transform: translateY(0); box-shadow: var(--shadow-sm); transition-duration: 90ms; }
-.wl21-grid .bkc:focus-visible { outline: none; box-shadow: var(--focus-ring), var(--shadow-sm); border-color: var(--accent); }
-.wl21-grid .bkc__coverclip { position: relative; display: flex; align-items: center; justify-content: center; border-radius: 12px; overflow: hidden; aspect-ratio: var(--bkc-cover-ar, 2 / 3); background: var(--surface-accent); box-shadow: var(--shadow-sm); flex-shrink: 0; }
-.wl21-grid .bkc__cover { width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; display: block; transition: transform 260ms ease-out; }
-.wl21-grid .bkc:hover .bkc__cover { transform: scale(1.045); }
-.wl21-grid .bkc__body {
+.bkc:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); border-color: color-mix(in oklab, var(--accent) 30%, var(--border)); }
+.bkc:active { transform: translateY(0); box-shadow: var(--shadow-sm); transition-duration: 90ms; }
+.bkc:focus-visible { outline: none; box-shadow: var(--focus-ring), var(--shadow-sm); border-color: var(--accent); }
+.bkc__coverclip { position: relative; display: flex; align-items: center; justify-content: center; border-radius: 12px; overflow: hidden; aspect-ratio: var(--bkc-cover-ar, 2 / 3); background: var(--surface-accent); box-shadow: var(--shadow-sm); flex-shrink: 0; }
+.bkc__cover { width: auto; height: auto; max-width: 100%; max-height: 100%; object-fit: contain; display: block; transition: transform 260ms ease-out; }
+.bkc:hover .bkc__cover { transform: scale(1.045); }
+/* 3 фіксовані рядки — жоден контент не може змінити висоту рядка чи зсунути сусідній */
+.bkc__body {
   display: grid;
   grid-template-rows: var(--bkc-r-title) var(--bkc-r-author) var(--bkc-r-price);
   padding: var(--bkc-gap-base, 10px) 2px 2px;
 }
-.wl21-grid .bkc__title { grid-row: 1; align-self: start; font-family: var(--font-display); font-weight: 600; font-size: var(--bkc-title-fs); line-height: 1.3; letter-spacing: -0.005em; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
-.wl21-grid .bkc__author { grid-row: 2; align-self: start; margin-top: 3px; font-size: var(--bkc-author-fs); line-height: 1.4; color: var(--text-muted); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.wl21-grid .bkc__price { grid-row: 3; align-self: end; font-family: var(--font-display); font-weight: 700; font-size: var(--bkc-price-fs); line-height: 1.15; color: var(--accent); padding-top: var(--bkc-foot-base, 8px); }
-.wl21-grid .bkc__price--none { color: var(--text-faint); font-weight: 600; }
-.wl21-grid .bkc--out .bkc__coverclip { opacity: .66; }
+.bkc__title { grid-row: 1; align-self: start; font-family: var(--font-display); font-weight: 600; font-size: var(--bkc-title-fs); line-height: 1.3; letter-spacing: -0.005em; color: var(--text); display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; word-break: break-word; }
+.bkc__author { grid-row: 2; align-self: start; margin-top: 3px; font-size: var(--bkc-author-fs); line-height: 1.4; color: var(--text-muted); max-width: 100%; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.bkc__price { grid-row: 3; align-self: end; font-family: var(--font-display); font-weight: 700; font-size: var(--bkc-price-fs); line-height: 1.15; color: var(--accent); padding-top: var(--bkc-foot-base, 8px); }
+.bkc__price--none { color: var(--text-faint); font-weight: 600; }
+.bkc--out .bkc__coverclip { opacity: .66; }
+
+/* Pagination (frozen Search Results layout) */
+.kn-pagination { display: flex; align-items: center; justify-content: center; gap: 14px; padding: 28px 0 4px; flex-wrap: wrap; }
+.kn-pagination__pages { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.kn-pagination__ellipsis { padding: 0 6px; color: var(--text-faint); }
+
+/* Footer (frozen chrome) */
+.wl-footer { border-top: 1px solid var(--border); background: var(--surface); margin-top: 40px; }
+.wl-footer__in { display: flex; align-items: center; justify-content: space-between; gap: 24px; padding: 26px 0; }
+.wl-footer__logo { height: 34px; display: block; }
+.wl-footer__links { display: flex; gap: 24px; font-size: 13.5px; color: var(--text-muted); }
+.wl-footer__links a { color: inherit; text-decoration: none; transition: color 140ms ease-out; }
+.wl-footer__links a:hover { color: var(--accent); }
+.wl-footer__copy { font-size: 12.5px; color: var(--text-faint); }
+
+/* Entrance (frozen rule: pure CSS, one-shot) */
+.reveal { animation: kn-rise 420ms ease-out both; }
+@keyframes kn-rise { from { opacity: 0; transform: translateY(10px); } }
+@media (prefers-reduced-motion: reduce), print { .reveal { animation: none; } }
 
 /* ── Tablet ── */
 @media (max-width: 1180px) {
   .wl21-hero { grid-template-columns: 1fr auto; }
-  /* Doubled selector so the hide outranks the theme-swap `display: block`
-     ([data-theme="dark"] .wl21-hero__mascot--dark) at narrow widths. */
-  .wl21-hero__mascot.wl21-hero__mascot { display: none; }
+  .wl21-hero__mascot { display: none; }
+  .wl21-row { grid-template-columns: 68px minmax(180px, 1fr) 170px auto; gap: 16px; }
+  .wl21-row__coverclip { width: 68px; }
 }
 
 /* ── Mobile (≤768px) — легкість: повітря, три рівні важливості ── */
 @media (max-width: 768px) {
+  .page { padding: 0 20px; }
+  .sec, .band { padding-block: 28px; }
+  .sec-head { margin-bottom: 14px; }
+  .sec-title { font-size: 1.45rem; }
+  .sec-sub { font-size: 13.5px; }
+
   /* Hero — рівень 1: компактний. «Вже заощадили» без панелі, в одному
      рядку навпроти «Перевірено сьогодні». */
-  .wl21-hero { grid-template-columns: 1fr; gap: 12px; padding: 17px 18px 15px; min-height: 0; margin-top: 14px; overflow: visible; }
-  .wl21-hero + .band,
-  .wl-sk--hero + .band { margin-top: 30px; }
+  .wl21-hero { grid-template-columns: 1fr; gap: 14px; padding: 20px 18px 18px; min-height: 0; margin-top: 14px; overflow: visible; }
   .wl21-hero__badge { margin-bottom: 8px; }
   .wl21-hero__title { font-size: 1.42rem; max-width: none; }
   .wl21-hero__desc { font-size: 14px; margin-top: 8px; }
-  /* KPI + freshness = один footer-рядок hero: KPI зліва, freshness справа,
-     обидва притиснуті до базової лінії низу; freshness може переноситись
-     максимум на 2 рядки і ніколи не накладається на KPI (flex-shrink). */
-  .wl21-hero__side { flex-direction: row; align-items: flex-end; justify-content: space-between; width: 100%; gap: 12px; }
-  .wl21-kpi { background: none; border: none; border-radius: 0; padding: 0; min-width: 0; gap: 2px; flex-shrink: 0; }
+  .wl21-hero__bignum b { font-size: 3.4rem; }
+  .wl21-hero__bignum span { font-size: 1.35rem; }
+  .wl21-hero__bigsub { font-size: 1.15rem; }
+  .wl21-hero__side { flex-direction: row; align-items: center; justify-content: space-between; width: 100%; gap: 12px; }
+  .wl21-kpi { background: none; border: none; border-radius: 0; padding: 0; min-width: 0; gap: 2px; }
   .wl21-kpi__label { font-size: 10px; letter-spacing: 1.2px; }
   .wl21-kpi__num { font-size: 1.55rem; }
-  .wl21-hero__fresh { padding: 0; flex: 0 1 auto; min-width: 0; text-align: right; justify-content: flex-end; }
+  .wl21-kpi--moment .wl21-kpi__num { font-size: 1.45rem; }
+  .wl21-hero__kpiduo { gap: 20px; }
+  .wl21-hero__fresh { padding: 0; }
 
-  /* «Ціль досягнута» / загальний статус mobile — вертикальна паперова
-     картка, без маскота. Штамп по центру зверху → eyebrow-факт →
-     обкладинка → назва/автор → повідомлення-факт → ціна → єдина
-     CTA-ціна → тиха лінк-кнопка «Деталі книги». */
+  /* «Ціль досягнута» mobile — вертикальна паперова картка, без маскота.
+     Штамп по центру зверху (стан-незалежний колір — завжди зелений),
+     далі eyebrow-факт → обкладинка → назва/автор → повідомлення-факт →
+     ціна → єдина CTA-ціна → тиха лінк-кнопка «Деталі книги». */
   .wl21-featm {
     position: relative; text-align: center;
     border: 1px solid var(--border); background: var(--surface);
-    border-radius: 18px; padding: 34px 18px 16px; box-shadow: var(--shadow-md);
+    border-radius: 18px; padding: 40px 20px 20px; box-shadow: var(--shadow-md);
   }
   .wl21-featm::before {
     content: ""; position: absolute; inset: 9px; border-radius: 12px; pointer-events: none;
     border: 1px dashed color-mix(in oklab, var(--accent) 40%, transparent);
   }
-  .wl21-featm--nostamp { padding-top: 16px; }
+  .wl21-featm--nostamp { padding-top: 20px; }
   .wl21-featm__stamp {
     position: absolute; top: 0; left: 50%; transform: translate(-50%, -50%) rotate(-6deg); z-index: 2;
     display: flex; flex-direction: column; align-items: center; gap: 4px;
@@ -385,10 +423,10 @@
   [data-theme="dark"] .wl21-featm__stamp { color: var(--kn-green-dk); }
   .wl21-featm__stamp em { font-style: normal; display: inline-flex; align-items: center; gap: 6px; }
   .wl21-featm__stamp small { font-size: 8.5px; font-weight: 700; letter-spacing: 1.4px; opacity: 0.7; }
-  .wl21-featm__eyebrow { display: block; font-size: 10.5px; letter-spacing: 1.6px; text-transform: uppercase; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+  .wl21-featm__eyebrow { display: block; font-size: 10.5px; letter-spacing: 1.6px; text-transform: uppercase; font-weight: 700; color: var(--accent); margin-bottom: 14px; }
 
   /* Обкладинка-«книга» carousel-картки (WL22MobCard) — ОРИГІНАЛЬНИЙ рецепт,
-     100% ширини колонки. Спільний клас із «Зараз вигідно купити». */
+     100% ширини колонки. НЕ чіпати — спільний клас із «Зараз вигідно купити». */
   .wl21-featm__book {
     position: relative; width: 100%; aspect-ratio: 2 / 3;
     border-radius: 4px 10px 10px 4px; overflow: hidden; background: var(--surface-accent);
@@ -415,7 +453,7 @@
 
   /* Обкладинка «Ціль досягнута» hero — власний клас (НЕ переплітати з вище) */
   .wl21-goalm__book {
-    position: relative; width: clamp(150px, 46vw, 190px); aspect-ratio: 2 / 3; margin: 0 auto 12px;
+    position: relative; width: 122px; aspect-ratio: 2 / 3; margin: 0 auto 16px;
     border-radius: 4px 10px 10px 4px; overflow: hidden; background: var(--surface-accent);
     box-shadow:
       0 14px 26px -10px rgba(63, 42, 20, 0.42),
@@ -439,15 +477,15 @@
   }
 
   .wl21-featm__title { font-family: var(--font-display); font-size: 1.3rem; font-weight: 700; line-height: 1.22; margin: 0 0 3px; }
-  .wl21-featm__author { font-size: 12.5px; color: var(--text-muted); margin: 0 0 10px; }
-  .wl21-featm__msg { font-family: var(--font-display); font-weight: 500; font-size: 15px; line-height: 1.55; color: var(--text-body); margin: 0 auto 14px; max-width: 32ch; text-wrap: pretty; }
+  .wl21-featm__author { font-size: 12.5px; color: var(--text-muted); margin: 0 0 14px; }
+  .wl21-featm__msg { font-family: var(--font-display); font-weight: 500; font-size: 15px; line-height: 1.55; color: var(--text-body); margin: 0 auto 18px; max-width: 32ch; text-wrap: pretty; }
   .wl21-featm__msg b { font-weight: 700; color: var(--text); }
   .wl21-featm__price { display: flex; align-items: baseline; justify-content: center; gap: 9px; margin-bottom: 4px; }
   .wl21-featm__price b { font-family: var(--font-display); font-size: 2rem; font-weight: 700; color: var(--brand-green); line-height: 1; }
   [data-theme="dark"] .wl21-featm__price b { color: var(--kn-green-dk); }
   .wl21-featm__price s { font-size: 13.5px; color: var(--text-faint); }
   /* Пілюля книгарні carousel-картки (WL22MobCard) — ОРИГІНАЛЬНИЙ рецепт.
-     Спільний клас із «Зараз вигідно купити». */
+     НЕ чіпати — спільний клас із «Зараз вигідно купити». */
   .wl21-featm__store {
     align-self: flex-start; margin-top: 5px; display: inline-flex; align-items: center;
     height: 25px; padding: 0 11px; border-radius: 999px;
@@ -466,9 +504,9 @@
   [data-theme="dark"] .wl21-featm__disc { color: var(--kn-green-dk); }
 
   /* Пілюля книгарні «Ціль досягнута» hero — власний клас, простий текст */
-  .wl21-goalm__store { display: block; font-size: 12.5px; color: var(--text-muted); margin-bottom: 10px; }
-  /* Єдина CTA — ціна всередині кнопки (той самий зелений рецепт). Фіксована
-     висота, один рядок, без зменшення шрифту. */
+  .wl21-goalm__store { display: block; font-size: 12.5px; color: var(--text-muted); margin-bottom: 16px; }
+  /* Єдина CTA — ціна всередині кнопки (той самий зелений рецепт, що
+     wl21-row__buy). Фіксована висота, один рядок, без зменшення шрифту. */
   .wl21-featm__buy {
     position: relative; width: 100%; height: 50px; border-radius: 12px;
     font-family: var(--font-display); font-size: 17px; font-weight: 700; letter-spacing: 0.01em;
@@ -478,11 +516,47 @@
   .wl21-featm__buy:hover { background: color-mix(in oklab, black 10%, var(--brand-green)); }
   [data-theme="dark"] .wl21-featm__buy { background: color-mix(in oklab, var(--brand-green) 62%, var(--kn-green-dk)); color: #0F1512; }
   [data-theme="dark"] .wl21-featm__buy:hover { background: color-mix(in oklab, var(--brand-green) 48%, var(--kn-green-dk)); }
-  .wl21-featm__details { display: flex; align-items: center; justify-content: center; width: 100%; height: 42px; margin-top: 2px; font-size: 13.5px; font-weight: 600; color: var(--text-muted); }
+  .wl21-featm__measure { position: absolute; visibility: hidden; white-space: nowrap; pointer-events: none; }
+  .wl21-featm__details { display: flex; align-items: center; justify-content: center; width: 100%; height: 42px; margin-top: 6px; font-size: 13.5px; font-weight: 600; color: var(--text-muted); }
   .wl21-featm__details:hover { color: var(--accent); }
 
-  /* Зараз вигідно купити (desktop card, тихий стек на мобільному відповідно
-     до Tweaks-варіанта, якщо колись вимкнено wl22-* rail) */
+  /* Знижки — рівень 2: преміальна картка. Обкладинка на всю висоту
+     зліва; справа назва/автор → повітря → [Деталі | CTA з ціною].
+     Ціна живе всередині CTA — один цілісний компонент, без бейджів. */
+  .wl21-rows { gap: 14px; }
+  .wl21-row {
+    grid-template-columns: 88px minmax(0, 1fr);
+    grid-template-rows: auto auto 1fr auto;
+    column-gap: 14px; row-gap: 0; padding: 12px; align-items: stretch;
+    /* Висота НЕ фіксується жорстко (це ламало верстку — контент вилазив
+       за межі картки). Однакова висота карток досягається природно:
+       назва завжди займає рівно 2 рядки (line-clamp + фіксована висота
+       блоку), автор — рівно 1 рядок, тож усі картки виходять однакові. */
+  }
+  .wl21-row__coverclip { grid-column: 1; grid-row: 1 / -1; width: 100%; height: 100%; aspect-ratio: 2 / 3; border-radius: 10px; align-self: start; }
+  .wl21-row__main { grid-column: 2; grid-row: 1; padding-top: 2px; }
+  .wl21-row__title { font-size: 15.5px; line-height: 1.3; height: 2.6em; -webkit-line-clamp: 2; }
+  .wl21-row__author { font-size: 12.5px; margin: 3px 0 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .wl21-row__pricecell { display: none; }
+  .wl21-row__ctas { grid-column: 2; grid-row: 4; display: grid; grid-template-columns: 1fr 1.4fr; gap: 8px; align-items: center; border-top: 1px solid var(--border); padding-top: 8px; margin-top: 8px; }
+  /* Книгарня ↔ знижка/стара ціна — один рядок під назвою/автором, над кнопками */
+  .wl21-row__meta { display: flex; grid-column: 2; grid-row: 3; align-self: start; justify-content: space-between; align-items: baseline; gap: 8px; margin-top: 4px; }
+  .wl21-row__store-inline { font-size: 11.5px; color: var(--text-faint); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wl21-row__oldtop { display: inline-flex; align-items: baseline; gap: 8px; font-size: 12.5px; color: var(--text-faint); text-decoration: none; flex-shrink: 0; }
+  .wl21-row__oldtop s { color: var(--text-faint); }
+  .wl21-row__disc { font-size: 12.5px; font-weight: 700; color: var(--brand-green); font-style: normal; }
+  [data-theme="dark"] .wl21-row__disc { color: var(--kn-green-dk); }
+  .wl21-row__ctas .wl-btn { height: 44px; border-radius: 12px; padding: 0 10px; }
+  .wl21-row__ctas .wl-btn--sm { font-size: 13.5px; }
+  .wl21-row__buy-simple { display: none; }
+  .wl21-row__buy-price { display: inline; font-family: var(--font-display); font-size: 18px; font-weight: 700; letter-spacing: 0.01em; }
+  /* Зелена ціна-CTA — позитивна подія: знижка, на яку чекали */
+  .wl21-row__buy { background: var(--brand-green); color: #fff; box-shadow: 0 8px 20px -8px color-mix(in oklab, var(--brand-green) 65%, transparent); }
+  .wl21-row__buy:hover { background: color-mix(in oklab, black 10%, var(--brand-green)); }
+  [data-theme="dark"] .wl21-row__buy { background: color-mix(in oklab, var(--brand-green) 62%, var(--kn-green-dk)); color: #0F1512; }
+  [data-theme="dark"] .wl21-row__buy:hover { background: color-mix(in oklab, var(--brand-green) 48%, var(--kn-green-dk)); }
+
+  /* Зараз вигідно купити — тихий стек преміальних карток на мобільному */
   .wl21-sale__foot { flex-direction: column; align-items: stretch; gap: 12px; }
   .wl21-sale__buy { width: 100%; height: 46px; }
   .wl21-sale__price { font-size: 24px; }
@@ -490,30 +564,31 @@
   .wl21-sortbar { flex-direction: column; align-items: stretch; gap: 10px; }
   .wl21-controls { flex-direction: row; gap: 8px; }
   .wl21-controls .cd-sort { flex: 1 1 0; min-width: 0; }
-  .wl21-controls .cd-sort__btn { width: 100%; height: 48px; min-width: 0; font-size: 13px; padding: 0 10px; gap: 6px; }
+  .cd-sort__btn { width: 100%; height: 48px; min-width: 0; font-size: 13px; padding: 0 10px; gap: 6px; }
   .wl21-controls .cd-sort__val svg { display: none; }
-  .wl21-controls .cd-sort__val { min-width: 0; overflow: hidden; }
-  .wl21-controls .cd-sort__menu { left: 0; right: 0; }
-  .wl21-controls .cd-sort__opt { padding: 12px; font-size: 14px; white-space: normal; }
+  .cd-sort__val { min-width: 0; overflow: hidden; }
+  .cd-sort__menu { left: 0; right: 0; }
+  .cd-sort__opt { padding: 12px; font-size: 14px; white-space: normal; }
 
-  /* Решта — рівень 3: тиха сітка 2-up; той самий compact-рецепт, масштабована
-     типографіка. Компактніша рамка обкладинки (−21% висоти) і padding −2px:
-     на 375px видно суттєву частину двох рядів, а не один ряд гігантських
-     обкладинок. Contain-fit та детермінований 3-рядковий body незмінні. */
-  .wl21-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; --bkc-cover-ar: 100 / 118; --bkc-pad-base: 8px; }
-  .wl21-grid .bkc { --bkc-title-fs: max(14.5px, calc(var(--bkc-fs-base, 16.5px) - 1.5px)); --bkc-author-fs: max(12px, calc(var(--bkc-fs-base, 16.5px) - 4px)); --bkc-price-fs: 18px; border-radius: 14px; }
-  .wl21-grid .bkc__coverclip { border-radius: 10px; }
+  /* Решта — рівень 3: тиха сітка 2-up; той самий compact-рецепт, масштабована типографіка.
+     Змінюємо лише --bkc-*-fs — рядки гріда (--bkc-r-*) перерахуються самі, геометрія лишається жорсткою. */
+  .wl21-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .bkc { --bkc-title-fs: max(14.5px, calc(var(--bkc-fs-base, 16.5px) - 1.5px)); --bkc-author-fs: max(12px, calc(var(--bkc-fs-base, 16.5px) - 4px)); --bkc-price-fs: 18px; border-radius: 14px; }
+  .bkc__coverclip { border-radius: 10px; }
+  .wl-footer__in { flex-direction: column; gap: 12px; text-align: center; }
 }
 
 @media (max-width: 380px) {
+  .wl21-row { grid-template-columns: 80px minmax(0, 1fr); column-gap: 12px; }
   .wl21-featm { grid-template-columns: 120px minmax(0, 1fr); column-gap: 12px; }
   .wl22-mob { grid-template-columns: 106px minmax(0, 1fr); column-gap: 12px; }
 }
 
 /* ══════════════════════════════════════════════════════════════════
-   v2.2 · МОБІЛЬНА КАРУСЕЛЬ «Зараз вигідно купити» (≤768px; desktop не змінюється)
-   Stacked-карусель (peek наступної картки, мінімальні крапки), картки з
-   єдиною ціновою CTA.
+   v2.2 · МОБІЛЬНА ФІНАЛІЗАЦІЯ (≤768px; desktop не змінюється)
+   Featured hero: лід-рядок Книговика + шеврон-афорданс.
+   «Зараз вигідно купити»: stacked-карусель (peek наступної картки,
+   мінімальні крапки), картки з єдиною ціновою CTA.
    ══════════════════════════════════════════════════════════════════ */
 @media (max-width: 768px) {
   /* Шеврон-афорданс: НЕ кнопка — тихий натяк «картка відкриває сторінку» */
@@ -526,19 +601,12 @@
   /* Стрічкова карусель (track-based): усі картки в одному горизонтальному
      треку, анімується ЛИШЕ трек (translate3d). Wrap — full-bleed по
      горизонталі (peek обрізається на краях екрана); overflow:clip з
-     clip-margin лишає місце для тіні-glow карток по вертикалі.
-     margin-inline використовує --gutter (app shell token), не прототипний
-     фіксований -20px — так full-bleed працює з будь-яким --gutter. */
+     clip-margin лишає місце для тіні-glow карток по вертикалі. */
   .wl22-railwrap {
     overflow: hidden;              /* фолбек для старих браузерів */
-    /* По горизонталі — clip рівно на краю (wrap і так full-bleed до країв
-       екрана, тож тіням там нема куди малюватись), по вертикалі — visible,
-       щоб glow-тіні карток не обрізались. Clip-margin навмисно НЕ вживається:
-       Chrome додає його до scrollable overflow документа → фантомний
-       горизонтальний скрол на мобільному. */
-    overflow-x: clip;
-    overflow-y: visible;
-    margin-inline: calc(-1 * var(--gutter)); /* full-bleed: гасить горизонтальний padding .page */
+    overflow: clip;
+    overflow-clip-margin: 28px;    /* тінь картки не обрізається зверху/знизу */
+    margin-inline: -20px;          /* full-bleed: гасить горизонтальний padding .page */
     touch-action: pan-y;           /* вертикальний скрол сторінки природний */
   }
   .wl22-track {
@@ -576,7 +644,10 @@
   .wl22-mob__body { grid-column: 2; grid-row: 2; margin-top: 8px; display: flex; flex-direction: column; min-width: 0; }
   /* Назва + автор — блок висотою мін. "3 рядки" (2 рядки назви + 1 рядок
      автора), але назва сама по собі НЕ розтягується на фіксовану висоту —
-     автор завжди сидить одразу під фактичним текстом назви. */
+     автор завжди сидить одразу під фактичним текстом назви (без штучного
+     розриву, коли назва в 1 рядок); "зайвий" простір коротких назв лишається
+     ПІД автором (min-height блоку), тож лінія-розділювач і все, що нижче,
+     все одно завжди починається в тому самому місці на будь-якій картці. */
   .wl22-mob__head { display: flex; flex-direction: column; gap: 2px; min-height: 62px; }
   .wl22-mob__title {
     font-family: var(--font-display); font-size: 1.06rem; font-weight: 700; line-height: 1.28;
@@ -587,14 +658,12 @@
   /* Лінія відділяє книгарню від автора — чітка межа, а не просто проміжок */
   .wl22-mob__rule { display: block; height: 1px; margin-top: 8px; background: var(--border); flex-shrink: 0; }
   .wl22-mob__store { margin-top: 8px; }
-  /* min-height = висота disc-пігулки: слот рендериться завжди (і коли знижки
-     немає), тож store/priceline/CTA сидять на однакових позиціях у всіх картках. */
-  .wl22-mob__priceline { padding-top: 8px; min-height: 29px; }
+  .wl22-mob__priceline { padding-top: 8px; }
   .wl22-mob__buy { height: 44px; margin-top: 8px; font-size: 16px; border-radius: 11px; }
   .wl22-mob img { -webkit-user-drag: none; }
 
   /* Мінімальні крапки пагінації; активна — коротка «пігулка» */
-  .wl22-dots { display: flex; justify-content: center; align-items: center; gap: 7px; margin-top: 12px; }
+  .wl22-dots { display: flex; justify-content: center; align-items: center; gap: 7px; margin-top: 20px; }
   .wl22-dot {
     width: 6px; height: 6px; border-radius: 999px;
     background: color-mix(in oklab, var(--brand-green) 24%, var(--border));

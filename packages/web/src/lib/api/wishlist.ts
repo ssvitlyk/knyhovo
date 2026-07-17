@@ -1,5 +1,5 @@
 import { apiBaseUrl } from './env';
-import type { AlertDto, WishlistResponseDto } from './types';
+import type { AlertDto, BuyingOpportunitiesResponseDto, WishlistResponseDto } from './types';
 
 const REQUEST_TIMEOUT_MS = 8000;
 
@@ -55,6 +55,48 @@ export async function getWishlist({
   }
 
   return (await response.json()) as WishlistResponseDto;
+}
+
+/**
+ * Fetch the authenticated user's buying opportunities for the wishlist v2.2
+ * «Зараз вигідно купити» section (`GET /api/wishlist/buying-opportunities`).
+ * Runs server-side — mirrors {@link getWishlist} exactly: forwarded session
+ * cookie, `no-store`, 8s AbortController timeout, 401 → `{ unauthorized: true }`
+ * sentinel, other non-2xx/transport failures → {@link WishlistError}.
+ */
+export async function getBuyingOpportunities({
+  cookie,
+}: {
+  cookie: string;
+}): Promise<BuyingOpportunitiesResponseDto | { unauthorized: true }> {
+  const url = `${apiBaseUrl()}/api/wishlist/buying-opportunities`;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+  let response: Response;
+  try {
+    response = await fetch(url, {
+      signal: controller.signal,
+      cache: 'no-store',
+      headers: { cookie },
+    });
+  } catch {
+    throw new WishlistError('Не вдалося звʼязатися з сервісом бажанок.', null);
+  } finally {
+    clearTimeout(timer);
+  }
+
+  if (response.status === 401) return { unauthorized: true };
+
+  if (!response.ok) {
+    throw new WishlistError(
+      `Сервіс бажанок повернув помилку (${response.status}).`,
+      response.status,
+    );
+  }
+
+  return (await response.json()) as BuyingOpportunitiesResponseDto;
 }
 
 /**

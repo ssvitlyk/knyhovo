@@ -17,6 +17,7 @@ function makeRow(overrides: {
   listings?: WishlistListingRow[];
   createdAt?: Date;
   alert?: WishlistAlertRow | null;
+  genre?: { slug: string; name: string } | null;
 }): WishlistRow {
   return {
     createdAt: overrides.createdAt ?? FIXED_DATE,
@@ -26,6 +27,7 @@ function makeRow(overrides: {
       author: overrides.author ?? 'Тарас Шевченко',
       isbn: overrides.isbn ?? null,
       listings: overrides.listings ?? [],
+      genre: overrides.genre ?? null,
     },
     alert: overrides.alert ?? null,
   };
@@ -235,6 +237,20 @@ describe('toWishlistResponse', () => {
     const dto = toWishlistResponse([]);
 
     expect(dto.items).toEqual([]);
+  });
+
+  it('genre is null when the book has no assigned genre', () => {
+    const rows = [makeRow({ genre: null })];
+    const dto = toWishlistResponse(rows);
+
+    expect(dto.items[0]!.book.genre).toBeNull();
+  });
+
+  it('passes through genre slug + name when assigned', () => {
+    const rows = [makeRow({ genre: { slug: 'fantastyka', name: 'Фантастика' } })];
+    const dto = toWishlistResponse(rows);
+
+    expect(dto.items[0]!.book.genre).toEqual({ slug: 'fantastyka', name: 'Фантастика' });
   });
 
   it('maps multiple items preserving order', () => {

@@ -1,39 +1,29 @@
 /**
- * Route-level loading fallback for the wishlist page.
- * Warm `--surface-accent` skeleton rows mirroring the WishlistRow layout.
- * Static under `prefers-reduced-motion`; staggered fade-in otherwise.
+ * Route-level loading fallback for the wishlist v2.2 page. Mirrors the real
+ * section geometry (hero band ~208px → «Зараз вигідно купити» band → «Решта
+ * бажанок» grid) with warm `--surface-accent` skeleton blocks — never cold
+ * greys (frozen rule). No inner `.page`: the root layout already provides the
+ * padded page container.
  */
 export default function WishlistLoading(): React.JSX.Element {
   return (
     <main className="wishlist">
-      {/* Hero skeleton */}
-      <div className="v1-page-head">
-        <div className="v1-page-head-left">
-          <span className="v1-sk-block" style={{ width: 200, height: 11, marginBottom: 10 }} />
-          <span className="v1-sk-block" style={{ width: 320, height: 36, display: 'block' }} />
+      <div className="wl-sk wl-sk--hero" />
+
+      <div className="band band--green">
+        <div className="wl-sk wl-sk--line" style={{ width: 220, height: 22, marginBottom: 18 }} />
+        <div className="wl-sk-grid">
+          {[0, 1, 2, 3].map((i) => (
+            <div key={i} className="wl-sk wl-sk--card" />
+          ))}
         </div>
       </div>
 
-      {/* Section skeleton */}
-      <div className="v1-single">
-        <div className="hy-front" style={{ marginBottom: 'var(--space-6)' }}>
-          <span className="v1-sk-block" style={{ width: 180, height: 18, marginBottom: 14, display: 'block' }} />
-        </div>
-
-        <span className="v1-sk-block" style={{ width: 220, height: 18, marginBottom: 14, display: 'block' }} />
-
-        {/* Skeleton rows */}
-        <div className="v1-rows">
-          {[0, 1, 2, 3].map((i) => (
-            <div key={i} className="v1-sk-row">
-              <span className="v1-cover v1-sk-block" />
-              <span className="v1-row-main">
-                <span className="v1-sk-block" style={{ width: '60%', height: 16 }} />
-                <span className="v1-sk-block" style={{ width: '35%', height: 12, marginTop: 6 }} />
-              </span>
-              <span className="v1-sk-block" style={{ width: 60, height: 22 }} />
-              <span className="v1-sk-block" style={{ width: 80, height: 28 }} />
-            </div>
+      <div className="sec">
+        <div className="wl-sk wl-sk--line" style={{ width: 180, height: 22, marginBottom: 18 }} />
+        <div className="wl-sk-grid">
+          {[0, 1, 2, 3, 4, 5].map((i) => (
+            <div key={i} className="wl-sk wl-sk--tile" />
           ))}
         </div>
       </div>

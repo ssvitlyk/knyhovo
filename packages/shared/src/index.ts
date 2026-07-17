@@ -29,4 +29,4 @@ export type { PriceHistoryPoint } from './types/price-history.js';
 
 export type { User } from './types/user.js';
 
-export type { WishlistItem, AlertStatus, AlertIntent, Alert } from './types/wishlist.js';
+export type { WishlistItem, AlertStatus, AlertIntent, Alert, BuyingReason } from './types/wishlist.js';

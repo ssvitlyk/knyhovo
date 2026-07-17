@@ -36,6 +36,7 @@
 | W3: UI | Сторінка wishlist, кнопка "Додати", редагування ціни | Після W2 |
 | W4a: Alert model + API | `Alert` (intent, targetPrice), CRUD endpoints, read-time derive | ✅ Реалізовано |
 | W4b: Alerts Engine | Outbox + email delivery (Resend), back-in-stock, safety | Затверджено (нижче) |
+| W5: Wishlist v2.2 UI + buying-reason engine | Повна заміна /wishlist на frozen v2.2 (Hero · Порада Книговика · «Зараз вигідно купити» через GET /api/wishlist/buying-opportunities · «Решта бажанок») | Затверджено (дизайн frozen 2026-07-16) |
 
 ## Auth — зафіксовані рішення (W0)
 

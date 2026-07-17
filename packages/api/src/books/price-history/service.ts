@@ -39,7 +39,7 @@ function computeSince(period: PriceHistoryPeriod, now: Date): Date | null {
  *
  * Returns `null` when no listing has any history.
  */
-function selectListing(
+export function selectListing(
   listings: readonly PriceHistoryListingRow[],
 ): PriceHistoryListingRow | null {
   const candidates = listings.filter((l) => l.priceHistory.length > 0);
