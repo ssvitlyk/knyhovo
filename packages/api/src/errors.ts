@@ -51,6 +51,20 @@ export class UnauthorizedError extends Error {
 }
 
 /**
+ * Domain-level error raised when a login request is rejected because the email
+ * is not on the environment's allow-list (`AUTH_ALLOWED_EMAILS`). Used to gate
+ * access on staging. The Fastify error handler maps this to HTTP 403.
+ */
+export class ForbiddenError extends Error {
+  readonly code = 'FORBIDDEN';
+
+  constructor(message = 'Access is restricted on this environment.') {
+    super(message);
+    this.name = 'ForbiddenError';
+  }
+}
+
+/**
  * Domain-level error raised when login code verification fails for any reason.
  * A generic message is used so callers cannot distinguish between "code wrong",
  * "code expired", "user not found", etc. (no oracle).

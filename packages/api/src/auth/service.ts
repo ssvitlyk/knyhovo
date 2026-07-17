@@ -23,6 +23,7 @@ import {
 import { hashCode, hashToken, safeCompare } from './crypto.js';
 import { buildMagicLinkUrl, sanitizeReturnTo } from './return-to.js';
 import {
+  ForbiddenError,
   InvalidCredentialsError,
   RateLimitedError,
 } from '../errors.js';
@@ -45,6 +46,18 @@ export interface AuthDeps {
 }
 
 /**
+ * Reject the request when an email allow-list is configured and the address is
+ * not on it. Emails are lowercased at the API boundary (zod schema), so a plain
+ * set lookup suffices. Throws before the user record is created, so
+ * non-whitelisted addresses leave no trace in the database.
+ */
+function assertEmailAllowed(config: AuthConfig, email: string): void {
+  if (config.allowedEmails && !config.allowedEmails.has(email)) {
+    throw new ForbiddenError('Login is restricted on this environment.');
+  }
+}
+
+/**
  * Request a one-time login code for the given email address.
  * Creates the user record if it does not yet exist, then sends the code via
  * the injected mailer. Enforces a rate limit on code requests per time window.
@@ -52,6 +65,8 @@ export interface AuthDeps {
 export async function requestCode(deps: AuthDeps, email: string): Promise<void> {
   const { prisma, mailer, config, now, generateCode: genCode } = deps;
   const currentTime = now();
+
+  assertEmailAllowed(config, email);
 
   const user = await upsertUserByEmail(prisma, email);
 
@@ -91,6 +106,8 @@ export async function requestMagicLink(
 ): Promise<void> {
   const { prisma, mailer, config, now, generateToken: genToken } = deps;
   const currentTime = now();
+
+  assertEmailAllowed(config, email);
 
   const user = await upsertUserByEmail(prisma, email);
 

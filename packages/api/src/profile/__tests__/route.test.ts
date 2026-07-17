@@ -21,6 +21,7 @@ const CONFIG: AuthConfig = {
   resendApiKey: null,
   fromEmail: 'Knyhovo <test@example.com>',
   linkBaseUrl: 'https://knyhovo.test',
+  allowedEmails: null,
 };
 
 interface UserRow {

@@ -22,6 +22,26 @@ export interface AuthConfig {
   readonly fromEmail: string;
   /** Public web origin used to build the clickable magic link (no trailing slash). */
   readonly linkBaseUrl: string;
+  /**
+   * Email allow-list (lowercased). When non-null, only these addresses may
+   * request a login link/code — used to gate access on staging.
+   * Null (env unset/empty) means every email is allowed.
+   */
+  readonly allowedEmails: ReadonlySet<string> | null;
+}
+
+/**
+ * Parse `AUTH_ALLOWED_EMAILS` — a comma-separated list of email addresses.
+ * Entries are trimmed and lowercased; blank entries are ignored.
+ * Returns null (allow all) when the variable is unset or contains no entries.
+ */
+export function parseAllowedEmails(raw: string | undefined): ReadonlySet<string> | null {
+  if (!raw) return null;
+  const emails = raw
+    .split(',')
+    .map((entry) => entry.trim().toLowerCase())
+    .filter((entry) => entry.length > 0);
+  return emails.length > 0 ? new Set(emails) : null;
 }
 
 export function loadAuthConfig(): AuthConfig {
@@ -41,5 +61,6 @@ export function loadAuthConfig(): AuthConfig {
     resendApiKey: process.env['RESEND_API_KEY']?.trim() || null,
     fromEmail: process.env['ALERT_FROM_EMAIL']?.trim() || 'Knyhovo <alerts@knyhovo.com>',
     linkBaseUrl: (process.env['ALERT_BASE_URL']?.trim() || 'https://knyhovo.com').replace(/\/$/, ''),
+    allowedEmails: parseAllowedEmails(process.env['AUTH_ALLOWED_EMAILS']),
   };
 }

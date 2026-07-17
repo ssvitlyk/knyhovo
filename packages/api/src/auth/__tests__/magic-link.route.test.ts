@@ -26,6 +26,7 @@ const TEST_CONFIG: AuthConfig = {
   resendApiKey: null,
   fromEmail: 'Knyhovo <test@example.com>',
   linkBaseUrl: 'https://knyhovo.test',
+  allowedEmails: null,
 };
 
 // ── Fake Mailer ───────────────────────────────────────────────────────────────
@@ -275,6 +276,50 @@ describe('POST /api/auth/magic-link', () => {
     const res = await app.inject({ method: 'POST', url: '/api/auth/magic-link', payload: { email: 'nope' } });
     expect(res.statusCode).toBe(400);
     expect(res.json().error.code).toBe('VALIDATION_ERROR');
+  });
+
+  describe('with AUTH_ALLOWED_EMAILS whitelist', () => {
+    const whitelistConfig: AuthConfig = { ...TEST_CONFIG, allowedEmails: new Set([TEST_EMAIL]) };
+
+    it('allows a whitelisted email → 200, mail sent', async () => {
+      const { deps, mailer } = makeDeps({ config: whitelistConfig });
+      const app = appWith(deps);
+
+      const res = await app.inject({ method: 'POST', url: '/api/auth/magic-link', payload: { email: TEST_EMAIL } });
+
+      expect(res.statusCode).toBe(200);
+      expect(mailer.lastEmail).toBe(TEST_EMAIL);
+    });
+
+    it('matches case-insensitively (email is lowercased at the boundary)', async () => {
+      const { deps } = makeDeps({ config: whitelistConfig });
+      const app = appWith(deps);
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/auth/magic-link',
+        payload: { email: TEST_EMAIL.toUpperCase() },
+      });
+
+      expect(res.statusCode).toBe(200);
+    });
+
+    it('rejects a non-whitelisted email → 403 FORBIDDEN, no user, no token, no mail', async () => {
+      const { deps, mailer } = makeDeps({ config: whitelistConfig });
+      const app = appWith(deps);
+
+      const res = await app.inject({
+        method: 'POST',
+        url: '/api/auth/magic-link',
+        payload: { email: 'stranger@example.com' },
+      });
+
+      expect(res.statusCode).toBe(403);
+      expect(res.json().error.code).toBe('FORBIDDEN');
+      expect(_users).toHaveLength(0);
+      expect(_magic).toHaveLength(0);
+      expect(mailer.lastEmail).toBeNull();
+    });
   });
 });
 

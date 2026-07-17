@@ -42,6 +42,7 @@ const TEST_CONFIG: AuthConfig = {
   resendApiKey: null,
   fromEmail: 'Knyhovo <test@example.com>',
   linkBaseUrl: 'https://knyhovo.test',
+  allowedEmails: null,
 };
 
 class FakeMailer implements Mailer {
