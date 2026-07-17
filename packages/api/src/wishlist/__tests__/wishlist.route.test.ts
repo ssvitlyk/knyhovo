@@ -77,6 +77,7 @@ interface BookRow {
   author: string;
   isbn: string | null;
   listings: ListingRow[];
+  genre: { slug: string; name: string } | null;
 }
 
 interface ListingRow {
@@ -146,6 +147,7 @@ function makeFakePrisma(): PrismaClient {
                     author: book.author,
                     isbn: book.isbn,
                     listings: book.listings,
+                    genre: book.genre,
                   }
                 : null,
             };
@@ -260,6 +262,7 @@ beforeEach(() => {
           lastSeenAt: FIXED_DATE,
         },
       ],
+      genre: { slug: 'klasyka', name: 'Класика' },
     },
     {
       id: BOOK_UUID_B,
@@ -267,6 +270,7 @@ beforeEach(() => {
       author: 'Леся Українка',
       isbn: null,
       listings: [],
+      genre: null,
     },
   ];
 
@@ -341,6 +345,7 @@ describe('GET /api/wishlist', () => {
     const body = res.json();
     expect(body.items).toHaveLength(1);
     expect(body.items[0].book.id).toBe(BOOK_UUID_A);
+    expect(body.items[0].book.genre).toEqual({ slug: 'klasyka', name: 'Класика' });
   });
 
   it('returns empty items when wishlist is empty', async () => {

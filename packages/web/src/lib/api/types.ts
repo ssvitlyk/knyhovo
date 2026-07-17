@@ -1,4 +1,4 @@
-import type { ProviderName, Availability } from '@knyhovo/shared';
+import type { ProviderName, Availability, BuyingReason } from '@knyhovo/shared';
 
 /**
  * Frontend mirror of the S8a `GET /api/search` response contract
@@ -128,6 +128,12 @@ export interface WishlistProviderDto {
   readonly lastSeenAt: string;
 }
 
+/** A single genre assigned to a canonical book (`CanonicalBook.genreId → Collection`, one genre, not a list). */
+export interface WishlistGenreDto {
+  readonly slug: string;
+  readonly name: string;
+}
+
 export interface WishlistBookDto {
   readonly id: string;
   readonly title: string;
@@ -139,6 +145,8 @@ export interface WishlistBookDto {
   readonly offersCount: number;
   /** Provider offers sorted ascending by price; OUT_OF_STOCK excluded. */
   readonly providers: readonly WishlistProviderDto[];
+  /** Single assigned genre, or null when unassigned. */
+  readonly genre: WishlistGenreDto | null;
 }
 
 export interface WishlistItemDto {
@@ -150,6 +158,29 @@ export interface WishlistItemDto {
 
 export interface WishlistResponseDto {
   readonly items: readonly WishlistItemDto[];
+}
+
+/**
+ * Frontend mirror of the buying-opportunities contract
+ * (`GET /api/wishlist/buying-opportunities`, wishlist v2.2 «Зараз вигідно
+ * купити»). Not exported from `@knyhovo/shared` (only `BuyingReason` is); the
+ * shape is mirrored here. All money fields are integer kopiyky; `store` is a
+ * provider slug (`ProviderName`), display name resolved by the web layer.
+ * The frontend never re-sorts `items` — order is authoritative from the API.
+ */
+export interface BuyingOpportunityDto {
+  readonly bookId: string;
+  readonly reason: BuyingReason;
+  readonly savingsAmount: number;
+  readonly price: number;
+  readonly prevPrice: number | null;
+  readonly currency: string;
+  readonly store: ProviderName;
+}
+
+export interface BuyingOpportunitiesResponseDto {
+  readonly items: readonly BuyingOpportunityDto[];
+  readonly totalWishlistCount: number;
 }
 
 /**

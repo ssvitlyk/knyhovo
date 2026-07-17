@@ -1,11 +1,11 @@
 import type { ProviderName, Availability } from '@knyhovo/shared';
 import { selectCoverUrl } from '../discovery/cover-selection.js';
 import type { WishlistRow, WishlistListingRow } from './repository.js';
-import type { WishlistProviderDto, WishlistBookDto, WishlistItemDto, WishlistResponseDto, MoneyDto, AlertDto } from './dto.js';
+import type { WishlistProviderDto, WishlistBookDto, WishlistItemDto, WishlistResponseDto, MoneyDto, AlertDto, WishlistGenreDto } from './dto.js';
 import { deriveAlertStatus, ALERT_INTENT_SLUG } from './alert/service.js';
 
 /** Reverse map from the persisted provider enum to its public slug. */
-const PROVIDER_SLUG: Record<WishlistListingRow['provider'], ProviderName> = {
+export const PROVIDER_SLUG: Record<WishlistListingRow['provider'], ProviderName> = {
   YAKABOO: 'yakaboo',
   BOOK_CLUB: 'book-club',
   VIVAT: 'vivat',
@@ -78,6 +78,10 @@ export function toWishlistResponse(rows: WishlistRow[]): WishlistResponseDto {
       })),
     );
 
+    const genre: WishlistGenreDto | null = row.canonicalBook.genre
+      ? { slug: row.canonicalBook.genre.slug, name: row.canonicalBook.genre.name }
+      : null;
+
     const book: WishlistBookDto = {
       id: row.canonicalBook.id,
       title: row.canonicalBook.title,
@@ -87,6 +91,7 @@ export function toWishlistResponse(rows: WishlistRow[]): WishlistResponseDto {
       lowestPrice,
       offersCount,
       providers,
+      genre,
     };
 
     return {

@@ -159,3 +159,26 @@
   .bdm-sticky__store { font-size: var(--fs-xs); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bdm-sticky .kn-btn { flex: none; min-height: 44px; }
 }
+
+/* ---------- Icon button (Remove / AlertBell etc.) ----------
+   Relocated from wishlist.css (wishlist v2.2 CSS port) — these consumers
+   (AlertBell, WishlistToggle) live on Book Details, not the wishlist page. */
+.wl-iconbtn {
+  display: inline-flex; align-items: center; justify-content: center;
+  width: 32px; height: 32px; min-width: 32px;
+  border: 1px solid var(--border); border-radius: var(--radius-sm);
+  background: transparent; color: var(--icon-muted); cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
+}
+.wl-iconbtn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
+.wl-iconbtn:disabled { opacity: 0.45; cursor: not-allowed; }
+.wl-iconbtn svg { width: 16px; height: 16px; }
+
+@media (max-width: 767px) {
+  .wl-iconbtn { width: 44px; height: 44px; min-width: 44px; }
+}
+
+/* ---------- WishlistToggle (book details integration) ---------- */
+/* The .bd-wish row owns the top separator + spacing from the best-price CTA. */
+.wl-toggle { display: flex; flex-direction: column; gap: var(--space-2); }
+.wl-toggle__note { font-size: var(--fs-xs); color: var(--text-muted); }

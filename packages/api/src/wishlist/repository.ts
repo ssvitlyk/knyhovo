@@ -21,12 +21,18 @@ export interface WishlistListingRow {
   readonly coverUrl?: string | null;
 }
 
+export interface WishlistGenreRow {
+  readonly slug: string;
+  readonly name: string;
+}
+
 export interface WishlistCanonicalBookRow {
   readonly id: string;
   readonly title: string;
   readonly author: string;
   readonly isbn: string | null;
   readonly listings: readonly WishlistListingRow[];
+  readonly genre: WishlistGenreRow | null;
 }
 
 export interface WishlistRow {
@@ -67,6 +73,12 @@ export async function findWishlistItemsByUserId(
               url: true,
               lastSeenAt: true,
               coverUrl: true,
+            },
+          },
+          genre: {
+            select: {
+              slug: true,
+              name: true,
             },
           },
         },

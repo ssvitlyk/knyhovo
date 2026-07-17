@@ -230,7 +230,8 @@ Email нормалізується: trim + toLowerCase на межі API.
             "url": "https://book-club.com.ua/...",
             "lastSeenAt": "2026-01-01T00:00:00.000Z"
           }
-        ]
+        ],
+        "genre": { "slug": "klasyka", "name": "Класика" }
       },
       "createdAt": "2026-01-01T00:00:00.000Z"
     }
@@ -238,7 +239,7 @@ Email нормалізується: trim + toLowerCase на межі API.
 }
 ```
 
-OUT_OF_STOCK listings are excluded from `providers`, `lowestPrice`, and `offersCount`. Books remain in the list even when all providers are OUT_OF_STOCK (`providers: [], lowestPrice: null, offersCount: 0`).
+OUT_OF_STOCK listings are excluded from `providers`, `lowestPrice`, and `offersCount`. Books remain in the list even when all providers are OUT_OF_STOCK (`providers: [], lowestPrice: null, offersCount: 0`). `genre` — the book's assigned taxonomic Collection (slug + name); `null` when unassigned.
 
 **Errors:** `AUTH_REQUIRED` 401
 
@@ -290,6 +291,41 @@ OUT_OF_STOCK listings are excluded from `providers`, `lowestPrice`, and `offersC
 **Errors:**
 - `VALIDATION_ERROR` 400 — `bookId` не є валідним UUID
 - `AUTH_REQUIRED` 401 — відсутня або невалідна сесія
+
+---
+
+### `GET /api/wishlist/buying-opportunities`
+
+Оцінити wishlist поточного користувача через buying-reason engine («Зараз вигідно купити») і повернути ЛИШЕ книги, які кваліфікуються, кожна з ОДНІЄЮ причиною.
+
+**Auth:** Required (cookie `kn_session`)
+
+**Response 200:**
+```json
+{
+  "items": [
+    {
+      "bookId": "uuid",
+      "reason": "TARGET_REACHED",
+      "savingsAmount": 2000,
+      "price": 18000,
+      "prevPrice": 20000,
+      "currency": "UAH",
+      "store": "yakaboo"
+    }
+  ],
+  "totalWishlistCount": 5
+}
+```
+
+- `reason` — один із 3 значень (frozen `BuyingReason`, `@knyhovo/shared`), у порядку пріоритету: `TARGET_REACHED` → `LOWEST_90_DAYS` → `PRICE_DROPPED`. Кожен сигнал доводить РЕАЛЬНИЙ історичний рух ціни за власним трекінгом Knyhovo — ніколи store-side «стару ціну» чи заявлений відсоток знижки. Без сигналу — книга просто не потрапляє в `items` (без фолбеку).
+- `price`/`savingsAmount`/`prevPrice` — копійки (як і решта money-полів API). `savingsAmount` завжди `>= 0` (clamp). `prevPrice` — передостання точка повної історії обраного лістингу (`null`, якщо історія коротша за 2 точки); НІКОЛИ store-supplied «was».
+- `store` — слаг провайдера (той самий формат, що `WishlistProviderDto.provider`), з якого взято `price` (найдешевший строго `IN_STOCK` лістинг; OUT_OF_STOCK/UNKNOWN виключені навіть якщо цільова ціна досягнута).
+- `totalWishlistCount` — загальна кількість позицій у wishlist користувача (кваліфіковані + ні), НЕ `items.length`.
+- `items` відсортовані сервером за пріоритетом причини → `savingsAmount` спадно → назва (`localeCompare('uk')`); фронтенд не пересортовує.
+- Порожній wishlist або жодна книга не кваліфікується → `{ "items": [], "totalWishlistCount": N }`, HTTP 200 (N може бути 0).
+
+**Errors:** `AUTH_REQUIRED` 401
 
 ---
 

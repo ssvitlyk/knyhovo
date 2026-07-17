@@ -22,6 +22,15 @@ export interface WishlistItem {
   readonly createdAt: string;
 }
 
+/**
+ * Why a wishlist book qualifies for the «Зараз вигідно купити» section.
+ * Frozen 3-value contract (Buying Reason Engine spec §3): every signal must be
+ * proven by Knyhovo's own price tracking — never a store-side "was" price.
+ * BEST_OFFER/BIG_DISCOUNT/BACK_IN_STOCK/GOOD_DEAL were deliberately removed;
+ * do not reintroduce without an explicit product decision.
+ */
+export type BuyingReason = 'TARGET_REACHED' | 'LOWEST_90_DAYS' | 'PRICE_DROPPED';
+
 /** The persisted status values for an Alert. TRIGGERED and UNAVAILABLE are derived at read time. */
 export type AlertStatus = 'active' | 'paused' | 'triggered' | 'unavailable';
 

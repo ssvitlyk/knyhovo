@@ -22,6 +22,7 @@ import { registerMetricsRoute } from './metrics/route.js';
 import { registerAuthRoute } from './auth/route.js';
 import { registerWishlistRoute } from './wishlist/route.js';
 import { registerWishlistAlertRoute } from './wishlist/alert/route.js';
+import { registerBuyingOpportunitiesRoute } from './wishlist/buying-opportunities/route.js';
 import {
   registerUnsubscribeRoute,
   registerNotificationPreferencesRoute,
@@ -167,6 +168,7 @@ export function buildApp(prisma: PrismaClient, authDeps?: AuthDeps): FastifyInst
     registerAuthRoute(app, authDeps);
     registerWishlistRoute(app, prisma, authDeps);
     registerWishlistAlertRoute(app, prisma, authDeps);
+    registerBuyingOpportunitiesRoute(app, prisma, authDeps);
     registerNotificationPreferencesRoute(app, prisma, authDeps);
     registerProfileRoute(app, prisma, authDeps);
   }

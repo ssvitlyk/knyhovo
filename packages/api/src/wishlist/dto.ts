@@ -36,6 +36,11 @@ export interface WishlistProviderDto {
   readonly lastSeenAt: string;
 }
 
+export interface WishlistGenreDto {
+  readonly slug: string;
+  readonly name: string;
+}
+
 export interface WishlistBookDto {
   readonly id: string;
   readonly title: string;
@@ -49,6 +54,8 @@ export interface WishlistBookDto {
   readonly offersCount: number;
   /** Available provider offers, sorted by ascending price. */
   readonly providers: readonly WishlistProviderDto[];
+  /** The book's assigned genre (single Collection of type TAXONOMIC); null when unassigned. */
+  readonly genre: WishlistGenreDto | null;
 }
 
 export interface WishlistItemDto {
