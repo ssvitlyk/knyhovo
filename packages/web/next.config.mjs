@@ -10,7 +10,15 @@ import { join } from 'node:path';
 
 // Trim + treat an empty string as unset — Vercel can create an env var with an
 // empty value without it being `undefined`, which `??` alone would not catch.
-const API_BASE_URL = process.env.API_BASE_URL?.trim() || 'http://localhost:3000';
+// On Vercel a missing/empty value must fail the build loudly instead of
+// silently rewriting `/api/*` to localhost (which the browser can't reach).
+const rawApiBaseUrl = process.env.API_BASE_URL?.trim();
+
+if (process.env.VERCEL && !rawApiBaseUrl) {
+  throw new Error('API_BASE_URL is required for Vercel builds');
+}
+
+const API_BASE_URL = rawApiBaseUrl || 'http://localhost:3000';
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {

@@ -6,11 +6,17 @@
  * it being `undefined`, and `?? 'default'` does not catch that — an empty
  * string silently produced a relative fetch URL that Node's `fetch` rejects
  * before any network call is made.
+ *
+ * On Vercel a missing/empty value must fail loudly instead of silently
+ * falling back to localhost, which the deployed server can't reach.
  */
 export function apiBaseUrl(): string {
   const raw = process.env.API_BASE_URL;
   const trimmed = raw?.trim();
   if (!trimmed) {
+    if (process.env.VERCEL) {
+      throw new Error('API_BASE_URL is required for Vercel builds');
+    }
     if (raw !== undefined) {
       console.error('[api] API_BASE_URL is set but empty — falling back to http://localhost:3000');
     }
