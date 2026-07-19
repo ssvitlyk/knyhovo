@@ -11,10 +11,14 @@ import { Prisma, ScrapeRunStatus } from '@prisma/client';
 import { createMetrics } from '../pipeline/metrics.js';
 import { mapProviderName } from '../pipeline/persist-listing.js';
 import type { Logger, ScrapeMetrics } from '../pipeline/types.js';
+import {
+  checkpointScrapeRunCounters,
+  summarizeScrapeErrors,
+} from '../refresh/scrape-run.repository.js';
 import { ENRICHMENT_PROVIDERS, type ProviderEnrichmentConfig } from './providers.js';
 
 /**
- * Background enrichment engine (megakniga-resumable-enrichment PRD §4.4, PR1).
+ * Background enrichment engine (megakniga-resumable-enrichment PRD §4.4).
  *
  * Walks already-persisted `provider_listings` in stable-`id` keyset batches,
  * fetches each product page through the shared `enrichProductDetails` pass
@@ -22,13 +26,28 @@ import { ENRICHMENT_PROVIDERS, type ProviderEnrichmentConfig } from './providers
  * and commits every batch in ONE transaction before moving on. A kill at any
  * point loses at most the current batch; everything committed stays.
  *
- * PR1 keeps the keyset cursor in memory only — cross-process resume works
- * through the candidate predicate itself (enriched rows drop out of the
- * queue). The persisted cursor + resume-from-run arrive in PR3.
+ * Since PR3 the keyset cursor is persisted: when a `runId` is supplied, every
+ * batch transaction also checkpoints the run row (cursor + live counters), so
+ * a restarted process resumes exactly where the last committed batch ended
+ * (`startCursor`), never re-fetching what was already walked.
  */
 
 /** Cap on stored error samples — enough for an errorSummary, no memory growth. */
 const ERROR_SAMPLE_CAP = 20;
+
+/** Ceiling for one batch transaction (PRD §4.4) — updates only, HTTP is outside. */
+const BATCH_TX_TIMEOUT_MS = 60_000;
+
+/** Retries for a failed batch transaction before the run gives up (PRD §4.4: retry ×2). */
+const BATCH_TX_RETRIES = 2;
+
+/** Base backoff between batch-transaction retries; attempt N waits base × 2^N. */
+const BATCH_TX_RETRY_DELAY_MS = 1_000;
+
+function sleep(ms: number): Promise<void> {
+  if (ms <= 0) return Promise.resolve();
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 /**
  * Candidate predicate (PRD §4.3): a listing needs enrichment while any
@@ -68,9 +87,10 @@ export async function countEnrichmentCandidates(
   prisma: PrismaClient,
   provider: ProviderName,
   force = false,
+  cursor: string | null = null,
 ): Promise<number> {
   return prisma.providerListing.count({
-    where: buildCandidateWhere(mapProviderName(provider), null, force),
+    where: buildCandidateWhere(mapProviderName(provider), cursor, force),
   });
 }
 
@@ -184,6 +204,20 @@ export interface RunEnrichmentOptions {
   limit?: number;
   /** Walk every listing of the provider, ignoring the missing-field predicate (PRD §4.3). */
   force?: boolean;
+  /**
+   * Resume point (PRD §4.5): the persisted cursor of the previous run —
+   * candidates start strictly after this id. Null/absent = full campaign
+   * from the beginning of the id space.
+   */
+  startCursor?: string | null;
+  /**
+   * scrape_runs row to checkpoint (PRD §4.4): when set, every batch
+   * transaction atomically writes cursor + live counters onto this run, so a
+   * kill between batches can never desynchronize data and checkpoint.
+   */
+  runId?: string;
+  /** Backoff base between batch-transaction retries; tests pass 0. */
+  txRetryDelayMs?: number;
   logger: Logger;
   /** Injectable transport for tests; production defaults to FetchHtmlFetcher + retry. */
   fetcher?: HtmlFetcher;
@@ -192,10 +226,10 @@ export interface RunEnrichmentOptions {
   /** Injectable wiring for tests (fake extractor, zero delays); production resolves from ENRICHMENT_PROVIDERS. */
   config?: ProviderEnrichmentConfig;
   /**
-   * Fires after each batch has COMMITTED (genres:backfill idiom) — the safe
-   * place to persist live progress (PRD §7 PR2: per-batch scrape_runs counter
-   * checkpoint). Errors thrown here are the callback's own problem; keep it
-   * best-effort so a failed progress write never kills the run.
+   * Fires after each batch has COMMITTED (genres:backfill idiom). Since PR3
+   * the scrape_runs checkpoint itself is written INSIDE the batch transaction
+   * (see `runId`), so this is purely observational — the CLI uses it to keep
+   * the last committed progress at hand for a truthful FAILED close.
    */
   onBatch?: (progress: EnrichmentBatchProgress) => void | Promise<void>;
 }
@@ -207,8 +241,12 @@ export interface EnrichmentBatchProgress {
   totalCandidates: number;
   enriched: number;
   failed: number;
-  /** Last processed provider_listings.id — the in-process keyset position. */
-  cursor: string;
+  /**
+   * The persisted checkpoint after this batch — the safe resume point. On a
+   * rate-limited batch it stays at the previous batch's end (null when that
+   * was the campaign start), never past an unfetched row.
+   */
+  cursor: string | null;
   elapsedMs: number;
   /** Linear extrapolation to queue end; null when not computable. */
   etaMs: number | null;
@@ -240,6 +278,13 @@ export interface EnrichmentRunSummary {
   stoppedEarly: 'rate-limited' | 'limit' | null;
   /** First ERROR_SAMPLE_CAP error messages, for the run's errorSummary. */
   errorSamples: string[];
+  /**
+   * The checkpoint to close the run with (PRD §4.2 invariant: cursor NOT NULL
+   * ⇔ there is something left to continue). Null when the candidate queue was
+   * exhausted — the campaign is done; the last processed id when the run
+   * stopped early (--limit / rate limit) — the next run resumes from here.
+   */
+  finalCursor: string | null;
 }
 
 /**
@@ -277,19 +322,51 @@ export function metricsForRunClose(state: EnrichmentCounters | null): ScrapeMetr
 }
 
 /**
- * Terminal status for an enrichment run (PRD §4.2 semantics for
- * DESCRIPTION_ENRICHMENT): SUCCESS = queue exhausted cleanly; FAILED = total
- * failure (errors and not a single listing written); PARTIAL = everything
- * else (some failures, or stopped early by --limit / rate limit).
+ * Terminal status for an enrichment run that RAN TO A STOP (PRD §4.2 status
+ * table for DESCRIPTION_ENRICHMENT): SUCCESS = queue exhausted with no
+ * errors; PARTIAL = stopped early (--limit / rate limit, resumable via
+ * cursor) OR queue exhausted with some failures (cursor NULL — the failed
+ * rows stay candidates for the next campaign). FAILED is never derived here:
+ * it marks a crash (the CLI's catch path) or a stale reap (PR4), not a run
+ * that completed its loop.
  */
 export function deriveEnrichmentStatus(summary: EnrichmentRunSummary): ScrapeRunStatus {
-  if (summary.failed > 0 && summary.enriched === 0) {
-    return ScrapeRunStatus.FAILED;
-  }
   if (summary.failed > 0 || summary.stoppedEarly !== null) {
     return ScrapeRunStatus.PARTIAL;
   }
   return ScrapeRunStatus.SUCCESS;
+}
+
+/** The slice of a scrape_runs row the resume decision needs (PRD §4.5). */
+export interface ResumeCandidateRun {
+  id: string;
+  status: ScrapeRunStatus;
+  cursor: string | null;
+}
+
+/**
+ * Resume decision on CLI start — PRD §4.5 steps 1, 4, 5 (PR3 scope): given
+ * the LATEST enrichment run of the provider, continue from its persisted
+ * cursor when it stopped mid-campaign (PARTIAL/FAILED with cursor set),
+ * otherwise start a fresh campaign from the beginning of the queue.
+ *
+ * A RUNNING row is NOT resumed: without the stale-heartbeat reap and the
+ * exclusive lock (both PR4, §4.5 steps 2–3) we cannot tell a live process
+ * from a kill -9 leftover, so the safe PR3 behavior is a fresh campaign —
+ * idempotent by predicate, just without the cursor shortcut.
+ */
+export function resolveEnrichmentResume(lastRun: ResumeCandidateRun | null): {
+  startCursor: string | null;
+  resumedFromRunId: string | null;
+} {
+  if (
+    lastRun !== null &&
+    lastRun.cursor !== null &&
+    (lastRun.status === ScrapeRunStatus.PARTIAL || lastRun.status === ScrapeRunStatus.FAILED)
+  ) {
+    return { startCursor: lastRun.cursor, resumedFromRunId: lastRun.id };
+  }
+  return { startCursor: null, resumedFromRunId: null };
 }
 
 /** Wrap a fetcher so every request retries transient failures, mirroring the provider's own scrape transport. */
@@ -318,13 +395,24 @@ export async function runEnrichment(opts: RunEnrichmentOptions): Promise<Enrichm
   const fetcher = withRetry(opts.fetcher ?? new FetchHtmlFetcher(), config);
   const delayMs = opts.delayMs ?? config.delayMs;
   const force = opts.force === true;
+  const startCursor = opts.startCursor ?? null;
+  const txRetryDelayMs = opts.txRetryDelayMs ?? BATCH_TX_RETRY_DELAY_MS;
   const startedAtMs = Date.now();
 
-  const totalCandidates = await countEnrichmentCandidates(opts.prisma, opts.provider, force);
+  // On resume the total is the REMAINDER of the campaign (candidates past the
+  // inherited cursor) — that is what this run will actually walk (PRD §4.3:
+  // itemsFound is a progress estimate, not a coverage promise).
+  const totalCandidates = await countEnrichmentCandidates(
+    opts.prisma,
+    opts.provider,
+    force,
+    startCursor,
+  );
   opts.logger.info(
     `enrichment ${opts.provider}: starting — ${totalCandidates} candidates ` +
       `(batchSize=${opts.batchSize}, delayMs=${delayMs}` +
-      `${opts.limit !== undefined ? `, limit=${opts.limit}` : ''}${force ? ', force' : ''})`,
+      `${opts.limit !== undefined ? `, limit=${opts.limit}` : ''}${force ? ', force' : ''}` +
+      `${startCursor !== null ? `, resume from cursor=${startCursor}` : ''})`,
   );
 
   const summary: EnrichmentRunSummary = {
@@ -335,8 +423,10 @@ export async function runEnrichment(opts: RunEnrichmentOptions): Promise<Enrichm
     batches: 0,
     stoppedEarly: null,
     errorSamples: [],
+    finalCursor: startCursor,
   };
-  let cursor: string | null = null;
+  let cursor: string | null = startCursor;
+  let queueExhausted = false;
 
   for (;;) {
     const remaining = opts.limit !== undefined ? opts.limit - summary.processed : undefined;
@@ -352,7 +442,10 @@ export async function runEnrichment(opts: RunEnrichmentOptions): Promise<Enrichm
       take,
       select: CANDIDATE_SELECT,
     });
-    if (rows.length === 0) break;
+    if (rows.length === 0) {
+      queueExhausted = true;
+      break;
+    }
     summary.batches++;
 
     // The HTTP phase happens entirely outside any transaction (PRD §4.4).
@@ -369,29 +462,85 @@ export async function runEnrichment(opts: RunEnrichmentOptions): Promise<Enrichm
       skipListing: () => false,
     });
 
-    const updates: Prisma.PrismaPromise<unknown>[] = [];
+    const patches: Array<{ id: string; data: Prisma.ProviderListingUpdateInput }> = [];
     rows.forEach((row, i) => {
       const patch = buildFillOnlyPatch(row, listings[i]!);
       if (patch !== null) {
-        updates.push(
-          opts.prisma.providerListing.update({ where: { id: row.id }, data: patch }),
-        );
+        patches.push({ id: row.id, data: patch });
       }
     });
-    if (updates.length > 0) {
-      // One transaction per batch: a crash leaves the batch either fully
-      // committed or absent — never torn (PRD §4.4).
-      await opts.prisma.$transaction(updates);
+
+    // Rate-limit stop detection happens BEFORE the commit because it decides
+    // the checkpoint cursor: the shared pass stops silently mid-batch on a
+    // 429/503, leaving the batch tail unfetched. Advancing the cursor past
+    // unfetched rows would make the resumed campaign skip them (breaking the
+    // §4.3 snapshot guarantee), so on a rate-limit stop the cursor stays at
+    // the last SAFE point — the previous batch's end. Everything gathered is
+    // still committed; on resume the enriched rows drop out of the candidate
+    // predicate, so only the genuinely unprocessed remainder is re-walked.
+    const rateLimited = batchErrors.some((message) => isRateLimited(message));
+
+    // Cumulative counters as of THIS batch — computed before the commit so
+    // the in-transaction checkpoint writes the post-batch truth (PRD §4.4).
+    const batchCursor = rateLimited ? cursor : rows[rows.length - 1]!.id;
+    const nextProcessed = summary.processed + rows.length;
+    const nextEnriched = summary.enriched + patches.length;
+    const nextFailed = summary.failed + batchErrors.length;
+    const nextSamples = [...summary.errorSamples];
+    for (const message of batchErrors) {
+      if (nextSamples.length >= ERROR_SAMPLE_CAP) break;
+      nextSamples.push(message);
     }
 
-    summary.processed += rows.length;
-    summary.enriched += updates.length;
-    summary.failed += batchErrors.length;
-    for (const message of batchErrors) {
-      if (summary.errorSamples.length >= ERROR_SAMPLE_CAP) break;
-      summary.errorSamples.push(message);
+    // One transaction per batch: listing updates and the run checkpoint
+    // (cursor + counters) land atomically, so a crash leaves the batch either
+    // fully committed or absent — never torn, and the persisted cursor is
+    // always a safe resume point (PRD §4.4). Transient failures are retried
+    // with backoff; after that the error propagates and the CLI closes the
+    // run as FAILED with the previous checkpoint intact.
+    const commitBatch = (): Promise<void> =>
+      opts.prisma.$transaction(
+        async (tx) => {
+          for (const { id, data } of patches) {
+            await tx.providerListing.update({ where: { id }, data });
+          }
+          if (opts.runId !== undefined) {
+            await checkpointScrapeRunCounters(tx, opts.runId, {
+              itemsFound: totalCandidates,
+              itemsUpdated: nextEnriched,
+              errorsCount: nextFailed,
+              errorSummary: summarizeScrapeErrors(nextSamples),
+              itemsProcessed: nextProcessed,
+              // Null only when the very first batch was rate-limited — the
+              // run row then keeps its start cursor (inherited or none).
+              ...(batchCursor !== null ? { cursor: batchCursor } : {}),
+            });
+          }
+        },
+        { timeout: BATCH_TX_TIMEOUT_MS },
+      );
+    for (let attempt = 0; ; attempt++) {
+      try {
+        await commitBatch();
+        break;
+      } catch (err: unknown) {
+        if (attempt >= BATCH_TX_RETRIES) throw err;
+        const backoffMs = txRetryDelayMs * 2 ** attempt;
+        opts.logger.error(
+          `enrichment ${opts.provider}: batch transaction failed ` +
+            `(attempt ${attempt + 1}/${BATCH_TX_RETRIES + 1}), retrying in ${backoffMs}ms — ` +
+            `${err instanceof Error ? err.message : String(err)}`,
+        );
+        await sleep(backoffMs);
+      }
     }
-    cursor = rows[rows.length - 1]!.id;
+
+    summary.processed = nextProcessed;
+    summary.enriched = nextEnriched;
+    summary.failed = nextFailed;
+    summary.errorSamples = nextSamples;
+    cursor = batchCursor;
+    summary.finalCursor = batchCursor;
 
     const elapsedMs = Date.now() - startedAtMs;
     const remainingCount = Math.max(0, totalCandidates - summary.processed);
@@ -420,18 +569,28 @@ export async function runEnrichment(opts: RunEnrichmentOptions): Promise<Enrichm
       });
     }
 
-    if (batchErrors.some((message) => isRateLimited(message))) {
+    if (rateLimited) {
       // enrichProductDetails already stopped its pass; stop the run too and
-      // keep everything committed. The next invocation picks up the rest.
+      // keep everything committed. The next invocation picks up the rest
+      // (the cursor deliberately did NOT advance past this batch — see the
+      // rate-limit note above the commit).
       summary.stoppedEarly = 'rate-limited';
       break;
     }
   }
 
+  if (queueExhausted) {
+    // "cursor NULL ⇔ done" (PRD §4.2): the campaign covered its snapshot of
+    // the queue — there is nothing to resume, even if some items failed
+    // (failed rows stay candidates for the NEXT campaign by predicate).
+    summary.finalCursor = null;
+  }
+
   opts.logger.info(
     `enrichment ${opts.provider}: done — processed=${summary.processed}/${totalCandidates} ` +
       `enriched=${summary.enriched} failed=${summary.failed} batches=${summary.batches}` +
-      `${summary.stoppedEarly !== null ? ` (stopped early: ${summary.stoppedEarly})` : ''}`,
+      `${summary.stoppedEarly !== null ? ` (stopped early: ${summary.stoppedEarly})` : ''}` +
+      `${summary.finalCursor !== null ? ` cursor=${summary.finalCursor}` : ' cursor=NULL (done)'}`,
   );
   return summary;
 }

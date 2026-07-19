@@ -37,6 +37,8 @@ function fakeRun(overrides: Partial<ScrapeRun> = {}): ScrapeRun {
     triggeredBy: ScrapeRunTrigger.CRON,
     startedAt: RECENT,
     lastHeartbeatAt: RECENT,
+    cursor: null,
+    itemsProcessed: 0,
     finishedAt: new Date(RECENT.getTime() + 60_000),
     durationMs: 60_000,
     itemsFound: 500,

@@ -9,6 +9,7 @@ import {
   deriveEnrichmentStatus,
   formatDuration,
   metricsForRunClose,
+  resolveEnrichmentResume,
   runEnrichment,
   toRawListing,
   type CandidateRow,
@@ -86,12 +87,15 @@ function needsEnrichment(row: CandidateRow): boolean {
 
 function makeFakePrisma(
   rows: CandidateRow[],
-  opts: { failTransaction?: boolean } = {},
+  opts: { failTransactionTimes?: number } = {},
 ): {
   prisma: PrismaClient;
   updateCalls: Array<{ id: string; data: Record<string, unknown> }>;
+  checkpointCalls: Array<{ runId: string; data: Record<string, unknown> }>;
 } {
   const updateCalls: Array<{ id: string; data: Record<string, unknown> }> = [];
+  const checkpointCalls: Array<{ runId: string; data: Record<string, unknown> }> = [];
+  let txFailuresLeft = opts.failTransactionTimes ?? 0;
 
   const select = (where: CandidateWhere): CandidateRow[] =>
     rows
@@ -123,13 +127,32 @@ function makeFakePrisma(
         return Promise.resolve(row);
       },
     },
-    $transaction: (ops: Array<Promise<unknown>>): Promise<unknown[]> =>
-      opts.failTransaction === true
-        ? Promise.reject(new Error('could not serialize access'))
-        : Promise.all(ops),
+    scrapeRun: {
+      // The in-transaction checkpoint (PR3) lands here via the tx client.
+      updateMany: ({
+        where,
+        data,
+      }: {
+        where: { id: string };
+        data: Record<string, unknown>;
+      }): Promise<{ count: number }> => {
+        checkpointCalls.push({ runId: where.id, data });
+        return Promise.resolve({ count: 1 });
+      },
+    },
+    // Interactive-transaction fake: a "serialization failure" rejects before
+    // the callback runs (nothing applied — how a real aborted tx behaves for
+    // an in-memory store); otherwise the callback gets the fake itself as tx.
+    $transaction: (fn: (tx: unknown) => Promise<unknown>): Promise<unknown> => {
+      if (txFailuresLeft > 0) {
+        txFailuresLeft--;
+        return Promise.reject(new Error('could not serialize access'));
+      }
+      return fn(fake);
+    },
   };
 
-  return { prisma: fake as unknown as PrismaClient, updateCalls };
+  return { prisma: fake as unknown as PrismaClient, updateCalls, checkpointCalls };
 }
 
 function makeFetcher(
@@ -254,6 +277,7 @@ describe('deriveEnrichmentStatus', () => {
     batches: 1,
     stoppedEarly: null,
     errorSamples: [],
+    finalCursor: null,
   };
 
   it('SUCCESS when the queue is exhausted cleanly', () => {
@@ -269,8 +293,46 @@ describe('deriveEnrichmentStatus', () => {
     expect(deriveEnrichmentStatus({ ...base, stoppedEarly: 'rate-limited' })).toBe('PARTIAL');
   });
 
-  it('FAILED on total failure (errors, zero writes)', () => {
-    expect(deriveEnrichmentStatus({ ...base, failed: 10, enriched: 0 })).toBe('FAILED');
+  it('PARTIAL (not FAILED) when the queue was exhausted but every item failed — PRD §4.2: FAILED marks a crash/reap, and the failed rows stay candidates for the next campaign', () => {
+    expect(deriveEnrichmentStatus({ ...base, failed: 10, enriched: 0 })).toBe('PARTIAL');
+  });
+});
+
+describe('resolveEnrichmentResume (PRD §4.5 steps 1, 4, 5)', () => {
+  it('resumes from a PARTIAL run with a cursor', () => {
+    expect(
+      resolveEnrichmentResume({ id: 'run-1', status: 'PARTIAL', cursor: 'listing-42' }),
+    ).toEqual({ startCursor: 'listing-42', resumedFromRunId: 'run-1' });
+  });
+
+  it('resumes from a FAILED run with a cursor (crash checkpoint survives)', () => {
+    expect(
+      resolveEnrichmentResume({ id: 'run-2', status: 'FAILED', cursor: 'listing-7' }),
+    ).toEqual({ startCursor: 'listing-7', resumedFromRunId: 'run-2' });
+  });
+
+  it('starts fresh after SUCCESS — cursor NULL ⇔ campaign done', () => {
+    expect(resolveEnrichmentResume({ id: 'run-3', status: 'SUCCESS', cursor: null })).toEqual({
+      startCursor: null,
+      resumedFromRunId: null,
+    });
+  });
+
+  it('starts fresh from a PARTIAL run whose queue was exhausted (cursor cleared)', () => {
+    expect(resolveEnrichmentResume({ id: 'run-4', status: 'PARTIAL', cursor: null })).toEqual({
+      startCursor: null,
+      resumedFromRunId: null,
+    });
+  });
+
+  it('starts fresh when there is no previous run at all', () => {
+    expect(resolveEnrichmentResume(null)).toEqual({ startCursor: null, resumedFromRunId: null });
+  });
+
+  it('does NOT resume a RUNNING row — stale-reap and the lock are PR4', () => {
+    expect(
+      resolveEnrichmentResume({ id: 'run-5', status: 'RUNNING', cursor: 'listing-9' }),
+    ).toEqual({ startCursor: null, resumedFromRunId: null });
   });
 });
 
@@ -558,9 +620,31 @@ describe('runEnrichment', () => {
     });
   });
 
-  it('a failed batch transaction propagates and onBatch is NOT called for that batch', async () => {
+  it('a transient batch-transaction failure is retried with backoff and the batch commits', async () => {
     const rows = ['k1', 'k2'].map((id) => makeRow({ id }));
-    const { prisma } = makeFakePrisma(rows, { failTransaction: true });
+    // Two failures — exactly the retry budget (2 retries after the first try).
+    const { prisma, updateCalls } = makeFakePrisma(rows, { failTransactionTimes: 2 });
+    const { fetcher, fetched } = makeFetcher(() => pageFor(FULL_DETAILS));
+
+    const summary = await runEnrichment({
+      prisma,
+      provider: 'megakniga',
+      batchSize: 50,
+      logger: silentLogger,
+      fetcher,
+      config: TEST_CONFIG,
+      txRetryDelayMs: 0,
+    });
+
+    expect(summary).toMatchObject({ processed: 2, enriched: 2, failed: 0 });
+    // The retry re-runs only the transaction, never the HTTP phase.
+    expect(fetched).toHaveLength(2);
+    expect(updateCalls.map((u) => u.id)).toEqual(['k1', 'k2']);
+  });
+
+  it('a batch transaction failing beyond the retry budget propagates; onBatch never fires', async () => {
+    const rows = ['k1', 'k2'].map((id) => makeRow({ id }));
+    const { prisma } = makeFakePrisma(rows, { failTransactionTimes: 3 });
     const { fetcher } = makeFetcher(() => pageFor(FULL_DETAILS));
     const onBatch = vi.fn();
 
@@ -572,12 +656,175 @@ describe('runEnrichment', () => {
         logger: silentLogger,
         fetcher,
         config: TEST_CONFIG,
+        txRetryDelayMs: 0,
         onBatch,
       }),
     ).rejects.toThrow(/could not serialize access/);
 
     // No commit happened — no progress callback, no checkpoint to mislead.
     expect(onBatch).not.toHaveBeenCalled();
+  });
+
+  it('resumes from startCursor: rows at or before the cursor are never fetched', async () => {
+    const rows = ['m1', 'm2', 'm3', 'm4'].map((id) => makeRow({ id }));
+    const { prisma, updateCalls } = makeFakePrisma(rows);
+    const { fetcher, fetched } = makeFetcher(() => pageFor(FULL_DETAILS));
+
+    const summary = await runEnrichment({
+      prisma,
+      provider: 'megakniga',
+      batchSize: 50,
+      startCursor: 'm2',
+      logger: silentLogger,
+      fetcher,
+      config: TEST_CONFIG,
+    });
+
+    // The remainder of the campaign, not the whole queue.
+    expect(summary).toMatchObject({ totalCandidates: 2, processed: 2, enriched: 2 });
+    expect(fetched).toEqual([rows[2]!.url, rows[3]!.url]);
+    expect(updateCalls.map((u) => u.id)).toEqual(['m3', 'm4']);
+    // Queue exhausted → campaign done.
+    expect(summary.finalCursor).toBeNull();
+  });
+
+  it('finalCursor: NULL on queue exhaustion (even with failures), the last processed id on an early stop', async () => {
+    const exhaustedWithFailures = await (async () => {
+      const rows = ['n1', 'n2'].map((id) => makeRow({ id }));
+      const { prisma } = makeFakePrisma(rows);
+      const { fetcher } = makeFetcher((url) => {
+        if (url.endsWith('/n1')) throw new Error('HTTP 500');
+        return pageFor(FULL_DETAILS);
+      });
+      return runEnrichment({
+        prisma,
+        provider: 'megakniga',
+        batchSize: 50,
+        logger: silentLogger,
+        fetcher,
+        config: TEST_CONFIG,
+      });
+    })();
+    // n1 failed but the queue WAS exhausted: nothing to resume — the failed
+    // row stays a candidate for the next campaign by predicate.
+    expect(exhaustedWithFailures).toMatchObject({ failed: 1, finalCursor: null });
+
+    const stoppedByLimit = await (async () => {
+      const rows = ['p1', 'p2', 'p3'].map((id) => makeRow({ id }));
+      const { prisma } = makeFakePrisma(rows);
+      const { fetcher } = makeFetcher(() => pageFor(FULL_DETAILS));
+      return runEnrichment({
+        prisma,
+        provider: 'megakniga',
+        batchSize: 2,
+        limit: 2,
+        logger: silentLogger,
+        fetcher,
+        config: TEST_CONFIG,
+      });
+    })();
+    expect(stoppedByLimit).toMatchObject({ stoppedEarly: 'limit', finalCursor: 'p2' });
+
+    const stoppedByRateLimit = await (async () => {
+      const rows = ['q1', 'q2', 'q3', 'q4'].map((id) => makeRow({ id }));
+      const { prisma } = makeFakePrisma(rows);
+      const { fetcher } = makeFetcher((url) => {
+        if (url.endsWith('/q3')) throw new Error('HTTP 429 Too Many Requests');
+        return pageFor(FULL_DETAILS);
+      });
+      return runEnrichment({
+        prisma,
+        provider: 'megakniga',
+        batchSize: 2,
+        logger: silentLogger,
+        fetcher,
+        config: TEST_CONFIG,
+      });
+    })();
+    // The 429 hit q3 inside batch 2, so q4 was never fetched by the shared
+    // pass. The cursor must NOT advance past unfetched rows: it stays at the
+    // end of the last fully-walked batch (q2) — the resumed run re-walks
+    // q3/q4 while the already-enriched q1/q2 drop out by predicate.
+    expect(stoppedByRateLimit).toMatchObject({
+      stoppedEarly: 'rate-limited',
+      finalCursor: 'q2',
+    });
+  });
+
+  it('a rate limit in the FIRST batch of a fresh campaign keeps finalCursor NULL — resume = start over, enriched rows drop out by predicate', async () => {
+    const rows = ['t1', 't2', 't3'].map((id) => makeRow({ id }));
+    const { prisma, updateCalls } = makeFakePrisma(rows);
+    const { fetcher } = makeFetcher((url) => {
+      if (url.endsWith('/t2')) throw new Error('HTTP 429 Too Many Requests');
+      return pageFor(FULL_DETAILS);
+    });
+
+    const summary = await runEnrichment({
+      prisma,
+      provider: 'megakniga',
+      batchSize: 50,
+      logger: silentLogger,
+      fetcher,
+      config: TEST_CONFIG,
+    });
+
+    expect(summary).toMatchObject({ stoppedEarly: 'rate-limited', finalCursor: null });
+    // t1's enrichment was still committed before the stop.
+    expect(updateCalls.map((u) => u.id)).toEqual(['t1']);
+  });
+
+  it('with runId, every batch transaction checkpoints cursor + cumulative counters onto the run', async () => {
+    const rows = ['r1', 'r2', 'r3'].map((id) => makeRow({ id }));
+    const { prisma, checkpointCalls } = makeFakePrisma(rows);
+    const { fetcher } = makeFetcher((url) => {
+      if (url.endsWith('/r3')) throw new Error('HTTP 500');
+      return pageFor(FULL_DETAILS);
+    });
+
+    await runEnrichment({
+      prisma,
+      provider: 'megakniga',
+      batchSize: 2,
+      runId: 'run-xyz',
+      logger: silentLogger,
+      fetcher,
+      config: TEST_CONFIG,
+    });
+
+    expect(checkpointCalls).toHaveLength(2);
+    expect(checkpointCalls.every((c) => c.runId === 'run-xyz')).toBe(true);
+    expect(checkpointCalls[0]!.data).toMatchObject({
+      itemsFound: 3,
+      itemsUpdated: 2,
+      itemsProcessed: 2,
+      errorsCount: 0,
+      errorSummary: null,
+      cursor: 'r2',
+    });
+    expect(checkpointCalls[1]!.data).toMatchObject({
+      itemsUpdated: 2,
+      itemsProcessed: 3,
+      errorsCount: 1,
+      cursor: 'r3',
+    });
+    expect(checkpointCalls[1]!.data['errorSummary']).toMatch(/r3.*HTTP 500/);
+  });
+
+  it('without runId no scrapeRun checkpoint is attempted (engine stays run-agnostic)', async () => {
+    const rows = [makeRow({ id: 's1' })];
+    const { prisma, checkpointCalls } = makeFakePrisma(rows);
+    const { fetcher } = makeFetcher(() => pageFor(FULL_DETAILS));
+
+    await runEnrichment({
+      prisma,
+      provider: 'megakniga',
+      batchSize: 50,
+      logger: silentLogger,
+      fetcher,
+      config: TEST_CONFIG,
+    });
+
+    expect(checkpointCalls).toHaveLength(0);
   });
 
   it('a page with no usable data counts as processed but writes nothing', async () => {

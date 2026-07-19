@@ -53,6 +53,8 @@ function makeFakePrisma() {
     triggeredBy: ScrapeRunTrigger.MANUAL,
     startedAt: STARTED_AT,
     lastHeartbeatAt: STARTED_AT,
+    cursor: null,
+    itemsProcessed: 0,
     finishedAt: null,
     durationMs: null,
     itemsFound: 0,

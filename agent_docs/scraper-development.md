@@ -47,12 +47,17 @@ pnpm --filter @knyhovo/api scrape:enrich -- --provider=megakniga --force    # re
 (ігнорує предикат «чого бракує» — корисно після розширення extractor-а; fill-only правила
 все одно не затирають наявні значення); `SCRAPE_ENRICH_DELAY_MS` (default — enrichment-delay
 провайдера, 300ms для megakniga).
-Кожен batch комітиться окремою транзакцією: kill у будь-який момент втрачає ≤1 batch,
-повторний запуск добирає лише ще-не-збагачені рядки (предикат по відсутніх полях).
+Кожен batch комітиться однією транзакцією разом із checkpoint-ом run-рядка (`cursor` +
+лічильники): kill у будь-який момент втрачає ≤1 batch, а наступний запуск **продовжує точно з
+persisted cursor** останнього зупиненого run (PARTIAL/FAILED з `cursor IS NOT NULL`) — без
+re-fetch пройденого, включно з назавжди-незбагачуваними сторінками. Інваріант: `cursor IS NOT
+NULL` ⇔ кампанії є що продовжувати; `cursor NULL` = черга вичерпана (кампанія завершена).
+Скасувати кампанію вручну: `UPDATE scrape_runs SET cursor = NULL WHERE id='<id>'`.
 Прогін фіксується рядком `scrape_runs` з `kind='DESCRIPTION_ENRICHMENT'`; лічильники
-(`items_found`/`items_updated`/`errors_count`) оновлюються **після кожного batch** — SQL нижче
-показує живий прогрес під час run, лог кожного batch містить processed/total, cursor і ETA.
-Повна архітектура (checkpoint/resume, heartbeat, lock, SIGTERM — наступні PR):
+(`items_found`/`items_updated`/`items_processed`/`errors_count`) і `cursor` оновлюються
+**після кожного batch** — SQL нижче показує живий прогрес під час run, лог кожного batch
+містить processed/total, cursor і ETA.
+Повна архітектура (heartbeat/reap/lock — PR4, SIGTERM — PR5):
 `docs/prd/megakniga-resumable-enrichment.md`.
 
 ### Запуск на Railway — тільки Job, НЕ Console
@@ -72,14 +77,19 @@ enrichment 2026-07-19).
 Перевірка статусу:
 ```sql
 -- kind у БД — mapped-значення 'description-enrichment', НЕ 'DESCRIPTION_ENRICHMENT'
-SELECT id, status, items_found, items_updated, errors_count,
-       last_heartbeat_at, started_at, finished_at, error_summary, metadata
+SELECT id, status, items_processed, items_updated, items_found, errors_count,
+       cursor, last_heartbeat_at, started_at, finished_at, error_summary, metadata
 FROM scrape_runs
 WHERE provider = 'megakniga' AND kind = 'description-enrichment'
 ORDER BY started_at DESC LIMIT 5;
 ```
 
-Безпечний перезапуск: просто запустити Job ще раз — уже збагачені рядки не перефетчуються.
+Безпечний перезапуск: просто запустити Job ще раз — CLI сам знайде останній зупинений run і
+продовжить з його cursor (`metadata.resumedFromRunId` показує ланцюжок кампанії); уже збагачені
+рядки в жодному разі не перефетчуються. Обмеження до PR4: рядок, що завис у RUNNING після kill
+-9, не resume-иться автоматично (немає stale-reap) — новий запуск почне свіжу кампанію по
+предикату; за потреби закрий його вручну: `UPDATE scrape_runs SET status='FAILED',
+finished_at=now() WHERE id='<id>'` — тоді його cursor підхопиться.
 
 ## Canonical Matching
 
