@@ -1,5 +1,11 @@
 import { matchOrCreate } from '@knyhovo/scrapers';
-import type { CanonicalBook, ScraperResult, ProviderName } from '@knyhovo/shared';
+import type {
+  CanonicalBook,
+  ScraperResult,
+  ProviderName,
+  ScraperOptions,
+  ScraperProvider,
+} from '@knyhovo/shared';
 import type { CanonicalBookId } from '@knyhovo/shared';
 import { Prisma } from '@prisma/client';
 import type { RunScrapeOptions, PipelineResult, ProviderRunResult, Logger } from './types.js';
@@ -46,6 +52,34 @@ async function loadCanonicalRows(
  */
 const METADATA_ENRICHED_PROVIDERS: ReadonlySet<ProviderName> = new Set(['vivat']);
 
+/**
+ * Resolve the scraper options one provider actually receives, honoring its
+ * `enrichmentMode` capability (megakniga-resumable-enrichment PRD §4.1): for a
+ * 'background' provider the inline `enrichDescriptions` pass is stripped (with
+ * its companion knobs), because its details are filled by the separate
+ * batch-committing `scrape:enrich` job — an in-memory enrichment of a huge
+ * catalog before the first persist loses all work on any interruption.
+ * Providers without the capability (or 'inline') pass through untouched.
+ */
+export function resolveProviderScraperOptions(
+  provider: Pick<ScraperProvider, 'name' | 'enrichmentMode'>,
+  options: ScraperOptions | undefined,
+  logger: Pick<Logger, 'info'>,
+): ScraperOptions | undefined {
+  if (options?.enrichDescriptions !== true || provider.enrichmentMode !== 'background') {
+    return options;
+  }
+  logger.info(
+    `${provider.name}: enrichmentMode=background — inline enrichment skipped; ` +
+      `use 'pnpm --filter @knyhovo/api scrape:enrich -- --provider=${provider.name}'`,
+  );
+  const stripped: ScraperOptions = { ...options };
+  delete stripped.enrichDescriptions;
+  delete stripped.descriptionDelayMs;
+  delete stripped.skipDescriptionUrls;
+  return stripped;
+}
+
 export async function runScrapePipeline(opts: RunScrapeOptions): Promise<PipelineResult> {
   const logger: Logger = opts.logger ?? {
     info: (m: string) => console.log(m),
@@ -59,11 +93,17 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
     scrapeLogger.info(`Scraping ${provider.name}...`);
     const metrics = createMetrics();
 
+    const scraperOptions = resolveProviderScraperOptions(
+      provider,
+      opts.scraperOptions,
+      scrapeLogger,
+    );
+
     // When the enrichment pass is on, tell the scraper which product URLs
     // already have a stored description so it does not re-fetch those pages.
     // An explicit caller-provided skip set still wins.
-    let skipDescriptionUrls = opts.scraperOptions?.skipDescriptionUrls;
-    if (opts.scraperOptions?.enrichDescriptions && skipDescriptionUrls === undefined) {
+    let skipDescriptionUrls = scraperOptions?.skipDescriptionUrls;
+    if (scraperOptions?.enrichDescriptions && skipDescriptionUrls === undefined) {
       const isMetadataProvider = METADATA_ENRICHED_PROVIDERS.has(provider.name);
       const enrichedRows = await opts.prisma.providerListing.findMany({
         where: {
@@ -87,8 +127,8 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
       // Thread the scrape-phase logger into the provider so its progress/metrics
       // surface in production; an explicit scraperOptions.logger still wins.
       scrapeResult = await provider.scrape({
-        ...opts.scraperOptions,
-        logger: opts.scraperOptions?.logger ?? scrapeLogger,
+        ...scraperOptions,
+        logger: scraperOptions?.logger ?? scrapeLogger,
         ...(skipDescriptionUrls !== undefined ? { skipDescriptionUrls } : {}),
       });
     } catch (err) {

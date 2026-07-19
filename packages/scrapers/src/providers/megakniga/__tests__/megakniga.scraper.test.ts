@@ -223,3 +223,10 @@ describe('MegaknigaScraper.scrape — ScraperResult shape', () => {
     expect(result.provider).toBe('megakniga');
   });
 });
+
+describe('MegaknigaScraper — enrichmentMode capability', () => {
+  it("declares 'background' so the pipeline routes enrichment to the scrape:enrich job", () => {
+    const scraper = new MegaknigaScraper(makeFetcher([]));
+    expect(scraper.enrichmentMode).toBe('background');
+  });
+});

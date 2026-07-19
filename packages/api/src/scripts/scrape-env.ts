@@ -97,6 +97,36 @@ export function getLastmodPrecisionMin(env: NodeJS.ProcessEnv): number {
   return DEFAULT_LASTMOD_PRECISION_MIN;
 }
 
+/** Default listings-per-batch for the background enrichment job (megakniga-resumable-enrichment PRD §4.4). */
+const DEFAULT_ENRICH_BATCH_SIZE = 50;
+
+/**
+ * Parse `SCRAPE_ENRICH_BATCH_SIZE` — listings per batch (one transaction per
+ * batch) for the `scrape:enrich` job. Any non-positive-integer value falls
+ * back to the default. Always returns a number. An explicit `--batch-size`
+ * CLI flag takes precedence over this env in the CLI entrypoint.
+ */
+export function getEnrichBatchSize(env: NodeJS.ProcessEnv): number {
+  const raw = env['SCRAPE_ENRICH_BATCH_SIZE'];
+  if (raw !== undefined && /^[1-9]\d*$/.test(raw)) {
+    return Number(raw);
+  }
+  return DEFAULT_ENRICH_BATCH_SIZE;
+}
+
+/**
+ * Parse `SCRAPE_ENRICH_DELAY_MS` — delay between product-page requests during
+ * the `scrape:enrich` job, in ms. Invalid or absent values return `undefined`
+ * (the provider's own enrichment default applies, e.g. 300ms for megakniga).
+ */
+export function getEnrichDelayMs(env: NodeJS.ProcessEnv): number | undefined {
+  const raw = env['SCRAPE_ENRICH_DELAY_MS'];
+  if (raw !== undefined && /^[1-9]\d*$/.test(raw)) {
+    return Number(raw);
+  }
+  return undefined;
+}
+
 /** Default heartbeat interval (seconds) for a running scrape (stale-scrape-recovery PRD §2.2). */
 const DEFAULT_HEARTBEAT_INTERVAL_SECONDS = 60;
 

@@ -26,6 +26,9 @@ export * from './canonical/index.js';
 export { sanitizeDescription, DESCRIPTION_MAX_CHARS } from './lib/sanitize-description.js';
 export { sanitizeMetadataValue, parsePublicationYear, METADATA_MAX_CHARS } from './lib/sanitize-metadata.js';
 export { enrichProductDetails, isRateLimited } from './lib/enrich-product-details.js';
+export { extractMegaknigaProductDetails } from './providers/megakniga/megakniga.parser.js';
+export { fetchWithRetry } from './http/retry.js';
+export type { FetchWithRetryOptions, FetchWithRetryResult } from './http/retry.js';
 export type {
   ExtractedListingMetadata,
   ExtractedProductDetails,

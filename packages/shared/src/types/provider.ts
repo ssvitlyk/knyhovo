@@ -244,12 +244,30 @@ export interface ProviderListing {
 }
 
 /**
+ * How a provider's product-page details (ISBN/description/publisher/format/
+ * rawCategories) are collected (megakniga-resumable-enrichment PRD §4.1):
+ *
+ * - 'inline' — the opt-in `enrichDescriptions` pass runs inside `scrape()`,
+ *   before any persistence (the original W9a F2 behavior).
+ * - 'background' — `scrape()` is catalog-only; the pipeline strips
+ *   `enrichDescriptions` and details are filled by the API's separate
+ *   batch-committing enrichment job over already-persisted listings.
+ *   For catalogs too large to enrich in memory (e.g. Megakniga's ~27k).
+ */
+export type EnrichmentMode = 'inline' | 'background';
+
+/**
  * Contract that every scraper provider must implement.
  * Adding a new provider means creating a new module that satisfies this interface —
  * no changes to the core pipeline are required.
  */
 export interface ScraperProvider {
   readonly name: ProviderName;
+  /**
+   * Capability declaring where product-page enrichment runs for this provider.
+   * Omitted means 'inline' — the pipeline treats absence as the default.
+   */
+  readonly enrichmentMode?: EnrichmentMode;
   /** Fetch and parse current listings from the provider. Must not throw — collect errors into ScraperResult.errors instead. */
   scrape(options?: ScraperOptions): Promise<ScraperResult>;
 }
