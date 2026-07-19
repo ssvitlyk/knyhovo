@@ -50,6 +50,15 @@ export interface RunCounts {
 }
 
 /**
+ * Compress an error list into the `error_summary` column format: first 5
+ * messages joined, truncated to 1000 chars; null when there are none.
+ */
+export function summarizeScrapeErrors(errors: readonly string[]): string | null {
+  if (errors.length === 0) return null;
+  return errors.slice(0, 5).join('; ').slice(0, 1000);
+}
+
+/**
  * Map a ScrapeMetrics object and its error list to the flat count columns
  * that live on the `scrape_runs` row.
  */
@@ -58,13 +67,7 @@ export function mapMetricsToRunCounts(
   scrapeErrors: string[],
 ): RunCounts {
   const errorsCount = metrics.errors + scrapeErrors.length;
-  const errorSummary =
-    scrapeErrors.length === 0
-      ? null
-      : scrapeErrors
-          .slice(0, 5)
-          .join('; ')
-          .slice(0, 1000);
+  const errorSummary = summarizeScrapeErrors(scrapeErrors);
 
   return {
     itemsFound: metrics.scraped,
@@ -167,6 +170,36 @@ export function startHeartbeat(
     stopped = true;
     clearInterval(timer);
   };
+}
+
+/**
+ * Live-progress checkpoint for a RUNNING scrape run (megakniga-resumable-
+ * enrichment PRD §7 PR2): writes the cumulative counters after each committed
+ * enrichment batch so `scrape_runs` shows real progress during the run, not 0
+ * until the very end. Same contract as `heartbeatScrapeRun`: gated on
+ * `status: RUNNING` (a closed or reaped run is never modified by a late
+ * checkpoint) and MUST NOT throw — a failed progress write is reported as
+ * `false`, never allowed to kill the run it is reporting on.
+ */
+export async function checkpointScrapeRunCounters(
+  prisma: PrismaClient,
+  runId: string,
+  counters: {
+    itemsFound: number;
+    itemsUpdated: number;
+    errorsCount: number;
+    errorSummary: string | null;
+  },
+): Promise<boolean> {
+  try {
+    const result = await prisma.scrapeRun.updateMany({
+      where: { id: runId, status: ScrapeRunStatusEnum.RUNNING },
+      data: counters,
+    });
+    return result.count > 0;
+  } catch {
+    return false;
+  }
 }
 
 /**

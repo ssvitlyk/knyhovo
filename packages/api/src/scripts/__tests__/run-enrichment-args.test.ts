@@ -7,6 +7,8 @@ describe('parseEnrichmentArgs', () => {
       provider: 'megakniga',
       batchSize: null,
       limit: null,
+      force: false,
+      dryRun: false,
     });
   });
 
@@ -15,19 +17,21 @@ describe('parseEnrichmentArgs', () => {
       provider: 'megakniga',
       batchSize: null,
       limit: null,
+      force: false,
+      dryRun: false,
     });
   });
 
   it('parses --batch-size and --limit as positive integers', () => {
     expect(
       parseEnrichmentArgs(['--provider=megakniga', '--batch-size=25', '--limit=100']),
-    ).toEqual({ provider: 'megakniga', batchSize: 25, limit: 100 });
+    ).toEqual({ provider: 'megakniga', batchSize: 25, limit: 100, force: false, dryRun: false });
   });
 
   it('last-one-wins for repeated value flags', () => {
     expect(
       parseEnrichmentArgs(['--provider=vivat', '--provider=megakniga', '--limit=5', '--limit=9']),
-    ).toEqual({ provider: 'megakniga', batchSize: null, limit: 9 });
+    ).toEqual({ provider: 'megakniga', batchSize: null, limit: 9, force: false, dryRun: false });
   });
 
   it('throws when --provider is missing', () => {
@@ -60,9 +64,23 @@ describe('parseEnrichmentArgs', () => {
     },
   );
 
+  it('parses --force and --dry-run boolean flags', () => {
+    expect(parseEnrichmentArgs(['--provider=megakniga', '--force'])).toMatchObject({
+      force: true,
+      dryRun: false,
+    });
+    expect(parseEnrichmentArgs(['--provider=megakniga', '--dry-run'])).toMatchObject({
+      force: false,
+      dryRun: true,
+    });
+    expect(
+      parseEnrichmentArgs(['--provider=megakniga', '--dry-run', '--force']),
+    ).toMatchObject({ force: true, dryRun: true });
+  });
+
   it('fails loudly on an unknown flag instead of ignoring it', () => {
-    expect(() => parseEnrichmentArgs(['--provider=megakniga', '--dry-run'])).toThrow(
-      /unknown argument "--dry-run"/,
+    expect(() => parseEnrichmentArgs(['--provider=megakniga', '--resume'])).toThrow(
+      /unknown argument "--resume"/,
     );
     expect(() => parseEnrichmentArgs(['--provider=megakniga', 'megakniga'])).toThrow(
       /unknown argument "megakniga"/,

@@ -8,8 +8,9 @@ import type { HtmlFetcher } from '@knyhovo/scrapers';
 import type { Availability, ProviderName, RawProviderListing } from '@knyhovo/shared';
 import type { PrismaClient } from '@prisma/client';
 import { Prisma, ScrapeRunStatus } from '@prisma/client';
+import { createMetrics } from '../pipeline/metrics.js';
 import { mapProviderName } from '../pipeline/persist-listing.js';
-import type { Logger } from '../pipeline/types.js';
+import type { Logger, ScrapeMetrics } from '../pipeline/types.js';
 import { ENRICHMENT_PROVIDERS, type ProviderEnrichmentConfig } from './providers.js';
 
 /**
@@ -33,22 +34,44 @@ const ERROR_SAMPLE_CAP = 20;
  * Candidate predicate (PRD §4.3): a listing needs enrichment while any
  * enrichment-sourced field is still empty. Keyset (`id > cursor`, `ORDER BY
  * id`) instead of OFFSET so batch updates can never skip or duplicate rows.
+ * `force` drops the missing-field predicate and walks every listing of the
+ * provider (re-enrichment after an extractor gained new fields) — the
+ * fill-only write rules still protect existing values.
  */
 export function buildCandidateWhere(
   provider: ReturnType<typeof mapProviderName>,
   cursor: string | null,
+  force = false,
 ): Prisma.ProviderListingWhereInput {
   return {
     provider,
     ...(cursor !== null ? { id: { gt: cursor } } : {}),
-    OR: [
-      { isbn: null },
-      { description: null },
-      { publisher: null },
-      { format: null },
-      { rawCategories: { isEmpty: true } },
-    ],
+    ...(force
+      ? {}
+      : {
+          OR: [
+            { isbn: null },
+            { description: null },
+            { publisher: null },
+            { format: null },
+            { rawCategories: { isEmpty: true } },
+          ],
+        }),
   };
+}
+
+/**
+ * Count the current enrichment queue for a provider — what a run would
+ * process. Also serves the CLI's `--dry-run` report.
+ */
+export async function countEnrichmentCandidates(
+  prisma: PrismaClient,
+  provider: ProviderName,
+  force = false,
+): Promise<number> {
+  return prisma.providerListing.count({
+    where: buildCandidateWhere(mapProviderName(provider), null, force),
+  });
 }
 
 const CANDIDATE_SELECT = {
@@ -159,6 +182,8 @@ export interface RunEnrichmentOptions {
   batchSize: number;
   /** Stop after processing this many listings (smoke/canary runs). */
   limit?: number;
+  /** Walk every listing of the provider, ignoring the missing-field predicate (PRD §4.3). */
+  force?: boolean;
   logger: Logger;
   /** Injectable transport for tests; production defaults to FetchHtmlFetcher + retry. */
   fetcher?: HtmlFetcher;
@@ -166,6 +191,40 @@ export interface RunEnrichmentOptions {
   delayMs?: number;
   /** Injectable wiring for tests (fake extractor, zero delays); production resolves from ENRICHMENT_PROVIDERS. */
   config?: ProviderEnrichmentConfig;
+  /**
+   * Fires after each batch has COMMITTED (genres:backfill idiom) — the safe
+   * place to persist live progress (PRD §7 PR2: per-batch scrape_runs counter
+   * checkpoint). Errors thrown here are the callback's own problem; keep it
+   * best-effort so a failed progress write never kills the run.
+   */
+  onBatch?: (progress: EnrichmentBatchProgress) => void | Promise<void>;
+}
+
+/** Snapshot handed to `onBatch` after every committed batch. Counters are cumulative. */
+export interface EnrichmentBatchProgress {
+  batch: number;
+  processed: number;
+  totalCandidates: number;
+  enriched: number;
+  failed: number;
+  /** Last processed provider_listings.id — the in-process keyset position. */
+  cursor: string;
+  elapsedMs: number;
+  /** Linear extrapolation to queue end; null when not computable. */
+  etaMs: number | null;
+  /** Cumulative capped error samples (see ERROR_SAMPLE_CAP). */
+  errorSamples: readonly string[];
+}
+
+/** `2h05m` / `4m12s` / `38s` — compact duration for progress log lines. */
+export function formatDuration(ms: number): string {
+  const totalSec = Math.max(0, Math.round(ms / 1000));
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}h${String(m).padStart(2, '0')}m`;
+  if (m > 0) return `${m}m${String(s).padStart(2, '0')}s`;
+  return `${s}s`;
 }
 
 export interface EnrichmentRunSummary {
@@ -181,6 +240,40 @@ export interface EnrichmentRunSummary {
   stoppedEarly: 'rate-limited' | 'limit' | null;
   /** First ERROR_SAMPLE_CAP error messages, for the run's errorSummary. */
   errorSamples: string[];
+}
+
+/**
+ * The counter fields shared by {@link EnrichmentRunSummary} (a finished run)
+ * and {@link EnrichmentBatchProgress} (the last committed batch) — everything
+ * needed to close a scrape_runs row truthfully.
+ */
+export interface EnrichmentCounters {
+  readonly totalCandidates: number;
+  readonly enriched: number;
+  readonly failed: number;
+  readonly errorSamples: readonly string[];
+}
+
+/**
+ * Map enrichment counters onto the ScrapeMetrics shape `finishScrapeRun`
+ * persists (PRD §4.2 mapping for DESCRIPTION_ENRICHMENT): itemsFound =
+ * candidate total, itemsUpdated = listings written. `metrics.errors` carries
+ * only the failures beyond the stored samples, so mapMetricsToRunCounts
+ * (errors + scrapeErrors.length) lands on exactly `failed` when the samples
+ * are passed as scrapeErrors.
+ *
+ * Accepts null for a run that crashed before its first committed batch —
+ * zeros are then the truth, not a reset. On a mid-run crash the CLI passes
+ * the last onBatch progress here, so closing as FAILED PRESERVES the
+ * checkpointed counters instead of wiping them back to zero.
+ */
+export function metricsForRunClose(state: EnrichmentCounters | null): ScrapeMetrics {
+  const metrics = createMetrics();
+  if (state === null) return metrics;
+  metrics.scraped = state.totalCandidates;
+  metrics.providerListingsUpdated = state.enriched;
+  metrics.errors = state.failed - state.errorSamples.length;
+  return metrics;
 }
 
 /**
@@ -224,15 +317,14 @@ export async function runEnrichment(opts: RunEnrichmentOptions): Promise<Enrichm
   const providerEnum = mapProviderName(opts.provider);
   const fetcher = withRetry(opts.fetcher ?? new FetchHtmlFetcher(), config);
   const delayMs = opts.delayMs ?? config.delayMs;
+  const force = opts.force === true;
   const startedAtMs = Date.now();
 
-  const totalCandidates = await opts.prisma.providerListing.count({
-    where: buildCandidateWhere(providerEnum, null),
-  });
+  const totalCandidates = await countEnrichmentCandidates(opts.prisma, opts.provider, force);
   opts.logger.info(
     `enrichment ${opts.provider}: starting — ${totalCandidates} candidates ` +
       `(batchSize=${opts.batchSize}, delayMs=${delayMs}` +
-      `${opts.limit !== undefined ? `, limit=${opts.limit}` : ''})`,
+      `${opts.limit !== undefined ? `, limit=${opts.limit}` : ''}${force ? ', force' : ''})`,
   );
 
   const summary: EnrichmentRunSummary = {
@@ -255,7 +347,7 @@ export async function runEnrichment(opts: RunEnrichmentOptions): Promise<Enrichm
     const take = remaining !== undefined ? Math.min(opts.batchSize, remaining) : opts.batchSize;
 
     const rows: CandidateRow[] = await opts.prisma.providerListing.findMany({
-      where: buildCandidateWhere(providerEnum, cursor),
+      where: buildCandidateWhere(providerEnum, cursor, force),
       orderBy: { id: 'asc' },
       take,
       select: CANDIDATE_SELECT,
@@ -301,12 +393,32 @@ export async function runEnrichment(opts: RunEnrichmentOptions): Promise<Enrichm
     }
     cursor = rows[rows.length - 1]!.id;
 
-    const elapsedSec = Math.round((Date.now() - startedAtMs) / 1000);
+    const elapsedMs = Date.now() - startedAtMs;
+    const remainingCount = Math.max(0, totalCandidates - summary.processed);
+    const etaMs =
+      summary.processed > 0 && remainingCount > 0
+        ? Math.round((elapsedMs / summary.processed) * remainingCount)
+        : null;
     opts.logger.info(
       `enrichment ${opts.provider}: batch=${summary.batches} ` +
         `processed=${summary.processed}/${totalCandidates} ok=${summary.enriched} ` +
-        `failed=${summary.failed} cursor=${cursor} elapsed=${elapsedSec}s`,
+        `failed=${summary.failed} cursor=${cursor} elapsed=${formatDuration(elapsedMs)} ` +
+        `eta=${etaMs === null ? '—' : `~${formatDuration(etaMs)}`}`,
     );
+
+    if (opts.onBatch !== undefined) {
+      await opts.onBatch({
+        batch: summary.batches,
+        processed: summary.processed,
+        totalCandidates,
+        enriched: summary.enriched,
+        failed: summary.failed,
+        cursor,
+        elapsedMs,
+        etaMs,
+        errorSamples: summary.errorSamples,
+      });
+    }
 
     if (batchErrors.some((message) => isRateLimited(message))) {
       // enrichProductDetails already stopped its pass; stop the run too and

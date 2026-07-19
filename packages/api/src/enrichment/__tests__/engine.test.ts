@@ -1,16 +1,21 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import type { PrismaClient } from '@prisma/client';
 import type { HtmlFetcher } from '@knyhovo/scrapers';
 import type { ExtractedProductDetails } from '@knyhovo/scrapers';
 import {
   buildCandidateWhere,
   buildFillOnlyPatch,
+  countEnrichmentCandidates,
   deriveEnrichmentStatus,
+  formatDuration,
+  metricsForRunClose,
   runEnrichment,
   toRawListing,
   type CandidateRow,
+  type EnrichmentBatchProgress,
   type EnrichmentRunSummary,
 } from '../engine.js';
+import { mapMetricsToRunCounts } from '../../refresh/scrape-run.repository.js';
 import type { ProviderEnrichmentConfig } from '../providers.js';
 
 // ── Fixtures ──────────────────────────────────────────────────────────────────
@@ -66,7 +71,7 @@ const FULL_DETAILS: ExtractedProductDetails = {
 
 // ── In-memory fake Prisma ─────────────────────────────────────────────────────
 
-type CandidateWhere = { provider: string; id?: { gt: string } };
+type CandidateWhere = { provider: string; id?: { gt: string }; OR?: unknown };
 
 /** Mirrors buildCandidateWhere's OR predicate for the fake DB. */
 function needsEnrichment(row: CandidateRow): boolean {
@@ -79,7 +84,10 @@ function needsEnrichment(row: CandidateRow): boolean {
   );
 }
 
-function makeFakePrisma(rows: CandidateRow[]): {
+function makeFakePrisma(
+  rows: CandidateRow[],
+  opts: { failTransaction?: boolean } = {},
+): {
   prisma: PrismaClient;
   updateCalls: Array<{ id: string; data: Record<string, unknown> }>;
 } {
@@ -89,7 +97,9 @@ function makeFakePrisma(rows: CandidateRow[]): {
     rows
       .filter(
         (row) =>
-          needsEnrichment(row) && (where.id === undefined || row.id > where.id.gt),
+          // No OR clause means a --force query: every provider row matches.
+          (where.OR === undefined || needsEnrichment(row)) &&
+          (where.id === undefined || row.id > where.id.gt),
       )
       .sort((a, b) => (a.id < b.id ? -1 : 1));
 
@@ -113,7 +123,10 @@ function makeFakePrisma(rows: CandidateRow[]): {
         return Promise.resolve(row);
       },
     },
-    $transaction: (ops: Array<Promise<unknown>>): Promise<unknown[]> => Promise.all(ops),
+    $transaction: (ops: Array<Promise<unknown>>): Promise<unknown[]> =>
+      opts.failTransaction === true
+        ? Promise.reject(new Error('could not serialize access'))
+        : Promise.all(ops),
   };
 
   return { prisma: fake as unknown as PrismaClient, updateCalls };
@@ -154,6 +167,23 @@ describe('buildCandidateWhere', () => {
 
   it('adds exclusive keyset pagination when a cursor is set', () => {
     expect(buildCandidateWhere('MEGAKNIGA', 'abc').id).toEqual({ gt: 'abc' });
+  });
+
+  it('drops the missing-field predicate under force, keeping provider + keyset', () => {
+    const where = buildCandidateWhere('MEGAKNIGA', 'abc', true);
+    expect(where.OR).toBeUndefined();
+    expect(where.provider).toBe('MEGAKNIGA');
+    expect(where.id).toEqual({ gt: 'abc' });
+  });
+});
+
+describe('formatDuration', () => {
+  it('formats seconds, minutes and hours compactly', () => {
+    expect(formatDuration(0)).toBe('0s');
+    expect(formatDuration(38_000)).toBe('38s');
+    expect(formatDuration(4 * 60_000 + 12_000)).toBe('4m12s');
+    expect(formatDuration(2 * 3_600_000 + 5 * 60_000)).toBe('2h05m');
+    expect(formatDuration(-500)).toBe('0s');
   });
 });
 
@@ -241,6 +271,39 @@ describe('deriveEnrichmentStatus', () => {
 
   it('FAILED on total failure (errors, zero writes)', () => {
     expect(deriveEnrichmentStatus({ ...base, failed: 10, enriched: 0 })).toBe('FAILED');
+  });
+});
+
+describe('metricsForRunClose', () => {
+  it('null (crash before the first committed batch) yields honest zeros', () => {
+    const metrics = metricsForRunClose(null);
+    expect(metrics.scraped).toBe(0);
+    expect(metrics.providerListingsUpdated).toBe(0);
+    expect(metrics.errors).toBe(0);
+  });
+
+  it('a FAILED close after a mid-run crash preserves the checkpointed counters', () => {
+    // The last committed batch reported: 250 candidates, 240 written,
+    // 10 item failures of which 3 messages were sampled.
+    const lastProgress = {
+      totalCandidates: 250,
+      enriched: 240,
+      failed: 10,
+      errorSamples: ['Product a: HTTP 500', 'Product b: HTTP 500', 'Product c: timeout'],
+    };
+    const crash = 'could not serialize access';
+
+    const counts = mapMetricsToRunCounts(metricsForRunClose(lastProgress), [
+      crash,
+      ...lastProgress.errorSamples,
+    ]);
+
+    // items_updated=0 after 240 committed writes is exactly the bug this guards against.
+    expect(counts.itemsFound).toBe(250);
+    expect(counts.itemsUpdated).toBe(240);
+    // 10 per-item failures + the crash itself.
+    expect(counts.errorsCount).toBe(11);
+    expect(counts.errorSummary).toMatch(/^could not serialize access; Product a/);
   });
 });
 
@@ -404,6 +467,117 @@ describe('runEnrichment', () => {
     expect(summary).toMatchObject({ totalCandidates: 0, processed: 0, enriched: 0 });
     expect(second.fetched).toHaveLength(0);
     expect(deriveEnrichmentStatus(summary)).toBe('SUCCESS');
+  });
+
+  it('force re-walks fully-enriched rows, but fill-only still protects their values', async () => {
+    const enrichedRow = makeRow({
+      id: 'h1',
+      isbn: '9789660000000',
+      description: 'опис',
+      publisher: 'КСД',
+      format: 'Тверда',
+      rawCategories: ['Книги'],
+    });
+    const rows = [enrichedRow, makeRow({ id: 'h2' })];
+    const { prisma, updateCalls } = makeFakePrisma(rows);
+    const { fetcher, fetched } = makeFetcher(() => pageFor(FULL_DETAILS));
+
+    const summary = await runEnrichment({
+      prisma,
+      provider: 'megakniga',
+      batchSize: 50,
+      force: true,
+      logger: silentLogger,
+      fetcher,
+      config: TEST_CONFIG,
+    });
+
+    // Both rows fetched under force (without it, h1 would not even be a candidate)…
+    expect(summary).toMatchObject({ totalCandidates: 2, processed: 2 });
+    expect(fetched).toHaveLength(2);
+    // …but only the incomplete row gains data; h1 keeps every existing value.
+    expect(updateCalls.map((u) => u.id)).toEqual(['h2']);
+    expect(rows[0]).toMatchObject({ isbn: '9789660000000', publisher: 'КСД' });
+  });
+
+  it('countEnrichmentCandidates matches the run predicate, with and without force', async () => {
+    const rows = [
+      makeRow({
+        id: 'i1',
+        isbn: '9789660000000',
+        description: 'опис',
+        publisher: 'КСД',
+        format: 'Тверда',
+        rawCategories: ['Книги'],
+      }),
+      makeRow({ id: 'i2' }),
+    ];
+    const { prisma } = makeFakePrisma(rows);
+    expect(await countEnrichmentCandidates(prisma, 'megakniga')).toBe(1);
+    expect(await countEnrichmentCandidates(prisma, 'megakniga', true)).toBe(2);
+  });
+
+  it('fires onBatch after each committed batch with cumulative progress and an ETA', async () => {
+    const rows = ['j1', 'j2', 'j3'].map((id) => makeRow({ id }));
+    const { prisma, updateCalls } = makeFakePrisma(rows);
+    const { fetcher } = makeFetcher(() => pageFor(FULL_DETAILS));
+    const snapshots: Array<EnrichmentBatchProgress & { committedAtCallback: number }> = [];
+
+    await runEnrichment({
+      prisma,
+      provider: 'megakniga',
+      batchSize: 2,
+      logger: silentLogger,
+      fetcher,
+      config: TEST_CONFIG,
+      onBatch: (progress) => {
+        snapshots.push({ ...progress, committedAtCallback: updateCalls.length });
+      },
+    });
+
+    expect(snapshots).toHaveLength(2);
+    expect(snapshots[0]).toMatchObject({
+      batch: 1,
+      processed: 2,
+      totalCandidates: 3,
+      enriched: 2,
+      failed: 0,
+      cursor: 'j2',
+      // The batch was already committed when the callback fired.
+      committedAtCallback: 2,
+    });
+    expect(snapshots[0]!.etaMs).not.toBeNull();
+    expect(snapshots[0]!.etaMs).toBeGreaterThanOrEqual(0);
+    expect(snapshots[1]).toMatchObject({
+      batch: 2,
+      processed: 3,
+      cursor: 'j3',
+      committedAtCallback: 3,
+      // Queue exhausted — nothing left to extrapolate.
+      etaMs: null,
+    });
+  });
+
+  it('a failed batch transaction propagates and onBatch is NOT called for that batch', async () => {
+    const rows = ['k1', 'k2'].map((id) => makeRow({ id }));
+    const { prisma } = makeFakePrisma(rows, { failTransaction: true });
+    const { fetcher } = makeFetcher(() => pageFor(FULL_DETAILS));
+    const onBatch = vi.fn();
+
+    await expect(
+      runEnrichment({
+        prisma,
+        provider: 'megakniga',
+        batchSize: 50,
+        logger: silentLogger,
+        fetcher,
+        config: TEST_CONFIG,
+        onBatch,
+      }),
+    ).rejects.toThrow(/could not serialize access/);
+
+    // No commit happened — no progress callback, no checkpoint to mislead.
+    expect(onBatch).not.toHaveBeenCalled();
   });
 
   it('a page with no usable data counts as processed but writes nothing', async () => {

@@ -20,13 +20,19 @@ export interface EnrichmentArgs {
   readonly batchSize: number | null;
   /** Stop after processing this many listings (smoke/canary); null = no limit. */
   readonly limit: number | null;
+  /** Ignore the missing-field predicate — walk every listing (fill-only writes still apply). */
+  readonly force: boolean;
+  /** Report the queue size + last run state; no fetches, no writes, no run row. */
+  readonly dryRun: boolean;
 }
 
 export const ENRICHMENT_USAGE = `usage: pnpm --filter @knyhovo/api scrape:enrich -- --provider=<name> [flags]
 
   --provider=<name>     required; a provider with background enrichment wiring (v1: megakniga)
   --batch-size=<n>      listings per batch (default: SCRAPE_ENRICH_BATCH_SIZE or 50)
-  --limit=<n>           process at most N listings, then stop (smoke/canary runs)`;
+  --limit=<n>           process at most N listings, then stop (smoke/canary runs)
+  --force               ignore the missing-field predicate, re-walk every listing
+  --dry-run             report queue size + last run state; no fetches, no writes`;
 
 function parsePositiveInt(flag: string, raw: string): number {
   if (!/^[1-9]\d*$/.test(raw)) {
@@ -45,6 +51,8 @@ export function parseEnrichmentArgs(argv: readonly string[]): EnrichmentArgs {
   let provider: string | null = null;
   let batchSize: number | null = null;
   let limit: number | null = null;
+  let force = false;
+  let dryRun = false;
 
   for (const token of argv) {
     // pnpm forwards a literal `--` separator into argv depending on the
@@ -69,6 +77,14 @@ export function parseEnrichmentArgs(argv: readonly string[]): EnrichmentArgs {
       limit = parsePositiveInt('--limit', token.slice('--limit='.length));
       continue;
     }
+    if (token === '--force') {
+      force = true;
+      continue;
+    }
+    if (token === '--dry-run') {
+      dryRun = true;
+      continue;
+    }
     throw new Error(`scrape:enrich: unknown argument "${token}"\n${ENRICHMENT_USAGE}`);
   }
 
@@ -76,5 +92,5 @@ export function parseEnrichmentArgs(argv: readonly string[]): EnrichmentArgs {
     throw new Error(`scrape:enrich: --provider is required\n${ENRICHMENT_USAGE}`);
   }
 
-  return { provider, batchSize, limit };
+  return { provider, batchSize, limit, force, dryRun };
 }
