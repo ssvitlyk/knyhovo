@@ -20,7 +20,7 @@ export interface BuyingOpportunityPointRow {
 
 export interface BuyingOpportunityListingRow {
   readonly id: string;
-  readonly provider: 'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY' | 'KNIGOLAND';
+  readonly provider: 'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY' | 'KNIGOLAND' | 'MEGAKNIGA';
   readonly priceAmount: number;
   readonly priceCurrency: 'UAH';
   readonly availability: 'IN_STOCK' | 'OUT_OF_STOCK' | 'UNKNOWN';

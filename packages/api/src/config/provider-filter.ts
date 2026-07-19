@@ -9,6 +9,7 @@ const VALID_PROVIDER_NAMES: readonly ProviderName[] = [
   'bookchef',
   'laboratory',
   'knigoland',
+  'megakniga',
 ];
 
 /**

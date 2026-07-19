@@ -5,3 +5,4 @@ export { BookChefScraper } from './bookchef/index.js';
 export { LaboratoryScraper } from './laboratory/index.js';
 export { KnigolandScraper } from './knigoland/index.js';
 export { BookClubScraper } from './book-club/index.js';
+export { MegaknigaScraper } from './megakniga/index.js';

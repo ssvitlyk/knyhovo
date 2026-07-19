@@ -32,6 +32,9 @@ export const GENRE_PROVIDER_PRIORITY: readonly ProviderName[] = [
   'vivat',
   'yakaboo',
   'book-ye',
+  // megakniga: rawCategories only available via opt-in enrichment (breadcrumb),
+  // newest/least-verified signal source — lowest priority.
+  'megakniga',
 ];
 
 /** Confidence assigned to a provider-agnostic taxonomy-alias hit (PRD §4.3 step 1). */
@@ -52,6 +55,7 @@ const PROVIDER_DISPLAY: Record<ProviderName, string> = {
   vivat: 'Vivat',
   yakaboo: 'Yakaboo',
   'book-ye': 'Book-Ye',
+  megakniga: 'Megakniga',
 };
 
 /**

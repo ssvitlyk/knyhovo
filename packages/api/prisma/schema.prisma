@@ -21,6 +21,7 @@ enum Provider {
   BOOKCHEF  @map("bookchef")
   LABORATORY @map("laboratory")
   KNIGOLAND @map("knigoland")
+  MEGAKNIGA @map("megakniga")
 
   @@map("provider")
 }

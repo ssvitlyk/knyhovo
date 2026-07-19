@@ -10,6 +10,7 @@ const PROVIDER_DISPLAY: Record<CollectionListingRow['provider'], string> = {
   BOOKCHEF: 'BookChef',
   LABORATORY: 'Лабораторія',
   KNIGOLAND: 'Книголенд',
+  MEGAKNIGA: 'Мегакнига',
 };
 
 const COLLECTION_TYPE_DTO: Record<CollectionRow['type'], CollectionTypeDto> = {

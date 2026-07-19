@@ -31,6 +31,15 @@ export interface ExtractedProductDetails {
   readonly description: string | null;
   /** Edition metadata, or null when the page carries no structured metadata source. */
   readonly metadata: ExtractedListingMetadata | null;
+  /**
+   * Raw provider-native category/breadcrumb signals, root→leaf (genres-taxonomy
+   * PRD G2), for providers whose only category source is the product page (e.g.
+   * Megakniga's breadcrumb, only available via this opt-in pass — unlike
+   * sitemap-driven providers, which extract it "for free" in the catalog parser).
+   * Optional/omitted for providers with no such source; never overwrites a
+   * listing that already carries categories (see {@link mergeMetadata}).
+   */
+  readonly rawCategories?: readonly string[] | null;
 }
 
 /** Provider-specific product-page extractor: HTML in, extracted details out. Pure, never throws. */
@@ -82,17 +91,25 @@ function isUsableYear(value: number | null | undefined): value is number {
   return typeof value === 'number' && Number.isFinite(value);
 }
 
+function isUsableCategories(
+  value: readonly string[] | null | undefined,
+): value is readonly string[] {
+  return Array.isArray(value) && value.length > 0;
+}
+
 /**
- * Merge extracted metadata onto a listing. Each field is applied only when
- * usable; `isbn` fills ONLY when the listing's current isbn is null/empty —
- * enrichment never overwrites a catalog-provided ISBN. Returns the merged
- * listing plus whether at least one field actually changed.
+ * Merge extracted metadata (and, when present, raw categories) onto a listing.
+ * Each field is applied only when usable; `isbn` fills ONLY when the listing's
+ * current isbn is null/empty, and `rawCategories` fills ONLY when the listing
+ * doesn't already carry any — enrichment never overwrites catalog-provided
+ * signals. Returns the merged listing plus whether at least one field actually
+ * changed.
  */
 function mergeMetadata(
   listing: RawProviderListing,
-  metadata: ExtractedListingMetadata | null,
+  extracted: ExtractedProductDetails,
 ): { listing: RawProviderListing; changed: boolean } {
-  if (metadata === null) return { listing, changed: false };
+  const metadata = extracted.metadata;
 
   let changed = false;
   const patch: {
@@ -102,30 +119,41 @@ function mergeMetadata(
     format?: string;
     series?: string;
     publicationYear?: number;
+    rawCategories?: readonly string[];
   } = {};
 
-  if (isUsableString(metadata.publisher)) {
-    patch.publisher = metadata.publisher;
-    changed = true;
+  if (metadata !== null) {
+    if (isUsableString(metadata.publisher)) {
+      patch.publisher = metadata.publisher;
+      changed = true;
+    }
+    if (isUsableString(metadata.language)) {
+      patch.language = metadata.language;
+      changed = true;
+    }
+    if (isUsableString(metadata.format)) {
+      patch.format = metadata.format;
+      changed = true;
+    }
+    if (isUsableString(metadata.series)) {
+      patch.series = metadata.series;
+      changed = true;
+    }
+    if (isUsableYear(metadata.publicationYear)) {
+      patch.publicationYear = metadata.publicationYear;
+      changed = true;
+    }
+    if ((listing.isbn == null || listing.isbn === '') && isUsableString(metadata.isbn)) {
+      patch.isbn = metadata.isbn;
+      changed = true;
+    }
   }
-  if (isUsableString(metadata.language)) {
-    patch.language = metadata.language;
-    changed = true;
-  }
-  if (isUsableString(metadata.format)) {
-    patch.format = metadata.format;
-    changed = true;
-  }
-  if (isUsableString(metadata.series)) {
-    patch.series = metadata.series;
-    changed = true;
-  }
-  if (isUsableYear(metadata.publicationYear)) {
-    patch.publicationYear = metadata.publicationYear;
-    changed = true;
-  }
-  if ((listing.isbn == null || listing.isbn === '') && isUsableString(metadata.isbn)) {
-    patch.isbn = metadata.isbn;
+
+  if (
+    (listing.rawCategories == null || listing.rawCategories.length === 0) &&
+    isUsableCategories(extracted.rawCategories)
+  ) {
+    patch.rawCategories = extracted.rawCategories;
     changed = true;
   }
 
@@ -187,7 +215,7 @@ export async function enrichProductDetails(
       // (e.g. vivat.parser.ts runs sanitizeMetadataValue/parsePublicationYear at
       // its own scrape boundary) — this pass only checks field-level usability
       // before merging, per provider-agnostic contract of ExtractedListingMetadata.
-      const { listing: merged, changed: metadataChanged } = mergeMetadata(listing, extracted.metadata);
+      const { listing: merged, changed: metadataChanged } = mergeMetadata(listing, extracted);
       let next = merged;
       let descriptionChanged = false;
       if (description !== null) {

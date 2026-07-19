@@ -13,7 +13,8 @@ export type ProviderName =
   | 'book-ye'
   | 'bookchef'
   | 'laboratory'
-  | 'knigoland';
+  | 'knigoland'
+  | 'megakniga';
 
 /**
  * Stock availability as reported by a provider at scrape time.

@@ -10,6 +10,7 @@ const PROVIDER_SLUG: Record<string, ProviderName> = {
   BOOKCHEF: 'bookchef',
   LABORATORY: 'laboratory',
   KNIGOLAND: 'knigoland',
+  MEGAKNIGA: 'megakniga',
 };
 
 /**

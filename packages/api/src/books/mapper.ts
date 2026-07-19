@@ -14,6 +14,7 @@ const PROVIDER_SLUG: Record<BookListingRow['provider'], ProviderName> = {
   BOOKCHEF: 'bookchef',
   LABORATORY: 'laboratory',
   KNIGOLAND: 'knigoland',
+  MEGAKNIGA: 'megakniga',
 };
 
 /** Reverse map from the persisted availability enum to its public slug. */
