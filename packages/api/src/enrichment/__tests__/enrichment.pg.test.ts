@@ -15,11 +15,16 @@
  *   TEST_DATABASE_URL=postgresql://knyhovo:knyhovo@localhost:5432/knyhovo_test npx vitest run src/enrichment/__tests__/enrichment.pg.test.ts
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
-import { PrismaClient, Provider } from '@prisma/client';
+import { PrismaClient, Provider, ScrapeRunKind, ScrapeRunStatus, ScrapeRunTrigger } from '@prisma/client';
 import type { HtmlFetcher } from '@knyhovo/scrapers';
 import type { ExtractedProductDetails } from '@knyhovo/scrapers';
 import { runEnrichment } from '../engine.js';
 import type { ProviderEnrichmentConfig } from '../providers.js';
+import {
+  checkpointScrapeRunCounters,
+  startScrapeRun,
+  summarizeScrapeErrors,
+} from '../../refresh/scrape-run.repository.js';
 
 const TEST_DATABASE_URL = process.env.TEST_DATABASE_URL;
 
@@ -210,6 +215,76 @@ describe.skipIf(!TEST_DATABASE_URL)('background enrichment — Postgres integrat
     });
     expect(summary).toMatchObject({ totalCandidates: 0, processed: 0 });
     expect(second.fetched).toHaveLength(0);
+  });
+
+  it('live counters: the scrape_runs row shows growing progress after every batch (PRD §7 PR2)', async () => {
+    await seedListing('enr-1');
+    await seedListing('enr-2');
+    const { fetcher } = makeFetcher();
+    const run = await startScrapeRun(prisma, {
+      provider: Provider.MEGAKNIGA,
+      kind: ScrapeRunKind.DESCRIPTION_ENRICHMENT,
+      triggeredBy: ScrapeRunTrigger.MANUAL,
+    });
+    const observed: Array<{ itemsFound: number; itemsUpdated: number; errorsCount: number }> = [];
+
+    await runEnrichment({
+      prisma,
+      provider: 'megakniga',
+      batchSize: 1,
+      logger: silentLogger,
+      fetcher,
+      config: TEST_CONFIG,
+      onBatch: async (progress) => {
+        await checkpointScrapeRunCounters(prisma, run.id, {
+          itemsFound: progress.totalCandidates,
+          itemsUpdated: progress.enriched,
+          errorsCount: progress.failed,
+          errorSummary: summarizeScrapeErrors(progress.errorSamples),
+        });
+        const row = await prisma.scrapeRun.findUniqueOrThrow({ where: { id: run.id } });
+        observed.push({
+          itemsFound: row.itemsFound,
+          itemsUpdated: row.itemsUpdated,
+          errorsCount: row.errorsCount,
+        });
+      },
+    });
+
+    // Mid-run visibility: counters grow batch by batch, not 0 until the end.
+    expect(observed).toEqual([
+      { itemsFound: 2, itemsUpdated: 1, errorsCount: 0 },
+      { itemsFound: 2, itemsUpdated: 2, errorsCount: 0 },
+    ]);
+    // The run row is still RUNNING — closing it is the CLI's job, not the checkpoint's.
+    const row = await prisma.scrapeRun.findUniqueOrThrow({ where: { id: run.id } });
+    expect(row.status).toBe(ScrapeRunStatus.RUNNING);
+    await prisma.scrapeRun.delete({ where: { id: run.id } });
+  });
+
+  it('a checkpoint against a closed run reports false and modifies nothing', async () => {
+    const run = await startScrapeRun(prisma, {
+      provider: Provider.MEGAKNIGA,
+      kind: ScrapeRunKind.DESCRIPTION_ENRICHMENT,
+      triggeredBy: ScrapeRunTrigger.MANUAL,
+    });
+    await prisma.scrapeRun.update({
+      where: { id: run.id },
+      data: { status: ScrapeRunStatus.SUCCESS, itemsUpdated: 7 },
+    });
+
+    const applied = await checkpointScrapeRunCounters(prisma, run.id, {
+      itemsFound: 99,
+      itemsUpdated: 99,
+      errorsCount: 99,
+      errorSummary: 'late checkpoint',
+    });
+
+    expect(applied).toBe(false);
+    const row = await prisma.scrapeRun.findUniqueOrThrow({ where: { id: run.id } });
+    expect(row.itemsUpdated).toBe(7);
+    expect(row.errorSummary).toBeNull();
+    await prisma.scrapeRun.delete({ where: { id: run.id } });
   });
 
   it('a page with no usable data is processed without writes and without failing the run', async () => {

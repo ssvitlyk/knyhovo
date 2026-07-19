@@ -38,13 +38,20 @@
 ```bash
 pnpm --filter @knyhovo/api scrape:enrich -- --provider=megakniga            # повний прохід
 pnpm --filter @knyhovo/api scrape:enrich -- --provider=megakniga --limit=20 # smoke
+pnpm --filter @knyhovo/api scrape:enrich -- --provider=megakniga --dry-run  # черга + останній run, без fetch
+pnpm --filter @knyhovo/api scrape:enrich -- --provider=megakniga --force    # re-walk усіх рядків
 ```
 
-Опції: `--batch-size=<n>` (default 50; env `SCRAPE_ENRICH_BATCH_SIZE`), `--limit=<n>`;
-`SCRAPE_ENRICH_DELAY_MS` (default — enrichment-delay провайдера, 300ms для megakniga).
+Опції: `--batch-size=<n>` (default 50; env `SCRAPE_ENRICH_BATCH_SIZE`), `--limit=<n>`,
+`--dry-run` (розмір черги + стан останнього run, нуль запитів/записів), `--force`
+(ігнорує предикат «чого бракує» — корисно після розширення extractor-а; fill-only правила
+все одно не затирають наявні значення); `SCRAPE_ENRICH_DELAY_MS` (default — enrichment-delay
+провайдера, 300ms для megakniga).
 Кожен batch комітиться окремою транзакцією: kill у будь-який момент втрачає ≤1 batch,
 повторний запуск добирає лише ще-не-збагачені рядки (предикат по відсутніх полях).
-Прогін фіксується рядком `scrape_runs` з `kind='DESCRIPTION_ENRICHMENT'`.
+Прогін фіксується рядком `scrape_runs` з `kind='DESCRIPTION_ENRICHMENT'`; лічильники
+(`items_found`/`items_updated`/`errors_count`) оновлюються **після кожного batch** — SQL нижче
+показує живий прогрес під час run, лог кожного batch містить processed/total, cursor і ETA.
 Повна архітектура (checkpoint/resume, heartbeat, lock, SIGTERM — наступні PR):
 `docs/prd/megakniga-resumable-enrichment.md`.
 

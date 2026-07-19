@@ -1,12 +1,22 @@
 import { ScrapeRunKind, ScrapeRunStatus, ScrapeRunTrigger } from '@prisma/client';
 import type { ProviderName } from '@knyhovo/shared';
 import { prisma } from '../db.js';
-import { deriveEnrichmentStatus, runEnrichment } from '../enrichment/engine.js';
+import {
+  countEnrichmentCandidates,
+  deriveEnrichmentStatus,
+  metricsForRunClose,
+  runEnrichment,
+  type EnrichmentBatchProgress,
+} from '../enrichment/engine.js';
 import { ENRICHMENT_PROVIDERS } from '../enrichment/providers.js';
 import { createLogger } from '../pipeline/index.js';
-import { createMetrics } from '../pipeline/metrics.js';
 import { mapProviderName } from '../pipeline/persist-listing.js';
-import { finishScrapeRun, startScrapeRun } from '../refresh/scrape-run.repository.js';
+import {
+  checkpointScrapeRunCounters,
+  finishScrapeRun,
+  startScrapeRun,
+  summarizeScrapeErrors,
+} from '../refresh/scrape-run.repository.js';
 import { ENRICHMENT_USAGE, parseEnrichmentArgs } from './run-enrichment-args.js';
 import { getEnrichBatchSize, getEnrichDelayMs } from './scrape-env.js';
 
@@ -19,6 +29,8 @@ import { getEnrichBatchSize, getEnrichDelayMs } from './scrape-env.js';
  *
  *   pnpm --filter @knyhovo/api scrape:enrich -- --provider=megakniga
  *   pnpm --filter @knyhovo/api scrape:enrich -- --provider=megakniga --limit=20   # smoke
+ *   pnpm --filter @knyhovo/api scrape:enrich -- --provider=megakniga --dry-run    # queue + last run
+ *   pnpm --filter @knyhovo/api scrape:enrich -- --provider=megakniga --force      # re-walk all rows
  *
  * Every batch commits in its own transaction, so a kill at any point loses at
  * most one batch; a re-run picks the remaining un-enriched listings via the
@@ -80,10 +92,33 @@ async function main(): Promise<void> {
   const delayMs = getEnrichDelayMs(process.env);
   const triggeredBy = parseTriggeredBy(process.env['SCRAPE_TRIGGERED_BY']);
 
+  if (args.dryRun) {
+    // Report-only: queue size + last run state, zero fetches/writes/run rows.
+    const candidates = await countEnrichmentCandidates(prisma, provider, args.force);
+    const lastRun = await prisma.scrapeRun.findFirst({
+      where: { provider: mapProviderName(provider), kind: ScrapeRunKind.DESCRIPTION_ENRICHMENT },
+      orderBy: { startedAt: 'desc' },
+    });
+    logger.info(
+      `scrape:enrich --dry-run: provider=${provider} candidates=${candidates}` +
+        `${args.force ? ' (force)' : ''}`,
+    );
+    logger.info(
+      lastRun === null
+        ? 'scrape:enrich --dry-run: no previous enrichment runs'
+        : `scrape:enrich --dry-run: last run ${lastRun.id} status=${lastRun.status} ` +
+            `startedAt=${lastRun.startedAt.toISOString()} ` +
+            `itemsFound=${lastRun.itemsFound} itemsUpdated=${lastRun.itemsUpdated} ` +
+            `errorsCount=${lastRun.errorsCount}`,
+    );
+    process.exitCode = 0;
+    return;
+  }
+
   logger.info(
     `scrape:enrich starting at ${new Date(startedAtMs).toISOString()} ` +
       `(provider=${provider} batchSize=${batchSize} limit=${args.limit ?? '—'} ` +
-      `delayMs=${delayMs ?? 'provider default'} triggeredBy=${triggeredBy})`,
+      `force=${args.force} delayMs=${delayMs ?? 'provider default'} triggeredBy=${triggeredBy})`,
   );
 
   const run = await startScrapeRun(prisma, {
@@ -94,40 +129,51 @@ async function main(): Promise<void> {
       batchSize,
       ...(args.limit !== null ? { limit: args.limit } : {}),
       ...(delayMs !== undefined ? { delayMs } : {}),
+      ...(args.force ? { force: true } : {}),
     },
   });
   logger.info(`scrape:enrich run ${run.id} opened (kind=DESCRIPTION_ENRICHMENT)`);
+
+  // The last committed batch's progress — on a mid-run crash this is what the
+  // FAILED close reports, so checkpointed counters are never wiped to zero.
+  // (Ref-holder: assignment happens inside the onBatch closure, which TS's
+  // control-flow analysis would otherwise narrow away at the catch site.)
+  const lastProgress: { current: EnrichmentBatchProgress | null } = { current: null };
 
   try {
     const summary = await runEnrichment({
       prisma,
       provider,
       batchSize,
+      force: args.force,
       logger,
       ...(args.limit !== null ? { limit: args.limit } : {}),
       ...(delayMs !== undefined ? { delayMs } : {}),
+      // Live progress after every committed batch (PRD §7 PR2): the run row
+      // shows real counters during the run, not 0 until the very end.
+      // checkpointScrapeRunCounters is best-effort and never throws.
+      onBatch: async (progress) => {
+        lastProgress.current = progress;
+        await checkpointScrapeRunCounters(prisma, run.id, {
+          itemsFound: progress.totalCandidates,
+          itemsUpdated: progress.enriched,
+          errorsCount: progress.failed,
+          errorSummary: summarizeScrapeErrors(progress.errorSamples),
+        });
+      },
     });
-
-    // Map the summary onto ScrapeMetrics-derived columns (PRD §4.2 mapping for
-    // this kind): itemsFound = candidate total, itemsUpdated = listings
-    // written, errorsCount = failed fetches. `metrics.errors` carries only the
-    // failures beyond the stored samples so mapMetricsToRunCounts
-    // (errors + scrapeErrors.length) lands on exactly `summary.failed`.
-    const metrics = createMetrics();
-    metrics.scraped = summary.totalCandidates;
-    metrics.providerListingsUpdated = summary.enriched;
-    metrics.errors = summary.failed - summary.errorSamples.length;
 
     const status = deriveEnrichmentStatus(summary);
     await finishScrapeRun(prisma, run.id, {
       startedAt: run.startedAt,
       status,
-      metrics,
+      metrics: metricsForRunClose(summary),
       scrapeErrors: summary.errorSamples,
       metadata: {
         batchSize,
         ...(args.limit !== null ? { limit: args.limit } : {}),
         ...(delayMs !== undefined ? { delayMs } : {}),
+        ...(args.force ? { force: true } : {}),
         processed: summary.processed,
         enriched: summary.enriched,
         failed: summary.failed,
@@ -147,11 +193,16 @@ async function main(): Promise<void> {
     const message = err instanceof Error ? err.message : String(err);
     logger.error(err instanceof Error ? err.stack ?? message : message);
     try {
+      // Close with the last committed batch's counters (audit fix): a crash
+      // on batch N must not report items_updated=0 after N-1 committed
+      // batches. Null lastProgress (crash before the first batch) => zeros
+      // are the truth. The crash message leads the error list, followed by
+      // the per-item samples gathered so far.
       await finishScrapeRun(prisma, run.id, {
         startedAt: run.startedAt,
         status: ScrapeRunStatus.FAILED,
-        metrics: createMetrics(),
-        scrapeErrors: [message],
+        metrics: metricsForRunClose(lastProgress.current),
+        scrapeErrors: [message, ...(lastProgress.current?.errorSamples ?? [])],
       });
     } catch (finishErr: unknown) {
       logger.error(
