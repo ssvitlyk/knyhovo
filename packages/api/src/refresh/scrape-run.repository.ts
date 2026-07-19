@@ -98,6 +98,13 @@ export async function startScrapeRun(
     triggeredBy: ScrapeRunTrigger;
     startedAt?: Date;
     metadata?: Prisma.InputJsonValue;
+    /**
+     * Inherited enrichment checkpoint (megakniga-resumable-enrichment PRD
+     * §4.5): a resume run is born with its predecessor's cursor, so even a
+     * run that dies before its first committed batch keeps the campaign's
+     * checkpoint chain intact.
+     */
+    cursor?: string;
   },
 ): Promise<{ id: string; startedAt: Date }> {
   const startedAt = params.startedAt ?? new Date();
@@ -109,6 +116,7 @@ export async function startScrapeRun(
       triggeredBy: params.triggeredBy,
       startedAt,
       lastHeartbeatAt: startedAt,
+      ...(params.cursor !== undefined ? { cursor: params.cursor } : {}),
       ...(params.metadata !== undefined ? { metadata: params.metadata } : {}),
     },
     select: { id: true, startedAt: true },
@@ -173,38 +181,63 @@ export function startHeartbeat(
 }
 
 /**
- * Live-progress checkpoint for a RUNNING scrape run (megakniga-resumable-
- * enrichment PRD §7 PR2): writes the cumulative counters after each committed
- * enrichment batch so `scrape_runs` shows real progress during the run, not 0
- * until the very end. Same contract as `heartbeatScrapeRun`: gated on
- * `status: RUNNING` (a closed or reaped run is never modified by a late
- * checkpoint) and MUST NOT throw — a failed progress write is reported as
- * `false`, never allowed to kill the run it is reporting on.
+ * Batch checkpoint for a RUNNING enrichment run (megakniga-resumable-
+ * enrichment PRD §4.2/§4.4): cumulative counters, the live `itemsProcessed`,
+ * the keyset `cursor`, and a heartbeat touch. Since PR3 this runs INSIDE the
+ * batch transaction (pass the `tx` client) so listing updates and the cursor
+ * advance atomically — a torn batch is impossible. Consequently it now
+ * PROPAGATES database errors (a failed checkpoint must abort the whole batch
+ * transaction, which the engine then retries). Still gated on `status:
+ * RUNNING`: a run closed or reaped by another process is never modified by a
+ * late checkpoint — reported as `false`, not an error.
  */
 export async function checkpointScrapeRunCounters(
-  prisma: PrismaClient,
+  db: PrismaClient | Prisma.TransactionClient,
   runId: string,
   counters: {
     itemsFound: number;
     itemsUpdated: number;
     errorsCount: number;
     errorSummary: string | null;
+    /** Processed listings including failures and no-data pages (PRD §4.2). */
+    itemsProcessed?: number;
+    /** Last fully processed provider_listings.id — the resume point. */
+    cursor?: string;
   },
+  now: () => Date = () => new Date(),
 ): Promise<boolean> {
-  try {
-    const result = await prisma.scrapeRun.updateMany({
-      where: { id: runId, status: ScrapeRunStatusEnum.RUNNING },
-      data: counters,
-    });
-    return result.count > 0;
-  } catch {
-    return false;
-  }
+  const result = await db.scrapeRun.updateMany({
+    where: { id: runId, status: ScrapeRunStatusEnum.RUNNING },
+    data: { ...counters, lastHeartbeatAt: now() },
+  });
+  return result.count > 0;
+}
+
+/**
+ * The latest run of a given kind for a provider — the row the resume logic
+ * (PRD §4.5 step 1) inspects on CLI start. Returns just what that decision
+ * needs; null when the provider has never run this kind.
+ */
+export async function findLatestScrapeRun(
+  prisma: PrismaClient,
+  params: { provider: Provider; kind: ScrapeRunKind },
+): Promise<{ id: string; status: ScrapeRunStatus; cursor: string | null; startedAt: Date } | null> {
+  return prisma.scrapeRun.findFirst({
+    where: { provider: params.provider, kind: params.kind },
+    orderBy: { startedAt: 'desc' },
+    select: { id: true, status: true, cursor: true, startedAt: true },
+  });
 }
 
 /**
  * Close a scrape run record by writing the final status, duration, and all
  * metrics-derived counts.
+ *
+ * Enrichment runs (PRD §4.2) additionally close their checkpoint state:
+ * `cursor` — pass a string to persist the resume point, explicit `null` to
+ * clear it (queue exhausted, "cursor NULL ⇔ done"), or omit to leave whatever
+ * the last in-transaction checkpoint wrote (the crash path relies on this).
+ * `itemsProcessed` follows the same omit-to-preserve rule.
  */
 export async function finishScrapeRun(
   prisma: PrismaClient,
@@ -216,6 +249,8 @@ export async function finishScrapeRun(
     scrapeErrors: string[];
     finishedAt?: Date;
     metadata?: Prisma.InputJsonValue;
+    cursor?: string | null;
+    itemsProcessed?: number;
   },
 ): Promise<void> {
   const finishedAt = params.finishedAt ?? new Date();
@@ -234,6 +269,8 @@ export async function finishScrapeRun(
       availabilityChanges: counts.availabilityChanges,
       errorsCount: counts.errorsCount,
       errorSummary: counts.errorSummary,
+      ...(params.cursor !== undefined ? { cursor: params.cursor } : {}),
+      ...(params.itemsProcessed !== undefined ? { itemsProcessed: params.itemsProcessed } : {}),
       ...(params.metadata !== undefined ? { metadata: params.metadata } : {}),
     },
   });

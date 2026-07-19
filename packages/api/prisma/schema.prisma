@@ -369,6 +369,13 @@ model ScrapeRun {
   priceChanges        Int              @default(0) @map("price_changes")
   availabilityChanges Int              @default(0) @map("availability_changes")
   errorsCount         Int              @default(0) @map("errors_count")
+  /// Keyset checkpoint for DESCRIPTION_ENRICHMENT runs: last processed provider_listings.id,
+  /// written atomically with each batch. NOT NULL ⇔ the campaign has more to do; cleared (NULL)
+  /// when the candidate queue is exhausted (megakniga-resumable-enrichment PRD §4.2).
+  cursor              String?
+  /// Live processed counter for DESCRIPTION_ENRICHMENT runs — includes fetch failures and
+  /// pages with no usable data (unlike itemsUpdated). Updated after every committed batch.
+  itemsProcessed      Int              @default(0) @map("items_processed")
   /// Truncated summary of the first few errors (null when none).
   errorSummary        String?          @map("error_summary")
   /// Free-form run context (scraper options used, target counts, etc.). Null when not applicable.

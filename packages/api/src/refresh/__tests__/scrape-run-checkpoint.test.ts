@@ -16,13 +16,31 @@ function prismaWithUpdateMany(
   return { prisma: { scrapeRun: { updateMany } } as unknown as PrismaClient, updateMany };
 }
 
+const NOW = new Date('2026-07-19T12:00:00.000Z');
+
 describe('checkpointScrapeRunCounters', () => {
-  it('writes counters gated on status RUNNING and reports success', async () => {
+  it('writes counters gated on status RUNNING, touches the heartbeat, and reports success', async () => {
     const { prisma, updateMany } = prismaWithUpdateMany(() => Promise.resolve({ count: 1 }));
-    await expect(checkpointScrapeRunCounters(prisma, 'run-1', COUNTERS)).resolves.toBe(true);
+    await expect(checkpointScrapeRunCounters(prisma, 'run-1', COUNTERS, () => NOW)).resolves.toBe(
+      true,
+    );
     expect(updateMany).toHaveBeenCalledWith({
       where: { id: 'run-1', status: 'RUNNING' },
-      data: COUNTERS,
+      data: { ...COUNTERS, lastHeartbeatAt: NOW },
+    });
+  });
+
+  it('persists the PR3 checkpoint fields (cursor + itemsProcessed) when provided', async () => {
+    const { prisma, updateMany } = prismaWithUpdateMany(() => Promise.resolve({ count: 1 }));
+    await checkpointScrapeRunCounters(
+      prisma,
+      'run-1',
+      { ...COUNTERS, itemsProcessed: 55, cursor: 'listing-55' },
+      () => NOW,
+    );
+    expect(updateMany).toHaveBeenCalledWith({
+      where: { id: 'run-1', status: 'RUNNING' },
+      data: { ...COUNTERS, itemsProcessed: 55, cursor: 'listing-55', lastHeartbeatAt: NOW },
     });
   });
 
@@ -31,9 +49,11 @@ describe('checkpointScrapeRunCounters', () => {
     await expect(checkpointScrapeRunCounters(prisma, 'run-1', COUNTERS)).resolves.toBe(false);
   });
 
-  it('swallows write failures and reports false — a failed checkpoint never kills the run', async () => {
+  it('PROPAGATES write failures — inside the batch transaction (PR3) a failed checkpoint must abort the whole batch, never commit listings without their cursor', async () => {
     const { prisma } = prismaWithUpdateMany(() => Promise.reject(new Error('connection lost')));
-    await expect(checkpointScrapeRunCounters(prisma, 'run-1', COUNTERS)).resolves.toBe(false);
+    await expect(checkpointScrapeRunCounters(prisma, 'run-1', COUNTERS)).rejects.toThrow(
+      'connection lost',
+    );
   });
 });
 

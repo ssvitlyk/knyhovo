@@ -5,6 +5,7 @@ import {
   countEnrichmentCandidates,
   deriveEnrichmentStatus,
   metricsForRunClose,
+  resolveEnrichmentResume,
   runEnrichment,
   type EnrichmentBatchProgress,
 } from '../enrichment/engine.js';
@@ -12,10 +13,9 @@ import { ENRICHMENT_PROVIDERS } from '../enrichment/providers.js';
 import { createLogger } from '../pipeline/index.js';
 import { mapProviderName } from '../pipeline/persist-listing.js';
 import {
-  checkpointScrapeRunCounters,
+  findLatestScrapeRun,
   finishScrapeRun,
   startScrapeRun,
-  summarizeScrapeErrors,
 } from '../refresh/scrape-run.repository.js';
 import { ENRICHMENT_USAGE, parseEnrichmentArgs } from './run-enrichment-args.js';
 import { getEnrichBatchSize, getEnrichDelayMs } from './scrape-env.js';
@@ -32,10 +32,12 @@ import { getEnrichBatchSize, getEnrichDelayMs } from './scrape-env.js';
  *   pnpm --filter @knyhovo/api scrape:enrich -- --provider=megakniga --dry-run    # queue + last run
  *   pnpm --filter @knyhovo/api scrape:enrich -- --provider=megakniga --force      # re-walk all rows
  *
- * Every batch commits in its own transaction, so a kill at any point loses at
- * most one batch; a re-run picks the remaining un-enriched listings via the
- * candidate predicate (persisted cursor/resume lands in PR3). Progress is
- * tracked as a `scrape_runs` row with kind DESCRIPTION_ENRICHMENT.
+ * Every batch commits in its own transaction — listing updates atomically
+ * with the run checkpoint (cursor + live counters) — so a kill at any point
+ * loses at most one batch, and a re-run resumes exactly from the persisted
+ * cursor of the last stopped run (PRD §4.5; RUNNING-row reap and the
+ * exclusive lock arrive in PR4). Progress is tracked as a `scrape_runs` row
+ * with kind DESCRIPTION_ENRICHMENT.
  *
  * Mirrors the run-genre-backfill pattern: shared `prisma` singleton,
  * pino-backed logger, `process.exitCode` (never `process.exit()`), and a
@@ -93,7 +95,8 @@ async function main(): Promise<void> {
   const triggeredBy = parseTriggeredBy(process.env['SCRAPE_TRIGGERED_BY']);
 
   if (args.dryRun) {
-    // Report-only: queue size + last run state, zero fetches/writes/run rows.
+    // Report-only: queue size + last run state + resume decision, zero
+    // fetches/writes/run rows.
     const candidates = await countEnrichmentCandidates(prisma, provider, args.force);
     const lastRun = await prisma.scrapeRun.findFirst({
       where: { provider: mapProviderName(provider), kind: ScrapeRunKind.DESCRIPTION_ENRICHMENT },
@@ -109,11 +112,34 @@ async function main(): Promise<void> {
         : `scrape:enrich --dry-run: last run ${lastRun.id} status=${lastRun.status} ` +
             `startedAt=${lastRun.startedAt.toISOString()} ` +
             `itemsFound=${lastRun.itemsFound} itemsUpdated=${lastRun.itemsUpdated} ` +
-            `errorsCount=${lastRun.errorsCount}`,
+            `itemsProcessed=${lastRun.itemsProcessed} errorsCount=${lastRun.errorsCount} ` +
+            `cursor=${lastRun.cursor ?? 'NULL'}`,
+    );
+    const resume = resolveEnrichmentResume(lastRun);
+    logger.info(
+      resume.startCursor === null
+        ? 'scrape:enrich --dry-run: a run now would start a fresh campaign from the beginning'
+        : `scrape:enrich --dry-run: a run now would resume run ${resume.resumedFromRunId} ` +
+            `from cursor=${resume.startCursor}`,
     );
     process.exitCode = 0;
     return;
   }
+
+  // Resume decision (PRD §4.5 steps 1, 4, 5 — PR3 scope; stale-reap and the
+  // exclusive lock for RUNNING rows are PR4): continue a stopped campaign
+  // from its persisted cursor, otherwise start from the beginning.
+  const lastRun = await findLatestScrapeRun(prisma, {
+    provider: mapProviderName(provider),
+    kind: ScrapeRunKind.DESCRIPTION_ENRICHMENT,
+  });
+  const resume = resolveEnrichmentResume(lastRun);
+  logger.info(
+    resume.startCursor === null
+      ? 'scrape:enrich: no resumable previous run — starting a fresh campaign'
+      : `scrape:enrich: resuming campaign of run ${resume.resumedFromRunId} ` +
+          `from cursor=${resume.startCursor}`,
+  );
 
   logger.info(
     `scrape:enrich starting at ${new Date(startedAtMs).toISOString()} ` +
@@ -121,16 +147,23 @@ async function main(): Promise<void> {
       `force=${args.force} delayMs=${delayMs ?? 'provider default'} triggeredBy=${triggeredBy})`,
   );
 
+  const runMetadata = {
+    batchSize,
+    ...(args.limit !== null ? { limit: args.limit } : {}),
+    ...(delayMs !== undefined ? { delayMs } : {}),
+    ...(args.force ? { force: true } : {}),
+    ...(resume.resumedFromRunId !== null ? { resumedFromRunId: resume.resumedFromRunId } : {}),
+  };
+
+  // A resume run is born with its predecessor's cursor (PRD §4.5): should it
+  // die before its first committed batch, the campaign checkpoint survives on
+  // this row and the next run resumes from the same place.
   const run = await startScrapeRun(prisma, {
     provider: mapProviderName(provider),
     kind: ScrapeRunKind.DESCRIPTION_ENRICHMENT,
     triggeredBy,
-    metadata: {
-      batchSize,
-      ...(args.limit !== null ? { limit: args.limit } : {}),
-      ...(delayMs !== undefined ? { delayMs } : {}),
-      ...(args.force ? { force: true } : {}),
-    },
+    ...(resume.startCursor !== null ? { cursor: resume.startCursor } : {}),
+    metadata: runMetadata,
   });
   logger.info(`scrape:enrich run ${run.id} opened (kind=DESCRIPTION_ENRICHMENT)`);
 
@@ -149,17 +182,14 @@ async function main(): Promise<void> {
       logger,
       ...(args.limit !== null ? { limit: args.limit } : {}),
       ...(delayMs !== undefined ? { delayMs } : {}),
-      // Live progress after every committed batch (PRD §7 PR2): the run row
-      // shows real counters during the run, not 0 until the very end.
-      // checkpointScrapeRunCounters is best-effort and never throws.
-      onBatch: async (progress) => {
+      // PR3: the engine checkpoints cursor + live counters onto this run row
+      // INSIDE each batch transaction — atomically with the listing updates.
+      startCursor: resume.startCursor,
+      runId: run.id,
+      // Observational only: keeps the last committed progress at hand so a
+      // crash can close the run with truthful counters.
+      onBatch: (progress) => {
         lastProgress.current = progress;
-        await checkpointScrapeRunCounters(prisma, run.id, {
-          itemsFound: progress.totalCandidates,
-          itemsUpdated: progress.enriched,
-          errorsCount: progress.failed,
-          errorSummary: summarizeScrapeErrors(progress.errorSamples),
-        });
       },
     });
 
@@ -169,11 +199,12 @@ async function main(): Promise<void> {
       status,
       metrics: metricsForRunClose(summary),
       scrapeErrors: summary.errorSamples,
+      // "cursor NULL ⇔ done" (PRD §4.2): null when the queue was exhausted,
+      // the resume point when the run stopped early (--limit / rate limit).
+      cursor: summary.finalCursor,
+      itemsProcessed: summary.processed,
       metadata: {
-        batchSize,
-        ...(args.limit !== null ? { limit: args.limit } : {}),
-        ...(delayMs !== undefined ? { delayMs } : {}),
-        ...(args.force ? { force: true } : {}),
+        ...runMetadata,
         processed: summary.processed,
         enriched: summary.enriched,
         failed: summary.failed,
@@ -186,7 +217,8 @@ async function main(): Promise<void> {
     logger.info(
       `scrape:enrich run ${run.id} closed as ${status} — ` +
         `processed=${summary.processed}/${summary.totalCandidates} ` +
-        `enriched=${summary.enriched} failed=${summary.failed}`,
+        `enriched=${summary.enriched} failed=${summary.failed} ` +
+        `cursor=${summary.finalCursor ?? 'NULL (campaign done)'}`,
     );
     process.exitCode = status === ScrapeRunStatus.FAILED ? 1 : 0;
   } catch (err: unknown) {
@@ -197,7 +229,10 @@ async function main(): Promise<void> {
       // on batch N must not report items_updated=0 after N-1 committed
       // batches. Null lastProgress (crash before the first batch) => zeros
       // are the truth. The crash message leads the error list, followed by
-      // the per-item samples gathered so far.
+      // the per-item samples gathered so far. `cursor`/`itemsProcessed` are
+      // deliberately OMITTED: the in-transaction checkpoint already holds the
+      // last committed position, and a FAILED close must keep it (PRD §4.2:
+      // FAILED with cursor NOT NULL = resumable).
       await finishScrapeRun(prisma, run.id, {
         startedAt: run.startedAt,
         status: ScrapeRunStatus.FAILED,
