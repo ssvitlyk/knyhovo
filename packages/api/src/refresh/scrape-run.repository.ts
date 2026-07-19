@@ -230,6 +230,26 @@ export async function findLatestScrapeRun(
 }
 
 /**
+ * The current RUNNING run of a given kind for a provider, with its heartbeat
+ * — what the enrichment lock (PRD §4.5 step 2 / §4.6) reports in its
+ * "already running" error. Null when nothing is RUNNING.
+ */
+export async function findRunningScrapeRun(
+  prisma: PrismaClient,
+  params: { provider: Provider; kind: ScrapeRunKind },
+): Promise<{ id: string; startedAt: Date; lastHeartbeatAt: Date | null } | null> {
+  return prisma.scrapeRun.findFirst({
+    where: {
+      provider: params.provider,
+      kind: params.kind,
+      status: ScrapeRunStatusEnum.RUNNING,
+    },
+    orderBy: { startedAt: 'desc' },
+    select: { id: true, startedAt: true, lastHeartbeatAt: true },
+  });
+}
+
+/**
  * Close a scrape run record by writing the final status, duration, and all
  * metrics-derived counts.
  *

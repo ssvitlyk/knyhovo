@@ -381,6 +381,10 @@ model ScrapeRun {
   /// Free-form run context (scraper options used, target counts, etc.). Null when not applicable.
   metadata            Json?
 
+  /// NOTE: a raw-SQL partial unique index "scrape_runs_one_active_enrichment"
+  /// (migration 20260719160000) enforces at most one RUNNING run per provider
+  /// for kind=DESCRIPTION_ENRICHMENT. Prisma cannot express partial indexes,
+  /// so it lives only in the migration — do not "clean it up" on drift.
   @@index([provider, kind, startedAt])
   @@map("scrape_runs")
 }

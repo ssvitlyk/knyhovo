@@ -206,7 +206,7 @@ describe('reapStaleRuns', () => {
       updateMany: async () => ({ count: 1 }),
     });
 
-    const result = await reapStaleRuns(prisma, DEFAULT_STALE_REAP_CONFIG, { now: clockNow });
+    const result = await reapStaleRuns(prisma, DEFAULT_STALE_REAP_CONFIG, GUARDED_KINDS, { now: clockNow });
 
     expect(result).toEqual({ candidates: 1, reaped: 1, staleRows: [expect.objectContaining({ id: 'run-abc' })] });
 
@@ -229,7 +229,7 @@ describe('reapStaleRuns', () => {
       updateMany: async () => ({ count: 1 }),
     });
 
-    const result = await reapStaleRuns(prisma, DEFAULT_STALE_REAP_CONFIG, { now: clockNow });
+    const result = await reapStaleRuns(prisma, DEFAULT_STALE_REAP_CONFIG, GUARDED_KINDS, { now: clockNow });
 
     expect(result.candidates).toBe(1);
     expect(result.reaped).toBe(1);
@@ -246,7 +246,7 @@ describe('reapStaleRuns', () => {
       updateMany: async () => ({ count: 0 }),
     });
 
-    const result = await reapStaleRuns(prisma, DEFAULT_STALE_REAP_CONFIG, { now: clockNow });
+    const result = await reapStaleRuns(prisma, DEFAULT_STALE_REAP_CONFIG, GUARDED_KINDS, { now: clockNow });
 
     expect(result).toEqual({ candidates: 1, reaped: 0, staleRows: [expect.objectContaining({ id: 'run-abc' })] });
   });
@@ -254,7 +254,7 @@ describe('reapStaleRuns', () => {
   it('returns zero candidates when findMany finds nothing stale', async () => {
     const prisma = makeFakePrisma({ findMany: async () => [] });
 
-    const result = await reapStaleRuns(prisma, DEFAULT_STALE_REAP_CONFIG, { now: clockNow });
+    const result = await reapStaleRuns(prisma, DEFAULT_STALE_REAP_CONFIG, GUARDED_KINDS, { now: clockNow });
 
     expect(result).toEqual({ candidates: 0, reaped: 0, staleRows: [] });
     expect(prisma.scrapeRun.updateMany).not.toHaveBeenCalled();
@@ -263,7 +263,7 @@ describe('reapStaleRuns', () => {
   it('passes the correct heartbeat and legacy cutoffs in the findMany where clause', async () => {
     const prisma = makeFakePrisma({ findMany: async () => [] });
 
-    await reapStaleRuns(prisma, DEFAULT_STALE_REAP_CONFIG, { now: clockNow });
+    await reapStaleRuns(prisma, DEFAULT_STALE_REAP_CONFIG, GUARDED_KINDS, { now: clockNow });
 
     const call = vi.mocked(prisma.scrapeRun.findMany).mock.calls[0]![0]!;
     const or = call.where?.OR as Array<Record<string, unknown>>;
@@ -272,6 +272,30 @@ describe('reapStaleRuns', () => {
 
     expect(heartbeatBranch.lastHeartbeatAt.lt).toEqual(new Date(NOW.getTime() - 15 * 60_000));
     expect(legacyBranch.startedAt.lt).toEqual(new Date(NOW.getTime() - 24 * 3_600_000));
+  });
+
+  it('scopes the sweep to the given kinds (PR4): an enrichment caller never touches GUARDED_KINDS rows', async () => {
+    const prisma = makeFakePrisma({ findMany: async () => [] });
+
+    await reapStaleRuns(
+      prisma,
+      DEFAULT_STALE_REAP_CONFIG,
+      [ScrapeRunKind.DESCRIPTION_ENRICHMENT],
+      { now: clockNow },
+    );
+
+    const call = vi.mocked(prisma.scrapeRun.findMany).mock.calls[0]![0]!;
+    expect(call.where?.kind).toEqual({ in: [ScrapeRunKind.DESCRIPTION_ENRICHMENT] });
+  });
+
+  it('acquireRefreshLock still sweeps exactly GUARDED_KINDS — the kinds parameter changed nothing for the refresh guard', async () => {
+    const prisma = makeFakePrisma({ findMany: async () => [] });
+
+    await acquireRefreshLock(prisma, ScrapeRunKind.FULL_CATALOG, { now: clockNow });
+
+    const call = vi.mocked(prisma.scrapeRun.findMany).mock.calls[0]![0]!;
+    expect(call.where?.kind).toEqual({ in: [...GUARDED_KINDS] });
+    expect(GUARDED_KINDS).toEqual([ScrapeRunKind.FULL_CATALOG, ScrapeRunKind.WISHLIST_REFRESH]);
   });
 });
 

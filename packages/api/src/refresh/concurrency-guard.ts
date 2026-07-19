@@ -112,9 +112,9 @@ export async function isRefreshRunning(
 }
 
 /**
- * stale-scrape-recovery PRD: reap RUNNING rows (GUARDED_KINDS) whose heartbeat
- * has gone silent — a SIGKILL'd/OOM'd/redeployed process leaves the row
- * RUNNING forever, since its `finally` never runs. A plain `startedAt`
+ * stale-scrape-recovery PRD: reap RUNNING rows of the given kinds whose
+ * heartbeat has gone silent — a SIGKILL'd/OOM'd/redeployed process leaves the
+ * row RUNNING forever, since its `finally` never runs. A plain `startedAt`
  * threshold was rejected: a legitimately long-running provider (e.g. the
  * uncapped knigoland, hours-long) would be reaped mid-flight, letting a
  * second refresh acquire the lock concurrently (broken mutual exclusion →
@@ -125,6 +125,10 @@ export async function isRefreshRunning(
  * repeats the staleness condition in its `where`, so a heartbeat landing
  * between the `findMany` and the `updateMany` cancels that row's reap —
  * the row's own process is still alive and wins the race.
+ *
+ * `kinds` scopes the sweep (megakniga-resumable-enrichment PRD §4.6): the
+ * refresh guard passes GUARDED_KINDS as before, the enrichment CLI passes
+ * [DESCRIPTION_ENRICHMENT] only — neither ever touches the other's rows.
  */
 export interface ReapStaleRunsResult {
   readonly candidates: number;
@@ -143,6 +147,7 @@ export interface ReapStaleRunsResult {
 export async function reapStaleRuns(
   prisma: PrismaClient,
   config: StaleReapConfig,
+  kinds: readonly ScrapeRunKind[],
   deps?: GuardDeps,
 ): Promise<ReapStaleRunsResult> {
   const now = deps?.now?.() ?? new Date();
@@ -159,7 +164,7 @@ export async function reapStaleRuns(
   const candidates = await prisma.scrapeRun.findMany({
     where: {
       status: ScrapeRunStatus.RUNNING,
-      kind: { in: [...GUARDED_KINDS] },
+      kind: { in: [...kinds] },
       ...staleCondition,
     },
     select: { id: true, provider: true, kind: true, startedAt: true },
@@ -219,7 +224,12 @@ export async function acquireRefreshLock(
   deps?: GuardDeps,
 ): Promise<RefreshLock> {
   const reapConfig = deps?.staleReap ?? DEFAULT_STALE_REAP_CONFIG;
-  const { candidates, reaped, staleRows } = await reapStaleRuns(prisma, reapConfig, deps);
+  const { candidates, reaped, staleRows } = await reapStaleRuns(
+    prisma,
+    reapConfig,
+    GUARDED_KINDS,
+    deps,
+  );
 
   if (candidates > reaped) {
     const stillRunning = await isRefreshRunning(prisma);
