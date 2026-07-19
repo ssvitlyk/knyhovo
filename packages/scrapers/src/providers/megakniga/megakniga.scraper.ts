@@ -51,12 +51,17 @@ function withRetry(fetcher: HtmlFetcher, maxRetries: number): HtmlFetcher {
  * URL dedupe) — which also covers a genuinely empty page as a special case.
  *
  * ISBN is not present on catalog cards (only on product pages), so a normal
- * catalog scrape returns every listing with `isbn: null`; the opt-in
- * `enrichDescriptions` pass (same flag as every other provider) fetches each
- * product page to fill in ISBN/publisher/format/description/rawCategories.
+ * catalog scrape returns every listing with `isbn: null`. The provider declares
+ * `enrichmentMode: 'background'` (megakniga-resumable-enrichment PRD): the
+ * pipeline strips `enrichDescriptions` for it, and product-page details are
+ * filled by the API's batch-committing `scrape:enrich` job over persisted
+ * listings — an in-memory pass over the ~27k catalog loses hours of work on
+ * any interruption. The inline pass below stays functional for direct/test
+ * callers, but is not reachable through the production pipeline.
  */
 export class MegaknigaScraper implements ScraperProvider {
   readonly name = 'megakniga' as const;
+  readonly enrichmentMode = 'background' as const;
 
   constructor(private readonly fetcher: HtmlFetcher = new FetchHtmlFetcher()) {}
 

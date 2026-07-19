@@ -6,6 +6,8 @@ import {
   getHeartbeatIntervalSeconds,
   getHeartbeatTimeoutMinutes,
   getLegacyStaleTimeoutHours,
+  getEnrichBatchSize,
+  getEnrichDelayMs,
 } from '../scrape-env.js';
 
 describe('parseScraperOptionsFromEnv', () => {
@@ -226,5 +228,38 @@ describe('getLegacyStaleTimeoutHours', () => {
     expect(getLegacyStaleTimeoutHours({ SCRAPE_STALE_STARTEDAT_TIMEOUT_HOURS: '0' })).toBe(24);
     expect(getLegacyStaleTimeoutHours({ SCRAPE_STALE_STARTEDAT_TIMEOUT_HOURS: '-5' })).toBe(24);
     expect(getLegacyStaleTimeoutHours({ SCRAPE_STALE_STARTEDAT_TIMEOUT_HOURS: 'not-a-number' })).toBe(24);
+  });
+});
+
+describe('getEnrichBatchSize', () => {
+  it('returns the default (50) when absent', () => {
+    expect(getEnrichBatchSize({})).toBe(50);
+  });
+
+  it('returns the custom value when a positive integer string is set', () => {
+    expect(getEnrichBatchSize({ SCRAPE_ENRICH_BATCH_SIZE: '200' })).toBe(200);
+  });
+
+  it('falls back to the default on invalid values', () => {
+    expect(getEnrichBatchSize({ SCRAPE_ENRICH_BATCH_SIZE: '0' })).toBe(50);
+    expect(getEnrichBatchSize({ SCRAPE_ENRICH_BATCH_SIZE: '-5' })).toBe(50);
+    expect(getEnrichBatchSize({ SCRAPE_ENRICH_BATCH_SIZE: 'not-a-number' })).toBe(50);
+    expect(getEnrichBatchSize({ SCRAPE_ENRICH_BATCH_SIZE: '2.5' })).toBe(50);
+  });
+});
+
+describe('getEnrichDelayMs', () => {
+  it('returns undefined when absent (provider default applies)', () => {
+    expect(getEnrichDelayMs({})).toBeUndefined();
+  });
+
+  it('returns the custom value when a positive integer string is set', () => {
+    expect(getEnrichDelayMs({ SCRAPE_ENRICH_DELAY_MS: '500' })).toBe(500);
+  });
+
+  it('returns undefined on invalid values', () => {
+    expect(getEnrichDelayMs({ SCRAPE_ENRICH_DELAY_MS: '0' })).toBeUndefined();
+    expect(getEnrichDelayMs({ SCRAPE_ENRICH_DELAY_MS: '-1' })).toBeUndefined();
+    expect(getEnrichDelayMs({ SCRAPE_ENRICH_DELAY_MS: 'nope' })).toBeUndefined();
   });
 });
