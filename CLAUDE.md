@@ -32,6 +32,7 @@ Web: `pnpm --filter @knyhovo/web dev` (потребує API на :3000 для р
 | аудит/рев'ю canonical matcher перед додаванням провайдера (false merges, conflict over-firing) | [docs/research/canonical-matcher-final-audit.md](docs/research/canonical-matcher-final-audit.md) |
 | досліджуєш/реалізуєш КСД (book-club) через GraphQL API | [docs/research/ksd-graphql-api.md](docs/research/ksd-graphql-api.md) |
 | розглядаєш Книгарню Є (book-ye) — заблокована Cloudflare, recon | [docs/research/ye-bookstore-provider.md](docs/research/ye-bookstore-provider.md) |
+| досліджуєш/реалізуєш Мегакнигу (megakniga) — Yii2 HTML scraping recon | [docs/research/megakniga-provider.md](docs/research/megakniga-provider.md) |
 
 ## PRD
 
