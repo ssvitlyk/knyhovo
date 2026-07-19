@@ -18,7 +18,7 @@ export interface PriceHistoryPointRow {
 }
 
 export interface CollectionListingRow {
-  readonly provider: 'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY' | 'KNIGOLAND';
+  readonly provider: 'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY' | 'KNIGOLAND' | 'MEGAKNIGA';
   readonly priceAmount: number;
   readonly priceCurrency: 'UAH';
   readonly availability: 'IN_STOCK' | 'OUT_OF_STOCK' | 'UNKNOWN';

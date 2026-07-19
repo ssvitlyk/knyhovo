@@ -8,7 +8,7 @@ import { advanceWatermark } from './scrape-state.repository.js';
 
 const PROVIDER_NAME_MAP: Record<
   ProviderName,
-  'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY' | 'KNIGOLAND'
+  'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY' | 'KNIGOLAND' | 'MEGAKNIGA'
 > = {
   yakaboo: 'YAKABOO',
   'book-club': 'BOOK_CLUB',
@@ -17,16 +17,17 @@ const PROVIDER_NAME_MAP: Record<
   bookchef: 'BOOKCHEF',
   laboratory: 'LABORATORY',
   knigoland: 'KNIGOLAND',
+  megakniga: 'MEGAKNIGA',
 };
 
 export function mapProviderName(
   name: ProviderName,
-): 'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY' | 'KNIGOLAND' {
+): 'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY' | 'KNIGOLAND' | 'MEGAKNIGA' {
   return PROVIDER_NAME_MAP[name];
 }
 
 const PROVIDER_SLUG_MAP: Record<
-  'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY' | 'KNIGOLAND',
+  'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY' | 'KNIGOLAND' | 'MEGAKNIGA',
   ProviderName
 > = {
   YAKABOO: 'yakaboo',
@@ -36,11 +37,12 @@ const PROVIDER_SLUG_MAP: Record<
   BOOKCHEF: 'bookchef',
   LABORATORY: 'laboratory',
   KNIGOLAND: 'knigoland',
+  MEGAKNIGA: 'megakniga',
 };
 
 /** Inverse of {@link mapProviderName}: Prisma `Provider` enum → shared slug. */
 export function unmapProviderName(
-  provider: 'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY' | 'KNIGOLAND',
+  provider: 'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY' | 'KNIGOLAND' | 'MEGAKNIGA',
 ): ProviderName {
   return PROVIDER_SLUG_MAP[provider];
 }

@@ -3,7 +3,7 @@
 > **Тип:** research / recon. **Дата:** 2026-07-19. **Ціль:** `https://www.megakniga.com.ua/`.
 > **Питання дослідження:** чи є публічне API; який стек; чи достатньо plain fetch; наскільки стабільний DOM; складність інтеграції.
 > **Короткий висновок:** 🟢 **Tier A.** Yii2 (PHP) SSR без bot-захисту; API немає — HTML scraping через каталог; plain fetch достатньо. Найближчий аналог — **vivat** (catalog crawl + enrichment). Provider quality: HIGH · Integration complexity: LOW · Maintenance risk: LOW.
-> **Зв'язок:** slug провайдера (пропозиція) — `megakniga`; apex `megakniga.com.ua` → 301 → `www.megakniga.com.ua`; PRD ще не існує.
+> **Зв'язок:** slug провайдера — `megakniga`; apex `megakniga.com.ua` → 301 → `www.megakniga.com.ua`; PRD — [megakniga-provider.md](../prd/megakniga-provider.md).
 
 ## 1. Публічне API — немає
 

@@ -33,6 +33,7 @@ const PROVIDER_LABELS: Record<Provider, string> = {
   BOOKCHEF: 'BookChef',
   LABORATORY: 'Лабораторія',
   KNIGOLAND: 'Knigoland',
+  MEGAKNIGA: 'Megakniga',
 };
 
 export function providerLabel(provider: Provider): string {

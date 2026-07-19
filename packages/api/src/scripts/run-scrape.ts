@@ -12,6 +12,7 @@ import {
   LaboratoryScraper,
   KnigolandScraper,
   BookClubScraper,
+  MegaknigaScraper,
   browserManager,
 } from '@knyhovo/scrapers';
 import type { ScraperProvider, ProviderName } from '@knyhovo/shared';
@@ -41,6 +42,7 @@ const providers: ScraperProvider[] = [
   new LaboratoryScraper(),
   new KnigolandScraper(),
   new BookClubScraper(),
+  new MegaknigaScraper(),
 ];
 
 /**

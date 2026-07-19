@@ -71,6 +71,7 @@ describe('GENRE_PROVIDER_PRIORITY', () => {
       'vivat',
       'yakaboo',
       'book-ye',
+      'megakniga',
     ]);
   });
 });

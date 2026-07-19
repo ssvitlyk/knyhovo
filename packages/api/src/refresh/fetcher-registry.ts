@@ -61,6 +61,8 @@ const FETCHER_FACTORY: Record<ProviderName, () => HtmlFetcher> = {
   laboratory: getFetchFetcher,
   // knigoland: product pages are server-rendered (JSON-LD Product+Book), nginx + Next.js, no Cloudflare.
   knigoland: getFetchFetcher,
+  // megakniga: server-rendered Yii2 (PHP), Cloudflare is CDN-only, no challenge.
+  megakniga: getFetchFetcher,
 };
 
 // ---------------------------------------------------------------------------
