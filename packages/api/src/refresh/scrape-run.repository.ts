@@ -221,11 +221,38 @@ export async function checkpointScrapeRunCounters(
 export async function findLatestScrapeRun(
   prisma: PrismaClient,
   params: { provider: Provider; kind: ScrapeRunKind },
-): Promise<{ id: string; status: ScrapeRunStatus; cursor: string | null; startedAt: Date } | null> {
+): Promise<{
+  id: string;
+  status: ScrapeRunStatus;
+  cursor: string | null;
+  startedAt: Date;
+  itemsProcessed: number;
+  metadata: Prisma.JsonValue;
+} | null> {
   return prisma.scrapeRun.findFirst({
     where: { provider: params.provider, kind: params.kind },
     orderBy: { startedAt: 'desc' },
-    select: { id: true, status: true, cursor: true, startedAt: true },
+    // itemsProcessed + metadata feed the campaign-metadata chain (PRD §3):
+    // campaignRootRunId / resumeAttempt / startItemsProcessed are derived from
+    // the predecessor this resume continues.
+    select: { id: true, status: true, cursor: true, startedAt: true, itemsProcessed: true, metadata: true },
+  });
+}
+
+/**
+ * The most-recent enrichment runs of a provider, newest first — the input to
+ * the restart-loop no-progress guard (megakniga-resumable-enrichment PRD §4.7
+ * / §3). Only the two fields the guard inspects are selected.
+ */
+export async function findRecentScrapeRuns(
+  prisma: PrismaClient,
+  params: { provider: Provider; kind: ScrapeRunKind; take: number },
+): Promise<Array<{ status: ScrapeRunStatus; itemsProcessed: number }>> {
+  return prisma.scrapeRun.findMany({
+    where: { provider: params.provider, kind: params.kind },
+    orderBy: { startedAt: 'desc' },
+    take: params.take,
+    select: { status: true, itemsProcessed: true },
   });
 }
 

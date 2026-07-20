@@ -4,6 +4,7 @@ import type { HtmlFetcher } from '../../http/html-fetcher.js';
 import {
   enrichProductDetails,
   isRateLimited,
+  isInfrastructureFailure,
   type ExtractedProductDetails,
 } from '../enrich-product-details.js';
 
@@ -47,6 +48,162 @@ describe('isRateLimited', () => {
   it('is false for other errors', () => {
     expect(isRateLimited(new Error('HTTP 404 Not Found'))).toBe(false);
     expect(isRateLimited(new Error('network timeout'))).toBe(false);
+  });
+});
+
+describe('isInfrastructureFailure', () => {
+  it('detects timeouts, connection, DNS and 5xx failures', () => {
+    for (const msg of [
+      'connect ETIMEDOUT 1.2.3.4:443',
+      'request timed out',
+      'connect ECONNREFUSED',
+      'read ECONNRESET',
+      'getaddrinfo ENOTFOUND www.megakniga.com.ua',
+      'getaddrinfo EAI_AGAIN',
+      'socket hang up',
+      'fetch failed',
+      'HTTP 500 Internal Server Error',
+      'HTTP 502 Bad Gateway',
+      'HTTP 504 Gateway Timeout',
+    ]) {
+      expect(isInfrastructureFailure(new Error(msg))).toBe(true);
+    }
+  });
+
+  it('excludes 429/503 (those are the separate rate-limit stop)', () => {
+    expect(isInfrastructureFailure(new Error('HTTP 429 Too Many Requests'))).toBe(false);
+    expect(isInfrastructureFailure(new Error('HTTP 503 Service Unavailable'))).toBe(false);
+  });
+
+  it('excludes page-specific/content errors', () => {
+    expect(isInfrastructureFailure(new Error('HTTP 404 Not Found'))).toBe(false);
+    expect(isInfrastructureFailure(new Error('no fixture for https://x'))).toBe(false);
+  });
+});
+
+describe('enrichProductDetails — graceful abort (AbortSignal)', () => {
+  it('stops at the top of the next iteration once the signal fires, without a new fetch', async () => {
+    const listings = [listing('https://a'), listing('https://b'), listing('https://c')];
+    const controller = new AbortController();
+    // Aborting during b's fetch: b still resolves, then the signal halts before c.
+    const fetcher = new (class implements HtmlFetcher {
+      readonly calls: string[] = [];
+      async fetch(url: string): Promise<string> {
+        this.calls.push(url);
+        if (url === 'https://b') controller.abort();
+        return '<p>opis</p>';
+      }
+    })();
+    const errors: string[] = [];
+
+    const result = await enrichProductDetails(listings, fetcher, echoExtract, {
+      timeoutMs: 1000,
+      delayMs: 0,
+      errors,
+      signal: controller.signal,
+    });
+
+    expect(result).toEqual({ processedCount: 2, stopReason: 'aborted' });
+    expect(fetcher.calls).toEqual(['https://a', 'https://b']); // c never fetched
+    expect(errors).toEqual([]); // an abort is not an error
+  });
+
+  it('reports processedCount 0 and stopReason aborted when already aborted up-front', async () => {
+    const listings = [listing('https://a')];
+    const controller = new AbortController();
+    controller.abort();
+    const fetcher = new MapFetcher({ 'https://a': '<p>opis</p>' });
+
+    const result = await enrichProductDetails(listings, fetcher, echoExtract, {
+      timeoutMs: 1000,
+      delayMs: 0,
+      errors: [],
+      signal: controller.signal,
+    });
+
+    expect(result).toEqual({ processedCount: 0, stopReason: 'aborted' });
+    expect(fetcher.calls).toEqual([]);
+  });
+});
+
+describe('enrichProductDetails — circuit breaker (maxConsecutiveFailures)', () => {
+  it('stops after N consecutive infrastructure failures', async () => {
+    const listings = ['a', 'b', 'c', 'd'].map((c) => listing(`https://${c}`));
+    const fetcher = new MapFetcher({
+      'https://a': new Error('connect ETIMEDOUT'),
+      'https://b': new Error('connect ETIMEDOUT'),
+      'https://c': new Error('connect ETIMEDOUT'),
+      'https://d': '<p>opis</p>',
+    });
+    const errors: string[] = [];
+
+    const result = await enrichProductDetails(listings, fetcher, echoExtract, {
+      timeoutMs: 1000,
+      delayMs: 0,
+      errors,
+      maxConsecutiveFailures: 3,
+    });
+
+    expect(result.stopReason).toBe('circuit-breaker');
+    // a and b counted as processed; c tripped the breaker (not counted); d never reached.
+    expect(result.processedCount).toBe(2);
+    expect(fetcher.calls).toEqual(['https://a', 'https://b', 'https://c']);
+    expect(errors).toHaveLength(3);
+  });
+
+  it('a successful fetch resets the consecutive-failure counter', async () => {
+    const listings = ['a', 'b', 'c', 'd', 'e'].map((c) => listing(`https://${c}`));
+    const fetcher = new MapFetcher({
+      'https://a': new Error('connect ETIMEDOUT'),
+      'https://b': '<p>ok</p>', // resets the streak
+      'https://c': new Error('connect ETIMEDOUT'),
+      'https://d': '<p>ok</p>', // resets again
+      'https://e': new Error('connect ETIMEDOUT'),
+    });
+    const result = await enrichProductDetails(listings, fetcher, echoExtract, {
+      timeoutMs: 1000,
+      delayMs: 0,
+      errors: [],
+      maxConsecutiveFailures: 2,
+    });
+
+    expect(result).toEqual({ processedCount: 5, stopReason: 'complete' });
+    expect(fetcher.calls).toHaveLength(5);
+  });
+
+  it('a rate limit is never counted by the breaker (separate stop)', async () => {
+    const listings = ['a', 'b'].map((c) => listing(`https://${c}`));
+    const fetcher = new MapFetcher({
+      'https://a': new Error('HTTP 429 Too Many Requests'),
+      'https://b': '<p>ok</p>',
+    });
+    const result = await enrichProductDetails(listings, fetcher, echoExtract, {
+      timeoutMs: 1000,
+      delayMs: 0,
+      errors: [],
+      maxConsecutiveFailures: 1,
+    });
+
+    // The 429 stops the pass as a rate limit, not a breaker trip.
+    expect(result.stopReason).toBe('rate-limited');
+  });
+
+  it('the breaker is off when maxConsecutiveFailures is undefined (original behavior)', async () => {
+    const listings = ['a', 'b', 'c'].map((c) => listing(`https://${c}`));
+    const fetcher = new MapFetcher({
+      'https://a': new Error('connect ETIMEDOUT'),
+      'https://b': new Error('connect ETIMEDOUT'),
+      'https://c': new Error('connect ETIMEDOUT'),
+    });
+    const errors: string[] = [];
+    const result = await enrichProductDetails(listings, fetcher, echoExtract, {
+      timeoutMs: 1000,
+      delayMs: 0,
+      errors,
+    });
+
+    expect(result).toEqual({ processedCount: 3, stopReason: 'complete' });
+    expect(errors).toHaveLength(3);
   });
 });
 

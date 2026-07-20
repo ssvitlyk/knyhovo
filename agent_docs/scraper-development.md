@@ -67,8 +67,41 @@ heartbeat'`, **cursor лишається** — новий run одразу resum
 `scrape_runs_one_active_enrichment` (один RUNNING enrichment на провайдера) — другий процес
 отримує чітке `enrichment already running (provider=…, run=…, heartbeat=…)`, нічого не створює
 і виходить з кодом 1.
-Повна архітектура (SIGTERM/graceful shutdown — PR5):
-`docs/prd/megakniga-resumable-enrichment.md`.
+**Graceful shutdown + exit-code контракт (PR5).** SIGINT і SIGTERM запускають той самий
+graceful-шлях через `AbortController`: engine не бере нових fetch-ів, дає завершитись in-flight
+fetch-у, комітить зібраний prefix batch-у, checkpoint-ить cursor на **останній повністю
+оброблений** listing, закриває run як `PARTIAL` (resumable), зупиняє heartbeat і від'єднує
+Prisma. **Другий** той самий сигнал — негайний hard-exit (єдиний `process.exit` у CLI). На
+нормальному шляху `process.exit()` не використовується — лише `process.exitCode`.
+
+Exit-код визначає **одна** pure-функція `exitCodeForReason` (`src/enrichment/lifecycle.ts`):
+
+| Код | Коли | Railway On Failure |
+|---|---|---|
+| **0** | SUCCESS; queue вичерпано з помилками (PARTIAL, cursor NULL); `--limit`; контрольований rate-limit (429/503); **SIGINT** (ручна зупинка); спрацював no-progress guard | без рестарту |
+| **75** | **SIGTERM** (платформа); circuit breaker; transient crash / вичерпані retry batch-транзакції — cursor цілий | авто-рестарт → resume з cursor |
+| **1** | already-running (lock); config-помилка (невалідні args/env, невідомий провайдер, без background-mode, відсутній `DATABASE_URL`) | рестарт не допоможе |
+
+SIGINT vs SIGTERM — свідома різниця: оператор зупинив вручну (0, лишається зупиненим) vs платформа
+redeploy/restart (75, авто-resume). Джерело сигналу пише у `metadata.stopReason`.
+
+**Circuit breaker (PR5).** `SCRAPE_ENRICH_CIRCUIT_BREAKER_THRESHOLD` (default 10) послідовних
+інфраструктурних падінь (timeout/DNS/connection/5xx — **НЕ** 429/503) зупиняють run, щоб масова
+недоступність сайту не пройшла всі ~27k listing fetch-fail-ами. Успішний fetch скидає лічильник.
+При спрацюванні: успішний prefix закомічено, cursor **не проходить** необроблений хвіст (лишається
+на безпечній точці), run → `PARTIAL` (resumable), exit 75. 429/503 лишаються окремим rate-limit
+сценарієм (exit 0).
+
+**No-progress restart-loop guard (PR5).** Другий шар захисту від нескінченного Railway restart
+(перший — On Failure max 3). Перед стартом CLI рахує послідовні попередні runs з
+`items_processed=0`: якщо їх ≥ `SCRAPE_ENRICH_MAX_NO_PROGRESS_RESTARTS` (default 3) — не стартує,
+пише FAILED-маркер з `stopReason='no-progress-guard'` і виходить **0** (навмисно — розриває цикл
+навіть за misconfigured policy Always). Маркер сам має `items_processed=0`, тож guard лишається
+активним до втручання оператора (розслідувати; run із прогресом скидає лічильник). Кампанія
+трасується метаданими: `campaignRootRunId`, `resumeAttempt`, `startCursor`, `startItemsProcessed`,
+`stopReason`.
+
+Повна архітектура: `docs/prd/megakniga-resumable-enrichment.md` (§4.7, §3, §4).
 
 ### Запуск на Railway — тільки Job, НЕ Console
 
@@ -80,8 +113,10 @@ enrichment 2026-07-19).
 1. Дублюй API-сервіс у Railway → сервіс `megakniga-enrich`, той самий repo/образ.
 2. Custom start command: `pnpm --filter @knyhovo/api scrape:enrich -- --provider=megakniga`.
 3. Env — ті самі, що в API-сервісі (`DATABASE_URL` обов'язково).
-4. Restart policy: **On Failure, max 3** (crash → авто-повтор, який добирає решту; graceful
-   завершення з exit 0 не рестартує).
+4. Restart policy: **On Failure, max 3**. Exit 75 (SIGTERM/circuit breaker/transient crash) →
+   авто-рестарт, який resume-иться з cursor; exit 0 (SUCCESS/SIGINT/rate-limit/`--limit`/
+   no-progress guard) не рестартує; exit 1 (already-running/config) рестарт не лікує. Разом із
+   CLI-side no-progress guard це унеможливлює нескінченний restart loop.
 5. Після завершення кампанії сервіс вимкнути/видалити.
 
 Перевірка статусу:

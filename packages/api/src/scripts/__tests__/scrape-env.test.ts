@@ -8,6 +8,8 @@ import {
   getLegacyStaleTimeoutHours,
   getEnrichBatchSize,
   getEnrichDelayMs,
+  getEnrichCircuitBreakerThreshold,
+  getEnrichMaxNoProgressRestarts,
 } from '../scrape-env.js';
 
 describe('parseScraperOptionsFromEnv', () => {
@@ -261,5 +263,39 @@ describe('getEnrichDelayMs', () => {
     expect(getEnrichDelayMs({ SCRAPE_ENRICH_DELAY_MS: '0' })).toBeUndefined();
     expect(getEnrichDelayMs({ SCRAPE_ENRICH_DELAY_MS: '-1' })).toBeUndefined();
     expect(getEnrichDelayMs({ SCRAPE_ENRICH_DELAY_MS: 'nope' })).toBeUndefined();
+  });
+});
+
+describe('getEnrichCircuitBreakerThreshold', () => {
+  it('defaults to 10 (breaker on by default) when absent', () => {
+    expect(getEnrichCircuitBreakerThreshold({})).toBe(10);
+  });
+
+  it('returns the custom value when a positive integer string is set', () => {
+    expect(getEnrichCircuitBreakerThreshold({ SCRAPE_ENRICH_CIRCUIT_BREAKER_THRESHOLD: '3' })).toBe(3);
+  });
+
+  it('falls back to the default on invalid values', () => {
+    expect(getEnrichCircuitBreakerThreshold({ SCRAPE_ENRICH_CIRCUIT_BREAKER_THRESHOLD: '0' })).toBe(10);
+    expect(getEnrichCircuitBreakerThreshold({ SCRAPE_ENRICH_CIRCUIT_BREAKER_THRESHOLD: '-2' })).toBe(10);
+    expect(getEnrichCircuitBreakerThreshold({ SCRAPE_ENRICH_CIRCUIT_BREAKER_THRESHOLD: 'x' })).toBe(10);
+    expect(getEnrichCircuitBreakerThreshold({ SCRAPE_ENRICH_CIRCUIT_BREAKER_THRESHOLD: '1.5' })).toBe(10);
+  });
+});
+
+describe('getEnrichMaxNoProgressRestarts', () => {
+  it('defaults to 3 when absent', () => {
+    expect(getEnrichMaxNoProgressRestarts({})).toBe(3);
+  });
+
+  it('returns the custom value when a positive integer string is set', () => {
+    expect(getEnrichMaxNoProgressRestarts({ SCRAPE_ENRICH_MAX_NO_PROGRESS_RESTARTS: '5' })).toBe(5);
+  });
+
+  it('falls back to the default on invalid values', () => {
+    expect(getEnrichMaxNoProgressRestarts({ SCRAPE_ENRICH_MAX_NO_PROGRESS_RESTARTS: '0' })).toBe(3);
+    expect(getEnrichMaxNoProgressRestarts({ SCRAPE_ENRICH_MAX_NO_PROGRESS_RESTARTS: '-1' })).toBe(3);
+    expect(getEnrichMaxNoProgressRestarts({ SCRAPE_ENRICH_MAX_NO_PROGRESS_RESTARTS: 'nope' })).toBe(3);
+    expect(getEnrichMaxNoProgressRestarts({ SCRAPE_ENRICH_MAX_NO_PROGRESS_RESTARTS: '2.2' })).toBe(3);
   });
 });

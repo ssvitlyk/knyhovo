@@ -127,6 +127,42 @@ export function getEnrichDelayMs(env: NodeJS.ProcessEnv): number | undefined {
   return undefined;
 }
 
+/** Default circuit-breaker threshold: consecutive infrastructure failures that stop a run (megakniga-resumable-enrichment PRD §4). */
+const DEFAULT_ENRICH_CIRCUIT_BREAKER_THRESHOLD = 10;
+
+/**
+ * Parse `SCRAPE_ENRICH_CIRCUIT_BREAKER_THRESHOLD` — how many CONSECUTIVE
+ * infrastructure failures (timeout/DNS/connection/5xx, NOT 429/503) trip the
+ * enrichment circuit breaker so a mass site outage does not fetch-fail all
+ * ~27k listings. Any non-positive-integer value falls back to the default.
+ * Always returns a number (the breaker is on by default).
+ */
+export function getEnrichCircuitBreakerThreshold(env: NodeJS.ProcessEnv): number {
+  const raw = env['SCRAPE_ENRICH_CIRCUIT_BREAKER_THRESHOLD'];
+  if (raw !== undefined && /^[1-9]\d*$/.test(raw)) {
+    return Number(raw);
+  }
+  return DEFAULT_ENRICH_CIRCUIT_BREAKER_THRESHOLD;
+}
+
+/** Default max consecutive no-progress restarts before the restart-loop guard blocks (megakniga-resumable-enrichment PRD §4.7). */
+const DEFAULT_ENRICH_MAX_NO_PROGRESS_RESTARTS = 3;
+
+/**
+ * Parse `SCRAPE_ENRICH_MAX_NO_PROGRESS_RESTARTS` — the CLI-side restart-loop
+ * guard threshold: when this many consecutive prior enrichment runs each made
+ * zero progress (`items_processed = 0`), the next start refuses to run and
+ * exits 0 (breaking the loop). Any non-positive-integer value falls back to
+ * the default. Always returns a number.
+ */
+export function getEnrichMaxNoProgressRestarts(env: NodeJS.ProcessEnv): number {
+  const raw = env['SCRAPE_ENRICH_MAX_NO_PROGRESS_RESTARTS'];
+  if (raw !== undefined && /^[1-9]\d*$/.test(raw)) {
+    return Number(raw);
+  }
+  return DEFAULT_ENRICH_MAX_NO_PROGRESS_RESTARTS;
+}
+
 /** Default heartbeat interval (seconds) for a running scrape (stale-scrape-recovery PRD §2.2). */
 const DEFAULT_HEARTBEAT_INTERVAL_SECONDS = 60;
 

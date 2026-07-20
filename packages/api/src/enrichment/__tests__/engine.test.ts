@@ -851,6 +851,169 @@ describe('runEnrichment', () => {
     expect(updateCalls).toHaveLength(0);
     expect(deriveEnrichmentStatus(summary)).toBe('SUCCESS');
   });
+
+  // ── Graceful shutdown via injected AbortSignal (PRD §4.7; test-matrix 12) ────
+
+  it('an AbortSignal firing MID-batch commits the processed prefix and stops PARTIAL at the last fully-processed row', async () => {
+    const rows = ['a1', 'a2', 'a3', 'a4', 'a5'].map((id) => makeRow({ id }));
+    const { prisma, updateCalls } = makeFakePrisma(rows);
+    const controller = new AbortController();
+    // Abort while fetching a2: a2's fetch still returns (in-flight finishes),
+    // then the pass sees the signal at the top of a3 and stops taking new work.
+    const { fetcher, fetched } = makeFetcher((url) => {
+      if (url.endsWith('/a2')) controller.abort();
+      return pageFor(FULL_DETAILS);
+    });
+
+    const summary = await runEnrichment({
+      prisma,
+      provider: 'megakniga',
+      batchSize: 50,
+      logger: silentLogger,
+      fetcher,
+      config: TEST_CONFIG,
+      signal: controller.signal,
+    });
+
+    expect(summary.stoppedEarly).toBe('aborted');
+    // a1 and a2 fully processed; a3–a5 never fetched.
+    expect(fetched).toEqual([rows[0]!.url, rows[1]!.url]);
+    expect(summary).toMatchObject({ processed: 2, enriched: 2 });
+    // Cursor = last fully-processed row → resumable from a2.
+    expect(summary.finalCursor).toBe('a2');
+    expect(updateCalls.map((u) => u.id)).toEqual(['a1', 'a2']);
+    expect(deriveEnrichmentStatus(summary)).toBe('PARTIAL');
+  });
+
+  it('an AbortSignal already set BETWEEN batches stops before the next batch, cursor at the last committed batch', async () => {
+    const rows = ['b1', 'b2', 'b3', 'b4'].map((id) => makeRow({ id }));
+    const { prisma, updateCalls } = makeFakePrisma(rows);
+    const controller = new AbortController();
+    // Abort as the last row of batch 1 (b2) is fetched: batch 1 completes and
+    // commits cleanly; the engine's top-of-loop check then stops before batch 2.
+    const { fetcher, fetched } = makeFetcher((url) => {
+      if (url.endsWith('/b2')) controller.abort();
+      return pageFor(FULL_DETAILS);
+    });
+
+    const summary = await runEnrichment({
+      prisma,
+      provider: 'megakniga',
+      batchSize: 2,
+      logger: silentLogger,
+      fetcher,
+      config: TEST_CONFIG,
+      signal: controller.signal,
+    });
+
+    expect(summary.stoppedEarly).toBe('aborted');
+    expect(fetched).toEqual([rows[0]!.url, rows[1]!.url]); // batch 2 never started
+    expect(summary).toMatchObject({ processed: 2, enriched: 2, batches: 1, finalCursor: 'b2' });
+    expect(updateCalls.map((u) => u.id)).toEqual(['b1', 'b2']);
+  });
+
+  it('a signal aborted before the first batch does nothing and closes as a no-op abort', async () => {
+    const rows = ['c1', 'c2'].map((id) => makeRow({ id }));
+    const { prisma, updateCalls } = makeFakePrisma(rows);
+    const controller = new AbortController();
+    controller.abort();
+    const { fetcher, fetched } = makeFetcher(() => pageFor(FULL_DETAILS));
+
+    const summary = await runEnrichment({
+      prisma,
+      provider: 'megakniga',
+      batchSize: 50,
+      startCursor: null,
+      logger: silentLogger,
+      fetcher,
+      config: TEST_CONFIG,
+      signal: controller.signal,
+    });
+
+    expect(summary).toMatchObject({ stoppedEarly: 'aborted', processed: 0, enriched: 0 });
+    expect(fetched).toHaveLength(0);
+    expect(updateCalls).toHaveLength(0);
+  });
+
+  // ── Circuit breaker (PRD §4; test-matrix — infra outage) ────────────────────
+
+  it('trips the circuit breaker after N consecutive infrastructure failures, commits the good prefix, holds the cursor before the failed tail', async () => {
+    const rows = ['d1', 'd2', 'd3', 'd4', 'd5', 'd6'].map((id) => makeRow({ id }));
+    const { prisma, updateCalls } = makeFakePrisma(rows);
+    // Batch 1 (d1–d3) succeeds; batch 2 (d4–d6) is a total infrastructure
+    // outage — the third consecutive failure trips the breaker.
+    const { fetcher, fetched } = makeFetcher((url) => {
+      if (/\/d[456]$/.test(url)) throw new Error('connect ETIMEDOUT 1.2.3.4:443');
+      return pageFor(FULL_DETAILS);
+    });
+
+    const summary = await runEnrichment({
+      prisma,
+      provider: 'megakniga',
+      batchSize: 3,
+      logger: silentLogger,
+      fetcher,
+      config: TEST_CONFIG,
+      circuitBreakerThreshold: 3,
+    });
+
+    expect(summary.stoppedEarly).toBe('circuit-breaker');
+    // Batch 1 committed; the breaker stopped the walk inside batch 2.
+    expect(updateCalls.map((u) => u.id)).toEqual(['d1', 'd2', 'd3']);
+    expect(summary).toMatchObject({ enriched: 3, failed: 3 });
+    // Cursor stays at the last SAFE point (batch 1 end) — never past the
+    // unprocessed tail d4–d6, which the resumed run re-walks.
+    expect(summary.finalCursor).toBe('d3');
+    // d4/d5/d6 were each attempted once (no retries in TEST_CONFIG).
+    expect(fetched).toContain(rows[5]!.url);
+    expect(deriveEnrichmentStatus(summary)).toBe('PARTIAL');
+  });
+
+  it('does not trip when infrastructure failures are not consecutive (a success resets the streak)', async () => {
+    const rows = ['e1', 'e2', 'e3', 'e4'].map((id) => makeRow({ id }));
+    const { prisma } = makeFakePrisma(rows);
+    // fail, success, fail, success — never 2 in a row.
+    const { fetcher } = makeFetcher((url) => {
+      if (url.endsWith('/e1') || url.endsWith('/e3')) throw new Error('HTTP 500 Internal Server Error');
+      return pageFor(FULL_DETAILS);
+    });
+
+    const summary = await runEnrichment({
+      prisma,
+      provider: 'megakniga',
+      batchSize: 50,
+      logger: silentLogger,
+      fetcher,
+      config: TEST_CONFIG,
+      circuitBreakerThreshold: 2,
+    });
+
+    expect(summary.stoppedEarly).toBeNull();
+    expect(summary).toMatchObject({ processed: 4, enriched: 2, failed: 2 });
+    // Queue exhausted despite failures → cursor NULL (failed rows re-queued next campaign).
+    expect(summary.finalCursor).toBeNull();
+  });
+
+  it('a rate limit (429/503) is NOT counted by the circuit breaker — it stays a separate stop', async () => {
+    const rows = ['f1', 'f2', 'f3'].map((id) => makeRow({ id }));
+    const { prisma } = makeFakePrisma(rows);
+    const { fetcher } = makeFetcher((url) => {
+      if (url.endsWith('/f2')) throw new Error('HTTP 429 Too Many Requests');
+      return pageFor(FULL_DETAILS);
+    });
+
+    const summary = await runEnrichment({
+      prisma,
+      provider: 'megakniga',
+      batchSize: 50,
+      logger: silentLogger,
+      fetcher,
+      config: TEST_CONFIG,
+      circuitBreakerThreshold: 1, // would trip on any infra failure, but 429 isn't one
+    });
+
+    expect(summary.stoppedEarly).toBe('rate-limited');
+  });
 });
 
 // ── openEnrichmentRun (PR4: reap → lock → resume → insert) ────────────────────
