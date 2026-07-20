@@ -6,13 +6,17 @@ import {
 } from '@knyhovo/scrapers';
 import type { HtmlFetcher } from '@knyhovo/scrapers';
 import type { Availability, ProviderName, RawProviderListing } from '@knyhovo/shared';
-import type { PrismaClient } from '@prisma/client';
-import { Prisma, ScrapeRunStatus } from '@prisma/client';
+import type { PrismaClient, ScrapeRunTrigger } from '@prisma/client';
+import { Prisma, ScrapeRunKind, ScrapeRunStatus } from '@prisma/client';
 import { createMetrics } from '../pipeline/metrics.js';
 import { mapProviderName } from '../pipeline/persist-listing.js';
 import type { Logger, ScrapeMetrics } from '../pipeline/types.js';
+import { reapStaleRuns, type StaleReapConfig } from '../refresh/concurrency-guard.js';
 import {
   checkpointScrapeRunCounters,
+  findLatestScrapeRun,
+  findRunningScrapeRun,
+  startScrapeRun,
   summarizeScrapeErrors,
 } from '../refresh/scrape-run.repository.js';
 import { ENRICHMENT_PROVIDERS, type ProviderEnrichmentConfig } from './providers.js';
@@ -350,10 +354,10 @@ export interface ResumeCandidateRun {
  * cursor when it stopped mid-campaign (PARTIAL/FAILED with cursor set),
  * otherwise start a fresh campaign from the beginning of the queue.
  *
- * A RUNNING row is NOT resumed: without the stale-heartbeat reap and the
- * exclusive lock (both PR4, §4.5 steps 2–3) we cannot tell a live process
- * from a kill -9 leftover, so the safe PR3 behavior is a fresh campaign —
- * idempotent by predicate, just without the cursor shortcut.
+ * A RUNNING row is NOT resumed: since PR4 `openEnrichmentRun` reaps stale
+ * RUNNING rows (kill -9 leftovers → FAILED, cursor intact) BEFORE this
+ * decision and refuses to start against a fresh one, so a RUNNING row seen
+ * here belongs to a live process — the already-running path, never a resume.
  */
 export function resolveEnrichmentResume(lastRun: ResumeCandidateRun | null): {
   startCursor: string | null;
@@ -367,6 +371,120 @@ export function resolveEnrichmentResume(lastRun: ResumeCandidateRun | null): {
     return { startCursor: lastRun.cursor, resumedFromRunId: lastRun.id };
   }
   return { startCursor: null, resumedFromRunId: null };
+}
+
+/** The only kind the enrichment CLI's stale reap sweeps (PRD §4.6) — never GUARDED_KINDS. */
+export const ENRICHMENT_REAP_KINDS: readonly ScrapeRunKind[] = [
+  ScrapeRunKind.DESCRIPTION_ENRICHMENT,
+];
+
+/**
+ * Thrown by `openEnrichmentRun` when an enrichment run for the provider is
+ * already RUNNING with a live heartbeat (PRD §4.5 step 2 / §4.6). `runId` and
+ * `lastHeartbeatAt` are best-effort diagnostics: null only when the
+ * conflicting row could not be re-read after a P2002 race.
+ */
+export class EnrichmentAlreadyRunningError extends Error {
+  constructor(
+    public readonly provider: ProviderName,
+    public readonly runId: string | null,
+    public readonly lastHeartbeatAt: Date | null,
+  ) {
+    super(
+      `enrichment already running (provider=${provider}` +
+        `${runId !== null ? `, run=${runId}` : ''}` +
+        `${lastHeartbeatAt !== null ? `, heartbeat=${lastHeartbeatAt.toISOString()}` : ''})`,
+    );
+    this.name = 'EnrichmentAlreadyRunningError';
+  }
+}
+
+export interface OpenEnrichmentRunOptions {
+  prisma: PrismaClient;
+  provider: ProviderName;
+  triggeredBy: ScrapeRunTrigger;
+  /** Base run metadata; `resumedFromRunId` is merged in when resuming (PRD §4.5 step 4). */
+  metadata: Record<string, Prisma.InputJsonValue>;
+  /** Staleness thresholds — the same env-driven values the refresh guard uses. */
+  staleReap: StaleReapConfig;
+  logger: Logger;
+  /** Injectable clock for deterministic staleness tests. */
+  now?: () => Date;
+}
+
+export interface OpenedEnrichmentRun {
+  run: { id: string; startedAt: Date };
+  resume: { startCursor: string | null; resumedFromRunId: string | null };
+  /** Stale RUNNING enrichment rows closed to FAILED before this run started. */
+  reaped: number;
+}
+
+/**
+ * Open an enrichment scrape_runs row with the full PR4 start sequence
+ * (PRD §4.5 steps 2–5, §4.6):
+ *
+ * 1. Reap stale RUNNING enrichment rows — DESCRIPTION_ENRICHMENT only, so
+ *    FULL_CATALOG/WISHLIST rows are untouched. Reuses the conditional-UPDATE
+ *    mutex of `reapStaleRuns`: a heartbeat landing mid-reap cancels that
+ *    row's reap (its process is alive), and the reaped row keeps its cursor.
+ * 2. A RUNNING row that survived the reap (fresh heartbeat) → throw
+ *    `EnrichmentAlreadyRunningError` with its id and heartbeat.
+ * 3. Resume decision over the latest row (`resolveEnrichmentResume`).
+ * 4. Plain `startScrapeRun` INSERT. The partial unique index
+ *    `scrape_runs_one_active_enrichment` makes this the real, race-free
+ *    lock: a concurrent starter that passed the checks in step 2 loses here
+ *    with a unique violation (P2002) — reported as the same clear error,
+ *    with the winner's row re-read for diagnostics. The loser has created
+ *    and modified nothing.
+ */
+export async function openEnrichmentRun(
+  opts: OpenEnrichmentRunOptions,
+): Promise<OpenedEnrichmentRun> {
+  const providerEnum = mapProviderName(opts.provider);
+  const kind = ScrapeRunKind.DESCRIPTION_ENRICHMENT;
+  const guardDeps = opts.now !== undefined ? { now: opts.now } : undefined;
+
+  const reap = await reapStaleRuns(opts.prisma, opts.staleReap, ENRICHMENT_REAP_KINDS, guardDeps);
+  if (reap.reaped > 0) {
+    opts.logger.info(
+      `enrichment ${opts.provider}: reaped ${reap.reaped} stale RUNNING enrichment run(s) ` +
+        `(heartbeat silent) — cursor preserved for resume`,
+    );
+  }
+
+  const running = await findRunningScrapeRun(opts.prisma, { provider: providerEnum, kind });
+  if (running !== null) {
+    throw new EnrichmentAlreadyRunningError(opts.provider, running.id, running.lastHeartbeatAt);
+  }
+
+  const lastRun = await findLatestScrapeRun(opts.prisma, { provider: providerEnum, kind });
+  const resume = resolveEnrichmentResume(lastRun);
+
+  try {
+    const run = await startScrapeRun(opts.prisma, {
+      provider: providerEnum,
+      kind,
+      triggeredBy: opts.triggeredBy,
+      ...(resume.startCursor !== null ? { cursor: resume.startCursor } : {}),
+      metadata: {
+        ...opts.metadata,
+        ...(resume.resumedFromRunId !== null
+          ? { resumedFromRunId: resume.resumedFromRunId }
+          : {}),
+      },
+    });
+    return { run, resume, reaped: reap.reaped };
+  } catch (err: unknown) {
+    if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
+      const winner = await findRunningScrapeRun(opts.prisma, { provider: providerEnum, kind });
+      throw new EnrichmentAlreadyRunningError(
+        opts.provider,
+        winner?.id ?? null,
+        winner?.lastHeartbeatAt ?? null,
+      );
+    }
+    throw err;
+  }
 }
 
 /** Wrap a fetcher so every request retries transient failures, mirroring the provider's own scrape transport. */

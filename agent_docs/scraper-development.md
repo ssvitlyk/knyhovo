@@ -57,7 +57,17 @@ NULL` ⇔ кампанії є що продовжувати; `cursor NULL` = ч�
 (`items_found`/`items_updated`/`items_processed`/`errors_count`) і `cursor` оновлюються
 **після кожного batch** — SQL нижче показує живий прогрес під час run, лог кожного batch
 містить processed/total, cursor і ETA.
-Повна архітектура (heartbeat/reap/lock — PR4, SIGTERM — PR5):
+**Heartbeat + stale recovery + lock (PR4).** Активний run пише liveness-сигнал
+`last_heartbeat_at` кожні `SCRAPE_HEARTBEAT_INTERVAL_SECONDS` (default 60с). На старті CLI
+reap-ить **лише** stale DESCRIPTION_ENRICHMENT-рядки (heartbeat мовчить довше
+`SCRAPE_HEARTBEAT_TIMEOUT_MINUTES`, default 15хв) → `FAILED` з `error_summary='Reaped stale
+heartbeat'`, **cursor лишається** — новий run одразу resume-иться з нього
+(`metadata.resumedFromRunId` = reap-нутий run). FULL_CATALOG/WISHLIST guard-и це не зачіпає ні
+в який бік. Подвійний запуск неможливий на рівні БД: partial unique index
+`scrape_runs_one_active_enrichment` (один RUNNING enrichment на провайдера) — другий процес
+отримує чітке `enrichment already running (provider=…, run=…, heartbeat=…)`, нічого не створює
+і виходить з кодом 1.
+Повна архітектура (SIGTERM/graceful shutdown — PR5):
 `docs/prd/megakniga-resumable-enrichment.md`.
 
 ### Запуск на Railway — тільки Job, НЕ Console
@@ -86,10 +96,19 @@ ORDER BY started_at DESC LIMIT 5;
 
 Безпечний перезапуск: просто запустити Job ще раз — CLI сам знайде останній зупинений run і
 продовжить з його cursor (`metadata.resumedFromRunId` показує ланцюжок кампанії); уже збагачені
-рядки в жодному разі не перефетчуються. Обмеження до PR4: рядок, що завис у RUNNING після kill
--9, не resume-иться автоматично (немає stale-reap) — новий запуск почне свіжу кампанію по
-предикату; за потреби закрий його вручну: `UPDATE scrape_runs SET status='FAILED',
-finished_at=now() WHERE id='<id>'` — тоді його cursor підхопиться.
+рядки в жодному разі не перефетчуються. Рядок, що завис у RUNNING після kill -9, наступний
+запуск reap-не автоматично (stale heartbeat → FAILED, cursor цілий) і продовжить з його
+checkpoint — руками нічого закривати не треба.
+
+Як читати стан run-а (SQL вище):
+- **живий**: `status='running'` і `last_heartbeat_at` свіжіший за
+  `SCRAPE_HEARTBEAT_TIMEOUT_MINUTES` (default 15 хв) — `now() - last_heartbeat_at < interval
+  '15 minutes'`;
+- **stale (мертвий процес)**: `status='running'`, а heartbeat старший за поріг — наступний
+  `scrape:enrich` закриє його як FAILED (`Reaped stale heartbeat`) і resume-неться з його
+  cursor; чіпати вручну не потрібно;
+- **другий паралельний запуск** при живому run завершується одразу: `enrichment already
+  running (provider=…, run=<id>, heartbeat=<ts>)` — без run-рядка і без записів.
 
 ## Canonical Matching
 

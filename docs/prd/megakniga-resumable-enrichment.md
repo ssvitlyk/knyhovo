@@ -1,6 +1,10 @@
 # PRD: Megakniga Resumable Enrichment (Railway Job + checkpoint/resume поверх scrape_runs)
 
-> **Статус:** Чорновик v2 — очікує затвердження. **Гілки (після затвердження):** по одній на PR, `feat/megakniga-enrichment-pr1..pr5`.
+> **Статус:** Затверджено (v2.1). **Гілки:** по одній на PR, `feat/megakniga-enrichment-pr1..pr5`.
+>
+> **Прогрес:** PR1 (#113), PR2 (#114), PR3 (#115) змерджені в develop. PR4 (heartbeat + stale
+> reap + partial unique lock) імплементовано на `feat/megakniga-enrichment-pr4` (2026-07-19).
+> Залишився PR5 (SIGINT/SIGTERM graceful shutdown, exit-code контракт §4.7, no-progress guard).
 >
 > **v2 (2026-07-19):** переглянуто за зауваженнями власника — job-таблиця `provider_enrichment_jobs`
 > **видалена** на користь розширення `scrape_runs`; список виключень провайдерів замінено

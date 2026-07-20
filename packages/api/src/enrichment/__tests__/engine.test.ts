@@ -1,5 +1,6 @@
 import { describe, it, expect, vi } from 'vitest';
 import type { PrismaClient } from '@prisma/client';
+import { Prisma, Provider, ScrapeRunKind, ScrapeRunStatus, ScrapeRunTrigger } from '@prisma/client';
 import type { HtmlFetcher } from '@knyhovo/scrapers';
 import type { ExtractedProductDetails } from '@knyhovo/scrapers';
 import {
@@ -7,8 +8,11 @@ import {
   buildFillOnlyPatch,
   countEnrichmentCandidates,
   deriveEnrichmentStatus,
+  ENRICHMENT_REAP_KINDS,
+  EnrichmentAlreadyRunningError,
   formatDuration,
   metricsForRunClose,
+  openEnrichmentRun,
   resolveEnrichmentResume,
   runEnrichment,
   toRawListing,
@@ -846,5 +850,172 @@ describe('runEnrichment', () => {
     expect(summary).toMatchObject({ processed: 1, enriched: 0, failed: 0 });
     expect(updateCalls).toHaveLength(0);
     expect(deriveEnrichmentStatus(summary)).toBe('SUCCESS');
+  });
+});
+
+// ── openEnrichmentRun (PR4: reap → lock → resume → insert) ────────────────────
+
+const NOW = new Date('2026-07-19T12:00:00.000Z');
+const clockNow = (): Date => NOW;
+
+const STALE_REAP = { heartbeatTimeoutMs: 15 * 60_000, legacyStartedAtTimeoutMs: 24 * 3_600_000 };
+
+interface FakeRunRow {
+  id: string;
+  provider: Provider;
+  kind: ScrapeRunKind;
+  status: ScrapeRunStatus;
+  startedAt: Date;
+  lastHeartbeatAt: Date | null;
+  cursor: string | null;
+}
+
+function runRow(overrides: Partial<FakeRunRow> & { id: string }): FakeRunRow {
+  return {
+    provider: Provider.MEGAKNIGA,
+    kind: ScrapeRunKind.DESCRIPTION_ENRICHMENT,
+    status: ScrapeRunStatus.RUNNING,
+    startedAt: new Date(NOW.getTime() - 60 * 60_000),
+    lastHeartbeatAt: new Date(NOW.getTime() - 60_000),
+    cursor: null,
+    ...overrides,
+  };
+}
+
+/**
+ * Fake for the start sequence: `findFirst` dispatches on the query itself —
+ * a `status: RUNNING` filter is `findRunningScrapeRun` (answers come from the
+ * `running` queue, one per call), anything else is `findLatestScrapeRun`.
+ */
+function makeStartFakePrisma(opts: {
+  staleRows?: FakeRunRow[];
+  reapCount?: number;
+  running?: Array<FakeRunRow | null>;
+  latest?: FakeRunRow | null;
+  createError?: Error;
+}) {
+  const running = [...(opts.running ?? [null])];
+  const scrapeRun = {
+    findMany: vi.fn<
+      (query: { where: { kind: { in: ScrapeRunKind[] } } }) => Promise<FakeRunRow[]>
+    >(async () => opts.staleRows ?? []),
+    updateMany: vi.fn(async () => ({ count: opts.reapCount ?? 0 })),
+    findFirst: vi.fn(async ({ where }: { where: { status?: ScrapeRunStatus } }) => {
+      if (where.status === ScrapeRunStatus.RUNNING) return running.shift() ?? null;
+      return opts.latest ?? null;
+    }),
+    create: vi.fn(async ({ data }: { data: Record<string, unknown> }) => {
+      if (opts.createError !== undefined) throw opts.createError;
+      return { id: 'new-run', startedAt: (data.startedAt as Date) ?? NOW };
+    }),
+  };
+  return { prisma: { scrapeRun } as unknown as PrismaClient, scrapeRun };
+}
+
+function p2002(): Prisma.PrismaClientKnownRequestError {
+  return new Prisma.PrismaClientKnownRequestError('Unique constraint failed', {
+    code: 'P2002',
+    clientVersion: 'test',
+  });
+}
+
+describe('openEnrichmentRun (PRD §4.5 steps 2–5, §4.6)', () => {
+  const baseOpts = {
+    provider: 'megakniga' as const,
+    triggeredBy: ScrapeRunTrigger.MANUAL,
+    metadata: { batchSize: 50 },
+    staleReap: STALE_REAP,
+    logger: silentLogger,
+    now: clockNow,
+  };
+
+  it('reaps ONLY DESCRIPTION_ENRICHMENT kinds — never GUARDED_KINDS', async () => {
+    const { prisma, scrapeRun } = makeStartFakePrisma({});
+
+    await openEnrichmentRun({ prisma, ...baseOpts });
+
+    const reapQuery = scrapeRun.findMany.mock.calls[0]![0];
+    expect(reapQuery.where.kind.in).toEqual([ScrapeRunKind.DESCRIPTION_ENRICHMENT]);
+    expect(ENRICHMENT_REAP_KINDS).toEqual([ScrapeRunKind.DESCRIPTION_ENRICHMENT]);
+  });
+
+  it('a RUNNING row that survived the reap (fresh heartbeat) → EnrichmentAlreadyRunningError with run id + heartbeat, nothing created', async () => {
+    const fresh = runRow({ id: 'live-run' });
+    const { prisma, scrapeRun } = makeStartFakePrisma({ running: [fresh] });
+
+    const attempt = openEnrichmentRun({ prisma, ...baseOpts });
+    await expect(attempt).rejects.toThrow(EnrichmentAlreadyRunningError);
+    await attempt.catch((err: EnrichmentAlreadyRunningError) => {
+      expect(err.runId).toBe('live-run');
+      expect(err.lastHeartbeatAt).toEqual(fresh.lastHeartbeatAt);
+      expect(err.message).toContain('enrichment already running');
+      expect(err.message).toContain('live-run');
+    });
+    expect(scrapeRun.create).not.toHaveBeenCalled();
+  });
+
+  it('after a reap the latest FAILED cursor is inherited: create carries cursor + metadata.resumedFromRunId', async () => {
+    const stale = runRow({ id: 'dead-run', lastHeartbeatAt: new Date(NOW.getTime() - 20 * 60_000) });
+    const { prisma, scrapeRun } = makeStartFakePrisma({
+      staleRows: [stale],
+      reapCount: 1,
+      running: [null],
+      latest: runRow({ id: 'dead-run', status: ScrapeRunStatus.FAILED, cursor: 'cur-42' }),
+    });
+
+    const opened = await openEnrichmentRun({ prisma, ...baseOpts });
+
+    expect(opened.reaped).toBe(1);
+    expect(opened.resume).toEqual({ startCursor: 'cur-42', resumedFromRunId: 'dead-run' });
+    const created = scrapeRun.create.mock.calls[0]![0] as { data: Record<string, unknown> };
+    expect(created.data.cursor).toBe('cur-42');
+    expect(created.data.metadata).toEqual({ batchSize: 50, resumedFromRunId: 'dead-run' });
+    expect(created.data.kind).toBe(ScrapeRunKind.DESCRIPTION_ENRICHMENT);
+  });
+
+  it('a fresh campaign (no resumable run) creates without cursor or resume marker', async () => {
+    const { prisma, scrapeRun } = makeStartFakePrisma({
+      latest: runRow({ id: 'done-run', status: ScrapeRunStatus.SUCCESS, cursor: null }),
+    });
+
+    const opened = await openEnrichmentRun({ prisma, ...baseOpts });
+
+    expect(opened.resume).toEqual({ startCursor: null, resumedFromRunId: null });
+    const created = scrapeRun.create.mock.calls[0]![0] as { data: Record<string, unknown> };
+    expect(created.data.cursor).toBeUndefined();
+    expect(created.data.metadata).toEqual({ batchSize: 50 });
+  });
+
+  it('P2002 on the INSERT (lost the index race) → EnrichmentAlreadyRunningError built from the winner row', async () => {
+    const winner = runRow({ id: 'winner-run' });
+    const { prisma } = makeStartFakePrisma({
+      running: [null, winner], // check passes, the post-P2002 re-read sees the winner
+      createError: p2002(),
+    });
+
+    const attempt = openEnrichmentRun({ prisma, ...baseOpts });
+    await expect(attempt).rejects.toThrow(EnrichmentAlreadyRunningError);
+    await attempt.catch((err: EnrichmentAlreadyRunningError) => {
+      expect(err.runId).toBe('winner-run');
+      expect(err.lastHeartbeatAt).toEqual(winner.lastHeartbeatAt);
+    });
+  });
+
+  it('P2002 with an unreadable winner still reports the clear error (null diagnostics)', async () => {
+    const { prisma } = makeStartFakePrisma({ running: [null, null], createError: p2002() });
+
+    const attempt = openEnrichmentRun({ prisma, ...baseOpts });
+    await expect(attempt).rejects.toThrow('enrichment already running (provider=megakniga)');
+    await attempt.catch((err: EnrichmentAlreadyRunningError) => {
+      expect(err.runId).toBeNull();
+      expect(err.lastHeartbeatAt).toBeNull();
+    });
+  });
+
+  it('a non-P2002 create failure propagates untouched', async () => {
+    const boom = new Error('connection reset');
+    const { prisma } = makeStartFakePrisma({ createError: boom });
+
+    await expect(openEnrichmentRun({ prisma, ...baseOpts })).rejects.toBe(boom);
   });
 });

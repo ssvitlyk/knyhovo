@@ -4,7 +4,9 @@ import { prisma } from '../db.js';
 import {
   countEnrichmentCandidates,
   deriveEnrichmentStatus,
+  EnrichmentAlreadyRunningError,
   metricsForRunClose,
+  openEnrichmentRun,
   resolveEnrichmentResume,
   runEnrichment,
   type EnrichmentBatchProgress,
@@ -12,13 +14,16 @@ import {
 import { ENRICHMENT_PROVIDERS } from '../enrichment/providers.js';
 import { createLogger } from '../pipeline/index.js';
 import { mapProviderName } from '../pipeline/persist-listing.js';
-import {
-  findLatestScrapeRun,
-  finishScrapeRun,
-  startScrapeRun,
-} from '../refresh/scrape-run.repository.js';
+import type { StaleReapConfig } from '../refresh/concurrency-guard.js';
+import { finishScrapeRun, startHeartbeat } from '../refresh/scrape-run.repository.js';
 import { ENRICHMENT_USAGE, parseEnrichmentArgs } from './run-enrichment-args.js';
-import { getEnrichBatchSize, getEnrichDelayMs } from './scrape-env.js';
+import {
+  getEnrichBatchSize,
+  getEnrichDelayMs,
+  getHeartbeatIntervalSeconds,
+  getHeartbeatTimeoutMinutes,
+  getLegacyStaleTimeoutHours,
+} from './scrape-env.js';
 
 /**
  * `scrape:enrich` CLI entrypoint (megakniga-resumable-enrichment PRD §4.9, PR1).
@@ -126,46 +131,69 @@ async function main(): Promise<void> {
     return;
   }
 
-  // Resume decision (PRD §4.5 steps 1, 4, 5 — PR3 scope; stale-reap and the
-  // exclusive lock for RUNNING rows are PR4): continue a stopped campaign
-  // from its persisted cursor, otherwise start from the beginning.
-  const lastRun = await findLatestScrapeRun(prisma, {
-    provider: mapProviderName(provider),
-    kind: ScrapeRunKind.DESCRIPTION_ENRICHMENT,
-  });
-  const resume = resolveEnrichmentResume(lastRun);
-  logger.info(
-    resume.startCursor === null
-      ? 'scrape:enrich: no resumable previous run — starting a fresh campaign'
-      : `scrape:enrich: resuming campaign of run ${resume.resumedFromRunId} ` +
-          `from cursor=${resume.startCursor}`,
-  );
-
   logger.info(
     `scrape:enrich starting at ${new Date(startedAtMs).toISOString()} ` +
       `(provider=${provider} batchSize=${batchSize} limit=${args.limit ?? '—'} ` +
       `force=${args.force} delayMs=${delayMs ?? 'provider default'} triggeredBy=${triggeredBy})`,
   );
 
-  const runMetadata = {
+  const baseMetadata = {
     batchSize,
     ...(args.limit !== null ? { limit: args.limit } : {}),
     ...(delayMs !== undefined ? { delayMs } : {}),
     ...(args.force ? { force: true } : {}),
+  };
+
+  // Same env-driven staleness thresholds as run-scrape.ts / run-wishlist-refresh.ts.
+  const staleReap: StaleReapConfig = {
+    heartbeatTimeoutMs: getHeartbeatTimeoutMinutes(process.env) * 60_000,
+    legacyStartedAtTimeoutMs: getLegacyStaleTimeoutHours(process.env) * 3_600_000,
+  };
+
+  // PR4 start sequence (PRD §4.5 steps 2–5, §4.6): reap stale enrichment
+  // RUNNING rows, refuse a fresh one, resume from the last persisted cursor,
+  // and INSERT the run — the partial unique index turns a concurrent second
+  // start into a clean "already running" error with zero side effects.
+  let opened;
+  try {
+    opened = await openEnrichmentRun({
+      prisma,
+      provider,
+      triggeredBy,
+      metadata: baseMetadata,
+      staleReap,
+      logger,
+    });
+  } catch (err: unknown) {
+    if (err instanceof EnrichmentAlreadyRunningError) {
+      logger.error(`scrape:enrich: ${err.message} — this process created nothing and exits`);
+      process.exitCode = 1;
+      return;
+    }
+    throw err;
+  }
+  const { run, resume } = opened;
+
+  logger.info(
+    resume.startCursor === null
+      ? 'scrape:enrich: no resumable previous run — starting a fresh campaign'
+      : `scrape:enrich: resuming campaign of run ${resume.resumedFromRunId} ` +
+          `from cursor=${resume.startCursor}`,
+  );
+  logger.info(`scrape:enrich run ${run.id} opened (kind=DESCRIPTION_ENRICHMENT)`);
+
+  // finishScrapeRun rewrites metadata wholesale, so the close must carry the
+  // resume marker openEnrichmentRun stamped onto the row at start.
+  const runMetadata = {
+    ...baseMetadata,
     ...(resume.resumedFromRunId !== null ? { resumedFromRunId: resume.resumedFromRunId } : {}),
   };
 
-  // A resume run is born with its predecessor's cursor (PRD §4.5): should it
-  // die before its first committed batch, the campaign checkpoint survives on
-  // this row and the next run resumes from the same place.
-  const run = await startScrapeRun(prisma, {
-    provider: mapProviderName(provider),
-    kind: ScrapeRunKind.DESCRIPTION_ENRICHMENT,
-    triggeredBy,
-    ...(resume.startCursor !== null ? { cursor: resume.startCursor } : {}),
-    metadata: runMetadata,
+  // Liveness signal (stale-scrape-recovery reuse, PRD §4.4): without it a
+  // SIGKILL'd job would look alive forever and could never be auto-reaped.
+  const stopHeartbeat = startHeartbeat(prisma, run.id, {
+    intervalMs: getHeartbeatIntervalSeconds(process.env) * 1000,
   });
-  logger.info(`scrape:enrich run ${run.id} opened (kind=DESCRIPTION_ENRICHMENT)`);
 
   // The last committed batch's progress — on a mid-run crash this is what the
   // FAILED close reports, so checkpointed counters are never wiped to zero.
@@ -247,6 +275,10 @@ async function main(): Promise<void> {
     }
     process.exitCode = 1;
   } finally {
+    // Always clear the heartbeat timer — on success, crash and early return
+    // alike. (A tick that already fired against a closed run is a no-op:
+    // heartbeatScrapeRun is gated on status=RUNNING.)
+    stopHeartbeat();
     const durationMs = Date.now() - startedAtMs;
     logger.info(`scrape:enrich finished in ${durationMs}ms (exitCode=${process.exitCode ?? 0})`);
   }
