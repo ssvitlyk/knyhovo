@@ -2,9 +2,15 @@
 
 > **Статус:** Затверджено (v2.1). **Гілки:** по одній на PR, `feat/megakniga-enrichment-pr1..pr5`.
 >
-> **Прогрес:** PR1 (#113), PR2 (#114), PR3 (#115) змерджені в develop. PR4 (heartbeat + stale
-> reap + partial unique lock) імплементовано на `feat/megakniga-enrichment-pr4` (2026-07-19).
-> Залишився PR5 (SIGINT/SIGTERM graceful shutdown, exit-code контракт §4.7, no-progress guard).
+> **Прогрес:** PR1 (#113), PR2 (#114), PR3 (#115), PR4 (#116) змерджені в develop. PR5
+> (SIGINT/SIGTERM graceful shutdown через AbortController, exit-code контракт §4.7, circuit
+> breaker, no-progress restart-loop guard, campaign metadata, recovery-тести) імплементовано на
+> `feat/megakniga-enrichment-pr5` (2026-07-20). **Фіча завершена.**
+>
+> **Уточнення exit-code (PR5, 2026-07-20):** «already running» skip шипнуто з **exit 1** (а не 0
+> як припускала рання гіпотеза §4.7) — узгоджено з поведінкою PR4 і scope PR5; restart loop від
+> цього не виникає (bounded On Failure max 3 + no-progress guard). Circuit breaker → 75; SIGINT →
+> 0; SIGTERM → 75; no-progress guard → 0.
 >
 > **v2 (2026-07-19):** переглянуто за зауваженнями власника — job-таблиця `provider_enrichment_jobs`
 > **видалена** на користь розширення `scrape_runs`; список виключень провайдерів замінено
@@ -305,9 +311,14 @@ heartbeat-таймер стоп, `$disconnect()`. Engine приймає `AbortSi
 
 | Код | Коли | Ефект під On Failure |
 |---|---|---|
-| **0** | SUCCESS; черга вичерпана з помилками (PARTIAL, cursor NULL); SIGINT; **rate-limit stop** (щоб рестарт-цикл не бив сайт — продовження вручну/наступним запуском); «already running» skip (прецедент: `RefreshAlreadyRunningError` → exitCode 0 у `production-runner.ts`); спрацював no-progress guard | без рестарту |
-| **75** | SIGTERM graceful; вичерпані retry batch-транзакції (transient DB — рестарт з fresh-конекшеном може допомогти; cursor цілий) | авто-рестарт → resume |
-| **1** | конфігураційні/невідновлювані помилки: невалідні args/env, невідомий провайдер, провайдер без `enrichmentMode='background'`, відсутній `DATABASE_URL` | рестарт не допоможе; цикл обмежить max retries + no-progress guard |
+| **0** | SUCCESS; черга вичерпана з помилками (PARTIAL, cursor NULL); SIGINT; **rate-limit stop** (щоб рестарт-цикл не бив сайт — продовження вручну/наступним запуском); спрацював no-progress guard | без рестарту |
+| **75** | SIGTERM graceful; circuit breaker (масова недоступність сайту — cursor цілий, resume після відновлення); вичерпані retry batch-транзакції (transient DB — рестарт з fresh-конекшеном може допомогти; cursor цілий) | авто-рестарт → resume |
+| **1** | «already running» skip (узгоджено з PR4); конфігураційні/невідновлювані помилки: невалідні args/env, невідомий провайдер, провайдер без `enrichmentMode='background'`, відсутній `DATABASE_URL` | рестарт не допоможе; цикл обмежить max retries + no-progress guard |
+
+> **Реалізація (PR5):** «already running» шипнуто з exit **1** (не 0, як припускала рання гіпотеза
+> вище) — узгоджено з PR4 і scope PR5. Loop не виникає: bounded On Failure max 3 + no-progress
+> guard. Circuit breaker (масові infra-падіння: timeout/DNS/connection/5xx, НЕ 429/503) додано в
+> PR5 як окремий resumable stop → exit 75; поріг `SCRAPE_ENRICH_CIRCUIT_BREAKER_THRESHOLD`.
 
 **Захист від restart loop (двошаровий):**
 

@@ -67,6 +67,46 @@ export interface EnrichProductDetailsOptions {
    * on listings that only have a description.
    */
   readonly skipListing?: (listing: RawProviderListing) => boolean;
+  /**
+   * Cooperative cancellation for graceful shutdown (megakniga-resumable-
+   * enrichment PRD §4.7). Checked at the TOP of every iteration, so an
+   * in-flight fetch is allowed to finish (bounded by `timeoutMs`) but no new
+   * one is started once the signal fires. The pass then returns with
+   * `stopReason: 'aborted'` and a `processedCount` of the listings it fully
+   * handled — the caller's safe resume point.
+   */
+  readonly signal?: AbortSignal;
+  /**
+   * Circuit breaker (megakniga-resumable-enrichment PRD §4 / bookchef-style
+   * resilience): stop the pass after this many CONSECUTIVE infrastructure
+   * failures (timeout / connection refused / DNS / 5xx — see
+   * {@link isInfrastructureFailure}), so a mass site outage does not walk the
+   * entire catalog fetch-failing every page. Any successful fetch resets the
+   * counter. Undefined disables the breaker (the original behavior). 429/503
+   * stay a SEPARATE rate-limit stop, never counted here.
+   */
+  readonly maxConsecutiveFailures?: number;
+}
+
+/**
+ * Why {@link enrichProductDetails} stopped walking its listings:
+ *   - `complete`        — every listing was handled;
+ *   - `rate-limited`    — a 429/503 halted the pass (resume later);
+ *   - `aborted`         — the {@link EnrichProductDetailsOptions.signal} fired;
+ *   - `circuit-breaker` — too many consecutive infrastructure failures.
+ */
+export type EnrichStopReason = 'complete' | 'rate-limited' | 'aborted' | 'circuit-breaker';
+
+export interface EnrichProductDetailsResult {
+  /**
+   * Listings the pass fully handled (fetched — success or non-fatal error — or
+   * skipped as already enriched), in order from the front of `listings`. It
+   * EXCLUDES the item that tripped a rate-limit or the circuit breaker, and any
+   * left unreached by an abort. The caller advances its cursor by exactly this
+   * many rows on a clean/aborted stop.
+   */
+  readonly processedCount: number;
+  readonly stopReason: EnrichStopReason;
 }
 
 /** Default skip predicate — preserves the original description-only behavior. */
@@ -81,6 +121,23 @@ function defaultSkipListing(listing: RawProviderListing): boolean {
 export function isRateLimited(err: unknown): boolean {
   const message = err instanceof Error ? err.message : String(err);
   return /\b(429|503)\b/.test(message);
+}
+
+/**
+ * True when an error looks like a transport / server-side infrastructure
+ * failure — a timeout, connection refused/reset, DNS failure, or a 5xx that is
+ * NOT the 503 rate-limit signal. These are what a mass site outage produces;
+ * the circuit breaker counts CONSECUTIVE occurrences of them
+ * (megakniga-resumable-enrichment PRD §4). A 429/503 is deliberately excluded
+ * (it is the separate {@link isRateLimited} stop), as are content/extract
+ * errors that are specific to one page rather than the site being down.
+ */
+export function isInfrastructureFailure(err: unknown): boolean {
+  if (isRateLimited(err)) return false;
+  const message = err instanceof Error ? err.message : String(err);
+  return /\b(500|502|504)\b|timeout|timed out|ETIMEDOUT|ECONNREFUSED|ECONNRESET|EPIPE|ENOTFOUND|EAI_AGAIN|getaddrinfo|socket hang up|network|fetch failed/i.test(
+    message,
+  );
 }
 
 function isUsableString(value: string | null | undefined): value is string {
@@ -183,7 +240,7 @@ export async function enrichProductDetails(
   fetcher: HtmlFetcher,
   extract: ProductDetailsExtract,
   opts: EnrichProductDetailsOptions,
-): Promise<void> {
+): Promise<EnrichProductDetailsResult> {
   const { timeoutMs, delayMs, errors } = opts;
   const logger = opts.logger ?? { info: () => {} };
   const skipListing = opts.skipListing ?? defaultSkipListing;
@@ -191,17 +248,38 @@ export async function enrichProductDetails(
   const errorsBefore = errors.length;
   let enriched = 0;
   let skipped = 0;
+  // Listings the pass has fully handled — the caller's safe resume prefix. It
+  // is NOT incremented for the item that trips a rate-limit or the breaker, nor
+  // for any left unreached by an abort (those must be re-walked).
+  let processedCount = 0;
+  let consecutiveInfraFailures = 0;
+  let stopReason: EnrichStopReason = 'complete';
 
   logger.info(`product enrichment: starting for ${total} listings (delayMs=${delayMs})`);
 
   for (let i = 0; i < listings.length; i++) {
+    // Graceful shutdown (PRD §4.7): the signal is honored at the TOP of the
+    // loop, so the previous fetch (awaited already) has finished and nothing
+    // new starts. Everything gathered so far stays; the caller resumes from
+    // processedCount.
+    if (opts.signal?.aborted === true) {
+      stopReason = 'aborted';
+      logger.info(
+        `product enrichment: aborted at ${processedCount}/${total} (graceful shutdown); ` +
+          `${enriched} listings enriched`,
+      );
+      break;
+    }
+
     const listing = listings[i]!;
 
     // Already enriched — either the listing satisfies skipListing (e.g. carries
     // a description from the catalog pass or a previous run), or its URL is in
-    // skipUrls (already enriched in a previous run). No fetch, no delay.
+    // skipUrls (already enriched in a previous run). No fetch, no delay. It is
+    // still counted as processed (safely past for the caller's cursor).
     if (skipListing(listing) || opts.skipUrls?.has(listing.url) === true) {
       skipped++;
+      processedCount++;
       continue;
     }
 
@@ -227,20 +305,45 @@ export async function enrichProductDetails(
         listings[i] = next;
         enriched++;
       }
+      // A successful fetch clears the infrastructure-failure streak.
+      consecutiveInfraFailures = 0;
     } catch (err) {
       errors.push(
         `Product ${listing.url}: ${err instanceof Error ? err.message : String(err)}`,
       );
       // Stop this provider's pass on rate-limit/overload — keep what we have,
-      // do not retry. The scrape result remains valid.
+      // do not retry. The scrape result remains valid. The offending item is
+      // NOT counted as processed (its cursor must be re-walked).
       if (isRateLimited(err)) {
+        stopReason = 'rate-limited';
         logger.info(
           `product enrichment: stopping early at ${i + 1}/${total} (rate-limited); ` +
             `${enriched} listings enriched`,
         );
         break;
       }
+      // Circuit breaker (PRD §4): a run of infrastructure failures means the
+      // site is down — stop rather than fetch-fail the whole catalog. The
+      // tripping item is left un-processed so the resumed run re-walks the tail.
+      if (isInfrastructureFailure(err) && opts.maxConsecutiveFailures !== undefined) {
+        consecutiveInfraFailures++;
+        if (consecutiveInfraFailures >= opts.maxConsecutiveFailures) {
+          stopReason = 'circuit-breaker';
+          logger.info(
+            `product enrichment: circuit breaker tripped at ${i + 1}/${total} ` +
+              `(${consecutiveInfraFailures} consecutive infrastructure failures); ` +
+              `${enriched} listings enriched`,
+          );
+          break;
+        }
+      } else if (!isInfrastructureFailure(err)) {
+        // A page-specific (non-infrastructure) error does not signal an outage;
+        // it must not keep the breaker armed across otherwise-healthy fetches.
+        consecutiveInfraFailures = 0;
+      }
     }
+
+    processedCount++;
 
     if ((i + 1) % PROGRESS_LOG_EVERY === 0) {
       logger.info(
@@ -256,6 +359,8 @@ export async function enrichProductDetails(
 
   logger.info(
     `product enrichment: done — ${enriched}/${total} listings enriched ` +
-      `(${skipped} skipped as already enriched), ${errors.length - errorsBefore} errors`,
+      `(${skipped} skipped as already enriched), ${errors.length - errorsBefore} errors` +
+      `${stopReason === 'complete' ? '' : ` (stopped: ${stopReason})`}`,
   );
+  return { processedCount, stopReason };
 }

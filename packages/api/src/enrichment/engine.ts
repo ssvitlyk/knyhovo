@@ -1,9 +1,4 @@
-import {
-  FetchHtmlFetcher,
-  enrichProductDetails,
-  fetchWithRetry,
-  isRateLimited,
-} from '@knyhovo/scrapers';
+import { FetchHtmlFetcher, enrichProductDetails, fetchWithRetry } from '@knyhovo/scrapers';
 import type { HtmlFetcher } from '@knyhovo/scrapers';
 import type { Availability, ProviderName, RawProviderListing } from '@knyhovo/shared';
 import type { PrismaClient, ScrapeRunTrigger } from '@prisma/client';
@@ -227,6 +222,23 @@ export interface RunEnrichmentOptions {
   fetcher?: HtmlFetcher;
   /** Override the provider's default inter-request delay (SCRAPE_ENRICH_DELAY_MS). */
   delayMs?: number;
+  /**
+   * Cooperative cancellation for graceful shutdown (PRD §4.7). When it fires,
+   * the engine finishes the in-flight fetch, commits the batch prefix it has
+   * gathered, checkpoints the cursor at the last fully-processed listing, and
+   * stops with `stoppedEarly='aborted'` (a resumable PARTIAL). The CLI wires it
+   * to SIGINT/SIGTERM; tests inject it directly — no real signals needed.
+   */
+  signal?: AbortSignal;
+  /**
+   * Circuit-breaker threshold (PRD §4): stop the campaign after this many
+   * CONSECUTIVE infrastructure failures (timeout/DNS/connection/5xx) inside a
+   * batch — a mass site outage must not fetch-fail all ~27k listings. On a trip
+   * the gathered prefix is committed, the cursor does NOT advance past the
+   * unprocessed tail, and the run stops resumable with
+   * `stoppedEarly='circuit-breaker'`. Undefined disables the breaker.
+   */
+  circuitBreakerThreshold?: number;
   /** Injectable wiring for tests (fake extractor, zero delays); production resolves from ENRICHMENT_PROVIDERS. */
   config?: ProviderEnrichmentConfig;
   /**
@@ -279,7 +291,7 @@ export interface EnrichmentRunSummary {
   /** Failed product fetches/extracts (run keeps going; PRD §4.4). */
   failed: number;
   batches: number;
-  stoppedEarly: 'rate-limited' | 'limit' | null;
+  stoppedEarly: 'rate-limited' | 'limit' | 'aborted' | 'circuit-breaker' | null;
   /** First ERROR_SAMPLE_CAP error messages, for the run's errorSummary. */
   errorSamples: string[];
   /**
@@ -417,6 +429,13 @@ export interface OpenedEnrichmentRun {
   resume: { startCursor: string | null; resumedFromRunId: string | null };
   /** Stale RUNNING enrichment rows closed to FAILED before this run started. */
   reaped: number;
+  /**
+   * The latest prior enrichment run (post-reap) this start inspected — the
+   * predecessor whose campaign metadata this run continues (PRD §3). Null when
+   * the provider has never run enrichment before. Carries only what
+   * `buildCampaignMetadata` needs.
+   */
+  predecessor: { id: string; itemsProcessed: number; metadata: Prisma.JsonValue } | null;
 }
 
 /**
@@ -459,6 +478,10 @@ export async function openEnrichmentRun(
 
   const lastRun = await findLatestScrapeRun(opts.prisma, { provider: providerEnum, kind });
   const resume = resolveEnrichmentResume(lastRun);
+  const predecessor =
+    lastRun !== null
+      ? { id: lastRun.id, itemsProcessed: lastRun.itemsProcessed, metadata: lastRun.metadata }
+      : null;
 
   try {
     const run = await startScrapeRun(opts.prisma, {
@@ -473,7 +496,7 @@ export async function openEnrichmentRun(
           : {}),
       },
     });
-    return { run, resume, reaped: reap.reaped };
+    return { run, resume, reaped: reap.reaped, predecessor };
   } catch (err: unknown) {
     if (err instanceof Prisma.PrismaClientKnownRequestError && err.code === 'P2002') {
       const winner = await findRunningScrapeRun(opts.prisma, { provider: providerEnum, kind });
@@ -515,6 +538,7 @@ export async function runEnrichment(opts: RunEnrichmentOptions): Promise<Enrichm
   const force = opts.force === true;
   const startCursor = opts.startCursor ?? null;
   const txRetryDelayMs = opts.txRetryDelayMs ?? BATCH_TX_RETRY_DELAY_MS;
+  const circuitBreakerThreshold = opts.circuitBreakerThreshold;
   const startedAtMs = Date.now();
 
   // On resume the total is the REMAINDER of the campaign (candidates past the
@@ -547,6 +571,13 @@ export async function runEnrichment(opts: RunEnrichmentOptions): Promise<Enrichm
   let queueExhausted = false;
 
   for (;;) {
+    // Graceful shutdown between batches (PRD §4.7): the signal fired while the
+    // previous batch committed — stop before starting a new one. A signal that
+    // fires MID-batch is handled by the pass itself (stopReason 'aborted').
+    if (opts.signal?.aborted === true) {
+      summary.stoppedEarly = 'aborted';
+      break;
+    }
     const remaining = opts.limit !== undefined ? opts.limit - summary.processed : undefined;
     if (remaining !== undefined && remaining <= 0) {
       summary.stoppedEarly = 'limit';
@@ -572,36 +603,57 @@ export async function runEnrichment(opts: RunEnrichmentOptions): Promise<Enrichm
     // criteria would silently skip rows the query selected.
     const listings = rows.map((row) => toRawListing(opts.provider, row));
     const batchErrors: string[] = [];
-    await enrichProductDetails(listings, fetcher, config.extract, {
-      timeoutMs: config.timeoutMs,
-      delayMs,
-      errors: batchErrors,
-      logger: { info: (message: string) => opts.logger.info(message) },
-      skipListing: () => false,
-    });
+    const { processedCount, stopReason } = await enrichProductDetails(
+      listings,
+      fetcher,
+      config.extract,
+      {
+        timeoutMs: config.timeoutMs,
+        delayMs,
+        errors: batchErrors,
+        logger: { info: (message: string) => opts.logger.info(message) },
+        skipListing: () => false,
+        ...(opts.signal !== undefined ? { signal: opts.signal } : {}),
+        ...(circuitBreakerThreshold !== undefined
+          ? { maxConsecutiveFailures: circuitBreakerThreshold }
+          : {}),
+      },
+    );
 
+    // The pass reports WHY it stopped and HOW FAR it got (processedCount).
+    //  - rate-limit / circuit-breaker leave the batch tail unfetched: advancing
+    //    the cursor past those rows would make the resumed campaign skip them
+    //    (breaking §4.3), so the cursor stays at the last SAFE point — the
+    //    previous batch's end. Everything gathered is still committed; on resume
+    //    the enriched rows drop out of the candidate predicate, so only the
+    //    genuinely unprocessed remainder is re-walked.
+    //  - abort commits the fully-processed prefix and advances the cursor to its
+    //    last row (a partial-batch resume point).
+    //  - complete advances to the last row of the batch (processedCount === rows.length).
+    const rateLimited = stopReason === 'rate-limited';
+    const circuitTripped = stopReason === 'circuit-breaker';
+    const aborted = stopReason === 'aborted';
+    const holdCursor = rateLimited || circuitTripped;
+
+    // Only the fully-processed prefix produced writable listings; the unfetched
+    // tail (rate-limit / breaker / abort) was never mutated, so slicing keeps
+    // the commit tight and correct.
     const patches: Array<{ id: string; data: Prisma.ProviderListingUpdateInput }> = [];
-    rows.forEach((row, i) => {
+    rows.slice(0, processedCount).forEach((row, i) => {
       const patch = buildFillOnlyPatch(row, listings[i]!);
       if (patch !== null) {
         patches.push({ id: row.id, data: patch });
       }
     });
 
-    // Rate-limit stop detection happens BEFORE the commit because it decides
-    // the checkpoint cursor: the shared pass stops silently mid-batch on a
-    // 429/503, leaving the batch tail unfetched. Advancing the cursor past
-    // unfetched rows would make the resumed campaign skip them (breaking the
-    // §4.3 snapshot guarantee), so on a rate-limit stop the cursor stays at
-    // the last SAFE point — the previous batch's end. Everything gathered is
-    // still committed; on resume the enriched rows drop out of the candidate
-    // predicate, so only the genuinely unprocessed remainder is re-walked.
-    const rateLimited = batchErrors.some((message) => isRateLimited(message));
-
     // Cumulative counters as of THIS batch — computed before the commit so
     // the in-transaction checkpoint writes the post-batch truth (PRD §4.4).
-    const batchCursor = rateLimited ? cursor : rows[rows.length - 1]!.id;
-    const nextProcessed = summary.processed + rows.length;
+    const batchCursor = holdCursor
+      ? cursor
+      : processedCount > 0
+        ? rows[processedCount - 1]!.id
+        : cursor;
+    const nextProcessed = summary.processed + processedCount;
     const nextEnriched = summary.enriched + patches.length;
     const nextFailed = summary.failed + batchErrors.length;
     const nextSamples = [...summary.errorSamples];
@@ -687,12 +739,21 @@ export async function runEnrichment(opts: RunEnrichmentOptions): Promise<Enrichm
       });
     }
 
+    // The pass stopped this batch early; stop the run too and keep everything
+    // committed. The next invocation picks up the rest — for rate-limit and the
+    // circuit breaker the cursor deliberately did NOT advance past this batch;
+    // for an abort it advanced to the last fully-processed row (see the note
+    // above the commit).
     if (rateLimited) {
-      // enrichProductDetails already stopped its pass; stop the run too and
-      // keep everything committed. The next invocation picks up the rest
-      // (the cursor deliberately did NOT advance past this batch — see the
-      // rate-limit note above the commit).
       summary.stoppedEarly = 'rate-limited';
+      break;
+    }
+    if (circuitTripped) {
+      summary.stoppedEarly = 'circuit-breaker';
+      break;
+    }
+    if (aborted) {
+      summary.stoppedEarly = 'aborted';
       break;
     }
   }
