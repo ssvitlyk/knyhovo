@@ -11,8 +11,7 @@ export interface HeaderNavProps {
 /**
  * Desktop nav (`.knh__nav`) — «Головна · Добірки · Бажанки (+rose badge) ·
  * Про нас», frozen v1.0 link recipe. Client component only for `usePathname`;
- * markup/classes are the frozen chrome. «Про нас» is an intentionally
- * undesigned destination (`#`).
+ * markup/classes are the frozen chrome.
  */
 export function HeaderNav({ wishlistCount }: HeaderNavProps): React.JSX.Element {
   const pathname = usePathname() ?? '/';
@@ -30,9 +29,6 @@ export function HeaderNav({ wishlistCount }: HeaderNavProps): React.JSX.Element 
           )}
         </Link>
       ))}
-      <a href="#" className="knh__link">
-        Про нас
-      </a>
     </nav>
   );
 }

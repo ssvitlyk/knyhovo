@@ -73,9 +73,6 @@ export function MobileDrawer({ authenticated, wishlistCount, onClose }: MobileDr
               )}
             </Link>
           ))}
-          <a href="#" className="knh-dr__item" onClick={onClose}>
-            Про нас
-          </a>
           {authenticated && (
             <>
               <Link href="/settings/profile" className="knh-dr__item" onClick={onClose}>

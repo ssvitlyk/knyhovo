@@ -1,0 +1,157 @@
+/* ═══ about.css — «Про нас» v3 · composes Knyhovo DS tokens only ═══ */
+/* v3.1 (polishing, бриф 2026-07-19): Hero-перки одним рядком; features 2+2 з ієрархією (lg-картки, viz праворуч, нижча demo-зона); FAQ 960px; CTA-панель з Книговиком; відступи між секціями ще −17% (48→40 desktop); футер компактніший */
+:root{--ab-secy:clamp(32px,2.2vw,40px);--ab-head-gap:24px}
+.ab-sec{margin-top:var(--ab-secy)}
+.ab-sechead{max-width:760px;margin:0 auto var(--ab-head-gap);text-align:center}
+.ab-sechead--left{margin:0 0 var(--ab-head-gap);max-width:none;text-align:left}
+.ab-eyebrow{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.12em;color:var(--accent)}
+.ab-h2{font-family:var(--font-display);font-weight:600;font-size:clamp(26px,2.6vw,38px);line-height:1.15;letter-spacing:-.01em;color:var(--text);margin:12px 0 0;text-wrap:balance}
+.ab-sub{font-size:15.5px;line-height:1.6;color:var(--text-muted);margin:12px 0 0;text-wrap:pretty}
+.ab-ic{width:44px;height:44px;border-radius:50%;display:grid;place-items:center;flex-shrink:0;background:color-mix(in oklab,var(--accent) 13%,var(--surface));color:var(--accent)}
+
+/* ══ 0 · HERO — максимально легкий: цінність + підзаголовок + один рядок переваг з іконками ══ */
+.ab-hero{margin-top:clamp(32px,2.8vw,48px);text-align:center}
+.ab-hero__title{font-family:var(--font-display);font-weight:600;font-size:clamp(32px,3.2vw,50px);line-height:1.12;letter-spacing:-.015em;color:var(--text);margin:14px auto 0;max-width:840px;text-wrap:balance}
+.ab-hero__title em{color:var(--accent)}
+.ab-hero__sub{max-width:520px;margin:14px auto 0;font-size:16px}
+.ab-hero__perks{display:flex;justify-content:center;align-items:center;flex-wrap:wrap;gap:12px 34px;margin-top:clamp(18px,1.7vw,26px)}
+.ab-perk{display:inline-flex;align-items:center;gap:9px;font-size:14px;font-weight:500;line-height:1.3;color:var(--text-muted);white-space:nowrap}
+.ab-perk svg{color:var(--accent);flex-shrink:0}
+
+/* ══ 1 · «Як працює Knyhovo» — green-wash band after Hero, 4 steps. Full-bleed
+   tint inside .page via the app's proven band technique (box-shadow + clip-path,
+   see collections.css .band). */
+.ab-flow{margin-top:var(--ab-secy);padding:clamp(26px,2.2vw,36px) 0;background:color-mix(in oklab,var(--brand-green) 6%,var(--bg));box-shadow:0 0 0 100vmax color-mix(in oklab,var(--brand-green) 6%,var(--bg));clip-path:inset(0 -100vmax)}
+[data-theme="dark"] .ab-flow{background:color-mix(in oklab,var(--brand-green) 9%,var(--bg));box-shadow:0 0 0 100vmax color-mix(in oklab,var(--brand-green) 9%,var(--bg))}
+.ab-flow .ab-eyebrow{color:var(--brand-green)}
+[data-theme="dark"] .ab-flow .ab-eyebrow{color:#7FC9A3}
+.ab-flow__grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:var(--ab-head-gap)}
+.ab-node{position:relative;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:16px 14px;box-shadow:var(--shadow-sm);display:flex;flex-direction:column;gap:12px}
+.ab-node::after{content:'';position:absolute;top:50%;right:-11px;width:8px;height:8px;border-top:2px solid var(--text-faint);border-right:2px solid var(--text-faint);transform:translateY(-50%) rotate(45deg);z-index:1}
+.ab-node:last-child::after{display:none}
+.ab-node__top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.ab-node .ab-ic{width:38px;height:38px}
+.ab-node__num{font-family:var(--font-display);font-size:13px;font-weight:600;color:var(--text-faint)}
+.ab-node__label{font-size:15px;font-weight:600;line-height:1.35;color:var(--text)}
+.ab-node__cap{font-size:12.5px;line-height:1.4;color:var(--text-muted);margin-top:-6px}
+.ab-node--fin{background:color-mix(in oklab,var(--brand-green) 10%,var(--surface));border-color:color-mix(in oklab,var(--brand-green) 32%,var(--border))}
+.ab-node--fin .ab-ic{background:color-mix(in oklab,var(--brand-green) 16%,var(--surface));color:var(--brand-green)}
+[data-theme="dark"] .ab-node--fin .ab-ic{color:#7FC9A3}
+
+/* ══ 3 · «Чому користуються Knyhovo» — 3 переваги, без службових індикаторів (пілюлю свіжості прибрано, бриф 2026-07-19) ══ */
+.ab-why__grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}
+.ab-wcard{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:20px;box-shadow:var(--shadow-sm)}
+.ab-wcard .ab-ic{width:40px;height:40px}
+.ab-wcard__title{font-family:var(--font-display);font-size:16.5px;font-weight:600;color:var(--text);margin:14px 0 0;text-wrap:balance}
+.ab-wcard__text{font-size:13.5px;line-height:1.5;color:var(--text-muted);margin:6px 0 0}
+
+/* ══ 4 · FEATURES — 2+2, усі картки ОДНАКОВОГО розміру (рішення 2026-07-19); ієрархія = порядок у сітці (Бажанки й Деталі книги перші). Горизонтальна анатомія: текст ліворуч, viz праворуч ══ */
+.ab-feat__grid{display:grid;grid-template-columns:repeat(2,1fr);gap:16px}
+/* Whole card is a single clickable link (no nested anchors). Uniform
+   interaction model across all four cards: subtle 2px hover lift + stronger
+   border/shadow, full-card focus-visible ring, tap returns to origin (no
+   scale → no layout shift). */
+.ab-fcard{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:20px;box-shadow:var(--shadow-sm);display:grid;grid-template-columns:minmax(0,1fr) minmax(260px,320px);gap:20px;align-items:center;color:inherit;text-decoration:none;cursor:pointer;transition:transform .2s ease-out,box-shadow .2s ease-out,border-color .2s ease-out}
+.ab-fcard:hover{transform:translateY(-2px);box-shadow:var(--shadow-lg);border-color:color-mix(in oklab,var(--accent) 28%,var(--border))}
+.ab-fcard:active{transform:translateY(0)}
+.ab-fcard:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.ab-fcard__viz{order:2;position:relative;height:140px;border-radius:12px;background:color-mix(in oklab,var(--surface-accent) 72%,var(--bg));border:1px solid var(--border);overflow:hidden;display:grid;place-items:center;pointer-events:none}
+.ab-fcard__body{min-width:0;display:flex;flex-direction:column;align-items:flex-start}
+.ab-fcard__title{font-family:var(--font-display);font-size:19px;font-weight:600;color:var(--text);margin:0}
+.ab-fcard__text{font-size:14px;line-height:1.55;color:var(--text-muted);margin:6px 0 0}
+.ab-fcard__cta{margin-top:12px;font-size:13.5px;font-weight:600;color:var(--accent);display:inline-flex;align-items:center;gap:6px}
+.ab-fcard__cta svg{transition:transform .2s ease-out}
+.ab-fcard:hover .ab-fcard__cta{text-decoration:underline}
+.ab-fcard:hover .ab-fcard__cta svg{transform:translateX(3px)}
+.vg-stack{display:flex;flex-direction:column;gap:8px;width:80%}
+.vg-row{display:flex;align-items:center;gap:10px;background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:7px 10px;box-shadow:var(--shadow-sm);min-width:0}
+.vg-cover{width:26px;height:38px;border-radius:4px;object-fit:cover;flex-shrink:0;box-shadow:var(--shadow-sm)}
+.vg-col{min-width:0;flex:1}
+.vg-t{font-size:11.5px;font-weight:600;color:var(--text);line-height:1.25;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vg-s{font-size:10.5px;color:var(--text-muted);line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.vg-price{font-family:var(--font-display);font-weight:700;font-size:13px;color:var(--accent);white-space:nowrap}
+.vg-badge{font-size:10px;font-weight:600;padding:3px 8px;border-radius:999px;background:color-mix(in oklab,var(--brand-green) 15%,var(--surface));color:var(--brand-green);border:1px solid color-mix(in oklab,var(--brand-green) 32%,var(--border));white-space:nowrap;flex-shrink:0}
+[data-theme="dark"] .vg-badge{color:#7FC9A3}
+.vg-heart{color:#E0332B;flex-shrink:0}
+[data-theme="dark"] .vg-heart{color:#FF5449}
+.vg-spark{display:block}
+.vg-sparkbadge{position:absolute;top:10px;right:10px}
+.vg-pr{display:flex;align-items:center;justify-content:space-between;gap:12px;font-size:10.5px;color:var(--text-muted);padding:3px 8px;border-radius:6px}
+.vg-pr b{font-family:var(--font-display);font-weight:700;font-size:12px;color:var(--text)}
+.vg-pr--best{background:color-mix(in oklab,var(--brand-green) 12%,var(--surface));color:var(--text)}
+.vg-pr--best b{color:var(--brand-green)}
+[data-theme="dark"] .vg-pr--best b{color:#7FC9A3}
+
+/* ══ 5 · FAQ — accordion ══ */
+.ab-faq__wrap{max-width:960px;margin:0 auto}
+.ab-faq__mascot{width:58px;height:58px;object-fit:contain;margin:0 auto 12px;display:block}
+.ab-acc{background:var(--surface);border:1px solid var(--border);border-radius:18px;box-shadow:var(--shadow-sm);overflow:hidden;margin-top:var(--ab-head-gap)}
+.ab-acc__item+.ab-acc__item{border-top:1px solid var(--border)}
+.ab-acc__q{display:flex;width:100%;align-items:center;justify-content:space-between;gap:16px;padding:18px 22px;background:none;border:0;cursor:pointer;text-align:left;font-family:var(--font-display);font-size:17px;font-weight:600;line-height:1.35;color:var(--text);transition:color 140ms ease-out}
+.ab-acc__q:hover{color:var(--accent)}
+.ab-acc__q:focus-visible{outline:none;box-shadow:var(--focus-ring)}
+.ab-acc__chev{flex-shrink:0;color:var(--icon-muted);transition:transform .22s ease-out}
+.ab-acc__item--open .ab-acc__chev{transform:rotate(180deg)}
+.ab-acc__body{display:grid;grid-template-rows:0fr;transition:grid-template-rows .26s ease-out}
+.ab-acc__item--open .ab-acc__body{grid-template-rows:1fr}
+.ab-acc__innr{overflow:hidden}
+.ab-acc__a{padding:0 22px 20px;font-size:15px;line-height:1.62;color:var(--text-muted);max-width:64ch;text-wrap:pretty}
+
+/* ══ 6 · END CTA — підсилений (бриф 2026-07-19): м'яка мідна панель + Книговик (лупа/ліхтар за темою, радіальна маска) + primary-кнопка DS ══ */
+.ab-endcta{margin-top:var(--ab-secy);text-align:center}
+.ab-endcta__panel{background:color-mix(in oklab,var(--accent) 6%,var(--bg));border:1px solid color-mix(in oklab,var(--accent) 16%,var(--border));border-radius:20px;padding:clamp(26px,2.4vw,38px) 24px clamp(30px,2.7vw,42px)}
+[data-theme="dark"] .ab-endcta__panel{background:color-mix(in oklab,var(--accent) 5%,var(--bg));border-color:color-mix(in oklab,var(--accent) 20%,var(--border))}
+.ab-endcta__mascot{display:block;height:clamp(104px,8.5vw,132px);width:auto;margin:0 auto 6px;-webkit-mask-image:radial-gradient(ellipse 58% 56% at 46% 52%,#000 38%,transparent 78%);mask-image:radial-gradient(ellipse 58% 56% at 46% 52%,#000 38%,transparent 78%)}
+.ab-endcta__mascot--dark{display:none}
+[data-theme="dark"] .ab-endcta__mascot--light{display:none}
+[data-theme="dark"] .ab-endcta__mascot--dark{display:block}
+.ab-endcta__title{font-family:var(--font-display);font-weight:600;font-size:clamp(24px,2.2vw,34px);line-height:1.15;letter-spacing:-.01em;color:var(--text);margin:0;text-wrap:balance}
+.ab-endcta__title em{color:var(--accent)}
+.ab-endcta__sub{font-size:14.5px;line-height:1.5;color:var(--text-muted);margin:10px 0 0}
+.ab-endcta__btn{margin-top:22px;text-decoration:none}
+.ab-endcta__btn:hover{color:var(--text-on-accent)}
+
+/* Compact footer override, scoped to /about only (single global SiteFooter) */
+body:has(.ab-page) .site-footer{padding:16px 0}
+body:has(.ab-page) .footer-logo{height:30px}
+
+@media (prefers-reduced-motion:reduce){.ab-fcard,.ab-fcard__cta svg,.ab-acc__body,.ab-acc__chev{transition:none}}
+
+/* ══ Responsive ══ */
+@media (max-width:1259px){
+  .ab-fcard{display:flex;flex-direction:column;align-items:stretch;gap:14px;padding:16px 16px 18px}
+  .ab-fcard__viz{order:-1;height:120px}
+  .ab-fcard__body{flex:1;align-items:flex-start}
+  .ab-fcard__title{font-size:18px}
+  .ab-fcard__cta{margin-top:auto;padding-top:12px}
+}
+@media (max-width:1023px){
+  .ab-flow__grid{grid-template-columns:repeat(2,1fr)}
+  .ab-node:nth-child(2n)::after{display:none}
+}
+@media (max-width:920px){
+  .ab-why__grid{grid-template-columns:1fr;gap:12px}
+  .ab-wcard{display:grid;grid-template-columns:40px 1fr;column-gap:14px;padding:16px}
+  .ab-wcard .ab-ic{grid-row:1/span 2}
+  .ab-wcard__title{grid-column:2;margin-top:0;align-self:center}
+  .ab-wcard__text{grid-column:2;margin-top:2px}
+}
+@media (max-width:768px){
+  .ab-flow__grid{display:flex;flex-direction:column;gap:0;margin-top:24px}
+  .ab-node{display:grid;grid-template-columns:38px 1fr;column-gap:16px;row-gap:3px;background:transparent;border:0;box-shadow:none;border-radius:0;padding:0 0 26px}
+  .ab-node::after{display:none}
+  .ab-node:not(:last-child)::before{content:'';position:absolute;left:18px;top:44px;bottom:2px;width:2px;background:color-mix(in oklab,var(--brand-green) 24%,var(--border))}
+  .ab-node__top{display:contents}
+  .ab-node .ab-ic{grid-column:1;grid-row:1/span 2;background:var(--surface);border:1px solid var(--border)}
+  .ab-node--fin .ab-ic{background:color-mix(in oklab,var(--brand-green) 16%,var(--surface));border-color:color-mix(in oklab,var(--brand-green) 32%,var(--border))}
+  .ab-node__num{display:none}
+  .ab-node__label{grid-column:2;align-self:end;font-size:15px}
+  .ab-node__cap{grid-column:2;margin-top:0}
+}
+@media (max-width:640px){.ab-feat__grid{grid-template-columns:1fr}}
+@media (max-width:640px){
+  .ab-hero__title{font-size:30px}
+  .ab-hero__perks{flex-direction:column;gap:11px}
+  .ab-acc__q{padding:16px 18px;font-size:16px}
+  .ab-acc__a{padding:0 18px 18px}
+}
