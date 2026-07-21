@@ -25,4 +25,10 @@ export const NAV_ITEMS: readonly NavItem[] = [
     label: 'Бажанки',
     isActive: (p) => p.startsWith('/wishlist'),
   },
+  {
+    id: 'about',
+    href: '/about',
+    label: 'Про нас',
+    isActive: (p) => p.startsWith('/about'),
+  },
 ];

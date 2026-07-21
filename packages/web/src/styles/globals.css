@@ -21,6 +21,7 @@
 @import './magic-link.css';
 @import './profile.css';
 @import './collections.css';
+@import './about.css';
 
 /* Mock parity: every frozen page sets body { overflow-x: hidden } so full-bleed
    breakouts (e.g. the collections cnav's margin-inline: calc(50% - 50vw)) never
