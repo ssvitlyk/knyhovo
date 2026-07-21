@@ -29,6 +29,20 @@ export function hasPricedListing(row: CollectionBookRow): boolean {
   return row.listings.some(hasPrice);
 }
 
+/**
+ * The single "cheapest shown" listing for a book: the cheapest in-stock priced
+ * listing when any exist, otherwise the cheapest priced listing regardless of
+ * availability; `null` only when the book has zero priced listings. This is the
+ * exact listing that backs `minPrice`/`storeName` in {@link toCollectionBookDto}
+ * — reused by the Home candidate-adapter so the diversity `providerId` matches
+ * the provider the user actually sees.
+ */
+export function cheapestListing(book: CollectionBookRow): CollectionListingRow | null {
+  const priced = book.listings.filter(hasPrice).sort((a, b) => a.priceAmount - b.priceAmount);
+  const inStockPriced = priced.filter((l) => l.availability !== 'OUT_OF_STOCK');
+  return inStockPriced[0] ?? priced[0] ?? null;
+}
+
 /** Per-request context needed to map books without N+1 queries. */
 export interface CollectionMapperContext {
   readonly wishlistCounts: ReadonlyMap<string, number>;
@@ -60,7 +74,7 @@ export interface CollectionMapperContext {
 export function toCollectionBookDto(book: CollectionBookRow, ctx: CollectionMapperContext): CollectionBookDto {
   const priced = book.listings.filter(hasPrice).sort((a, b) => a.priceAmount - b.priceAmount);
   const inStockPriced = priced.filter((l) => l.availability !== 'OUT_OF_STOCK');
-  const cheapest = inStockPriced[0] ?? priced[0] ?? null;
+  const cheapest = cheapestListing(book);
   const inStock = inStockPriced.length > 0;
 
   const coverUrl: string =

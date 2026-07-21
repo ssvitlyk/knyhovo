@@ -3,6 +3,7 @@ import { Hero } from '@/components/home/Hero';
 import { Shelf } from '@/components/home/Shelf';
 import { RecommendsShelf } from '@/components/home/RecommendsShelf';
 import { getHomeShelves } from '@/components/home/data';
+import type { HomeShelfView } from '@/components/home/data';
 
 /** Public site URL (absolute) — configurable; used for canonical + JSON-LD. */
 const SITE_URL = process.env.NEXT_PUBLIC_SITE_URL ?? 'http://localhost:3000';
@@ -49,36 +50,61 @@ const JSON_LD = {
 };
 
 /**
+ * Presentation config per shelf key. The backend (`GET /api/home`) returns only
+ * `key + books` in display order — all title/eyebrow/CTA/component choices live
+ * here in the web, mapped by the opaque key. An unknown key renders nothing
+ * (safe: a future backend shelf never crashes an older client).
+ */
+function renderShelf(shelf: HomeShelfView): React.JSX.Element | null {
+  switch (shelf.key) {
+    case 'popular':
+      return (
+        <Shelf
+          key={shelf.key}
+          eyebrow="Найчастіше шукають"
+          title="Популярне зараз"
+          lead="Книги, за якими читачі приходять до Knyhovo цього тижня."
+          cta="Усі →"
+          ctaHref="/dobirky/populyarne-zaraz"
+          books={shelf.books}
+        />
+      );
+    case 'novynky':
+      return (
+        <Shelf
+          key={shelf.key}
+          eyebrow="Щойно з друку"
+          title="Новинки"
+          cta="Весь каталог →"
+          ctaHref="/dobirky/novynky"
+          tint
+          books={shelf.books}
+        />
+      );
+    case 'knyhovyk':
+      return <RecommendsShelf key={shelf.key} books={shelf.books} ctaHref="/dobirky/knyhovyk-radyt" />;
+    default:
+      return null;
+  }
+}
+
+/**
  * Home page v1.0 — search-first landing (Concept A · Oracle Search). Server
- * Component: only `Hero` is a client island. Sections follow the frozen
- * Homepage v1.0 order (spec §6): Hero → Популярне зараз → Новинки → Knyhovo
- * радить. Shelves are fed live from the collections API (`getHomeShelves`);
- * each shelf CTA links to its backing `/dobirky/:slug`. An empty shelf hides
- * its section.
+ * Component: only `Hero` is a client island. The discovery shelves come from a
+ * SINGLE composed endpoint (`GET /api/home`, via `getHomeShelves`) — the
+ * backend owns cross-section dedup + provider diversity + display order. The
+ * frozen Homepage v1.0 order (spec §6) is the backend display order: Популярне
+ * зараз → Новинки → Knyhovo радить. Each shelf CTA links to its backing
+ * `/dobirky/:slug`. Empty shelves are omitted; a full endpoint failure degrades
+ * to the hero only.
  */
 export default async function HomePage(): Promise<React.JSX.Element> {
-  const { popular, newReleases, recommends } = await getHomeShelves();
+  const shelves = await getHomeShelves();
   return (
     <main>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(JSON_LD) }} />
       <Hero />
-      <Shelf
-        eyebrow="Найчастіше шукають"
-        title="Популярне зараз"
-        lead="Книги, за якими читачі приходять до Knyhovo цього тижня."
-        cta="Усі →"
-        ctaHref="/dobirky/populyarne-zaraz"
-        books={popular}
-      />
-      <Shelf
-        eyebrow="Щойно з друку"
-        title="Новинки"
-        cta="Весь каталог →"
-        ctaHref="/dobirky/novynky"
-        tint
-        books={newReleases}
-      />
-      <RecommendsShelf books={recommends} ctaHref="/dobirky/knyhovyk-radyt" />
+      {shelves.map(renderShelf)}
     </main>
   );
 }

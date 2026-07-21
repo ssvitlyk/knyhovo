@@ -95,7 +95,7 @@ function defaultSort(type: CollectionRow['type']): SortOption {
 
 // ── Feed resolution (SQL page/count per collection row) ─────────────────────
 
-interface FeedResolution {
+export interface FeedResolution {
   readonly getPage: (filters: FeedFilterParams, sort: SortOption, page: number, perPage: number) => Promise<string[]>;
   readonly getCount: (filters: FeedFilterParams) => Promise<number>;
 }
@@ -105,7 +105,7 @@ interface FeedResolution {
  * `now`. Every read path goes through this — no full-catalog fetch (kills
  * `findAllCanonicalBooks` / `buildHubComputeContext`; C1 §1).
  */
-async function resolveFeed(prisma: PrismaClient, row: CollectionRow, now: Date): Promise<FeedResolution> {
+export async function resolveFeed(prisma: PrismaClient, row: CollectionRow, now: Date): Promise<FeedResolution> {
   if (row.type === 'TAXONOMIC') {
     return {
       getPage: (filters, sort, page, perPage) =>

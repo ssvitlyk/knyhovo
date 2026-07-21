@@ -30,6 +30,7 @@ import {
 } from './notifications/route.js';
 import { registerProfileRoute } from './profile/route.js';
 import { registerCollectionsRoute } from './collections/route.js';
+import { registerHomeRoute } from './home/route.js';
 import type { AuthDeps } from './auth/service.js';
 
 /** Shape of every error response emitted by the API. */
@@ -166,6 +167,8 @@ export function buildApp(prisma: PrismaClient, authDeps?: AuthDeps): FastifyInst
   // for a signed-in session; when absent (or the request is a guest), every
   // book comes back with isWishlisted: false — never a 401.
   registerCollectionsRoute(app, prisma, authDeps);
+  // Composed homepage feed — public; `authDeps` decorates isWishlisted when present.
+  registerHomeRoute(app, prisma, authDeps);
 
   // Auth routes are only registered when deps are provided.
   // Tests that don't exercise auth can call buildApp(prisma) without

@@ -326,3 +326,14 @@ export interface CollectionBooksPageDto {
   readonly per_page: number;
   readonly total_pages: number;
 }
+
+/** One composed homepage shelf: an opaque key + its books (backend supplies no presentation copy). */
+export interface HomeShelfDto {
+  readonly key: string;
+  readonly books: readonly CollectionBookDto[];
+}
+
+/** `GET /api/home` response — shelves in display order (empty shelves omitted). */
+export interface HomeResponseDto {
+  readonly shelves: readonly HomeShelfDto[];
+}

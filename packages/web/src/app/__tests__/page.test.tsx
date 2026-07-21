@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { render } from '@testing-library/react';
 import HomePage from '../page';
 import { getHomeShelves } from '@/components/home/data';
+import type { HomeShelfView } from '@/components/home/data';
 import type { HomeBook } from '@/components/home/content';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn() }) }));
@@ -33,13 +34,20 @@ function book(overrides: Partial<HomeBook> = {}): HomeBook {
   };
 }
 
+/** Build the shelf-view array the page consumes, in display order. */
+function shelves(map: Readonly<Record<string, readonly HomeBook[]>>): HomeShelfView[] {
+  return Object.entries(map).map(([key, books]) => ({ key, books }));
+}
+
 describe('HomePage', () => {
-  it('renders the four frozen sections in order and books from the API mapper', async () => {
-    mockedGetHomeShelves.mockResolvedValue({
-      popular: [book({ id: 'p1', title: 'Sapiens', store: 'BookClub' })],
-      newReleases: [book({ id: 'n1', title: 'Інтернат' })],
-      recommends: [book({ id: 'r1', title: 'Кобзар' })],
-    });
+  it('renders the frozen sections in backend display order with books from the API mapper', async () => {
+    mockedGetHomeShelves.mockResolvedValue(
+      shelves({
+        popular: [book({ id: 'p1', title: 'Sapiens', store: 'BookClub' })],
+        novynky: [book({ id: 'n1', title: 'Інтернат' })],
+        knyhovyk: [book({ id: 'r1', title: 'Кобзар' })],
+      }),
+    );
 
     const { container } = render(await HomePage());
     const headings = Array.from(container.querySelectorAll('h1, h2')).map((h) => h.textContent ?? '');
@@ -54,12 +62,8 @@ describe('HomePage', () => {
     expect(container.textContent).toContain('BookClub');
   });
 
-  it('hides a shelf section entirely when its shelf is empty', async () => {
-    mockedGetHomeShelves.mockResolvedValue({
-      popular: [],
-      newReleases: [book({ id: 'n1' })],
-      recommends: [],
-    });
+  it('hides a shelf section entirely when the backend omits it', async () => {
+    mockedGetHomeShelves.mockResolvedValue(shelves({ novynky: [book({ id: 'n1' })] }));
 
     const { container } = render(await HomePage());
     const headings = Array.from(container.querySelectorAll('h2')).map((h) => h.textContent ?? '');
@@ -68,20 +72,36 @@ describe('HomePage', () => {
     expect(headings).not.toContain('Книговик радить');
   });
 
+  it('ignores an unknown shelf key without crashing', async () => {
+    mockedGetHomeShelves.mockResolvedValue(shelves({ popular: [book({ id: 'p1' })], 'future-shelf': [book({ id: 'x1' })] }));
+
+    const { container } = render(await HomePage());
+    const headings = Array.from(container.querySelectorAll('h2')).map((h) => h.textContent ?? '');
+    expect(headings).toContain('Популярне зараз');
+    // Unknown key renders nothing extra.
+    expect(headings).toHaveLength(1);
+  });
+
+  it('degrades to hero-only (no shelves) when the endpoint fails', async () => {
+    mockedGetHomeShelves.mockResolvedValue([]);
+
+    const { container } = render(await HomePage());
+    expect(container.querySelectorAll('h2')).toHaveLength(0);
+    // Hero still present.
+    expect(container.querySelector('h1')?.textContent).toContain('Де книга дешевша?');
+  });
+
   it('never renders the removed mock data (Rozetka/Yakaboo fixtures)', async () => {
-    mockedGetHomeShelves.mockResolvedValue({
-      popular: [book()],
-      newReleases: [book()],
-      recommends: [book()],
-    });
+    mockedGetHomeShelves.mockResolvedValue(
+      shelves({ popular: [book()], novynky: [book()], knyhovyk: [book()] }),
+    );
 
     const { container } = render(await HomePage());
     expect(container.textContent).not.toContain('Rozetka');
-    expect(container.textContent).not.toContain('Yakaboo');
   });
 
   it('advertises the WebSite + SearchAction JSON-LD (search entry point)', async () => {
-    mockedGetHomeShelves.mockResolvedValue({ popular: [], newReleases: [], recommends: [] });
+    mockedGetHomeShelves.mockResolvedValue([]);
 
     const { container } = render(await HomePage());
     const script = container.querySelector('script[type="application/ld+json"]');
