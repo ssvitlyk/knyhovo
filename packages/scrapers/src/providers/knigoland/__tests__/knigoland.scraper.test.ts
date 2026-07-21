@@ -237,3 +237,230 @@ describe('KnigolandScraper.scrape — error handling', () => {
     expect(result.scrapedAt).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/);
   });
 });
+
+// ──────────────────────────────────────────────────────────────
+// skipDescriptionUrls — avoid re-fetching already-described pages
+// ──────────────────────────────────────────────────────────────
+
+describe('KnigolandScraper.scrape — skipDescriptionUrls', () => {
+  function threeBookFetcher(): HtmlFetcher {
+    return makeFetcher({
+      [KNIGOLAND_SITEMAP_INDEX_URL]: makeIndex([`${CP}1.xml`]),
+      [`${CP}1.xml`]: makeSitemap([INSTOCK_URL, INSTOCK2_URL, OOS_URL]),
+      [INSTOCK_URL]: INSTOCK,
+      [INSTOCK2_URL]: INSTOCK2,
+      [OOS_URL]: OOS,
+    });
+  }
+
+  it('removes already-described URLs from the fetch targets (enrichDescriptions on)', async () => {
+    const fetcher = threeBookFetcher();
+    const scraper = new KnigolandScraper(fetcher, KNIGOLAND_SITEMAP_INDEX_URL, 50);
+    const result = await scraper.scrape({
+      delayMs: 0,
+      enrichDescriptions: true,
+      skipDescriptionUrls: new Set([INSTOCK_URL]),
+    });
+
+    const fetched = vi.mocked(fetcher.fetch).mock.calls.map(([u]) => u);
+    // The skipped URL is never fetched; the other two product pages are.
+    expect(fetched).not.toContain(INSTOCK_URL);
+    expect(fetched).toContain(INSTOCK2_URL);
+    expect(fetched).toContain(OOS_URL);
+    expect(result.listings.map((l) => l.url).sort()).toEqual([INSTOCK2_URL, OOS_URL].sort());
+  });
+
+  it('normalizes a trailing slash so a stored URL still matches the sitemap loc', async () => {
+    const fetcher = threeBookFetcher();
+    const scraper = new KnigolandScraper(fetcher, KNIGOLAND_SITEMAP_INDEX_URL, 50);
+    await scraper.scrape({
+      delayMs: 0,
+      enrichDescriptions: true,
+      // Stored form has a trailing slash; sitemap loc does not — must still match.
+      skipDescriptionUrls: new Set([`${INSTOCK_URL}/`]),
+    });
+
+    const fetched = vi.mocked(fetcher.fetch).mock.calls.map(([u]) => u);
+    expect(fetched).not.toContain(INSTOCK_URL);
+  });
+
+  it('still fetches URLs that are not in the skip set', async () => {
+    const fetcher = threeBookFetcher();
+    const scraper = new KnigolandScraper(fetcher, KNIGOLAND_SITEMAP_INDEX_URL, 50);
+    const result = await scraper.scrape({
+      delayMs: 0,
+      enrichDescriptions: true,
+      skipDescriptionUrls: new Set(['https://knigoland.com.ua/some-unrelated-book']),
+    });
+
+    const fetched = vi.mocked(fetcher.fetch).mock.calls.map(([u]) => u);
+    expect(fetched).toContain(INSTOCK_URL);
+    expect(fetched).toContain(INSTOCK2_URL);
+    expect(fetched).toContain(OOS_URL);
+    expect(result.listings).toHaveLength(3);
+  });
+
+  it('ignores the skip set when enrichDescriptions is off (prices must still refresh)', async () => {
+    const fetcher = threeBookFetcher();
+    const scraper = new KnigolandScraper(fetcher, KNIGOLAND_SITEMAP_INDEX_URL, 50);
+    const result = await scraper.scrape({
+      delayMs: 0,
+      skipDescriptionUrls: new Set([INSTOCK_URL]),
+    });
+
+    const fetched = vi.mocked(fetcher.fetch).mock.calls.map(([u]) => u);
+    expect(fetched).toContain(INSTOCK_URL);
+    expect(result.listings).toHaveLength(3);
+  });
+
+  it('logs a discovery summary with discovered/skipped/to-fetch, maxPages and enrichment', async () => {
+    const fetcher = threeBookFetcher();
+    const logger = { info: vi.fn() };
+    // Default constructor → uncapped (maxPages=Infinity).
+    const scraper = new KnigolandScraper(fetcher, KNIGOLAND_SITEMAP_INDEX_URL);
+    await scraper.scrape({
+      delayMs: 0,
+      enrichDescriptions: true,
+      skipDescriptionUrls: new Set([INSTOCK_URL]),
+      logger,
+    });
+
+    const lines = logger.info.mock.calls.map(([m]) => m as string);
+    const discovery = lines.find((l) => l.includes('product URLs discovered'));
+    expect(discovery).toBeDefined();
+    expect(discovery).toContain('3 product URLs discovered');
+    expect(discovery).toContain('1 skipped (already described)');
+    expect(discovery).toContain('2 to fetch');
+    expect(discovery).toContain('maxPages=Infinity');
+    expect(discovery).toContain('enrichment=true');
+  });
+
+  it('applies maxProducts to the post-skip target list', async () => {
+    const fetcher = threeBookFetcher();
+    // maxProducts = 1: after skipping INSTOCK_URL, [INSTOCK2_URL, OOS_URL] remain,
+    // then the cap of 1 leaves only INSTOCK2_URL.
+    const scraper = new KnigolandScraper(fetcher, KNIGOLAND_SITEMAP_INDEX_URL, 1);
+    const result = await scraper.scrape({
+      delayMs: 0,
+      enrichDescriptions: true,
+      skipDescriptionUrls: new Set([INSTOCK_URL]),
+    });
+
+    const fetched = vi.mocked(fetcher.fetch).mock.calls.map(([u]) => u);
+    expect(fetched).not.toContain(INSTOCK_URL);
+    expect(fetched).toContain(INSTOCK2_URL);
+    expect(fetched).not.toContain(OOS_URL);
+    expect(result.listings.map((l) => l.url)).toEqual([INSTOCK2_URL]);
+  });
+
+  it('returns cleanly when the skip set empties the target list', async () => {
+    const fetcher = makeFetcher({
+      [KNIGOLAND_SITEMAP_INDEX_URL]: makeIndex([`${CP}1.xml`]),
+      [`${CP}1.xml`]: makeSitemap([INSTOCK_URL]),
+      [INSTOCK_URL]: INSTOCK,
+    });
+    const logger = { info: vi.fn() };
+    const scraper = new KnigolandScraper(fetcher, KNIGOLAND_SITEMAP_INDEX_URL, 50);
+    const result = await scraper.scrape({
+      delayMs: 0,
+      enrichDescriptions: true,
+      skipDescriptionUrls: new Set([INSTOCK_URL]),
+      logger,
+    });
+
+    // No product page is fetched; the run returns an empty, well-formed result.
+    const fetched = vi.mocked(fetcher.fetch).mock.calls.map(([u]) => u);
+    expect(fetched).not.toContain(INSTOCK_URL);
+    expect(result.listings).toEqual([]);
+    expect(result.provider).toBe('knigoland');
+    // Discovery line reports the skip; no per-item completion line for zero targets.
+    const lines = logger.info.mock.calls.map(([m]) => m as string);
+    expect(lines.some((l) => l.includes('1 product URLs discovered') && l.includes('1 skipped') && l.includes('0 to fetch'))).toBe(true);
+    expect(lines.some((l) => l.startsWith('knigoland: complete'))).toBe(false);
+  });
+});
+
+// ──────────────────────────────────────────────────────────────
+// Progress logging — bounded, interval + completion
+// ──────────────────────────────────────────────────────────────
+
+describe('KnigolandScraper.scrape — progress logging', () => {
+  /** Minimal, fast-parsing book page carrying a unique offers.url + a Bookland ISBN. */
+  function minimalBook(url: string): string {
+    const ld = JSON.stringify({
+      '@type': 'Product',
+      name: 'Book',
+      offers: { url, price: 100, availability: 'https://schema.org/InStock' },
+    });
+    return (
+      `<!doctype html><html><body>` +
+      `<script type="application/ld+json">${ld}</script>` +
+      `<div><span class="whitespace-nowrap">ISBN</span></div><div>978-617-00-0000-1</div>` +
+      `</body></html>`
+    );
+  }
+
+  /** Build N distinct product URLs plus a fetcher serving each a per-URL body. */
+  function manyUrlFetcher(count: number, body: (url: string) => string | (() => never)): {
+    fetcher: HtmlFetcher;
+    urls: string[];
+  } {
+    const urls = Array.from({ length: count }, (_, k) => `https://knigoland.com.ua/book-${k}-item`);
+    const responses: Record<string, string | (() => never)> = {
+      [KNIGOLAND_SITEMAP_INDEX_URL]: makeIndex([`${CP}1.xml`]),
+      [`${CP}1.xml`]: makeSitemap(urls),
+    };
+    for (const u of urls) responses[u] = body(u);
+    return { fetcher: makeFetcher(responses), urls };
+  }
+
+  it('logs progress every 100 targets and once at completion', async () => {
+    const { fetcher } = manyUrlFetcher(250, minimalBook);
+    const logger = { info: vi.fn() };
+    const scraper = new KnigolandScraper(fetcher, KNIGOLAND_SITEMAP_INDEX_URL);
+    await scraper.scrape({ delayMs: 0, logger });
+
+    const lines = logger.info.mock.calls.map(([m]) => m as string);
+    const progressLines = lines.filter((l) => l.startsWith('knigoland: progress'));
+    const completeLines = lines.filter((l) => l.startsWith('knigoland: complete'));
+
+    // Interval logs at 100 and 200 (not a duplicate at 250 — completion covers it).
+    expect(progressLines).toHaveLength(2);
+    expect(progressLines[0]).toContain('progress 100/250');
+    expect(progressLines[1]).toContain('progress 200/250');
+    expect(completeLines).toHaveLength(1);
+    expect(completeLines[0]).toContain('complete 250/250');
+
+    // A progress line carries all required fields.
+    expect(progressLines[0]).toMatch(/listings/);
+    expect(progressLines[0]).toMatch(/errors/);
+    expect(progressLines[0]).toMatch(/elapsed/);
+    expect(progressLines[0]).toMatch(/ms\/item/);
+    expect(progressLines[0]).toMatch(/remaining/);
+  });
+
+  it('does not log per item (well under one line per target)', async () => {
+    const { fetcher } = manyUrlFetcher(150, minimalBook);
+    const logger = { info: vi.fn() };
+    const scraper = new KnigolandScraper(fetcher, KNIGOLAND_SITEMAP_INDEX_URL);
+    await scraper.scrape({ delayMs: 0, logger });
+
+    // 150 targets → discovery(1) + progress@100(1) + complete(1) = 3 lines total.
+    expect(logger.info.mock.calls).toHaveLength(3);
+  });
+
+  it('advances the processed counter even when every fetch errors', async () => {
+    const { fetcher } = manyUrlFetcher(150, () => networkError);
+    const logger = { info: vi.fn() };
+    const scraper = new KnigolandScraper(fetcher, KNIGOLAND_SITEMAP_INDEX_URL);
+    const result = await scraper.scrape({ delayMs: 0, logger });
+
+    const lines = logger.info.mock.calls.map(([m]) => m as string);
+    // The 100th (errored) target still triggers the interval log, and completion
+    // reflects all 150 processed with 150 collected errors and 0 listings.
+    expect(lines.some((l) => l.includes('progress 100/150') && l.includes('100 errors'))).toBe(true);
+    expect(lines.some((l) => l.includes('complete 150/150') && l.includes('0 listings') && l.includes('150 errors'))).toBe(true);
+    expect(result.listings).toEqual([]);
+    expect(result.errors).toHaveLength(150);
+  });
+});

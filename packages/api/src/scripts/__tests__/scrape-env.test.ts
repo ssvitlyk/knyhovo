@@ -147,6 +147,27 @@ describe('parseScraperOptionsFromEnv', () => {
       maxConsecutiveFetchFailures: 15,
     });
   });
+
+  it('sets maxPages alone when SCRAPE_MAX_PAGES is a valid positive integer', () => {
+    expect(parseScraperOptionsFromEnv({ SCRAPE_MAX_PAGES: '100' })).toEqual({ maxPages: 100 });
+  });
+
+  it('ignores invalid SCRAPE_MAX_PAGES values (default = uncapped)', () => {
+    expect(parseScraperOptionsFromEnv({ SCRAPE_MAX_PAGES: '0' })).toBeUndefined();
+    expect(parseScraperOptionsFromEnv({ SCRAPE_MAX_PAGES: '-5' })).toBeUndefined();
+    expect(parseScraperOptionsFromEnv({ SCRAPE_MAX_PAGES: 'abc' })).toBeUndefined();
+    expect(parseScraperOptionsFromEnv({ SCRAPE_MAX_PAGES: '1.5' })).toBeUndefined();
+    expect(parseScraperOptionsFromEnv({})).toBeUndefined();
+  });
+
+  it('combines maxPages with the enrichment options', () => {
+    expect(
+      parseScraperOptionsFromEnv({
+        SCRAPE_ENRICH_DESCRIPTIONS: 'true',
+        SCRAPE_MAX_PAGES: '250',
+      }),
+    ).toEqual({ enrichDescriptions: true, maxPages: 250 });
+  });
 });
 
 describe('getScrapeStateRetentionDays', () => {

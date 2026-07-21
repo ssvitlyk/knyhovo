@@ -22,6 +22,10 @@ import type { ScraperOptions } from '@knyhovo/shared';
  *     - `SCRAPE_MAX_CONSECUTIVE_FETCH_FAILURES`: a positive-integer string
  *       sets `maxConsecutiveFetchFailures`. Invalid or absent values are
  *       ignored (provider default applies).
+ *   - Product/page cap (manual & staging runs):
+ *     - `SCRAPE_MAX_PAGES`: a positive-integer string sets `maxPages`. Invalid
+ *       or absent values are ignored (provider default applies — e.g. Knigoland
+ *       stays uncapped). Scope with `--provider=<name>` to cap one provider.
  *
  * Pure function — no IO, no mutation of `env`. Every feature above may be
  * enabled independently of the others; when several are set, all appear on
@@ -55,6 +59,15 @@ export function parseScraperOptionsFromEnv(env: NodeJS.ProcessEnv): ScraperOptio
   const rawMaxConsecutiveFailures = env['SCRAPE_MAX_CONSECUTIVE_FETCH_FAILURES'];
   if (rawMaxConsecutiveFailures !== undefined && /^[1-9]\d*$/.test(rawMaxConsecutiveFailures)) {
     options = { ...options, maxConsecutiveFetchFailures: Number(rawMaxConsecutiveFailures) };
+  }
+
+  // Explicit product/page cap for manual & staging runs. Absent → provider default
+  // (Knigoland is uncapped by default — it pulls the full ~50k catalog). Combine
+  // with `--provider=knigoland` to cap only Knigoland without touching other
+  // providers, since a scoped run executes no others.
+  const rawMaxPages = env['SCRAPE_MAX_PAGES'];
+  if (rawMaxPages !== undefined && /^[1-9]\d*$/.test(rawMaxPages)) {
+    options = { ...options, maxPages: Number(rawMaxPages) };
   }
 
   return options;

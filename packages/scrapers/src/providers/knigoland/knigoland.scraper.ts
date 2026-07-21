@@ -16,6 +16,21 @@ import {
 const DEFAULT_TIMEOUT_MS = 10_000;
 const DEFAULT_DELAY_MS = 500;
 
+/** Emit a progress line once every this many processed targets (plus one at completion). */
+const PROGRESS_INTERVAL = 100;
+
+/**
+ * Normalize a product URL for skip-set comparison. The skip set carries stored
+ * `ProviderListing.url` values (a prior scrape's JSON-LD `offers.url`), while the
+ * fetch loop iterates sitemap `<loc>` URLs — the same canonical product URL but
+ * possibly differing by trailing slash or surrounding whitespace. Trimming and
+ * dropping trailing slashes on both sides makes the comparison stable without
+ * altering the URL actually fetched (targets keep their original form).
+ */
+function normalizeProductUrl(url: string): string {
+  return url.trim().replace(/\/+$/, '');
+}
+
 /**
  * Knigoland scraper (Tier A). Discovery traverses the sitemap index
  * (`/sitemaps/sitemap.xml`): the index lists sub-sitemaps, of which only the
@@ -115,16 +130,69 @@ export class KnigolandScraper implements ScraperProvider {
       }
     }
 
-    // 3. Per-product fetch, capped at maxProducts. URLs are already deduplicated, so
-    //    each product page — book or non-book — is fetched at most once. A non-book
-    //    page is skipped by the parser with an empty `errors` array, so the skip adds
-    //    no noise to `scrapeErrors` and is never retried. A broken/deleted URL
+    // 3. Description-enrichment skip set. When an enrichment pass supplies URLs
+    //    whose listings already carry a stored description, drop them so their
+    //    product pages are not re-fetched (Knigoland reads the description inline
+    //    from the same page it fetches for price/availability, so an already-
+    //    described URL is an unnecessary fetch during an enrichment pass). Gated
+    //    on `enrichDescriptions` — a normal full-catalog run must still re-fetch
+    //    every page so prices/availability refresh — matching the shared contract
+    //    ("skipDescriptionUrls is ignored when enrichDescriptions is off").
+    const skipSet =
+      options?.enrichDescriptions === true ? options.skipDescriptionUrls : undefined;
+    let candidateUrls = productUrls;
+    let skippedCount = 0;
+    if (skipSet !== undefined && skipSet.size > 0) {
+      const normalizedSkip = new Set<string>();
+      for (const u of skipSet) normalizedSkip.add(normalizeProductUrl(u));
+      candidateUrls = productUrls.filter((u) => !normalizedSkip.has(normalizeProductUrl(u)));
+      skippedCount = productUrls.length - candidateUrls.length;
+    }
+
+    // 4. Per-product fetch, capped at maxProducts AFTER the skip so the cap bounds
+    //    the pages actually fetched. URLs are already deduplicated, so each product
+    //    page — book or non-book — is fetched at most once. A non-book page is
+    //    skipped by the parser with an empty `errors` array, so the skip adds no
+    //    noise to `scrapeErrors` and is never retried. A broken/deleted URL
     //    (network error or HTTP 404/410) is recorded and the loop continues.
-    const targets = productUrls.slice(0, maxProducts);
+    const targets = candidateUrls.slice(0, maxProducts);
     const seenListingUrls = new Set<string>();
+
+    options?.logger?.info(
+      `knigoland: ${productUrls.length} product URLs discovered, ` +
+        `${skippedCount} skipped (already described), ${targets.length} to fetch ` +
+        `(maxPages=${maxProducts}, enrichment=${options?.enrichDescriptions === true})`,
+    );
+
+    const loopStartedAt = Date.now();
+    const errorsBeforeLoop = errors.length;
+    let processed = 0;
+
+    const logProgress = (label: 'progress' | 'complete'): void => {
+      const logger = options?.logger;
+      if (logger === undefined) return;
+      const elapsedMs = Date.now() - loopStartedAt;
+      const avgMs = processed > 0 ? Math.round(elapsedMs / processed) : 0;
+      const remaining = targets.length - processed;
+      const loopErrors = errors.length - errorsBeforeLoop;
+      const base =
+        `knigoland: ${label} ${processed}/${targets.length} — ` +
+        `${allListings.length} listings, ${loopErrors} errors, ` +
+        `${Math.round(elapsedMs / 1000)}s elapsed, ${avgMs}ms/item`;
+      logger.info(
+        label === 'complete' ? base : `${base}, ~${Math.round((avgMs * remaining) / 1000)}s remaining`,
+      );
+    };
+
+    const maybeLogProgress = (): void => {
+      if (processed % PROGRESS_INTERVAL === 0 && processed !== targets.length) {
+        logProgress('progress');
+      }
+    };
 
     for (let i = 0; i < targets.length; i++) {
       const productUrl = targets[i];
+      processed++;
 
       let html: string;
       try {
@@ -133,6 +201,7 @@ export class KnigolandScraper implements ScraperProvider {
         errors.push(
           `Product ${productUrl}: fetch error — ${err instanceof Error ? err.message : String(err)}`,
         );
+        maybeLogProgress();
         continue;
       }
 
@@ -143,9 +212,15 @@ export class KnigolandScraper implements ScraperProvider {
         allListings.push(listing);
       }
 
+      maybeLogProgress();
+
       if (i < targets.length - 1 && delayMs > 0) {
         await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
       }
+    }
+
+    if (targets.length > 0) {
+      logProgress('complete');
     }
 
     return { provider: 'knigoland', listings: allListings, scrapedAt, errors };
