@@ -1,28 +1,20 @@
-import { getCollectionBooks } from '@/lib/api/collections';
+import type { HomeShelfKey } from '@knyhovo/shared';
+import { getHome, HomeError } from '@/lib/api/home';
 import type { CollectionBookDto } from '@/lib/api/types';
 import { formatMoney } from '@/lib/format';
 import type { HomeBadge, HomeBook } from './content';
 
-/** Max cards shown per homepage shelf — matches the collection detail page's real pool. */
-const SHELF_CAP = 12;
-
-type ShelfSlug = 'populyarne-zaraz' | 'novynky' | 'knyhovyk-radyt';
-
-/** Badge rule per shelf: novynky always gets «Новинка»; the others use the real discount, when any. */
-function badgeFor(slug: ShelfSlug, dto: CollectionBookDto): HomeBadge | null {
-  if (slug === 'novynky') return 'accent:Новинка';
+/** Badge rule: the «novynky» shelf always gets «Новинка»; other shelves use the real discount, when any. */
+function badgeFor(key: HomeShelfKey, dto: CollectionBookDto): HomeBadge | null {
+  if (key === 'novynky') return 'accent:Новинка';
   if (dto.discountPercent !== null && dto.discountPercent >= 1) return `solid:-${dto.discountPercent}%`;
   return null;
 }
 
-/** Narrows `minPrice` to non-null so priced-only mapping below is cast-free. */
+/** Narrows `minPrice` to non-null so priced-only mapping is cast-free. */
 type PricedCollectionBookDto = CollectionBookDto & { readonly minPrice: NonNullable<CollectionBookDto['minPrice']> };
 
-function isPriced(dto: CollectionBookDto): dto is PricedCollectionBookDto {
-  return dto.minPrice !== null;
-}
-
-function toHomeBook(slug: ShelfSlug, dto: PricedCollectionBookDto): HomeBook {
+function toHomeBook(key: HomeShelfKey, dto: PricedCollectionBookDto): HomeBook {
   return {
     id: dto.id,
     href: dto.url,
@@ -33,40 +25,60 @@ function toHomeBook(slug: ShelfSlug, dto: PricedCollectionBookDto): HomeBook {
     store: dto.storeName,
     cover: dto.coverUrl || null,
     offersCount: dto.offersCount,
-    badge: badgeFor(slug, dto),
+    badge: badgeFor(key, dto),
   };
 }
 
-/** Fetch one shelf's books; any failure (down API, missing collection) degrades to an empty shelf, never a crash. */
-async function loadShelf(slug: ShelfSlug): Promise<readonly HomeBook[]> {
-  try {
-    const { books } = await getCollectionBooks({ slug, page: 1 });
-    return books
-      .filter(isPriced)
-      .slice(0, SHELF_CAP)
-      .map((b) => toHomeBook(slug, b));
-  } catch {
-    return [];
-  }
-}
-
-export interface HomeShelves {
-  readonly popular: readonly HomeBook[];
-  readonly newReleases: readonly HomeBook[];
-  readonly recommends: readonly HomeBook[];
+/** One composed homepage shelf, ready to render: shared-vocabulary key + mapped books (in backend display order). */
+export interface HomeShelfView {
+  readonly key: HomeShelfKey;
+  readonly books: readonly HomeBook[];
 }
 
 /**
- * Fetch the three homepage discovery shelves from the collections API in
- * parallel (guest view — no cookie forwarded, so `isWishlisted` is unused
- * here). Each shelf degrades to `[]` independently on error; the shelf
- * components already hide an empty section.
+ * Map one shelf's books. The backend is the sole owner of Home candidate
+ * validity and guarantees every composed book is priced (`minPrice !== null`),
+ * so the web does NOT re-filter composition. A book that somehow arrives
+ * unpriced is a backend/schema contract violation — it is logged (not silently
+ * dropped) and excluded, since a card cannot render without a price.
  */
-export async function getHomeShelves(): Promise<HomeShelves> {
-  const [popular, newReleases, recommends] = await Promise.all([
-    loadShelf('populyarne-zaraz'),
-    loadShelf('novynky'),
-    loadShelf('knyhovyk-radyt'),
-  ]);
-  return { popular, newReleases, recommends };
+function mapShelf(key: HomeShelfKey, books: readonly CollectionBookDto[]): readonly HomeBook[] {
+  const mapped: HomeBook[] = [];
+  for (const dto of books) {
+    if (dto.minPrice === null) {
+      console.error('[home] schema violation: composed book missing minPrice', { key, id: dto.id });
+      continue;
+    }
+    mapped.push(toHomeBook(key, dto as PricedCollectionBookDto));
+  }
+  return mapped;
+}
+
+/**
+ * Fetch the composed homepage feed from the backend in a SINGLE request
+ * (`GET /api/home`). Cross-section dedup, provider diversity and candidate
+ * validity are the backend's responsibility — the web does no allocation/
+ * dedup/validity filtering of its own.
+ *
+ * Guest view here (no cookie forwarded, so `isWishlisted` is unused). Shelves
+ * arrive in display order; empty shelves are already omitted by the backend.
+ * On failure the page degrades to the hero only (PRD §10) — no retry, no
+ * fallback to the old three-collection fetch — and the error is logged (never
+ * silently swallowed), distinguishing transport/API failures from unexpected
+ * (mapping/schema) ones.
+ */
+export async function getHomeShelves(): Promise<readonly HomeShelfView[]> {
+  try {
+    const { shelves } = await getHome();
+    return shelves
+      .map((shelf) => ({ key: shelf.key, books: mapShelf(shelf.key, shelf.books) }))
+      .filter((shelf) => shelf.books.length > 0);
+  } catch (error) {
+    if (error instanceof HomeError) {
+      console.error('[home] /api/home request failed — rendering hero only', { status: error.status, message: error.message });
+    } else {
+      console.error('[home] unexpected error building home shelves — rendering hero only', { error });
+    }
+    return [];
+  }
 }

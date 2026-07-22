@@ -60,3 +60,4 @@ Web: `pnpm --filter @knyhovo/web dev` (потребує API на :3000 для р
 | [docs/prd/provider-enable-disable.md](docs/prd/provider-enable-disable.md) | Затверджено |
 | [docs/prd/megakniga-provider.md](docs/prd/megakniga-provider.md) | Затверджено |
 | [docs/prd/megakniga-resumable-enrichment.md](docs/prd/megakniga-resumable-enrichment.md) | Затверджено (v2.1) |
+| [docs/prd/home-feed-composer.md](docs/prd/home-feed-composer.md) | Затверджено |

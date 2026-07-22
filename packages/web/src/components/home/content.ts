@@ -2,8 +2,8 @@
  * Homepage v1.0 — shared shelf types + hero search chips.
  *
  * The discovery shelves («Популярне зараз» / «Новинки» / «Книговик радить»)
- * are now fed by the real collections API — see `./data.ts` for the fetch +
- * mapping (`getHomeShelves`). This module keeps only the shared `HomeBook` /
+ * are now fed by the single composed `GET /api/home` endpoint — see `./data.ts`
+ * for the fetch + mapping (`getHomeShelves`). This module keeps only the shared `HomeBook` /
  * `HomeBadge` types the shelf components render, plus the hero's static
  * popular-query chips (legit curated content, not book data).
  */

@@ -30,7 +30,9 @@ import {
 } from './notifications/route.js';
 import { registerProfileRoute } from './profile/route.js';
 import { registerCollectionsRoute } from './collections/route.js';
+import { registerHomeRoute } from './home/route.js';
 import type { AuthDeps } from './auth/service.js';
+import type { Clock } from './clock.js';
 
 /** Shape of every error response emitted by the API. */
 interface ErrorBody {
@@ -90,8 +92,11 @@ const clientErrorHandler: NonNullable<FastifyServerOptions['clientErrorHandler']
  * `authDeps` is optional. When omitted, auth routes are NOT registered — this
  * keeps existing search/books tests green without needing AUTH_SECRET in env.
  * Production (server.ts) builds real AuthDeps and passes them here.
+ *
+ * `opts.clock` is injectable so tests can pin `now` for the composed Home feed;
+ * production uses the system clock.
  */
-export function buildApp(prisma: PrismaClient, authDeps?: AuthDeps): FastifyInstance {
+export function buildApp(prisma: PrismaClient, authDeps?: AuthDeps, opts?: { readonly clock?: Clock }): FastifyInstance {
   const app = Fastify({ logger: false, clientErrorHandler });
 
   // Register cookie plugin — required for session cookie support.
@@ -166,6 +171,8 @@ export function buildApp(prisma: PrismaClient, authDeps?: AuthDeps): FastifyInst
   // for a signed-in session; when absent (or the request is a guest), every
   // book comes back with isWishlisted: false — never a 401.
   registerCollectionsRoute(app, prisma, authDeps);
+  // Composed homepage feed — public; `authDeps` decorates isWishlisted when present.
+  registerHomeRoute(app, prisma, authDeps, opts?.clock);
 
   // Auth routes are only registered when deps are provided.
   // Tests that don't exercise auth can call buildApp(prisma) without

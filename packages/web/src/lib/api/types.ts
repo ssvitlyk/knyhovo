@@ -1,4 +1,4 @@
-import type { ProviderName, Availability, BuyingReason } from '@knyhovo/shared';
+import type { ProviderName, Availability, BuyingReason, HomeShelfKey } from '@knyhovo/shared';
 
 /**
  * Frontend mirror of the S8a `GET /api/search` response contract
@@ -325,4 +325,15 @@ export interface CollectionBooksPageDto {
   readonly page: number;
   readonly per_page: number;
   readonly total_pages: number;
+}
+
+/** One composed homepage shelf: a shared-vocabulary key + its books (backend supplies no presentation copy). */
+export interface HomeShelfDto {
+  readonly key: HomeShelfKey;
+  readonly books: readonly CollectionBookDto[];
+}
+
+/** `GET /api/home` response — shelves in display order (empty shelves omitted). */
+export interface HomeResponseDto {
+  readonly shelves: readonly HomeShelfDto[];
 }

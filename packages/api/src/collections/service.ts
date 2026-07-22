@@ -149,6 +149,22 @@ async function feedTotalCount(prisma: PrismaClient, row: CollectionRow, now: Dat
   return feed.getCount({});
 }
 
+/**
+ * Load up to `limit` ranked candidate book ids for a collection's feed (page 1,
+ * default relevance sort) — the narrow entry point the Home Builder composes
+ * over. Keeps `resolveFeed`/`FeedResolution` internal to this module: callers
+ * get exactly the ranked ids, not the feed-resolution machinery.
+ */
+export async function loadFeedCandidateIds(
+  prisma: PrismaClient,
+  row: CollectionRow,
+  limit: number,
+  now: Date,
+): Promise<string[]> {
+  const feed = await resolveFeed(prisma, row, now);
+  return feed.getPage({}, 'relevance', 1, limit);
+}
+
 function toBookDtos(rows: Awaited<ReturnType<typeof findCanonicalBooksByIds>>, wishlistCounts: Map<string, number>): CollectionBookDto[] {
   return rows.map((row) => toCollectionBookDto(row, { wishlistCounts }));
 }
