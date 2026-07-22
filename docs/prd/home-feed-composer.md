@@ -320,4 +320,17 @@ Structured-логи на побудову (без PII): розмір пулу к
 2. `HOME_LAYOUT` — статична константа; env-overrides (§6/§7) **не** реалізовано (щоб не будувати config-фреймворк заради цього PR) — тюнінг-ручки лишаються майбутнім треком (§16 PR4).
 3. Бекенд **опускає порожні полиці** з відповіді (не завжди віддає всі 3 ключі) — реалізує §10 «порожня секція ховається» у джерелі; web додатково гардить.
 
+**Remediation (2026-07-22, поверх feature-коміту) за критичним аудитом:**
+- **Partial feed resilience** — збій одного candidate-feed (`loadFeedCandidateIds`) тепер ловиться локально: його pool порожній, інші полиці композуються; programmer-помилки composer/mapper/canonical-fetch **не** ковтаються. Structured PII-free лог `home.feed_fetch_failed{key,slug}`.
+- **Неприцінені книги** — бекенд єдиний owner валідності: неприцінені книги фільтруються **до** `compose()` (не займають slot, не резервують `canonicalBookId`); editorial добирає наступну валідну. Web більше не змінює склад composed-полиць мовчазним фільтром.
+- **Детермінований clock** — вузький `Clock` seam (`packages/api/src/clock.ts`); один зафіксований `now` на побудову; route/integration-тести інжектять fixed clock; додано novynky boundary-тест.
+- **Shared `HomeShelfKey`** — `packages/shared` — єдине джерело ключів; типізовано backend layout/DTO/response-mapper і web client/badge/presentation.
+- **HOME_LAYOUT fail-fast validation** — унікальність ключів, take/multiplier, displayOrder = множина section-ключів; валідація один раз при створенні layout.
+- **Web error visibility** — прибрано безмовний `catch {}`; transport/API/schema failures логуються; degraded = hero-only без retry/fallback.
+- **Wishlist post-cache** — прибрано зайвий build-time `findWishlistCountsByIds`; post-cache decoration — єдине джерело `wishlistCount`/`isWishlisted` (spy-тест: cold build = 1 wishlist-query).
+- **Подвійне сортування listings** — `toCollectionBookDto` рахує priced один раз; cheapest вибирається без другого sort (tie-break/DTO незмінні; додано `mapper.test.ts`).
+- **Cache key** — тепер `home:v{VERSION}:{layoutFingerprint}` → зміна `HOME_LAYOUT` інвалідовує кеш автоматично.
+- **Вузький port** — `loadFeedCandidateIds(row,limit,now)` замість експорту внутрішнього `resolveFeed`/`FeedResolution` (повернуто у private).
+
 **НЕ перевірено:** staging latency (warm <300 ms / cold <1.2 s / 0×502) — немає доступу до staging; лишається пунктом deployment-checklist (§15). Coverage-числа не згенеровано (`@vitest/coverage-v8` не встановлено); нові generic-модулі покриті тестами по всіх гілках.
+**Свідомо НЕ зроблено (не local/safe або поза scope):** справжній cache-hit/miss лог (потребує зміни спільного `getOrSet` API); ESLint boundary-rule замість regex import-тесту (немає інфраструктури dependency-cruiser/`no-restricted-imports`); повний shared Home DTO (тягне `CollectionBookDto` у shared — окремий рефактор).

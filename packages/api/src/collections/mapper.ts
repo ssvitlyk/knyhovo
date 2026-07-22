@@ -30,6 +30,17 @@ export function hasPricedListing(row: CollectionBookRow): boolean {
 }
 
 /**
+ * Pick the "cheapest shown" listing from a price-ascending-sorted priced array:
+ * the first in-stock listing when any exist, otherwise the first (cheapest)
+ * listing regardless of availability; `null` for an empty array. Operates on an
+ * already-sorted array so callers that also need `priced`/`inStockPriced` don't
+ * re-sort (see {@link toCollectionBookDto}).
+ */
+function cheapestFromSortedPriced(sortedPriced: readonly CollectionListingRow[]): CollectionListingRow | null {
+  return sortedPriced.find((l) => l.availability !== 'OUT_OF_STOCK') ?? sortedPriced[0] ?? null;
+}
+
+/**
  * The single "cheapest shown" listing for a book: the cheapest in-stock priced
  * listing when any exist, otherwise the cheapest priced listing regardless of
  * availability; `null` only when the book has zero priced listings. This is the
@@ -38,9 +49,7 @@ export function hasPricedListing(row: CollectionBookRow): boolean {
  * the provider the user actually sees.
  */
 export function cheapestListing(book: CollectionBookRow): CollectionListingRow | null {
-  const priced = book.listings.filter(hasPrice).sort((a, b) => a.priceAmount - b.priceAmount);
-  const inStockPriced = priced.filter((l) => l.availability !== 'OUT_OF_STOCK');
-  return inStockPriced[0] ?? priced[0] ?? null;
+  return cheapestFromSortedPriced(book.listings.filter(hasPrice).sort((a, b) => a.priceAmount - b.priceAmount));
 }
 
 /** Per-request context needed to map books without N+1 queries. */
@@ -74,7 +83,7 @@ export interface CollectionMapperContext {
 export function toCollectionBookDto(book: CollectionBookRow, ctx: CollectionMapperContext): CollectionBookDto {
   const priced = book.listings.filter(hasPrice).sort((a, b) => a.priceAmount - b.priceAmount);
   const inStockPriced = priced.filter((l) => l.availability !== 'OUT_OF_STOCK');
-  const cheapest = cheapestListing(book);
+  const cheapest = cheapestFromSortedPriced(priced); // reuse the single sort above (no re-sort)
   const inStock = inStockPriced.length > 0;
 
   const coverUrl: string =

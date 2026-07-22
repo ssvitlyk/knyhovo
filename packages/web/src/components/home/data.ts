@@ -1,26 +1,20 @@
-import { getHome } from '@/lib/api/home';
+import type { HomeShelfKey } from '@knyhovo/shared';
+import { getHome, HomeError } from '@/lib/api/home';
 import type { CollectionBookDto } from '@/lib/api/types';
 import { formatMoney } from '@/lib/format';
 import type { HomeBadge, HomeBook } from './content';
 
-/** Safety cap per shelf — the backend already composes ≤12, this just guards against a wider payload. */
-const SHELF_CAP = 12;
-
 /** Badge rule: the «novynky» shelf always gets «Новинка»; other shelves use the real discount, when any. */
-function badgeFor(key: string, dto: CollectionBookDto): HomeBadge | null {
+function badgeFor(key: HomeShelfKey, dto: CollectionBookDto): HomeBadge | null {
   if (key === 'novynky') return 'accent:Новинка';
   if (dto.discountPercent !== null && dto.discountPercent >= 1) return `solid:-${dto.discountPercent}%`;
   return null;
 }
 
-/** Narrows `minPrice` to non-null so priced-only mapping below is cast-free. */
+/** Narrows `minPrice` to non-null so priced-only mapping is cast-free. */
 type PricedCollectionBookDto = CollectionBookDto & { readonly minPrice: NonNullable<CollectionBookDto['minPrice']> };
 
-function isPriced(dto: CollectionBookDto): dto is PricedCollectionBookDto {
-  return dto.minPrice !== null;
-}
-
-function toHomeBook(key: string, dto: PricedCollectionBookDto): HomeBook {
+function toHomeBook(key: HomeShelfKey, dto: PricedCollectionBookDto): HomeBook {
   return {
     id: dto.id,
     href: dto.url,
@@ -35,33 +29,56 @@ function toHomeBook(key: string, dto: PricedCollectionBookDto): HomeBook {
   };
 }
 
-/** One composed homepage shelf, ready to render: opaque key + mapped books (in backend display order). */
+/** One composed homepage shelf, ready to render: shared-vocabulary key + mapped books (in backend display order). */
 export interface HomeShelfView {
-  readonly key: string;
+  readonly key: HomeShelfKey;
   readonly books: readonly HomeBook[];
 }
 
 /**
+ * Map one shelf's books. The backend is the sole owner of Home candidate
+ * validity and guarantees every composed book is priced (`minPrice !== null`),
+ * so the web does NOT re-filter composition. A book that somehow arrives
+ * unpriced is a backend/schema contract violation — it is logged (not silently
+ * dropped) and excluded, since a card cannot render without a price.
+ */
+function mapShelf(key: HomeShelfKey, books: readonly CollectionBookDto[]): readonly HomeBook[] {
+  const mapped: HomeBook[] = [];
+  for (const dto of books) {
+    if (dto.minPrice === null) {
+      console.error('[home] schema violation: composed book missing minPrice', { key, id: dto.id });
+      continue;
+    }
+    mapped.push(toHomeBook(key, dto as PricedCollectionBookDto));
+  }
+  return mapped;
+}
+
+/**
  * Fetch the composed homepage feed from the backend in a SINGLE request
- * (`GET /api/home`). Cross-section dedup and provider diversity are the
- * backend's responsibility — the web does no allocation/dedup of its own.
+ * (`GET /api/home`). Cross-section dedup, provider diversity and candidate
+ * validity are the backend's responsibility — the web does no allocation/
+ * dedup/validity filtering of its own.
  *
  * Guest view here (no cookie forwarded, so `isWishlisted` is unused). Shelves
- * arrive in display order; empty shelves are already omitted by the backend,
- * but any shelf that maps to zero priced books is dropped too. A full endpoint
- * failure degrades to `[]` — the page then renders the hero only (PRD §10), no
- * fallback to the old three-collection fetch.
+ * arrive in display order; empty shelves are already omitted by the backend.
+ * On failure the page degrades to the hero only (PRD §10) — no retry, no
+ * fallback to the old three-collection fetch — and the error is logged (never
+ * silently swallowed), distinguishing transport/API failures from unexpected
+ * (mapping/schema) ones.
  */
 export async function getHomeShelves(): Promise<readonly HomeShelfView[]> {
   try {
     const { shelves } = await getHome();
     return shelves
-      .map((shelf) => ({
-        key: shelf.key,
-        books: shelf.books.filter(isPriced).slice(0, SHELF_CAP).map((b) => toHomeBook(shelf.key, b)),
-      }))
+      .map((shelf) => ({ key: shelf.key, books: mapShelf(shelf.key, shelf.books) }))
       .filter((shelf) => shelf.books.length > 0);
-  } catch {
+  } catch (error) {
+    if (error instanceof HomeError) {
+      console.error('[home] /api/home request failed — rendering hero only', { status: error.status, message: error.message });
+    } else {
+      console.error('[home] unexpected error building home shelves — rendering hero only', { error });
+    }
     return [];
   }
 }

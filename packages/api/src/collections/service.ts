@@ -95,7 +95,7 @@ function defaultSort(type: CollectionRow['type']): SortOption {
 
 // ── Feed resolution (SQL page/count per collection row) ─────────────────────
 
-export interface FeedResolution {
+interface FeedResolution {
   readonly getPage: (filters: FeedFilterParams, sort: SortOption, page: number, perPage: number) => Promise<string[]>;
   readonly getCount: (filters: FeedFilterParams) => Promise<number>;
 }
@@ -105,7 +105,7 @@ export interface FeedResolution {
  * `now`. Every read path goes through this — no full-catalog fetch (kills
  * `findAllCanonicalBooks` / `buildHubComputeContext`; C1 §1).
  */
-export async function resolveFeed(prisma: PrismaClient, row: CollectionRow, now: Date): Promise<FeedResolution> {
+async function resolveFeed(prisma: PrismaClient, row: CollectionRow, now: Date): Promise<FeedResolution> {
   if (row.type === 'TAXONOMIC') {
     return {
       getPage: (filters, sort, page, perPage) =>
@@ -147,6 +147,22 @@ export async function resolveFeed(prisma: PrismaClient, row: CollectionRow, now:
 async function feedTotalCount(prisma: PrismaClient, row: CollectionRow, now: Date): Promise<number> {
   const feed = await resolveFeed(prisma, row, now);
   return feed.getCount({});
+}
+
+/**
+ * Load up to `limit` ranked candidate book ids for a collection's feed (page 1,
+ * default relevance sort) — the narrow entry point the Home Builder composes
+ * over. Keeps `resolveFeed`/`FeedResolution` internal to this module: callers
+ * get exactly the ranked ids, not the feed-resolution machinery.
+ */
+export async function loadFeedCandidateIds(
+  prisma: PrismaClient,
+  row: CollectionRow,
+  limit: number,
+  now: Date,
+): Promise<string[]> {
+  const feed = await resolveFeed(prisma, row, now);
+  return feed.getPage({}, 'relevance', 1, limit);
 }
 
 function toBookDtos(rows: Awaited<ReturnType<typeof findCanonicalBooksByIds>>, wishlistCounts: Map<string, number>): CollectionBookDto[] {

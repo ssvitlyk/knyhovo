@@ -7,6 +7,7 @@
  * either can move to its own module (or serve a different builder) without
  * touching the composer.
  */
+import type { HomeShelfKey } from '@knyhovo/shared';
 import { toCollectionBookDto } from '../collections/mapper.js';
 import type { CollectionBookRow } from '../collections/repository.js';
 import type { ComposeResult } from '../feed-composer/index.js';
@@ -20,7 +21,7 @@ import type { HomeShelfDto } from './dto.js';
  */
 export function composedToShelves(
   composed: ComposeResult,
-  displayOrder: readonly string[],
+  displayOrder: readonly HomeShelfKey[],
   rowById: ReadonlyMap<string, CollectionBookRow>,
   wishlistCounts: ReadonlyMap<string, number>,
 ): HomeShelfDto[] {

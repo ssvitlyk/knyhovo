@@ -1,9 +1,14 @@
 import { describe, expect, it, vi } from 'vitest';
+import type { HomeShelfKey } from '@knyhovo/shared';
 import { getHome } from '@/lib/api/home';
 import type { CollectionBookDto, HomeResponseDto, HomeShelfDto } from '@/lib/api/types';
 import { getHomeShelves } from '../data';
 
-vi.mock('@/lib/api/home', () => ({ getHome: vi.fn() }));
+// Keep the real HomeError (data.ts branches on `instanceof HomeError`); mock only getHome.
+vi.mock('@/lib/api/home', async (orig) => {
+  const actual = await orig<typeof import('@/lib/api/home')>();
+  return { ...actual, getHome: vi.fn() };
+});
 
 const mockedGetHome = vi.mocked(getHome);
 
@@ -32,7 +37,7 @@ function book(overrides: Partial<CollectionBookDto> = {}): CollectionBookDto {
 /** Build a `HomeResponseDto` from a key→books map, preserving insertion order as display order. */
 function mockHome(shelves: Readonly<Record<string, readonly CollectionBookDto[]>>): void {
   const payload: HomeResponseDto = {
-    shelves: Object.entries(shelves).map(([key, books]): HomeShelfDto => ({ key, books })),
+    shelves: Object.entries(shelves).map(([key, books]): HomeShelfDto => ({ key: key as HomeShelfKey, books })),
   };
   mockedGetHome.mockResolvedValue(payload);
 }
@@ -68,10 +73,11 @@ describe('getHomeShelves', () => {
     expect(popular[0]?.id).toBe('p2');
   });
 
-  it('caps a shelf at 12 books', async () => {
+  it('renders exactly the books the backend returns (no web-side cap — composition is the backend\'s job)', async () => {
     mockHome({ popular: Array.from({ length: 16 }, (_, i) => book({ id: `p${i}` })) });
     const views = await getHomeShelves();
-    expect(shelfBooks(views, 'popular')).toHaveLength(12);
+    // Web must not silently change composition; the backend already caps at take=12.
+    expect(shelfBooks(views, 'popular')).toHaveLength(16);
   });
 
   it('preserves the backend display order of shelves', async () => {

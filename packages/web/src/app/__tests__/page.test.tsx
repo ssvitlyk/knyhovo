@@ -34,9 +34,9 @@ function book(overrides: Partial<HomeBook> = {}): HomeBook {
   };
 }
 
-/** Build the shelf-view array the page consumes, in display order. */
+/** Build the shelf-view array the page consumes, in display order (keys cast to simulate backend payloads, incl. an unknown key). */
 function shelves(map: Readonly<Record<string, readonly HomeBook[]>>): HomeShelfView[] {
-  return Object.entries(map).map(([key, books]) => ({ key, books }));
+  return Object.entries(map).map(([key, books]) => ({ key: key as HomeShelfView['key'], books }));
 }
 
 describe('HomePage', () => {
