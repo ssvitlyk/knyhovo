@@ -115,10 +115,22 @@
   .bd-unavail__mascot { height: 180px; }
 }
 @media (max-width: 767px) {
-  .bdc-grid { grid-template-columns: 1fr; gap: var(--space-8); }
+  /* minmax(0, 1fr), not 1fr: a plain `1fr` track keeps an `auto` minimum, so the
+     idrow's min-content width (180px cover + the title's longest word) inflated
+     the single column to ~574px at 375px and the h1 spilled past the gutter. */
+  .bdc-grid { grid-template-columns: minmax(0, 1fr); gap: var(--space-8); }
   .bd-meta { grid-template-columns: 1fr; }
   .bd-cover--lg { width: 180px; height: 262px; } /* frozen mobile hero cover size */
   .bd-section { margin-top: var(--space-8); }
+
+  /* Title column next to the 180px cover is narrow (~120px at 375px). Its
+     default `min-width: auto` floors it at the longest word's width, so long
+     titles pushed past the page gutter and the h1 nearly touched the screen
+     edge. Allow the column to shrink and break long words instead. */
+  .bdc-idrow { gap: var(--space-5); }
+  .bdc-idrow > div:last-child { min-width: 0; }
+  .bd-h1,
+  .bd-author { overflow-wrap: break-word; }
 
   /* Two-line offer rows: store + availability on top, price + CTA below —
      roomier tap targets on narrow screens. Markup unchanged. */
@@ -139,7 +151,11 @@
   /* Sticky purchase bar visible state + bottom-padding reservation so it never
      covers content (page reserves bar height + safe-area inset). */
   .bd-main { padding-bottom: calc(72px + env(safe-area-inset-bottom)); }
-  .bdm-sticky[data-visible="true"] {
+  /* Always laid out on mobile and slid off-screen when hidden, so showing and
+     hiding (incl. the footer hand-off — StickyCta hides the bar once the footer
+     enters the viewport) animates instead of popping. `visibility: hidden` keeps
+     the parked bar out of the tab order and off the a11y tree. */
+  .bdm-sticky {
     display: flex;
     position: fixed;
     left: 0;
@@ -153,6 +169,17 @@
     background: var(--surface);
     border-top: 1px solid var(--border);
     box-shadow: var(--shadow-md);
+    transform: translateY(100%);
+    visibility: hidden;
+    pointer-events: none;
+  }
+  .bdm-sticky[data-visible="true"] {
+    transform: none;
+    visibility: visible;
+    pointer-events: auto;
+  }
+  @media (prefers-reduced-motion: no-preference) {
+    .bdm-sticky { transition: transform var(--dur-base) var(--ease-out), visibility var(--dur-base) var(--ease-out); }
   }
   .bdm-sticky__deal { display: flex; flex-direction: column; min-width: 0; flex: 1; }
   .bdm-sticky__price { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--fs-title); line-height: 1; color: var(--accent); }

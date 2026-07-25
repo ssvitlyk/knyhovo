@@ -37,6 +37,34 @@ function installObserver(): {
   };
 }
 
+/**
+ * Observer mock that keeps one callback per observed element, so a test can fire
+ * the best-block and the footer observers independently.
+ */
+function installPerTargetObserver(): (target: Element, isIntersecting: boolean, top: number) => void {
+  const byTarget = new Map<Element, IntersectionObserverCallback>();
+  class MockIO {
+    constructor(private readonly callback: IntersectionObserverCallback) {}
+    observe = (el: Element): void => {
+      byTarget.set(el, this.callback);
+    };
+    unobserve = vi.fn();
+    disconnect = vi.fn();
+    takeRecords = vi.fn(() => []);
+    root = null;
+    rootMargin = '';
+    thresholds = [];
+  }
+  vi.stubGlobal('IntersectionObserver', MockIO as unknown as typeof IntersectionObserver);
+  return (target, isIntersecting, top) =>
+    act(() =>
+      byTarget.get(target)?.(
+        [{ isIntersecting, boundingClientRect: { top } } as IntersectionObserverEntry],
+        {} as IntersectionObserver,
+      ),
+    );
+}
+
 afterEach(() => {
   vi.unstubAllGlobals();
   document.body.innerHTML = '';
@@ -72,6 +100,26 @@ describe('StickyCta', () => {
 
     observer.fire(false, 800); // best block still BELOW the fold → stay hidden
     expect(bar.getAttribute('data-visible')).toBe('false');
+  });
+
+  it('tucks away while the site footer is in the viewport, and returns after it leaves', () => {
+    const fire = installPerTargetObserver();
+    const best = document.createElement('div');
+    best.id = 'bd-best-block';
+    const footer = document.createElement('footer');
+    footer.className = 'site-footer';
+    document.body.append(best, footer);
+    render(<StickyCta price={PRICE} store="BookClub" href="https://book-club.ua/x" />);
+    const bar = screen.getByRole('region', { name: 'Купити книгу — найкраща ціна' });
+
+    fire(best, false, -500); // scrolled past the best-price block → shown
+    expect(bar.getAttribute('data-visible')).toBe('true');
+
+    fire(footer, true, 700); // footer enters the viewport → hide, never cover it
+    expect(bar.getAttribute('data-visible')).toBe('false');
+
+    fire(footer, false, 900); // scrolled back up, footer gone → shown again
+    expect(bar.getAttribute('data-visible')).toBe('true');
   });
 
   it('stays hidden when there is no best-price target in the DOM', () => {
