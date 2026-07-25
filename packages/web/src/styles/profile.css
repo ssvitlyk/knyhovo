@@ -62,6 +62,11 @@
 .pf-auth__body { min-width: 0; flex: 1; }
 .pf-auth__title { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--fs-title); line-height: var(--lh-snug); color: var(--text); margin: 0 0 var(--space-2); }
 .pf-auth__text { font-size: var(--fs-sm); color: var(--text-muted); text-wrap: pretty; margin: 0; max-width: 54ch; }
+/* Magic Link action row: the button sits INSIDE .pf-auth__body, so its distance
+   to the card's bottom edge IS the card padding. One step less top margin makes
+   text→button read equal to button→card-bottom once the text's line-height
+   leading (~4px) is accounted for — the card reads balanced, not bottom-heavy. */
+.pf-auth__body .pf-card__foot { margin-top: var(--space-5); }
 
 /* Danger zone (Section 4) — VERY calm. Never red, no destructive styling. */
 .pf-danger-eyebrow {
@@ -83,11 +88,18 @@
   .pf-card__title { font-size: var(--fs-body); }
   .pf-auth { flex-direction: column; gap: var(--space-3); }
   .pf-card__foot { margin-top: var(--space-5); }
+  .pf-auth__body .pf-card__foot { margin-top: var(--space-4); }
   .pf-card__foot .kn-btn { width: 100%; min-height: 48px; }
   .pf-card .kn-input { min-height: 48px; }
   .pf-row { flex-direction: column; align-items: flex-start; gap: var(--space-1); }
   .pf-row__value { text-align: left; }
-  .pf-quiet-row { flex-direction: column; align-items: stretch; gap: var(--space-4); }
+  /* Column direction re-maps flex-basis to the CROSS→MAIN axis: the desktop
+     `flex: 1 1 280px` on __text became a 280px *height* basis, and the inherited
+     `justify-content: space-between` then pushed the button to the far bottom of
+     that phantom box (row ≈344px tall). Reset the basis so the card hugs its
+     content and the text→button gap is exactly the flex gap. */
+  .pf-quiet-row { flex-direction: column; align-items: stretch; gap: var(--space-6); }
+  .pf-quiet-row__text { flex: 0 0 auto; }
   .pf-quiet-row .kn-btn { width: 100%; min-height: 48px; }
   .pf-auth__body .kn-btn { width: 100%; min-height: 48px; }
 }

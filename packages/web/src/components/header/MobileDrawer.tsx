@@ -98,8 +98,9 @@ export function MobileDrawer({ authenticated, wishlistCount, onClose }: MobileDr
             </Button>
           </div>
         )}
+        {/* Theme row — the toggle alone carries the meaning (it has its own
+            aria-label), so no «Тема» caption. */}
         <div className="knh-dr__theme">
-          <span>Тема</span>
           <ThemeToggle />
         </div>
       </div>

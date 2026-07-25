@@ -219,6 +219,12 @@
   gap: var(--space-5);
   overflow-x: auto;
   overflow-y: hidden;
+  /* Keep the rail's horizontal gesture inside the rail: without this a swipe
+     that reaches the rail's end chains to the document and drags the whole page
+     sideways on touch devices (Home is nothing but rails, so it reads as «the
+     homepage scrolls horizontally»). Scoped to the rail — no page-level
+     overflow hack, and the rail itself still scrolls exactly as before. */
+  overscroll-behavior-x: contain;
   scroll-snap-type: x proximity;
   padding-bottom: var(--space-3);
   scrollbar-width: thin;
