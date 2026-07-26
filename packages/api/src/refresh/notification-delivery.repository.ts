@@ -1,4 +1,6 @@
 import type { PrismaClient, Provider } from '@prisma/client';
+import { REARM_SLUG } from '../wishlist/alert/repository.js';
+import type { RearmPolicy } from '../wishlist/alert/policy.js';
 
 /**
  * Data access for the `notification_deliveries` outbox (W4b).
@@ -198,6 +200,8 @@ export interface DeliveryContext {
   readonly attempts: number;
   readonly triggerPriceAmount: number | null;
   readonly targetPriceAmount: number;
+  /** The alert's rearm policy — decides whether a delivered email lowers the threshold. */
+  readonly rearmPolicy: RearmPolicy;
   readonly user: {
     readonly id: string;
     readonly email: string;
@@ -232,7 +236,7 @@ export async function loadDeliveryContext(
       canonicalBookId: true,
       attempts: true,
       triggerPriceAmount: true,
-      alert: { select: { targetPriceAmount: true } },
+      alert: { select: { targetPriceAmount: true, rearmPolicy: true } },
       user: {
         select: {
           id: true,
@@ -266,6 +270,7 @@ export async function loadDeliveryContext(
     attempts: d.attempts,
     triggerPriceAmount: d.triggerPriceAmount,
     targetPriceAmount: d.alert.targetPriceAmount,
+    rearmPolicy: REARM_SLUG[d.alert.rearmPolicy],
     user: d.user,
     book: book ?? { title: '', author: '' },
     bestListing,
