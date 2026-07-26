@@ -86,9 +86,11 @@ export async function findWishlistItemsByUserId(
       alert: {
         select: {
           status: true,
-          intent: true,
+          mode: true,
           targetPriceAmount: true,
           targetPriceCurrency: true,
+          baselineAmount: true,
+          thresholdProof: true,
           pausedAt: true,
           lastNotifiedAt: true,
         },

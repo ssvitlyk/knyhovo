@@ -29,8 +29,10 @@ export function registerWishlistAlertRoute(
 
     const { bookId } = parseAlertParams(request.params);
     const body = parseSetAlertBody(request.body);
-    await setAlert(prisma, user.id, bookId, body);
-    await reply.send({ ok: true });
+    const alert = await setAlert(prisma, user.id, bookId, body);
+    // The response carries the resolved policy, so the client never has to guess
+    // what was stored (notifications-model-v2 §10).
+    await reply.send({ alert });
   });
 
   app.patch('/api/wishlist/:bookId/alert', async (request, reply) => {

@@ -43,7 +43,7 @@ export function toEmptyPriceHistory(
   bookId: string,
   period: PriceHistoryPeriod,
   currency: string,
-): BookPriceHistoryDto {
+): Omit<BookPriceHistoryDto, 'alertPolicyPreview'> {
   return {
     bookId,
     period,
@@ -68,7 +68,7 @@ export function toPriceHistory(
   period: PriceHistoryPeriod,
   currency: string,
   rawPoints: readonly RawPoint[],
-): BookPriceHistoryDto {
+): Omit<BookPriceHistoryDto, 'alertPolicyPreview'> {
   // Map to DTOs (ascending order is already guaranteed by the caller).
   const points: PriceHistoryPointDto[] = rawPoints.map(toPointDto);
 

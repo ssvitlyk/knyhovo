@@ -2,7 +2,7 @@ import type { ProviderName, Availability } from '@knyhovo/shared';
 import { selectCoverUrl } from '../discovery/cover-selection.js';
 import type { WishlistRow, WishlistListingRow } from './repository.js';
 import type { WishlistProviderDto, WishlistBookDto, WishlistItemDto, WishlistResponseDto, MoneyDto, AlertDto, WishlistGenreDto } from './dto.js';
-import { deriveAlertState, toLifecycle, ALERT_INTENT_SLUG } from './alert/service.js';
+import { deriveAlertState, toLifecycle, ALERT_MODE_SLUG } from './alert/service.js';
 import { canonicalPriceAmount } from '../pricing/canonical-price.js';
 
 /** Reverse map from the persisted provider enum to its public slug. */
@@ -76,8 +76,16 @@ export function toWishlistResponse(rows: WishlistRow[]): WishlistResponseDto {
             },
             canonicalAmount,
           ),
-          intent: ALERT_INTENT_SLUG[alertRow.intent],
-          targetPrice: { amount: alertRow.targetPriceAmount, currency: alertRow.targetPriceCurrency },
+          mode: ALERT_MODE_SLUG[alertRow.mode],
+          threshold: {
+            amount: alertRow.targetPriceAmount,
+            currency: alertRow.targetPriceCurrency,
+          },
+          baseline:
+            alertRow.baselineAmount === null
+              ? null
+              : { amount: alertRow.baselineAmount, currency: alertRow.targetPriceCurrency },
+          thresholdProof: alertRow.thresholdProof,
           pausedAt: alertRow.pausedAt ? alertRow.pausedAt.toISOString() : null,
           notifiedAt: alertRow.lastNotifiedAt ? alertRow.lastNotifiedAt.toISOString() : null,
         }

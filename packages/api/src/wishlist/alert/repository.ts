@@ -21,9 +21,11 @@ export const REARM_ENUM: Record<RearmPolicy, 'FOLLOW_DOWN' | 'STATIC'> = {
  */
 export interface WishlistAlertRow {
   readonly status: 'ACTIVE' | 'PAUSED' | 'TRIGGERED' | 'UNAVAILABLE';
-  readonly intent: 'ANY_DROP' | 'BELOW_CURRENT' | 'FAVOURABLE_PRICE' | 'CUSTOM_PRICE';
+  readonly mode: 'ANY_DROP' | 'GOOD_PRICE' | 'MY_PRICE';
   readonly targetPriceAmount: number;
   readonly targetPriceCurrency: 'UAH';
+  readonly baselineAmount: number | null;
+  readonly thresholdProof: string | null;
   readonly pausedAt: Date | null;
   /** Notification marker — the fact behind the `reached` state. */
   readonly lastNotifiedAt: Date | null;

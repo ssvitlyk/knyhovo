@@ -13,6 +13,7 @@ import {
   InvalidCredentialsError,
   RateLimitedError,
   WishlistItemNotFoundError,
+  AlertPolicyError,
   CollectionNotFoundError,
 } from './errors.js';
 import { registerSearchRoute } from './search/route.js';
@@ -148,6 +149,11 @@ export function buildApp(prisma: PrismaClient, authDeps?: AuthDeps, opts?: { rea
     if (error instanceof WishlistItemNotFoundError) {
       const body: ErrorBody = { error: { code: error.code, message: error.message } };
       void reply.code(404).send(body);
+      return;
+    }
+    if (error instanceof AlertPolicyError) {
+      const body: ErrorBody = { error: { code: error.code, message: error.message } };
+      void reply.code(error.httpStatus).send(body);
       return;
     }
     if (error instanceof CollectionNotFoundError) {

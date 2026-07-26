@@ -253,4 +253,33 @@ describe('getBookPriceHistory', () => {
     // LISTING_B (IN_STOCK) should be preferred even though it's more expensive
     expect(dto.current?.amount).toBe(30000);
   });
+
+  // ── alertPolicyPreview is period-independent (notifications-model-v2 §10) ───
+  //
+  // `buildAlertPolicyPreview` has no `period` parameter at all — it always runs
+  // over `source.listings` (every listing, unfiltered) and a fixed 180-day
+  // window measured from `now`. The cleanest honest proof of "the chart's
+  // `?period` cannot change the advice" is therefore at THIS layer: call the
+  // real service twice with the same fixture and different `period` values and
+  // assert the resulting `alertPolicyPreview` is identical, even though `points`
+  // (which IS period-filtered) legitimately differs between the two calls.
+  it('alertPolicyPreview is identical across ?period=30d and ?period=all (points differ)', async () => {
+    const listings = [
+      makeListing(LISTING_A, 30000, 'IN_STOCK', [
+        makePoint(50000, OLD),
+        makePoint(40000, IN_1Y),
+        makePoint(30000, IN_30D),
+      ]),
+    ];
+
+    const dto30d = await getBookPriceHistory(makePrisma({ id: BOOK_ID, listings }), BOOK_ID, '30d', DEPS);
+    const dtoAll = await getBookPriceHistory(makePrisma({ id: BOOK_ID, listings }), BOOK_ID, 'all', DEPS);
+
+    // Sanity check the premise: points DO differ by period (proves the fixture
+    // actually exercises period filtering rather than being period-blind).
+    expect(dto30d.points.length).toBeLessThan(dtoAll.points.length);
+
+    // The advice itself must not move with the chart's period.
+    expect(dto30d.alertPolicyPreview).toEqual(dtoAll.alertPolicyPreview);
+  });
 });

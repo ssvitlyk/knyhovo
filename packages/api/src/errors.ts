@@ -117,3 +117,30 @@ export class CollectionNotFoundError extends Error {
     this.name = 'CollectionNotFoundError';
   }
 }
+
+/**
+ * Domain-level error raised when an alert policy cannot be resolved for the mode
+ * the client asked for (notifications-model-v2 §10).
+ *
+ * The Fastify error handler maps `INSUFFICIENT_HISTORY` to 409 (the mode is real
+ * but has no calibrated threshold for this book yet) and every other reason to
+ * 422 (the request is well-formed but cannot produce an honest policy).
+ */
+export class AlertPolicyError extends Error {
+  constructor(
+    readonly code:
+      | 'NO_CANONICAL_PRICE'
+      | 'INSUFFICIENT_HISTORY'
+      | 'THRESHOLD_REQUIRED'
+      | 'THRESHOLD_NOT_ALLOWED'
+      | 'THRESHOLD_NOT_BELOW_CURRENT',
+    message: string,
+  ) {
+    super(message);
+    this.name = 'AlertPolicyError';
+  }
+
+  get httpStatus(): 409 | 422 {
+    return this.code === 'INSUFFICIENT_HISTORY' ? 409 : 422;
+  }
+}
