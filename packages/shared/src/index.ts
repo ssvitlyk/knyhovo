@@ -36,6 +36,7 @@ export type {
   AlertLifecycle,
   AlertState,
   AlertIntent,
+  AlertMode,
   Alert,
   BuyingReason,
 } from './types/wishlist.js';

@@ -57,8 +57,20 @@ export type AlertLifecycle = 'active' | 'paused';
  */
 export type AlertState = 'armed' | 'reached' | 'unavailable' | 'paused';
 
-/** The intent a user has set for an Alert — drives how the derived status is computed. */
+/**
+ * @deprecated Superseded by {@link AlertMode}. `below-current` was the same user
+ * intent as `any-drop` expressed with a frozen baseline and is gone; the column
+ * survives one release for rollback safety.
+ */
 export type AlertIntent = 'any-drop' | 'below-current' | 'favourable-price' | 'custom-price';
+
+/**
+ * How the user asked the threshold to be chosen (notifications-model-v2 §3).
+ *
+ * A mode is a resolver selector and a display label — nothing downstream of the
+ * resolver may branch on it.
+ */
+export type AlertMode = 'any-drop' | 'good-price' | 'my-price';
 
 /** A price alert associated with a WishlistItem. */
 export interface Alert {
