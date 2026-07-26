@@ -5,7 +5,9 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 
 import { clientSearch } from '@/lib/api/searchClient';
 import type { SearchItemDto, SearchResponseDto } from '@/lib/api/types';
-import { SUGGEST_DEBOUNCE_MS, clearSuggestionsCache } from '@/components/search/useSuggestions';
+import { clearSuggestionsCache } from '@/components/search/useSuggestions';
+import { SEARCH_DEBOUNCE_MS as SUGGEST_DEBOUNCE_MS } from '@/lib/search/config';
+import { getRecentSearches } from '@/lib/search/recentSearches';
 import { MobileSearchOverlay } from '../MobileSearchOverlay';
 
 const { push } = vi.hoisted(() => ({ push: vi.fn() }));
@@ -46,6 +48,7 @@ describe('MobileSearchOverlay', () => {
     vi.useFakeTimers();
     push.mockReset();
     clearSuggestionsCache();
+    localStorage.clear();
     mockClientSearch.mockReset();
     mockClientSearch.mockResolvedValue(response([item('b1', 'Кобзар')]));
   });
@@ -102,7 +105,7 @@ describe('MobileSearchOverlay', () => {
     expect(mobile).toContain('max-height: 60vh');
   });
 
-  it('picking a suggestion navigates and closes the overlay', async () => {
+  it('picking a suggestion navigates, records the query and closes the overlay', async () => {
     const onClose = vi.fn();
     render(<MobileSearchOverlay onClose={onClose} />);
     fireEvent.change(field(), { target: { value: 'Ко' } });
@@ -112,9 +115,10 @@ describe('MobileSearchOverlay', () => {
 
     expect(push).toHaveBeenCalledWith('/books/b1');
     expect(onClose).toHaveBeenCalledTimes(1);
+    expect(getRecentSearches()).toEqual(['Ко']);
   });
 
-  it('submitting navigates to the full search page and closes the overlay', () => {
+  it('submitting navigates to the full search page, records the query and closes the overlay', () => {
     const onClose = vi.fn();
     render(<MobileSearchOverlay onClose={onClose} />);
     const input = field();
@@ -123,6 +127,18 @@ describe('MobileSearchOverlay', () => {
 
     expect(push).toHaveBeenCalledWith(`/search?q=${encodeURIComponent('Кобзар')}`);
     expect(onClose).toHaveBeenCalledTimes(1);
+    expect(getRecentSearches()).toEqual(['Кобзар']);
+  });
+
+  it('submitting an empty query now navigates to /search and closes the overlay', () => {
+    const onClose = vi.fn();
+    render(<MobileSearchOverlay onClose={onClose} />);
+    const input = field();
+    fireEvent.submit(input.closest('form')!);
+
+    expect(push).toHaveBeenCalledWith('/search');
+    expect(onClose).toHaveBeenCalledTimes(1);
+    expect(getRecentSearches()).toEqual([]);
   });
 
   it('Escape closes the dropdown first and only then reaches the overlay handler', async () => {

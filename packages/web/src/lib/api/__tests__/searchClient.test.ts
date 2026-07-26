@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { SEARCH_SUGGESTIONS_LIMIT } from '@/lib/search/config';
 import { clientSearch } from '../searchClient';
 import { SearchError } from '../search';
 import type { SearchResponseDto } from '../types';
@@ -45,7 +46,7 @@ describe('clientSearch', () => {
     expect(calledUrl).toContain('pageSize=6');
   });
 
-  it('defaults pageSize to 6', async () => {
+  it('defaults pageSize to the shared SEARCH_SUGGESTIONS_LIMIT', async () => {
     let calledUrl = '';
     mockFetch((async (input: RequestInfo | URL) => {
       calledUrl = String(input);
@@ -54,7 +55,7 @@ describe('clientSearch', () => {
 
     await clientSearch({ q: 'test' });
 
-    expect(calledUrl).toContain('pageSize=6');
+    expect(calledUrl).toContain(`pageSize=${SEARCH_SUGGESTIONS_LIMIT}`);
   });
 
   it('throws SearchError with the HTTP status on a non-2xx response', async () => {

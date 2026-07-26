@@ -1,8 +1,14 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { Typeahead } from '../Typeahead';
+import { clearSuggestionsCache } from '../useSuggestions';
 import { addRecentSearch, clearRecentSearches, getRecentSearches } from '@/lib/search/recentSearches';
 import { SearchError } from '@/lib/api/search';
+import {
+  SEARCH_DEBOUNCE_MS,
+  SEARCH_MIN_QUERY_LENGTH,
+  SEARCH_SUGGESTIONS_LIMIT,
+} from '@/lib/search/config';
 import type { SearchResponseDto } from '@/lib/api/types';
 
 // ---------------------------------------------------------------------------
@@ -49,20 +55,28 @@ function makeResults(overrides: Partial<SearchResponseDto> = {}): SearchResponse
       },
     ],
     page: 1,
-    pageSize: 6,
+    pageSize: SEARCH_SUGGESTIONS_LIMIT,
     totalItems: 2,
     totalPages: 1,
     ...overrides,
   };
 }
 
+/** Active-descendant id currently set on the combobox input. */
+function activeDescendantId(input: HTMLElement): string | null {
+  return input.getAttribute('aria-activedescendant');
+}
+
 // ---------------------------------------------------------------------------
-// Setup / teardown — real timers; the debounce is short (200ms) and RTL's
-// findBy* polls reliably under real timers (fake timers deadlock its waitFor).
+// Setup / teardown — real timers; the debounce is short and RTL's findBy*
+// polls reliably under real timers (fake timers deadlock its waitFor). The
+// suggestion cache is module-level and shared across every search surface, so
+// it must be cleared between tests too.
 // ---------------------------------------------------------------------------
 
 beforeEach(() => {
   clearRecentSearches();
+  clearSuggestionsCache();
   push.mockClear();
   mockClientSearch.mockReset();
   // Safe default so an incidental debounce fire never calls `.then` on undefined;
@@ -121,6 +135,25 @@ describe('Typeahead — idle / recent searches', () => {
 
 // ---------------------------------------------------------------------------
 
+describe('Typeahead — below the minimum query length', () => {
+  it('shows a hint and makes no request for exactly one non-ISBN character', async () => {
+    render(<Typeahead initialQuery="" />);
+    const input = screen.getByRole('combobox');
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'к' } });
+
+    expect(
+      screen.getByText(`Введіть щонайменше ${SEARCH_MIN_QUERY_LENGTH} символи`),
+    ).toBeInTheDocument();
+
+    // Wait past the debounce window; the effect must never fire below the minimum.
+    await new Promise((resolve) => setTimeout(resolve, SEARCH_DEBOUNCE_MS + 100));
+    expect(mockClientSearch).not.toHaveBeenCalled();
+  });
+});
+
+// ---------------------------------------------------------------------------
+
 describe('Typeahead — typing / suggestions', () => {
   it('does NOT call clientSearch synchronously on a keystroke (debounced)', () => {
     mockClientSearch.mockResolvedValue(makeResults());
@@ -130,7 +163,7 @@ describe('Typeahead — typing / suggestions', () => {
     fireEvent.focus(input);
     fireEvent.change(input, { target: { value: 'кобзар' } });
 
-    // Immediately after the keystroke, before the 200ms debounce elapses.
+    // Immediately after the keystroke, before the debounce elapses.
     expect(mockClientSearch).not.toHaveBeenCalled();
   });
 
@@ -148,7 +181,32 @@ describe('Typeahead — typing / suggestions', () => {
     expect(await screen.findByRole('option', { name: /Кобзар/ })).toBeInTheDocument();
     expect(screen.getByRole('option', { name: /Тіні забутих предків/ })).toBeInTheDocument();
     expect(mockClientSearch).toHaveBeenCalledTimes(1);
-    expect(mockClientSearch).toHaveBeenCalledWith(expect.objectContaining({ q: 'кобзар' }));
+    expect(mockClientSearch).toHaveBeenCalledWith(
+      expect.objectContaining({ q: 'кобзар', pageSize: SEARCH_SUGGESTIONS_LIMIT }),
+    );
+  });
+
+  it('serves a repeated query from the shared cache without a second fetch', async () => {
+    mockClientSearch.mockResolvedValue(makeResults());
+
+    const { unmount } = render(<Typeahead initialQuery="" />);
+    const input = screen.getByRole('combobox');
+    fireEvent.focus(input);
+    fireEvent.change(input, { target: { value: 'кобзар' } });
+
+    expect(await screen.findByRole('option', { name: /Кобзар/ })).toBeInTheDocument();
+    expect(mockClientSearch).toHaveBeenCalledTimes(1);
+
+    // A fresh mount (e.g. re-navigating to /search) re-typing the same query
+    // must hit the module-level cache instead of the network.
+    unmount();
+    render(<Typeahead initialQuery="" />);
+    const input2 = screen.getByRole('combobox');
+    fireEvent.focus(input2);
+    fireEvent.change(input2, { target: { value: 'кобзар' } });
+
+    expect(await screen.findByRole('option', { name: /Кобзар/ })).toBeInTheDocument();
+    expect(mockClientSearch).toHaveBeenCalledTimes(1);
   });
 
   it('ArrowDown + Enter on a book option navigates to /books/:id', async () => {
@@ -191,10 +249,11 @@ describe('Typeahead — keyboard navigation', () => {
     render(<Typeahead initialQuery="" />);
     const input = screen.getByRole('combobox');
     fireEvent.focus(input);
-    expect(screen.getByRole('option', { name: 'щось' })).toBeInTheDocument();
+    const option = screen.getByRole('option', { name: 'щось' });
 
     fireEvent.keyDown(input, { key: 'ArrowDown' });
-    expect(input).toHaveAttribute('aria-activedescendant', 'si-ta-opt-0');
+    expect(activeDescendantId(input)).toBe(option.id);
+    expect(option.id).toMatch(/^kn-sg-/);
   });
 
   it('ArrowUp stays at the first option when already at the top', () => {
@@ -211,7 +270,8 @@ describe('Typeahead — keyboard navigation', () => {
     fireEvent.keyDown(input, { key: 'ArrowUp' });
     fireEvent.keyDown(input, { key: 'ArrowUp' });
 
-    expect(input).toHaveAttribute('aria-activedescendant', 'si-ta-opt-0');
+    const firstOption = screen.getAllByRole('option')[0];
+    expect(activeDescendantId(input)).toBe(firstOption.id);
   });
 
   it('keeps no active descendant when there are zero selectable options', () => {
@@ -237,12 +297,31 @@ describe('Typeahead — keyboard navigation', () => {
     expect(screen.getByRole('option', { name: 'щось' })).toBeInTheDocument();
 
     fireEvent.keyDown(input, { key: 'ArrowDown' });
-    expect(input).toHaveAttribute('aria-activedescendant', 'si-ta-opt-0');
+    expect(activeDescendantId(input)).not.toBeNull();
 
     fireEvent.keyDown(input, { key: 'Escape' });
 
     expect(input).toHaveAttribute('aria-expanded', 'false');
     expect(input).not.toHaveAttribute('aria-activedescendant');
+  });
+
+  it('closes on mousedown outside the field', () => {
+    addRecentSearch('щось');
+
+    render(
+      <div>
+        <Typeahead initialQuery="" />
+        <button type="button">поза межами</button>
+      </div>,
+    );
+    const input = screen.getByRole('combobox');
+    fireEvent.focus(input);
+    expect(screen.getByRole('option', { name: 'щось' })).toBeInTheDocument();
+
+    fireEvent.mouseDown(screen.getByRole('button', { name: 'поза межами' }));
+
+    expect(input).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByRole('option', { name: 'щось' })).not.toBeInTheDocument();
   });
 });
 
@@ -280,16 +359,22 @@ describe('Typeahead — ISBN detection', () => {
     expect(push).not.toHaveBeenCalledWith(expect.stringContaining('/books/'));
   });
 
-  it('does NOT call clientSearch for ISBN-like input', async () => {
+  // ISBN input is answered locally by the "Розпізнано ISBN" row, so the shared
+  // engine is told not to suggest for it (`shouldSuggest` policy) — no request
+  // is wasted on a query whose result would never be rendered.
+  it('makes no request for ISBN-like input', async () => {
     render(<Typeahead initialQuery="" />);
     const input = screen.getByRole('combobox');
     fireEvent.focus(input);
     fireEvent.change(input, { target: { value: '9786171234567' } });
 
-    // Wait past the debounce window; the effect must skip ISBN values.
-    await new Promise((resolve) => setTimeout(resolve, 300));
+    // Real timers in this block — wait past the shared debounce window.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, SEARCH_DEBOUNCE_MS * 2));
+    });
 
     expect(mockClientSearch).not.toHaveBeenCalled();
+    expect(screen.getByRole('option', { name: /Розпізнано ISBN/ })).toBeInTheDocument();
   });
 });
 

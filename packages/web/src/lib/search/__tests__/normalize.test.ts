@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { normalizeQuery } from '../normalize';
+import { normalizeQuery, normalizeSearchInput } from '../normalize';
 
 describe('normalizeQuery', () => {
   it('lowercases ASCII input', () => {
@@ -57,5 +57,32 @@ describe('normalizeQuery', () => {
 
   it('handles a combined case: mixed whitespace and apostrophe variants', () => {
     expect(normalizeQuery("  Гаррі   М’який  ")).toBe("гаррі м'який");
+  });
+});
+
+describe('normalizeSearchInput', () => {
+  it('trims leading and trailing whitespace', () => {
+    expect(normalizeSearchInput('  Кобзар  ')).toBe('Кобзар');
+  });
+
+  it('collapses internal runs of whitespace to a single space', () => {
+    expect(normalizeSearchInput('Тарас   Шевченко')).toBe('Тарас Шевченко');
+  });
+
+  it('reduces a whitespace-only string to empty', () => {
+    expect(normalizeSearchInput('   ')).toBe('');
+  });
+
+  it('does not lowercase or fold case', () => {
+    expect(normalizeSearchInput('Кобзар')).toBe('Кобзар');
+  });
+
+  it('does not fold apostrophe variants (unlike normalizeQuery)', () => {
+    expect(normalizeSearchInput("м’який")).toBe("м’який");
+  });
+
+  it('treats differently-whitespaced input as the same normalized value', () => {
+    expect(normalizeSearchInput('ab ')).toBe(normalizeSearchInput(' ab'));
+    expect(normalizeSearchInput(' ab')).toBe(normalizeSearchInput('ab'));
   });
 });

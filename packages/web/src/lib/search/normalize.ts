@@ -1,4 +1,19 @@
 /**
+ * Normalize a raw input value into the search **request/cache key**: leading and
+ * trailing whitespace is dropped and inner runs collapse to a single space, so
+ * `"ab "`, `" ab"` and `"ab"` are one query and never cause an extra request.
+ *
+ * This is the ONLY normalization applied to what the user typed before it is
+ * sent, cached or put in `?q=` — every surface uses it. Deliberately distinct
+ * from {@link normalizeQuery} below, which lowercases and folds apostrophes for
+ * *comparison* (author matching, corrections) and would change what the user
+ * sees in the URL.
+ */
+export function normalizeSearchInput(raw: string): string {
+  return raw.trim().replace(/\s+/g, ' ');
+}
+
+/**
  * Normalize a free-text query for case/whitespace/apostrophe-insensitive comparison.
  *
  * Steps applied in order:
