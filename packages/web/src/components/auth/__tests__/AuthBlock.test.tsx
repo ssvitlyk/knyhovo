@@ -15,7 +15,7 @@ describe('AuthBlock', () => {
   it('renders the wishlist context copy and opens the login modal with returnTo', () => {
     render(<AuthBlock context="wishlist" returnTo="/wishlist" />);
     expect(screen.getByText('Увійдіть, щоб продовжити')).toBeInTheDocument();
-    expect(screen.getByText(/зберігати книги/)).toBeInTheDocument();
+    expect(screen.getByText(/додавати до бажанок та отримувати сповіщення/)).toBeInTheDocument();
 
     fireEvent.click(screen.getByRole('button', { name: 'Увійти' }));
     expect(openLogin).toHaveBeenCalledWith('/wishlist');

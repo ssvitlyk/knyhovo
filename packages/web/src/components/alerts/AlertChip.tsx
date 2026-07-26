@@ -19,7 +19,7 @@ const CHIP_SUFFIX: Readonly<Record<AlertChipState, string>> = {
 
 /** Ukrainian label for each chip state. */
 const CHIP_LABEL: Readonly<Record<AlertChipState, string>> = {
-  watch: 'Стежимо за ціною',
+  watch: 'Сповіщення увімкнено',
   triggered: 'Ціль досягнута',
   paused: 'Призупинено',
   unavailable: 'Сповіщення недоступні',
