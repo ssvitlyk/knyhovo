@@ -1,3 +1,4 @@
+import { SEARCH_SUGGESTIONS_LIMIT } from '@/lib/search/config';
 import { SearchError } from './search';
 import type { SearchResponseDto } from './types';
 
@@ -13,7 +14,7 @@ export interface ClientSearchArgs {
  * Throws {@link SearchError} on non-2xx / transport.
  */
 export async function clientSearch(args: ClientSearchArgs): Promise<SearchResponseDto> {
-  const { q, signal, pageSize = 6 } = args;
+  const { q, signal, pageSize = SEARCH_SUGGESTIONS_LIMIT } = args;
 
   const params = new URLSearchParams({ q, pageSize: String(pageSize) });
   const url = `/api/search?${params.toString()}`;

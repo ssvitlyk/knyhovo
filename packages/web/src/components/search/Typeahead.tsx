@@ -1,290 +1,99 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useCallback } from 'react';
 import { Search, X } from 'lucide-react';
 
-import { clientSearch } from '@/lib/api/searchClient';
-import type { SearchItemDto } from '@/lib/api/types';
 import { formatMoney } from '@/lib/format';
+import { SEARCH_MIN_QUERY_LENGTH } from '@/lib/search/config';
 import { detectIsbn, looksLikeIsbn } from '@/lib/search/isbn';
-import { addRecentSearch } from '@/lib/search/recentSearches';
-import { useDebouncedValue } from './useDebouncedValue';
+import { normalizeSearchInput } from '@/lib/search/normalize';
 import { useRecentSearches } from './useRecentSearches';
+import {
+  useSearchCombobox,
+  useSearchNavigation,
+  type ComboboxContext,
+  type ComboboxOption,
+} from './useSearchCombobox';
 
 /** Props for the {@link Typeahead} combobox. */
 export interface TypeaheadProps {
   readonly initialQuery: string;
 }
 
+/** Dropdown mode for the current field value — presentation only. */
+type Mode = 'recent' | 'isbn' | 'too-short' | 'suggestions';
+
+function modeOf(value: string, enabled: boolean): Mode {
+  if (normalizeSearchInput(value) === '') return 'recent';
+  if (looksLikeIsbn(value)) return 'isbn';
+  return enabled ? 'suggestions' : 'too-short';
+}
+
 /**
- * ARIA 1.2 combobox + listbox typeahead for the search field.
+ * ARIA 1.2 combobox + listbox typeahead for the `/search` field.
  *
- * State machine:
- * - idle (empty value) → shows recent searches
- * - ISBN input         → shows a single "Розпізнано ISBN" option
- * - typing (≥1 char)  → debounced fetch; renders loading / error / results
+ * The richest surface — it adds recent searches and ISBN detection on top of
+ * live suggestions — but it owns no search logic: normalization, minimum query
+ * length, debounce, abort, cache, stale-response protection, keyboard handling
+ * and submit are the shared `useSearchCombobox` / `useSuggestions` pair, the
+ * same instances the header and hero use.
+ *
+ * Modes: idle (recents) · ISBN ("Розпізнано ISBN") · below the minimum length
+ * (hint, no request) · typing (loading / error / results).
  */
 export function Typeahead({ initialQuery }: TypeaheadProps): React.JSX.Element {
-  const router = useRouter();
-  const [value, setValue] = useState(initialQuery);
-  const [open, setOpen] = useState(false);
-  const [activeIndex, setActiveIndex] = useState(-1);
-
-  // --- async search state, keyed by the query the data belongs to, so that
-  // loading / error / items are DERIVED during render rather than synchronised
-  // via setState in the effect body ---
-  const [result, setResult] = useState<{ readonly query: string; readonly items: readonly SearchItemDto[] } | null>(
-    null,
-  );
-  const [errorQuery, setErrorQuery] = useState<string | null>(null);
-  // Bump to re-trigger a fetch for the same debounced value (retry).
-  const [retryKey, setRetryKey] = useState(0);
-
   const { recent, clear: clearRecent } = useRecentSearches();
-  const debouncedValue = useDebouncedValue(value, 200);
+  const { goToSearch } = useSearchNavigation();
 
-  // Derived suggestion view-state for the CURRENT typed value. Results carry the
-  // query they belong to; while the typed value differs (debounce gap or fetch
-  // in flight) we are "loading"; an error matching the value shows the error row.
-  const valueFetchable = value !== '' && !looksLikeIsbn(value);
-  const suggestionsReady = result !== null && result.query === value;
-  const items: readonly SearchItemDto[] = suggestionsReady ? result.items : [];
-  const hasError = valueFetchable && errorQuery === value;
-  const loading = valueFetchable && !suggestionsReady && !hasError;
-
-  // Blur timeout ref so click on option can cancel the blur.
-  const blurTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const inputRef = useRef<HTMLInputElement | null>(null);
-
-  // -----------------------------------------------------------------------
-  // Helpers
-  // -----------------------------------------------------------------------
-
-  /** Navigate to a search URL; optionally record the query in recents. */
-  const submit = useCallback(
-    (query: string): void => {
-      const q = query.trim();
-      setOpen(false);
-      setActiveIndex(-1);
-      if (q === '') {
-        router.push('/search');
-      } else {
-        addRecentSearch(q);
-        router.push(`/search?q=${encodeURIComponent(q)}`);
+  const buildOptions = useCallback(
+    ({ value, suggestions }: ComboboxContext): readonly ComboboxOption[] => {
+      switch (modeOf(value, suggestions.enabled)) {
+        case 'recent':
+          return recent.map((query): ComboboxOption => ({ kind: 'query', query }));
+        case 'isbn':
+          return [{ kind: 'query', query: value }];
+        case 'too-short':
+          return [];
+        case 'suggestions':
+          if (suggestions.loading || suggestions.error) return [];
+          return suggestions.items.map((item): ComboboxOption => ({ kind: 'book', id: item.id }));
       }
     },
-    [router],
+    [recent],
   );
 
-  /** Navigate to a book page and store the current typed value in recents. */
-  const selectBookItem = useCallback(
-    (id: string): void => {
-      const q = value.trim();
-      setOpen(false);
-      setActiveIndex(-1);
-      if (q !== '') addRecentSearch(q);
-      router.push(`/books/${id}`);
-    },
-    [router, value],
-  );
+  const combobox = useSearchCombobox({
+    initialValue: initialQuery,
+    buildOptions,
+    // Recents and the ISBN row are useful below the minimum query length, so
+    // this surface may open whenever it is focused.
+    canOpen: () => true,
+    openOnFocus: () => true,
+    // An ISBN is answered locally by the "Розпізнано ISBN" row — never fetched.
+    shouldSuggest: (value) => !looksLikeIsbn(value),
+  });
 
-  // -----------------------------------------------------------------------
-  // Determine selectable option descriptors for the current mode.
-  // Presentation rows (headings, status, hints) are NOT included here.
-  // -----------------------------------------------------------------------
+  const { value, suggestions, expanded, activeIndex, listboxId, optionId, rootRef, inputRef, selectOption } =
+    combobox;
+  const mode = modeOf(value, suggestions.enabled);
 
-  type OptionDescriptor =
-    | { kind: 'recent'; query: string }
-    | { kind: 'isbn' }
-    | { kind: 'book'; item: SearchItemDto };
-
-  const buildOptions = (): readonly OptionDescriptor[] => {
-    if (value === '') {
-      return recent.map((q) => ({ kind: 'recent' as const, query: q }));
-    }
-    if (looksLikeIsbn(value)) {
-      return [{ kind: 'isbn' as const }];
-    }
-    return items.map((item) => ({ kind: 'book' as const, item }));
-  };
-
-  const options = buildOptions();
-
-  // -----------------------------------------------------------------------
-  // Fetch effect — keyed on debounced value + retryKey
-  // -----------------------------------------------------------------------
-
-  useEffect(() => {
-    // Idle / ISBN modes render their own branches (recents / "Розпізнано ISBN"),
-    // so no fetch runs and any prior items/error stay gated behind the loading
-    // check below — no state reset needed here (which would be a pure
-    // state-sync effect). Just skip fetching.
-    if (debouncedValue === '' || looksLikeIsbn(debouncedValue)) {
-      return;
-    }
-
-    const controller = new AbortController();
-
-    void clientSearch({ q: debouncedValue, signal: controller.signal, pageSize: 6 })
-      .then((res) => {
-        // State is set only from async callbacks (never the effect body), so the
-        // effect stays a real data-sync effect; loading/error are derived above.
-        setResult({ query: debouncedValue, items: res.items });
-        setErrorQuery(null);
-        setActiveIndex(-1);
-      })
-      .catch((err: unknown) => {
-        if ((err as Error).name === 'AbortError') return;
-        setErrorQuery(debouncedValue);
-        setActiveIndex(-1);
-      });
-
-    return () => {
-      controller.abort();
-    };
-  }, [debouncedValue, retryKey]);
-
-  // -----------------------------------------------------------------------
-  // Event handlers
-  // -----------------------------------------------------------------------
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>): void => {
-    setValue(e.target.value);
-    setOpen(true);
-    setActiveIndex(-1);
-  };
-
-  const handleFocus = (): void => {
-    if (blurTimerRef.current !== null) {
-      clearTimeout(blurTimerRef.current);
-      blurTimerRef.current = null;
-    }
-    setOpen(true);
-  };
-
-  const handleBlur = (): void => {
-    blurTimerRef.current = setTimeout(() => {
-      setOpen(false);
-      setActiveIndex(-1);
-    }, 150);
-  };
-
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>): void => {
-    const total = options.length;
-
-    switch (e.key) {
-      case 'ArrowDown':
-        e.preventDefault();
-        setOpen(true);
-        // No selectable options → keep nothing active.
-        setActiveIndex((prev) => (total === 0 ? -1 : prev < total - 1 ? prev + 1 : prev));
-        break;
-
-      case 'ArrowUp':
-        e.preventDefault();
-        // No selectable options → keep nothing active (never snap to index 0).
-        setActiveIndex((prev) => (total === 0 ? -1 : prev > 0 ? prev - 1 : 0));
-        break;
-
-      case 'Enter':
-        e.preventDefault();
-        if (activeIndex >= 0 && activeIndex < total) {
-          const opt = options[activeIndex];
-          if (opt.kind === 'recent') {
-            submit(opt.query);
-          } else if (opt.kind === 'isbn') {
-            submit(value);
-          } else {
-            selectBookItem(opt.item.id);
-          }
-        } else {
-          submit(value);
-        }
-        break;
-
-      case 'Escape':
-        e.preventDefault();
-        setOpen(false);
-        setActiveIndex(-1);
-        break;
-    }
-  };
-
-  const activeId = activeIndex >= 0 ? `si-ta-opt-${activeIndex}` : null;
-
-  // -----------------------------------------------------------------------
-  // Clear button
-  // -----------------------------------------------------------------------
-
-  const handleClear = (): void => {
-    setValue('');
-    router.push('/search');
-    setOpen(false);
-    inputRef.current?.focus();
-  };
-
-  // -----------------------------------------------------------------------
-  // Option select handlers (mousedown to preserve focus)
-  // -----------------------------------------------------------------------
-
-  const handleSelectRecent = (query: string) => (e: React.MouseEvent): void => {
+  /** mousedown (not click) so the field keeps focus and the pick counts as inside. */
+  const pick = (index: number) => (e: React.MouseEvent): void => {
     e.preventDefault();
-    if (blurTimerRef.current !== null) {
-      clearTimeout(blurTimerRef.current);
-      blurTimerRef.current = null;
-    }
-    submit(query);
+    selectOption(index);
   };
 
-  const handleSelectIsbn = (e: React.MouseEvent): void => {
-    e.preventDefault();
-    if (blurTimerRef.current !== null) {
-      clearTimeout(blurTimerRef.current);
-      blurTimerRef.current = null;
-    }
-    submit(value);
+  const onClear = (): void => {
+    combobox.clear();
+    goToSearch('');
   };
-
-  const handleSelectBook = (id: string) => (e: React.MouseEvent): void => {
-    e.preventDefault();
-    if (blurTimerRef.current !== null) {
-      clearTimeout(blurTimerRef.current);
-      blurTimerRef.current = null;
-    }
-    selectBookItem(id);
-  };
-
-  const handleClearHistory = (e: React.MouseEvent): void => {
-    e.preventDefault();
-    if (blurTimerRef.current !== null) {
-      clearTimeout(blurTimerRef.current);
-      blurTimerRef.current = null;
-    }
-    clearRecent();
-  };
-
-  const handleRetry = (e: React.MouseEvent): void => {
-    e.preventDefault();
-    if (blurTimerRef.current !== null) {
-      clearTimeout(blurTimerRef.current);
-      blurTimerRef.current = null;
-    }
-    setErrorQuery(null);
-    setRetryKey((k) => k + 1);
-  };
-
-  // -----------------------------------------------------------------------
-  // Render helpers
-  // -----------------------------------------------------------------------
 
   const renderDropdown = (): React.JSX.Element | null => {
-    if (!open) return null;
+    if (!expanded) return null;
 
-    // --- idle: recent searches ---
-    if (value === '') {
+    if (mode === 'recent') {
       return (
-        <ul id="si-ta-listbox" role="listbox" className="si-ta__menu">
+        <ul id={listboxId} role="listbox" aria-label="Підказки пошуку" className="si-ta__menu">
           <li role="presentation" className="si-ta__group">
             Нещодавні запити
           </li>
@@ -297,12 +106,12 @@ export function Typeahead({ initialQuery }: TypeaheadProps): React.JSX.Element {
               {recent.map((q, i) => (
                 <li
                   key={q}
-                  id={`si-ta-opt-${i}`}
+                  id={optionId(i)}
                   role="option"
                   aria-selected={i === activeIndex}
                   data-active={i === activeIndex ? 'true' : undefined}
                   className="si-ta__row"
-                  onMouseDown={handleSelectRecent(q)}
+                  onMouseDown={pick(i)}
                 >
                   {q}
                 </li>
@@ -311,7 +120,10 @@ export function Typeahead({ initialQuery }: TypeaheadProps): React.JSX.Element {
                 <button
                   type="button"
                   className="si-ta__clear"
-                  onMouseDown={handleClearHistory}
+                  onMouseDown={(e) => {
+                    e.preventDefault();
+                    clearRecent();
+                  }}
                 >
                   Очистити історію
                 </button>
@@ -322,68 +134,77 @@ export function Typeahead({ initialQuery }: TypeaheadProps): React.JSX.Element {
       );
     }
 
-    // --- ISBN detected ---
-    if (looksLikeIsbn(value)) {
+    if (mode === 'isbn') {
       const detected = detectIsbn(value);
       return (
-        <ul id="si-ta-listbox" role="listbox" className="si-ta__menu">
+        <ul id={listboxId} role="listbox" aria-label="Підказки пошуку" className="si-ta__menu">
           <li
-            id="si-ta-opt-0"
+            id={optionId(0)}
             role="option"
             aria-selected={activeIndex === 0}
             data-active={activeIndex === 0 ? 'true' : undefined}
             className="si-ta__row si-ta__row--isbn"
-            onMouseDown={handleSelectIsbn}
+            onMouseDown={pick(0)}
           >
             <span className="si-ta__row-primary">Розпізнано ISBN</span>
-            {detected !== null && (
-              <span className="si-ta__row-sub">{detected.normalized}</span>
-            )}
+            {detected !== null && <span className="si-ta__row-sub">{detected.normalized}</span>}
             <span className="si-ta__row-hint">↵ щоб шукати</span>
           </li>
         </ul>
       );
     }
 
-    // --- typing / suggestions ---
+    if (mode === 'too-short') {
+      return (
+        <ul id={listboxId} role="listbox" aria-label="Підказки пошуку" className="si-ta__menu">
+          <li role="presentation" className="si-ta__hint">
+            Введіть щонайменше {SEARCH_MIN_QUERY_LENGTH} символи
+          </li>
+        </ul>
+      );
+    }
+
     return (
-      <ul id="si-ta-listbox" role="listbox" className="si-ta__menu">
-        {loading && (
+      <ul id={listboxId} role="listbox" aria-label="Підказки пошуку" className="si-ta__menu">
+        {suggestions.loading && (
           <li role="presentation" className="si-ta__status" aria-busy="true">
             Шукаємо…
           </li>
         )}
-        {!loading && hasError && (
+        {!suggestions.loading && suggestions.error && (
           <li role="presentation" className="si-ta__status si-ta__status--error">
             Не вдалося завантажити підказки
             <button
               type="button"
               className="si-ta__retry"
-              onMouseDown={handleRetry}
+              onMouseDown={(e) => {
+                e.preventDefault();
+                suggestions.retry();
+              }}
             >
               Повторити
             </button>
           </li>
         )}
-        {!loading && !hasError && items.length === 0 && (
+        {!suggestions.loading && !suggestions.error && suggestions.items.length === 0 && (
           <li role="presentation" className="si-ta__status">
             Нічого не знайдено
           </li>
         )}
-        {!loading && !hasError && items.length > 0 && (
+        {!suggestions.loading && !suggestions.error && suggestions.items.length > 0 && (
           <>
             <li role="presentation" className="si-ta__group">
               Книги
             </li>
-            {items.map((item, i) => (
+            {suggestions.items.map((item, i) => (
               <li
                 key={item.id}
-                id={`si-ta-opt-${i}`}
+                id={optionId(i)}
                 role="option"
                 aria-selected={i === activeIndex}
                 data-active={i === activeIndex ? 'true' : undefined}
                 className="si-ta__row si-ta__row--book"
-                onMouseDown={handleSelectBook(item.id)}
+                onMouseDown={pick(i)}
               >
                 <span className="si-ta__row-primary">{item.title}</span>
                 <span className="si-ta__row-sub">· {item.author}</span>
@@ -396,12 +217,8 @@ export function Typeahead({ initialQuery }: TypeaheadProps): React.JSX.Element {
     );
   };
 
-  // -----------------------------------------------------------------------
-  // Render
-  // -----------------------------------------------------------------------
-
   return (
-    <div className="si-typeahead">
+    <div className="si-typeahead" ref={rootRef}>
       <div className="kn-field">
         <span className="kn-field__icon">
           <Search aria-hidden="true" />
@@ -412,31 +229,28 @@ export function Typeahead({ initialQuery }: TypeaheadProps): React.JSX.Element {
           role="combobox"
           aria-label="Назва книги, автора або ISBN…"
           placeholder="Назва книги, автора або ISBN…"
-          aria-expanded={open}
-          aria-controls="si-ta-listbox"
+          aria-expanded={expanded}
+          aria-controls={listboxId}
           aria-autocomplete="list"
-          aria-activedescendant={activeId ?? undefined}
+          aria-activedescendant={combobox.activeDescendantId}
+          autoComplete="off"
           value={value}
-          onChange={handleChange}
-          onKeyDown={handleKeyDown}
-          onFocus={handleFocus}
-          onBlur={handleBlur}
+          onChange={combobox.onChange}
+          onKeyDown={combobox.onKeyDown}
+          onFocus={combobox.onFocus}
+          onClick={combobox.onClick}
         />
         {value.length > 0 && (
           <button
             type="button"
             className="kn-field__clear"
             aria-label="Очистити запит"
-            onClick={handleClear}
+            onClick={onClear}
           >
             <X size={16} aria-hidden="true" />
           </button>
         )}
-        <button
-          type="button"
-          className="kn-btn kn-btn--primary"
-          onClick={() => submit(value)}
-        >
+        <button type="button" className="kn-btn kn-btn--primary" onClick={combobox.submitCurrent}>
           Знайти
         </button>
       </div>

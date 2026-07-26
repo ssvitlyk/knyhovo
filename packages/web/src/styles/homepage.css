@@ -51,15 +51,23 @@
   margin: 0 0 40px;
 }
 
-/* Search bar — the primary CTA. */
-.hero__text .kn-field {
+/* Search bar — the primary CTA. The form is the positioning context for the
+   .hp-sg autocomplete panel, so the field itself carries no bottom margin. */
+.hero__search {
+  position: relative;
   width: 880px;
+  max-width: 100%;
+  min-width: 0;
+  margin: 0 0 32px;
+}
+.hero__text .kn-field {
+  width: 100%;
   max-width: 100%;
   min-height: 80px;
   border-radius: 18px;
   box-shadow: var(--shadow-sm);
   padding-left: 28px;
-  margin: 0 0 32px;
+  margin: 0;
 }
 .hero__text .kn-field input {
   font-size: 20px;
@@ -374,7 +382,7 @@
   .hero__title em {
     font-size: clamp(2.25rem, 6.5vw, 52px);
   }
-  .hero__text .kn-field {
+  .hero__search {
     width: 100%;
   }
 }
@@ -548,5 +556,185 @@
   }
   .hp-recommends__all {
     display: none;
+  }
+}
+
+/* ═══ HERO SUGGESTIONS (.hp-sg) — live autocomplete under the hero search
+       field. Same data engine as the header dropdown (.knh-sg), deliberately
+       its own design: roomier rows sized for the hero. Width is bound to the
+       field, so it can never create horizontal scroll at 320px. ═══ */
+.hp-sg {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  width: 100%;
+  max-width: 100%;
+  z-index: 90; /* below the sticky header (100) */
+  margin: 0;
+  padding: 8px;
+  list-style: none;
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-md, var(--shadow-sm));
+}
+.hp-sg__row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+  min-height: 56px;
+  padding: 10px 12px;
+  border-radius: 12px;
+  cursor: pointer;
+  color: var(--text);
+  transition: background var(--dur-fast, 140ms) var(--ease-out, ease-out);
+}
+.hp-sg__row:hover {
+  background: var(--surface-accent);
+}
+/* Active state is never colour-only: background + inset accent bar + weight. */
+.hp-sg__row[data-active='true'] {
+  background: var(--surface-accent);
+  box-shadow: inset 3px 0 0 0 var(--accent);
+  font-weight: 600;
+}
+.hp-sg__cover {
+  flex: none;
+  width: 40px;
+  height: 56px;
+  border-radius: 5px;
+  object-fit: contain;
+  background: var(--surface-accent);
+}
+.hp-sg__text {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+  flex: 1 1 auto;
+}
+.hp-sg__title {
+  font-family: var(--font-body);
+  font-size: 15.5px;
+  font-weight: 500;
+  color: var(--text);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hp-sg__author {
+  font-family: var(--font-body);
+  font-size: 13.5px;
+  color: var(--text-muted);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.hp-sg__meta {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 2px;
+}
+.hp-sg__price {
+  font-family: var(--font-body);
+  font-size: 15.5px;
+  font-weight: 600;
+  color: var(--text);
+  white-space: nowrap;
+}
+.hp-sg__store {
+  font-family: var(--font-body);
+  font-size: 12px;
+  color: var(--text-faint, var(--text-muted));
+  white-space: nowrap;
+}
+.hp-sg__row--action {
+  justify-content: center;
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+  border-radius: 0 0 12px 12px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent);
+}
+/* Status rows are presentation, never keyboard targets. Fixed min-height so the
+   loading → results transition does not jump the panel. */
+.hp-sg__status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  min-height: 56px;
+  padding: 10px 12px;
+  font-family: var(--font-body);
+  font-size: 15px;
+  color: var(--text-muted);
+}
+.hp-sg__status--error {
+  color: var(--text);
+  flex-wrap: wrap;
+}
+.hp-sg__retry {
+  border: 0;
+  background: transparent;
+  padding: 0;
+  min-height: 44px;
+  cursor: pointer;
+  font-family: var(--font-body);
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--accent);
+}
+.hp-sg__spinner {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  animation: hp-sg-spin 700ms linear infinite;
+}
+@keyframes hp-sg-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hp-sg__spinner {
+    animation: none;
+  }
+  .hp-sg__row {
+    transition: none;
+  }
+}
+@media (max-width: 767px) {
+  .hp-sg {
+    padding: 6px;
+    border-radius: 14px;
+    max-height: 55vh;
+  }
+  .hp-sg__row {
+    gap: 12px;
+    min-height: 52px;
+    padding: 8px 10px;
+  }
+  .hp-sg__cover {
+    width: 34px;
+    height: 48px;
+  }
+  .hp-sg__title {
+    font-size: 14.5px;
+  }
+  .hp-sg__author {
+    font-size: 12.5px;
+  }
+  .hp-sg__price {
+    font-size: 14.5px;
   }
 }

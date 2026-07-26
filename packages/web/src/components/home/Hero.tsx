@@ -1,26 +1,21 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { SearchBar } from '@/components/ds/SearchBar';
 import { Chip } from '@/components/ds/Chip';
+import { useSearchNavigation } from '@/components/search/useSearchCombobox';
+import { HeroSearch } from './HeroSearch';
 import { POPULAR_QUERIES } from './content';
 
 /**
  * Homepage hero — approved 50/50 layout (Concept A · Oracle Search). The only
- * Client Component on `/`: it holds the search field state and routes to the
- * canonical `/search?q=…` (never performs a search request itself, per PRD).
+ * Client Component on `/`. The search field itself is {@link HeroSearch}, which
+ * runs the shared live autocomplete; the "популярне" chips are plain entry
+ * points and route through the same `useSearchNavigation` helper, so there is
+ * one URL shape and one recents policy on this page too.
  * Книговик (mascot-hero) is theme-swapped via CSS with two `<img>` — the same
  * recipe as the site logo — so the hero needs no theme read in JS.
  */
 export function Hero(): React.JSX.Element {
-  const router = useRouter();
-  const [q, setQ] = useState('');
-
-  const goSearch = (value: string): void => {
-    const v = value.trim();
-    router.push(v ? `/search?q=${encodeURIComponent(v)}` : '/search');
-  };
+  const { goToSearch } = useSearchNavigation();
 
   return (
     <section className="hero">
@@ -32,13 +27,7 @@ export function Hero(): React.JSX.Element {
           <em className="kn-accent-serif">Knyhovo знає.</em>
         </h1>
         <p className="hero__lead">Знаходьте бажане, порівнюйте ціни та купуйте вигідно.</p>
-        <SearchBar
-          value={q}
-          onChange={setQ}
-          onSearch={goSearch}
-          placeholder="Назва книги, автора або ISBN…"
-          buttonLabel="Знайти"
-        />
+        <HeroSearch />
         <div className="hero__stats">
           <div className="stat">
             <span className="stat__num">5+</span>
@@ -56,7 +45,7 @@ export function Hero(): React.JSX.Element {
         <div className="hero__popular">
           <span className="hero__popular-label">Популярне:</span>
           {POPULAR_QUERIES.map((c) => (
-            <Chip key={c} onClick={() => goSearch(c)}>
+            <Chip key={c} onClick={() => goToSearch(c)}>
               {c}
             </Chip>
           ))}

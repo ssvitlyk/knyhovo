@@ -8,8 +8,8 @@ import { formatMoney, providerDisplayName } from '@/lib/format';
 export interface SearchSuggestionsProps {
   /** DOM id referenced by the combobox `aria-controls`. */
   readonly listboxId: string;
-  /** Prefix for option ids referenced by `aria-activedescendant`. */
-  readonly optionIdPrefix: string;
+  /** Per-instance option id builder from the shared combobox hook. */
+  readonly optionId: (index: number) => string;
   readonly items: readonly SearchItemDto[];
   readonly loading: boolean;
   readonly error: boolean;
@@ -17,7 +17,8 @@ export interface SearchSuggestionsProps {
   readonly activeIndex: number;
   /** `desktop` floats under the capsule; `mobile` flows inside the overlay panel. */
   readonly variant: 'desktop' | 'mobile';
-  readonly onSelectBook: (bookId: string) => void;
+  /** Activate the book row at `index` (index matches the shared option list). */
+  readonly onSelectBook: (index: number) => void;
   readonly onShowAll: () => void;
   readonly onRetry: () => void;
 }
@@ -33,7 +34,7 @@ export interface SearchSuggestionsProps {
  */
 export function SearchSuggestions({
   listboxId,
-  optionIdPrefix,
+  optionId,
   items,
   loading,
   error,
@@ -88,12 +89,12 @@ export function SearchSuggestions({
           return (
             <li
               key={item.id}
-              id={`${optionIdPrefix}-${i}`}
+              id={optionId(i)}
               role="option"
               aria-selected={i === activeIndex}
               data-active={i === activeIndex ? 'true' : undefined}
               className="knh-sg__row"
-              onMouseDown={select(() => onSelectBook(item.id))}
+              onMouseDown={select(() => onSelectBook(i))}
             >
               <Cover
                 src={item.coverUrl}
@@ -117,7 +118,7 @@ export function SearchSuggestions({
 
       {!loading && !error && items.length > 0 && (
         <li
-          id={`${optionIdPrefix}-${showAllIndex}`}
+          id={optionId(showAllIndex)}
           role="option"
           aria-selected={showAllIndex === activeIndex}
           data-active={showAllIndex === activeIndex ? 'true' : undefined}

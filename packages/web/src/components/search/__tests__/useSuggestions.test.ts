@@ -3,13 +3,11 @@ import { act, renderHook } from '@testing-library/react';
 
 import { clientSearch } from '@/lib/api/searchClient';
 import type { SearchItemDto, SearchResponseDto } from '@/lib/api/types';
-import {
-  SUGGEST_DEBOUNCE_MS,
-  SUGGEST_LIMIT,
-  clearSuggestionsCache,
-  normalizeQuery,
-  useSuggestions,
-} from '../useSuggestions';
+import { SEARCH_DEBOUNCE_MS, SEARCH_SUGGESTIONS_LIMIT } from '@/lib/search/config';
+import { clearSuggestionsCache, useSuggestions } from '../useSuggestions';
+
+const SUGGEST_DEBOUNCE_MS = SEARCH_DEBOUNCE_MS;
+const SUGGEST_LIMIT = SEARCH_SUGGESTIONS_LIMIT;
 
 vi.mock('@/lib/api/searchClient', () => ({ clientSearch: vi.fn() }));
 
@@ -37,14 +35,6 @@ async function settle(ms: number = SUGGEST_DEBOUNCE_MS): Promise<void> {
     vi.advanceTimersByTime(ms);
   });
 }
-
-describe('normalizeQuery', () => {
-  it('trims and collapses whitespace', () => {
-    expect(normalizeQuery('  Кобзар  ')).toBe('Кобзар');
-    expect(normalizeQuery('Тарас   Шевченко')).toBe('Тарас Шевченко');
-    expect(normalizeQuery('   ')).toBe('');
-  });
-});
 
 describe('useSuggestions', () => {
   beforeEach(() => {
