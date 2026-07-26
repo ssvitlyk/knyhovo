@@ -12,6 +12,8 @@ export interface WishlistAlertRow {
   readonly targetPriceAmount: number;
   readonly targetPriceCurrency: 'UAH';
   readonly pausedAt: Date | null;
+  /** Notification marker — the fact behind the `reached` state. */
+  readonly lastNotifiedAt: Date | null;
 }
 
 /**
@@ -45,10 +47,14 @@ export async function upsertAlert(
     pausedAt: Date | null;
   },
 ): Promise<void> {
+  // Replacing the alert replaces its threshold, so the notification marker no
+  // longer describes anything: clearing it here is what makes the `reached`
+  // state mean "we emailed about the CURRENT threshold" without any price maths.
+  const clearedMarker = { lastNotifiedAt: null, lastNotifiedPriceAmount: null } as const;
   await prisma.alert.upsert({
     where: { wishlistItemId },
-    create: { wishlistItemId, ...data },
-    update: { ...data },
+    create: { wishlistItemId, ...data, ...clearedMarker },
+    update: { ...data, ...clearedMarker },
   });
 }
 

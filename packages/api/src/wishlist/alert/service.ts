@@ -1,6 +1,5 @@
 import type { PrismaClient } from '@prisma/client';
-import type { AlertStatus, AlertIntent } from './dto.js';
-import type { MoneyDto } from '../dto.js';
+import type { AlertIntent, AlertLifecycle, AlertState } from './dto.js';
 import { WishlistItemNotFoundError } from '../../errors.js';
 import {
   findWishlistItemId,
@@ -12,17 +11,6 @@ import {
 // ---------------------------------------------------------------------------
 // Enum reverse-maps (Prisma identifier → public slug)
 // ---------------------------------------------------------------------------
-
-/** Maps Prisma AlertStatus enum identifiers to their public API slugs. */
-export const ALERT_STATUS_SLUG: Record<
-  'ACTIVE' | 'PAUSED' | 'TRIGGERED' | 'UNAVAILABLE',
-  AlertStatus
-> = {
-  ACTIVE: 'active',
-  PAUSED: 'paused',
-  TRIGGERED: 'triggered',
-  UNAVAILABLE: 'unavailable',
-};
 
 /** Maps Prisma AlertIntent enum identifiers to their public API slugs. */
 export const ALERT_INTENT_SLUG: Record<
@@ -47,30 +35,44 @@ export const INTENT_ENUM: Record<
 };
 
 // ---------------------------------------------------------------------------
-// Status derivation (pure — no Prisma, fully unit-testable)
+// State derivation (pure — no Prisma, fully unit-testable)
 // ---------------------------------------------------------------------------
 
 /**
- * Derive the effective (public) alert status from persisted state + live pricing.
+ * Map the persisted status column onto the only lifecycle we store.
+ *
+ * `TRIGGERED`/`UNAVAILABLE` were never written by any code path; they are read
+ * defensively as `active` until the enum is narrowed by migration.
+ */
+export function toLifecycle(
+  status: 'ACTIVE' | 'PAUSED' | 'TRIGGERED' | 'UNAVAILABLE',
+): AlertLifecycle {
+  return status === 'PAUSED' ? 'paused' : 'active';
+}
+
+/**
+ * Derive the effective alert state the user is shown (notifications-model-v2 §9.3).
  *
  * Precedence (EXACT):
- * 1. persisted.status === 'PAUSED'                                     → 'paused'
- * 2. offersCount === 0                                                  → 'unavailable'
- * 3. lowestPrice != null && lowestPrice.amount <= targetPriceAmount     → 'triggered'
- * 4. else                                                               → 'active'
+ * 1. lifecycle === 'paused'          → 'paused'
+ * 2. canonicalPriceAmount === null   → 'unavailable'  (no strictly in-stock offer)
+ * 3. lastNotifiedAt != null          → 'reached'      (we emailed about this threshold)
+ * 4. else                            → 'armed'
+ *
+ * There is deliberately NO price comparison here. `reached` is a fact carried by
+ * the notification marker, which only the dispatcher writes and only after a
+ * successful send — so the state can never promise an email that did not happen.
+ * The marker is cleared when the threshold changes (upsert) and when the engine
+ * re-arms the alert, which is what makes step 3 mean "for the current threshold".
  */
-export function deriveAlertStatus(
-  persisted: {
-    status: 'ACTIVE' | 'PAUSED' | 'TRIGGERED' | 'UNAVAILABLE';
-    targetPriceAmount: number;
-  },
-  lowestPrice: MoneyDto | null,
-  offersCount: number,
-): AlertStatus {
-  if (persisted.status === 'PAUSED') return 'paused';
-  if (offersCount === 0) return 'unavailable';
-  if (lowestPrice != null && lowestPrice.amount <= persisted.targetPriceAmount) return 'triggered';
-  return 'active';
+export function deriveAlertState(
+  persisted: { lifecycle: AlertLifecycle; lastNotifiedAt: Date | null },
+  canonicalPriceAmount: number | null,
+): AlertState {
+  if (persisted.lifecycle === 'paused') return 'paused';
+  if (canonicalPriceAmount === null) return 'unavailable';
+  if (persisted.lastNotifiedAt != null) return 'reached';
+  return 'armed';
 }
 
 // ---------------------------------------------------------------------------

@@ -421,13 +421,16 @@ describe('PUT /api/wishlist/:bookId/alert', () => {
     expect(item.alert).not.toBeNull();
     expect(item.alert.intent).toBe('below-current');
     expect(item.alert.targetPrice).toEqual({ amount: 30000, currency: 'UAH' });
-    // lowestPrice (34900) > target (30000) → active
-    expect(item.alert.status).toBe('active');
+    // No email has been sent for this alert yet → armed (state is a fact, not a
+    // price comparison).
+    expect(item.alert.state).toBe('armed');
+    expect(item.alert.notifiedAt).toBeNull();
   });
 
-  it('GET /api/wishlist shows status=triggered when lowestPrice ≤ target', async () => {
+  it('a target above the current price does NOT read as reached until an email is sent', async () => {
     const { app } = makeApp();
-    // Set target above the listing price (34900)
+    // Target above the listing price (34900): the old model derived `triggered`
+    // here purely from the comparison, promising an email that never happened.
     await app.inject({
       method: 'PUT',
       url: `/api/wishlist/${BOOK_UUID_A}/alert`,
@@ -442,8 +445,7 @@ describe('PUT /api/wishlist/:bookId/alert', () => {
     });
 
     const item = res.json().items[0];
-    // lowestPrice (34900) ≤ target (35000) → triggered
-    expect(item.alert.status).toBe('triggered');
+    expect(item.alert.state).toBe('armed');
   });
 
   it('book not in wishlist → 404 WISHLIST_ITEM_NOT_FOUND', async () => {
@@ -551,7 +553,7 @@ describe('PATCH /api/wishlist/:bookId/alert', () => {
       url: '/api/wishlist',
       headers: { cookie: AUTH_COOKIE },
     });
-    expect(res.json().items[0].alert.status).toBe('paused');
+    expect(res.json().items[0].alert.state).toBe('paused');
   });
 
   it('paused=false after paused=true → status back to active/triggered', async () => {

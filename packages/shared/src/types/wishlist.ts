@@ -31,8 +31,31 @@ export interface WishlistItem {
  */
 export type BuyingReason = 'TARGET_REACHED' | 'LOWEST_90_DAYS' | 'PRICE_DROPPED';
 
-/** The persisted status values for an Alert. TRIGGERED and UNAVAILABLE are derived at read time. */
+/**
+ * @deprecated Superseded by {@link AlertLifecycle} (what is stored) and
+ * {@link AlertState} (what the user is told). Kept until the read models stop
+ * emitting it.
+ */
 export type AlertStatus = 'active' | 'paused' | 'triggered' | 'unavailable';
+
+/**
+ * The only alert state that is PERSISTED (notifications-model-v2 §9.1).
+ * Everything else about an alert is either a fact (a notification marker) or a
+ * property of the live listing data.
+ */
+export type AlertLifecycle = 'active' | 'paused';
+
+/**
+ * The effective alert state shown to the user (notifications-model-v2 §9.3).
+ *
+ * - `paused`      — the user muted it (persisted).
+ * - `unavailable` — the book has no strictly-IN_STOCK offer, so no promise can be kept.
+ * - `reached`     — we have already emailed about the current threshold. This is a
+ *                   FACT read from the notification marker, never a price
+ *                   comparison, so the UI cannot claim an email that was never sent.
+ * - `armed`       — watching.
+ */
+export type AlertState = 'armed' | 'reached' | 'unavailable' | 'paused';
 
 /** The intent a user has set for an Alert — drives how the derived status is computed. */
 export type AlertIntent = 'any-drop' | 'below-current' | 'favourable-price' | 'custom-price';

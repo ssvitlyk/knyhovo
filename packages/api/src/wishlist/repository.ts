@@ -90,6 +90,7 @@ export async function findWishlistItemsByUserId(
           targetPriceAmount: true,
           targetPriceCurrency: true,
           pausedAt: true,
+          lastNotifiedAt: true,
         },
       },
     },
