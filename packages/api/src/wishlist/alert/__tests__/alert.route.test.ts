@@ -419,7 +419,9 @@ describe('PUT /api/wishlist/:bookId/alert', () => {
     expect(res.statusCode).toBe(200);
     const item = res.json().items[0];
     expect(item.alert).not.toBeNull();
-    expect(item.alert.intent).toBe('below-current');
+    // PRD §4.4: «нижче за поточну» is not a mode any more — it was the same user
+    // intent as «будь-яке зниження» with a frozen baseline, so it collapses into it.
+    expect(item.alert.intent).toBe('any-drop');
     expect(item.alert.targetPrice).toEqual({ amount: 30000, currency: 'UAH' });
     // No email has been sent for this alert yet → armed (state is a fact, not a
     // price comparison).

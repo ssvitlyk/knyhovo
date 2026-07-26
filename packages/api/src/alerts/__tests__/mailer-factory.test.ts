@@ -16,6 +16,10 @@ function cfg(overrides: Partial<AlertConfig> = {}): AlertConfig {
       baseUrl: 'https://knyhovo.com',
       limit: 200,
     },
+    significance: {
+      minDropAbs: 1000,
+      minDropPct: 2,
+    },
     ...overrides,
   };
 }

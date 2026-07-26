@@ -26,7 +26,7 @@ function makeAlert(overrides: Partial<ActiveAlertForBook> = {}): ActiveAlertForB
     alertId: ALERT_1,
     canonicalBookId: BOOK_A,
     userId: USER_1,
-    targetPriceAmount: TARGET,
+    policy: { threshold: TARGET, baseline: null, rearmPolicy: 'static' as const },
     lastNotifiedAt: null,
     lastNotifiedPriceAmount: null,
     lastObservedAvailability: 'IN_STOCK', // baseline in stock so back-in-stock stays quiet
@@ -225,5 +225,25 @@ describe('runAlertNotificationsForBooks (enqueue phase)', () => {
     });
 
     expect(out[0]?.created).toBe(false);
+  });
+
+  it('does not enqueue PRICE_DROP for a follow-down policy when the drop is insignificant', async () => {
+    // baseline 10000, price drops to 9900 — only a 100-kopiyka drop, well below
+    // the default minDropAbs (1000) — must be suppressed.
+    const alert = makeAlert({
+      policy: { threshold: 10000, baseline: 10000, rearmPolicy: 'follow-down' },
+    });
+    const findActiveAlerts = vi.fn().mockResolvedValue([alert]);
+    const findLowestPrices = vi.fn().mockResolvedValue(new Map([[BOOK_A, 9900]]));
+    const enqueue = makeEnqueue();
+
+    const out = await runAlertNotificationsForBooks(fakePrisma, [BOOK_A], NOW, {
+      findActiveAlerts,
+      findLowestPrices,
+      enqueue,
+    });
+
+    expect(out).toHaveLength(0);
+    expect(enqueue).not.toHaveBeenCalled();
   });
 });

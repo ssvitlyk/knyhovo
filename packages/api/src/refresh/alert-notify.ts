@@ -27,6 +27,8 @@ import {
 } from '../wishlist/alert/repository.js';
 import { findCanonicalPriceByBook } from '../pricing/canonical-price.js';
 import { enqueueDelivery } from './notification-delivery.repository.js';
+import { DEFAULT_SIGNIFICANCE } from '../alerts/config.js';
+import type { SignificanceConfig } from '../wishlist/alert/policy.js';
 
 export interface EnqueuedDelivery {
   readonly alertId: string;
@@ -55,9 +57,13 @@ export async function runAlertNotificationsForBooks(
     enqueue?: typeof enqueueDelivery;
     updatePriceMarker?: typeof updateAlertNotificationMarker;
     updateStockMarker?: typeof updateAlertStockMarker;
+    /** Drop-significance thresholds; defaults to the configured values. */
+    significance?: SignificanceConfig;
   },
 ): Promise<EnqueuedDelivery[]> {
   if (canonicalBookIds.length === 0) return [];
+
+  const significance = deps?.significance ?? DEFAULT_SIGNIFICANCE;
 
   const _findActiveAlerts = deps?.findActiveAlerts ?? findActiveAlertsForBooks;
   const _findLowestPrices = deps?.findLowestPrices ?? findCanonicalPriceByBook;
@@ -81,12 +87,13 @@ export async function runAlertNotificationsForBooks(
     // --- Price-drop -------------------------------------------------------
     const priceDecision = evaluateAlertNotification(
       {
-        targetPriceAmount: alert.targetPriceAmount,
+        policy: alert.policy,
         lastNotifiedAt: alert.lastNotifiedAt,
         lastNotifiedPriceAmount: alert.lastNotifiedPriceAmount,
       },
       lowestPriceAmount,
       now,
+      significance,
     );
 
     if (priceDecision.action === 'notify') {

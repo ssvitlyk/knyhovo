@@ -23,6 +23,14 @@ export const ALERT_INTENT_SLUG: Record<
   CUSTOM_PRICE: 'custom-price',
 };
 
+/** Legacy intent slug → the mode it collapses into (PRD §4.4: below-current === any-drop). */
+export const LEGACY_MODE: Record<AlertIntent, 'ANY_DROP' | 'GOOD_PRICE' | 'MY_PRICE'> = {
+  'any-drop': 'ANY_DROP',
+  'below-current': 'ANY_DROP',
+  'favourable-price': 'GOOD_PRICE',
+  'custom-price': 'MY_PRICE',
+};
+
 /** Maps public API intent slugs to their Prisma enum identifiers (for writes). */
 export const INTENT_ENUM: Record<
   AlertIntent,
@@ -106,12 +114,17 @@ export async function setAlert(
   input: { intent: AlertIntent; targetPrice: { amount: number; currency: 'UAH' } },
 ): Promise<void> {
   const wishlistItemId = await resolveWishlistItemId(prisma, userId, bookId);
+  // Phase 3 shim: the client still supplies the threshold, so the policy is
+  // written as a static one with an explicit legacy basis. The resolver takes
+  // ownership of these fields in the next step and this branch disappears.
   await upsertAlert(prisma, wishlistItemId, {
-    status: 'ACTIVE',
-    intent: INTENT_ENUM[input.intent],
+    mode: LEGACY_MODE[input.intent],
     targetPriceAmount: input.targetPrice.amount,
     targetPriceCurrency: input.targetPrice.currency,
-    pausedAt: null,
+    baselineAmount: null,
+    rearmPolicy: 'STATIC',
+    thresholdBasis: 'legacy-client-supplied',
+    thresholdProof: null,
   });
 }
 
