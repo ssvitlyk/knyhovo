@@ -133,36 +133,6 @@ export async function findActiveAlertsForBooks(
 }
 
 /**
- * Return a map of canonicalBookId → lowest IN_STOCK priceAmount across that
- * book's provider listings. Books with no in-stock listing are absent from the map.
- * Returns an empty Map immediately for empty input.
- */
-export async function findLowestInStockPriceByBook(
-  prisma: PrismaClient,
-  canonicalBookIds: string[],
-): Promise<Map<string, number>> {
-  if (canonicalBookIds.length === 0) return new Map();
-
-  const rows = await prisma.providerListing.groupBy({
-    by: ['canonicalBookId'],
-    where: {
-      canonicalBookId: { in: canonicalBookIds },
-      availability: 'IN_STOCK',
-    },
-    _min: { priceAmount: true },
-  });
-
-  const result = new Map<string, number>();
-  for (const row of rows) {
-    const min = row._min.priceAmount;
-    if (min != null) {
-      result.set(row.canonicalBookId, min);
-    }
-  }
-  return result;
-}
-
-/**
  * Persist the dedup marker (lastNotifiedAt / lastNotifiedPriceAmount) for an alert.
  * Pass null values to clear the marker (re-arm the alert).
  */

@@ -4,6 +4,7 @@ import type { BookProviderDto, BookDetailsDto, MoneyDto } from './dto.js';
 import { selectDescription } from '../discovery/description-selection.js';
 import { selectCoverUrl } from '../discovery/cover-selection.js';
 import { selectBookMetadata } from '../discovery/metadata-selection.js';
+import { canonicalPriceAmount } from '../pricing/canonical-price.js';
 
 /** Reverse map from the persisted provider enum to its public slug. */
 const PROVIDER_SLUG: Record<BookListingRow['provider'], ProviderName> = {
@@ -34,9 +35,11 @@ function hasPrice(listing: BookListingRow): boolean {
  *
  * - Listings without a usable price are ignored (defensive — the DB column is
  *   non-null, but the contract requires skipping null prices).
- * - OUT_OF_STOCK listings are excluded from `providers`, `lowestPrice` and
- *   `offersCount`; UNKNOWN listings are included.
- * - `providers` are sorted by ascending price; `lowestPrice` is the cheapest.
+ * - `providers` / `offersCount` are the offers we are willing to SHOW: everything
+ *   except OUT_OF_STOCK (UNKNOWN included), sorted by ascending price.
+ * - `lowestPrice` is the **canonical price** (notifications-model-v2 §4): the
+ *   cheapest strictly-IN_STOCK offer, the same number the alert engine compares
+ *   against. It is not always `providers[0].price`.
  * - Unlike the search mapper, this function NEVER returns null — the book
  *   record itself is always returned, even when all its listings are
  *   out-of-stock or absent (`providers: [], lowestPrice: null, offersCount: 0`).
@@ -56,7 +59,11 @@ export function toBookDetails(row: BookDetailsRow): BookDetailsDto {
     }))
     .sort((a, b) => a.price.amount - b.price.amount);
 
-  const lowestPrice: MoneyDto | null = providers[0]?.price ?? null;
+  const canonicalAmount = canonicalPriceAmount(row.listings);
+  const lowestPrice: MoneyDto | null =
+    canonicalAmount === null
+      ? null
+      : { amount: canonicalAmount, currency: providers[0]?.price.currency ?? 'UAH' };
   const offersCount = providers.length;
 
   // Description and cover are selected across ALL listings (in-stock and

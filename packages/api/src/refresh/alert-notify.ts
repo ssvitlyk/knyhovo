@@ -22,10 +22,10 @@ import {
 } from './alert-dedup.js';
 import {
   findActiveAlertsForBooks,
-  findLowestInStockPriceByBook,
   updateAlertNotificationMarker,
   updateAlertStockMarker,
 } from '../wishlist/alert/repository.js';
+import { findCanonicalPriceByBook } from '../pricing/canonical-price.js';
 import { enqueueDelivery } from './notification-delivery.repository.js';
 
 export interface EnqueuedDelivery {
@@ -51,7 +51,7 @@ export async function runAlertNotificationsForBooks(
   now: Date,
   deps?: {
     findActiveAlerts?: typeof findActiveAlertsForBooks;
-    findLowestPrices?: typeof findLowestInStockPriceByBook;
+    findLowestPrices?: typeof findCanonicalPriceByBook;
     enqueue?: typeof enqueueDelivery;
     updatePriceMarker?: typeof updateAlertNotificationMarker;
     updateStockMarker?: typeof updateAlertStockMarker;
@@ -60,7 +60,7 @@ export async function runAlertNotificationsForBooks(
   if (canonicalBookIds.length === 0) return [];
 
   const _findActiveAlerts = deps?.findActiveAlerts ?? findActiveAlertsForBooks;
-  const _findLowestPrices = deps?.findLowestPrices ?? findLowestInStockPriceByBook;
+  const _findLowestPrices = deps?.findLowestPrices ?? findCanonicalPriceByBook;
   const _enqueue = deps?.enqueue ?? enqueueDelivery;
   const _updatePriceMarker = deps?.updatePriceMarker ?? updateAlertNotificationMarker;
   const _updateStockMarker = deps?.updateStockMarker ?? updateAlertStockMarker;

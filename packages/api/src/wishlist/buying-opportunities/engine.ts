@@ -3,6 +3,7 @@ import { selectListing } from '../../books/price-history/service.js';
 import { PROVIDER_SLUG } from '../mapper.js';
 import type { BuyingOpportunityWishlistRow } from './repository.js';
 import type { BuyingOpportunityItemDto } from './dto.js';
+import { isCanonicalCandidate } from '../../pricing/canonical-price.js';
 
 /**
  * Pure buying-reason recommendation engine — faithful port of the frozen
@@ -53,7 +54,9 @@ export function extractSignals(row: BuyingOpportunityWishlistRow, now: Date): Bu
   const book = row.canonicalBook;
   const listings = book.listings;
 
-  const inStock = listings.filter((l) => l.availability === 'IN_STOCK' && Number.isFinite(l.priceAmount));
+  // Same canonical-price predicate the read models and the alert engine use —
+  // one definition of "buyable right now" across the whole product (§4).
+  const inStock = listings.filter(isCanonicalCandidate);
   if (inStock.length === 0) return null;
 
   // Cheapest in-stock listing; tie-break by id ascending.
