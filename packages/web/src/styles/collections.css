@@ -16,9 +16,11 @@
       56px mobile), matching the mock, so the cnav/sortbar pin below it at
       `top: 72px` desktop / `top: 56px` mobile. */
 
-/* Rose accent used by the «Обране читачами» band + its card badge */
-[data-theme='light'] { --kn-rose: #BC5A57; --kn-heart-red: #E0332B; }
-[data-theme='dark']  { --kn-rose: #E48E8A; --kn-heart-red: #FF5449; }
+/* Rose accent used by the «Обране читачами» band + its card badge.
+   `--wl-heart` is the same saved-heart colour, named for the shared
+   «Особиста полиця» group on Book Details (see .wsh-* in alerts.css). */
+[data-theme='light'] { --kn-rose: #BC5A57; --kn-heart-red: #E0332B; --wl-heart: #E0332B; }
+[data-theme='dark']  { --kn-rose: #E48E8A; --kn-heart-red: #FF5449; --wl-heart: #FF5449; }
 /* Dark-theme body-text brightness (+~6%) — headings (--text) untouched.
    Page-scoped: applied via the .dobirky-scope wrapper so other pages keep the
    raw DS tokens (in the mock this stylesheet only loaded on these pages). */

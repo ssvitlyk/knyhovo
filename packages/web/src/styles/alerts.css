@@ -253,3 +253,69 @@
   .al-overlay .al-sheet,
   .al-toast-wrap { animation: none; }
 }
+
+/* ---------- «Особиста полиця»: бажанки + сповіщення (frozen 2026-07-26) ----------
+   One group, two 52px rows under the primary CTA (wishlist → alert). Values are
+   final — see design-import/incoming/«Claude Code - Бажанки і сповіщення.md» §5. */
+.wsh{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-md);box-shadow:var(--shadow-xs);overflow:hidden;container:wsh/inline-size}
+.wsh-row{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:var(--space-3);align-items:center;width:100%;min-height:52px;padding:10px 14px;background:none;border:0;text-align:left;cursor:pointer;font-family:inherit;color:var(--text);transition:background var(--dur-fast) var(--ease-out)}
+.wsh-row+.wsh-row,.wsh-row+.wsh-info,.wsh-info+.wsh-row,.wsh-err{border-top:1px solid var(--border)}
+.wsh-row:hover{background:var(--surface-sunk)}
+.wsh-row:active{background:var(--surface-accent)}
+.wsh-row:focus-visible{outline:none;box-shadow:inset 0 0 0 3px var(--ring)}
+.wsh-row[aria-busy="true"]{cursor:progress}
+.wsh-row__ico{display:flex;color:var(--icon)}
+.wsh-row__ico svg{width:18px;height:18px}
+.wsh-row__main{min-width:0}
+.wsh-row__l{display:block;font-size:14.5px;font-weight:var(--fw-semibold);line-height:1.3;overflow-wrap:break-word}
+.wsh-row__s{display:block;font-size:12.5px;color:var(--text-muted);margin-top:2px;line-height:1.4;text-wrap:pretty}
+.wsh-row__tr{display:flex;align-items:center;gap:var(--space-2);color:var(--icon)}
+.wsh-row__tr svg{width:20px;height:20px}
+/* бажанки ON — статусний, тихіший за діючий рядок */
+.wsh-row--st .wsh-row__l{font-weight:var(--fw-medium)}
+.wsh-row--st .wsh-row__ico{color:var(--wl-heart)}
+.wsh-row--st .wsh-row__ico svg{fill:var(--wl-heart)}
+.wsh-row--st .wsh-row__tr{color:var(--icon-muted)}
+.wsh-row__rm{display:none;font-size:12.5px;font-weight:var(--fw-medium);color:var(--text-muted)}
+.wsh-row--st:hover .wsh-row__rm{color:var(--accent)}
+/* сплячий рядок — НЕ disabled */
+.wsh-row--asleep .wsh-row__ico{color:var(--text-faint)}
+.wsh-row--asleep .wsh-row__l{color:var(--text-muted);font-weight:var(--fw-medium)}
+/* pencil-chip — лише affordance */
+.wsh-chip{width:32px;height:32px;border-radius:var(--radius-pill);background:var(--accent-weak);color:var(--accent);display:grid;place-items:center;pointer-events:none}
+.wsh-chip svg{width:15px;height:15px}
+/* ціль досягнута — зелений ЛИШЕ на цьому рядку */
+.wsh-row--ok{background:color-mix(in oklab,var(--brand-green) 8%,var(--surface))}
+.wsh-row--ok:hover{background:color-mix(in oklab,var(--brand-green) 12%,var(--surface))}
+.wsh-row--ok .wsh-row__ico{color:var(--brand-green)}
+.wsh-row--ok .wsh-row__l{color:color-mix(in oklab,var(--brand-green) 85%,var(--text))}
+.wsh-row--ok .wsh-row__s{color:var(--text-body)}
+.wsh-row--ok .wsh-row__s b{font-weight:var(--fw-semibold);color:var(--text)}
+.wsh-row--ok .wsh-chip{background:color-mix(in oklab,var(--brand-green) 12%,var(--surface));color:var(--brand-green)}
+/* unavailable — не кнопка */
+.wsh-info{display:flex;align-items:center;gap:var(--space-3);min-height:44px;padding:10px 14px;font-size:13px;color:var(--text-body);text-wrap:pretty}
+.wsh-info svg{flex:none;width:16px;height:16px;color:var(--icon-muted)}
+/* error — сегмент групи, без власного радіуса й рамки */
+.wsh-err{display:flex;align-items:center;flex-wrap:wrap;gap:var(--space-2) var(--space-3);padding:var(--space-3) 14px;background:var(--surface-sunk);font-size:13px;color:var(--text-body)}
+.wsh-err svg{flex:none;width:16px;height:16px;color:var(--text-muted)}
+.wsh-err__b{flex:1 1 140px;min-width:0}
+.wsh-err .kn-btn{margin-left:auto;min-height:36px;height:36px}
+/* loading — лише гліф хвоста, підпис і геометрія не змінюються */
+.wsh-spin{animation:wsh-spin 700ms linear infinite}
+@keyframes wsh-spin{to{transform:rotate(360deg)}}
+@media (prefers-reduced-motion: reduce){.wsh-spin{animation:none}}
+/* Desktop ≠ розтягнутий mobile: хвіст бажанок стає текстом */
+@media (min-width:768px){
+.wsh-row,.wsh-info{padding:12px 16px}
+.wsh-row__rm{display:inline}
+.wsh-row__tr svg.wsh-row__mn{display:none}
+}
+/* вузький контейнер (~320px) — ТРИМАТИ ЦЕЙ БЛОК ОСТАННІМ:
+   container query не додає специфічності, вирішує порядок джерела */
+@container wsh (max-width:240px){
+.wsh-row{padding:10px;gap:8px;grid-template-columns:18px minmax(0,1fr) auto}
+.wsh-row__ico svg{width:16px;height:16px}
+.wsh-row__tr svg{width:18px;height:18px}
+.wsh-chip{width:26px;height:26px}
+.wsh-chip svg{width:13px;height:13px}
+}

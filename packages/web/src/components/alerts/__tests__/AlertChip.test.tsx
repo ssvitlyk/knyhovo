@@ -4,9 +4,9 @@ import { AlertChip } from '../AlertChip';
 import type { AlertChipState } from '../AlertChip';
 
 describe('AlertChip', () => {
-  it('watch → label "Стежимо за ціною"', () => {
+  it('watch → label "Сповіщення увімкнено"', () => {
     render(<AlertChip state="watch" />);
-    expect(screen.getByText('Стежимо за ціною')).toBeTruthy();
+    expect(screen.getByText('Сповіщення увімкнено')).toBeTruthy();
   });
 
   it('triggered → label "Ціль досягнута"', () => {

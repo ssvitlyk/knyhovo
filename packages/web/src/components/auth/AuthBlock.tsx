@@ -5,7 +5,7 @@ import { useLoginModal } from './LoginModalProvider';
 
 /** Context-specific copy for the auth-required block (frozen design). */
 const AUTH_COPY = {
-  wishlist: 'Увійдіть, щоб зберігати книги та отримувати сповіщення про ціни.',
+  wishlist: 'Увійдіть, щоб додавати до бажанок та отримувати сповіщення про ціни.',
   settings: 'Увійдіть, щоб керувати налаштуваннями сповіщень.',
   profile: 'Увійдіть, щоб керувати профілем.',
 } as const;

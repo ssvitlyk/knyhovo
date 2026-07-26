@@ -86,32 +86,36 @@ afterEach(() => {
   vi.clearAllMocks();
 });
 
-/* ── Existing tests (preserved) ─────────────────────────────────────────────── */
+/* ── Row 1 — wishlist toggle ─────────────────────────────────────────────── */
 describe('WishlistToggle', () => {
-  it('unsaved state → shows «До вішлиста»', () => {
+  it('unsaved state → shows «Додати до бажанок»', () => {
     render(<WishlistToggle bookId="book-1" initialInWishlist={false} initialAlert={null} currentPrice={null} bookTitle="Тест" />);
-    expect(screen.getByRole('button', { name: /До вішлиста/ })).toBeTruthy();
+    const btn = screen.getByRole('button', { name: /Додати до бажанок/ });
+    expect(btn).toBeTruthy();
+    expect(btn).toHaveAttribute('aria-pressed', 'false');
   });
 
-  it('saved state → shows «У вішлисті»', () => {
+  it('saved state → shows «У бажанках»', () => {
     render(<WishlistToggle bookId="book-1" initialInWishlist={true} initialAlert={null} currentPrice={null} bookTitle="Тест" />);
-    expect(screen.getByRole('button', { name: /У вішлисті/ })).toBeTruthy();
+    const btn = screen.getByRole('button', { name: /У бажанках/ });
+    expect(btn).toBeTruthy();
+    expect(btn).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('unsaved → click calls addToWishlist and flips to saved', async () => {
     render(<WishlistToggle bookId="book-1" initialInWishlist={false} initialAlert={null} currentPrice={null} bookTitle="Тест" />);
-    fireEvent.click(screen.getByRole('button', { name: /До вішлиста/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Додати до бажанок/ }));
     await act(async () => { vi.runAllTimers(); });
     await waitFor(() => expect(addToWishlist).toHaveBeenCalledWith('book-1'));
-    expect(screen.getByRole('button', { name: /У вішлисті/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /У бажанках/ })).toBeTruthy();
   });
 
   it('saved → click calls removeFromWishlist and flips to unsaved', async () => {
     render(<WishlistToggle bookId="book-1" initialInWishlist={true} initialAlert={null} currentPrice={null} bookTitle="Тест" />);
-    fireEvent.click(screen.getByRole('button', { name: /У вішлисті/ }));
+    fireEvent.click(screen.getByRole('button', { name: /У бажанках/ }));
     await act(async () => { vi.runAllTimers(); });
     await waitFor(() => expect(removeFromWishlist).toHaveBeenCalledWith('book-1'));
-    expect(screen.getByRole('button', { name: /До вішлиста/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Додати до бажанок/ })).toBeTruthy();
   });
 
   it('401 error → shows inline «Увійдіть» note and reverts state', async () => {
@@ -119,48 +123,114 @@ describe('WishlistToggle', () => {
     vi.mocked(addToWishlist).mockRejectedValue(new WishlistError('Unauthorized', 401));
 
     render(<WishlistToggle bookId="book-1" initialInWishlist={false} initialAlert={null} currentPrice={null} bookTitle="Тест" />);
-    fireEvent.click(screen.getByRole('button', { name: /До вішлиста/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Додати до бажанок/ }));
 
     await act(async () => { vi.runAllTimers(); });
     await waitFor(() =>
-      expect(screen.getByText(/Увійдіть, щоб зберігати/)).toBeTruthy(),
+      expect(screen.getByText('Увійдіть, щоб додавати до бажанок')).toBeTruthy(),
     );
     // State reverts back to unsaved
-    expect(screen.getByRole('button', { name: /До вішлиста/ })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Додати до бажанок/ })).toBeTruthy();
   });
 
-  it('non-401 error → reverts state but shows no note', async () => {
+  it('non-401 error → reverts state and shows a retryable «Ще раз» row error', async () => {
     const { WishlistError } = await import('@/lib/api/wishlist');
     vi.mocked(addToWishlist).mockRejectedValue(new WishlistError('Server error', 500));
 
     render(<WishlistToggle bookId="book-1" initialInWishlist={false} initialAlert={null} currentPrice={null} bookTitle="Тест" />);
-    fireEvent.click(screen.getByRole('button', { name: /До вішлиста/ }));
+    fireEvent.click(screen.getByRole('button', { name: /Додати до бажанок/ }));
 
     await act(async () => { vi.runAllTimers(); });
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: /До вішлиста/ })).toBeTruthy(),
+      expect(screen.getByRole('button', { name: /Додати до бажанок/ })).toBeTruthy(),
     );
-    expect(screen.queryByText(/Увійдіть, щоб зберігати/)).toBeNull();
+    expect(screen.queryByText('Увійдіть, щоб додавати до бажанок')).toBeNull();
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeTruthy();
+      expect(screen.getByText('Не вдалося додати до бажанок.')).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ще раз' }));
+    await act(async () => { vi.runAllTimers(); });
+    await waitFor(() => expect(addToWishlist).toHaveBeenCalledTimes(2));
   });
 
-  it('is disabled while the request is pending', async () => {
+  it('add / remove show the wishlist toasts', async () => {
+    const { unmount } = render(
+      <WishlistToggle bookId="book-1" initialInWishlist={false} initialAlert={null} currentPrice={null} bookTitle="Тест" />,
+    );
+    fireEvent.click(screen.getByRole('button', { name: /Додати до бажанок/ }));
+    await act(async () => { vi.runAllTimers(); });
+    await waitFor(() => expect(screen.getByText('Додано до бажанок')).toBeTruthy());
+    unmount();
+
+    render(<WishlistToggle bookId="book-1" initialInWishlist={true} initialAlert={null} currentPrice={null} bookTitle="Тест" />);
+    fireEvent.click(screen.getByRole('button', { name: /У бажанках/ }));
+    await act(async () => { vi.runAllTimers(); });
+    await waitFor(() => expect(screen.getByText('Прибрано з бажанок')).toBeTruthy());
+  });
+
+  it('is aria-busy while the request is pending, without ever disabling the button', async () => {
     let resolve: () => void = () => {};
     vi.mocked(addToWishlist).mockReturnValue(
       new Promise<void>((r) => { resolve = r; }),
     );
 
     render(<WishlistToggle bookId="book-1" initialInWishlist={false} initialAlert={null} currentPrice={null} bookTitle="Тест" />);
-    const btn = screen.getByRole('button', { name: /До вішлиста/ });
+    const btn = screen.getByRole('button', { name: /Додати до бажанок/ });
     fireEvent.click(btn);
-    expect(btn).toBeDisabled();
+    // Optimistic update flips the label immediately; it must not flicker again
+    // once the request settles — same label busy and resolved.
+    expect(btn).toHaveAttribute('aria-busy', 'true');
+    expect(btn).not.toBeDisabled();
+    expect(btn).toHaveTextContent('У бажанках');
+
     resolve();
     await act(async () => { vi.runAllTimers(); });
-    await waitFor(() => expect(btn).not.toBeDisabled());
+    await waitFor(() => expect(btn).not.toHaveAttribute('aria-busy'));
+    expect(btn).not.toBeDisabled();
+    expect(btn).toHaveTextContent('У бажанках');
   });
 
-  /* ── New alert-related tests ─────────────────────────────────────────────── */
+  /* ── Row 2 — alert states ────────────────────────────────────────────────── */
 
-  it('saved + no alert → shows «Сповістити про зниження ціни» link', () => {
+  it('unsaved → alert row sleeps with «Сповістити про зниження ціни» + sub', () => {
+    render(
+      <WishlistToggle
+        bookId="book-1"
+        initialInWishlist={false}
+        initialAlert={null}
+        currentPrice={{ amount: 24000, currency: 'UAH' }}
+        bookTitle="Кобзар"
+      />,
+    );
+    const row = screen.getByRole('button', { name: /Сповістити про зниження ціни/ });
+    expect(row).toBeTruthy();
+    expect(screen.getByText('Спершу додайте до бажанок')).toBeTruthy();
+  });
+
+  it('unsaved → clicking the sleeping alert row adds to wishlist then opens AlertConfig', async () => {
+    render(
+      <WishlistToggle
+        bookId="book-1"
+        initialInWishlist={false}
+        initialAlert={null}
+        currentPrice={{ amount: 24000, currency: 'UAH' }}
+        bookTitle="Кобзар"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Сповістити про зниження ціни/ }));
+    await act(async () => { vi.runAllTimers(); });
+
+    await waitFor(() => expect(addToWishlist).toHaveBeenCalledWith('book-1'));
+    await waitFor(() => {
+      expect(screen.getByText('Коли повідомити про ціну?')).toBeTruthy();
+    });
+  });
+
+  it('saved + no alert → shows «Сповістити про зниження ціни» row', () => {
     render(
       <WishlistToggle
         bookId="book-1"
@@ -236,7 +306,7 @@ describe('WishlistToggle', () => {
     });
   });
 
-  it('watch alert → shows AlertChip «Стежимо за ціною» + «Змінити» button', () => {
+  it('watch alert → shows «Сповіщення про зниження увімкнено» + target sub; click opens AlertConfig', async () => {
     const watchAlert: AlertDto = {
       status: 'active',
       intent: 'below-current',
@@ -252,11 +322,59 @@ describe('WishlistToggle', () => {
         bookTitle="Кобзар"
       />,
     );
-    expect(screen.getByText('Стежимо за ціною')).toBeTruthy();
-    expect(screen.getByText('Змінити')).toBeTruthy();
+    expect(screen.getByText('Сповіщення про зниження увімкнено')).toBeTruthy();
+    expect(screen.getByText('Ціль — нижче 240 ₴')).toBeTruthy();
+    // No more «Змінити» link — the whole row opens the editor.
+    expect(screen.queryByText('Змінити')).toBeNull();
+
+    fireEvent.click(screen.getByText('Сповіщення про зниження увімкнено'));
+    await act(async () => { vi.advanceTimersByTime(0); });
+    // Editing an existing (non-paused) alert shows the «Сповіщення про ціну» title,
+    // not the first-time «Коли повідомити про ціну?» question.
+    await waitFor(() => {
+      expect(screen.getByText('Сповіщення про ціну')).toBeTruthy();
+    });
   });
 
-  it('paused alert → shows «Поновити сповіщення» link that calls pauseAlert(bookId, false)', async () => {
+  it('watch alert with any-drop intent → shows «Будь-яке зниження ціни» sub', () => {
+    const watchAlert: AlertDto = {
+      status: 'active',
+      intent: 'any-drop',
+      targetPrice: { amount: 24000, currency: 'UAH' },
+      pausedAt: null,
+    };
+    render(
+      <WishlistToggle
+        bookId="book-1"
+        initialInWishlist={true}
+        initialAlert={watchAlert}
+        currentPrice={{ amount: 24000, currency: 'UAH' }}
+        bookTitle="Кобзар"
+      />,
+    );
+    expect(screen.getByText('Будь-яке зниження ціни')).toBeTruthy();
+  });
+
+  it('triggered alert → shows «Ціль досягнута»', () => {
+    const triggeredAlert: AlertDto = {
+      status: 'triggered',
+      intent: 'below-current',
+      targetPrice: { amount: 24000, currency: 'UAH' },
+      pausedAt: null,
+    };
+    render(
+      <WishlistToggle
+        bookId="book-1"
+        initialInWishlist={true}
+        initialAlert={triggeredAlert}
+        currentPrice={{ amount: 20000, currency: 'UAH' }}
+        bookTitle="Кобзар"
+      />,
+    );
+    expect(screen.getByText('Ціль досягнута')).toBeTruthy();
+  });
+
+  it('paused alert → shows «Поновити сповіщення» + sub that calls pauseAlert(bookId, false)', async () => {
     const pausedAlert: AlertDto = {
       status: 'paused',
       intent: 'below-current',
@@ -273,7 +391,8 @@ describe('WishlistToggle', () => {
       />,
     );
 
-    const resumeBtn = screen.getByText('Поновити сповіщення');
+    expect(screen.getByText('Сповіщення призупинено')).toBeTruthy();
+    const resumeBtn = screen.getByRole('button', { name: /Поновити сповіщення/ });
     expect(resumeBtn).toBeTruthy();
     fireEvent.click(resumeBtn);
 
@@ -282,6 +401,60 @@ describe('WishlistToggle', () => {
     await waitFor(() => {
       expect(pauseAlert).toHaveBeenCalledWith('book-1', false);
     });
+  });
+
+  it('failed resume from the row → local «Не вдалося поновити сповіщення.» segment', async () => {
+    vi.mocked(pauseAlert).mockRejectedValue(new AlertError('Сервіс недоступний.', 500));
+    const pausedAlert: AlertDto = {
+      status: 'paused',
+      intent: 'below-current',
+      targetPrice: { amount: 24000, currency: 'UAH' },
+      pausedAt: '2026-06-01T08:00:00.000Z',
+    };
+    render(
+      <WishlistToggle
+        bookId="book-1"
+        initialInWishlist={true}
+        initialAlert={pausedAlert}
+        currentPrice={{ amount: 24000, currency: 'UAH' }}
+        bookTitle="Кобзар"
+      />,
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Поновити сповіщення/ }));
+    await act(async () => { vi.runAllTimers(); });
+
+    await waitFor(() => {
+      expect(screen.getByRole('alert')).toBeTruthy();
+      expect(screen.getByText('Не вдалося поновити сповіщення.')).toBeTruthy();
+    });
+    // The rows stay live — the failure is local to the group.
+    expect(screen.getByRole('button', { name: /У бажанках/ })).not.toBeDisabled();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Ще раз' }));
+    await act(async () => { vi.runAllTimers(); });
+    await waitFor(() => expect(pauseAlert).toHaveBeenCalledTimes(2));
+  });
+
+  it('unavailable alert → shows plain info text, not a button', () => {
+    const unavailableAlert: AlertDto = {
+      status: 'unavailable',
+      intent: 'below-current',
+      targetPrice: { amount: 24000, currency: 'UAH' },
+      pausedAt: null,
+    };
+    render(
+      <WishlistToggle
+        bookId="book-1"
+        initialInWishlist={true}
+        initialAlert={unavailableAlert}
+        currentPrice={{ amount: 24000, currency: 'UAH' }}
+        bookTitle="Кобзар"
+      />,
+    );
+    const info = screen.getByText(/Сповістимо, коли книга знову/);
+    expect(info).toBeTruthy();
+    expect(info.closest('button')).toBeNull();
   });
 
   it('setAlert rejection (AlertError) → error note shown in the form', async () => {
