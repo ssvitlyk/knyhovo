@@ -46,6 +46,91 @@ describe('AlertSurface', () => {
     });
   });
 
+  it('desktop → renders .al-overlay--center wrapping .al-pop (centred dialog, not an inline popover)', async () => {
+    window.matchMedia = makeMatchMedia(false);
+    render(
+      <AlertSurface open onClose={vi.fn()}>
+        <div>desktop content</div>
+      </AlertSurface>,
+    );
+
+    await waitFor(() => {
+      expect(document.querySelector('.al-overlay--center .al-pop[role="dialog"]')).toBeTruthy();
+    });
+  });
+
+  it('desktop → the dialog is portalled to document.body', async () => {
+    window.matchMedia = makeMatchMedia(false);
+    const { container } = render(
+      <AlertSurface open onClose={vi.fn()}>
+        <div>desktop content</div>
+      </AlertSurface>,
+    );
+
+    await waitFor(() => {
+      expect(document.querySelector('.al-pop[role="dialog"]')).toBeTruthy();
+    });
+    // The render container (an ancestor scoped to RTL, not document.body) never
+    // receives the dialog — it only exists via the portal.
+    expect(container.querySelector('.al-pop')).toBeNull();
+  });
+
+  it('desktop → renders .al-overlay__scrim', async () => {
+    window.matchMedia = makeMatchMedia(false);
+    render(
+      <AlertSurface open onClose={vi.fn()}>
+        <div>desktop content</div>
+      </AlertSurface>,
+    );
+
+    await waitFor(() => {
+      expect(document.querySelector('.al-overlay--center .al-overlay__scrim')).toBeTruthy();
+    });
+  });
+
+  it('desktop → clicking the scrim calls onClose', async () => {
+    window.matchMedia = makeMatchMedia(false);
+    const onClose = vi.fn();
+    render(
+      <AlertSurface open onClose={onClose}>
+        <div>desktop content</div>
+      </AlertSurface>,
+    );
+
+    await waitFor(() => {
+      expect(document.querySelector('.al-overlay--center .al-overlay__scrim')).toBeTruthy();
+    });
+
+    fireEvent.click(document.querySelector('.al-overlay--center .al-overlay__scrim')!);
+    expect(onClose).toHaveBeenCalledOnce();
+  });
+
+  it('desktop → body scroll is locked while open', async () => {
+    window.matchMedia = makeMatchMedia(false);
+    render(
+      <AlertSurface open onClose={vi.fn()}>
+        <div>desktop content</div>
+      </AlertSurface>,
+    );
+
+    await waitFor(() => {
+      expect(document.body.style.overflow).toBe('hidden');
+    });
+  });
+
+  it('mobile → body scroll is locked while open', async () => {
+    window.matchMedia = makeMatchMedia(true);
+    render(
+      <AlertSurface open onClose={vi.fn()}>
+        <div>mobile content</div>
+      </AlertSurface>,
+    );
+
+    await waitFor(() => {
+      expect(document.body.style.overflow).toBe('hidden');
+    });
+  });
+
   it('desktop → aria-modal="true" on the dialog', async () => {
     window.matchMedia = makeMatchMedia(false);
     render(

@@ -2,9 +2,10 @@
 
 import { useState } from 'react';
 import type { ReactNode } from 'react';
-import { Clock, BellOff, Info, Pencil, X } from 'lucide-react';
+import { Clock, BellOff, Info, X, Check } from 'lucide-react';
 import { Button } from '@/components/ds/Button';
 import { ALERT_INTENTS, resolveTargetAmount } from '@/lib/alerts';
+import type { FavourableState } from '@/lib/alerts';
 import type { AlertIntent, MoneyDto } from '@/lib/api/types';
 import { formatMoney } from '@/lib/format';
 
@@ -21,17 +22,21 @@ export interface AlertConfigProps {
   /** The current best price for the book (kopiyky); null when unavailable. */
   currentPrice: MoneyDto | null;
   /**
-   * The typical-range minimum from Price History (kopiyky).
-   * Null disables the 'favourable-price' intent option.
+   * The favourable-price threshold (kopiyky), already validated against the
+   * recorded-history gate by `resolveFavourableTarget`. Null → the mode renders
+   * as «Визначаємо вигідну ціну» and cannot be selected. It is never the current
+   * price restated.
    */
-  typicalRangeMin: number | null;
-  /** When true, renders the edit variant (Save/Remove instead of Enable/Cancel). */
+  favourablePrice: number | null;
+  /** Why the favourable mode has no price yet; drives its helper copy. */
+  favourableState?: FavourableState;
+  /** When true, renders the edit variant (Remove instead of Cancel). */
   editing?: boolean;
   /** When true, renders the paused-management surface instead of the intent form. */
   paused?: boolean;
   /** Initial selected intent. Defaults to 'below-current'. */
   initialIntent?: AlertIntent;
-  /** Initial custom amount in kopiyky; also opens the custom disclosure when set. */
+  /** Initial custom amount in kopiyky; pre-confirms the custom-price field when set. */
   initialCustomAmount?: number | null;
   /** When true, disables the primary submit action while a request is in flight. */
   busy?: boolean;
@@ -56,18 +61,23 @@ export interface AlertConfigProps {
 
 /**
  * AlertConfig — the intent-first alert configuration form body.
- * Stateful: owns the selected intent, custom-price disclosure state and
- * custom amount field. Renders either the intent radiogroup form (create/edit)
- * or the paused-management surface depending on the `paused` prop.
  *
- * Placed inside AlertSurface (popover or bottom sheet).
+ * Desktop-first: the four modes sit in a 2×2 grid inside a centred dialog, so the
+ * whole decision is one glance instead of a tall single column. `custom-price` is
+ * a real fourth mode — selecting it expands an inline price field + «Підтвердити»
+ * right under the grid; once confirmed it behaves exactly like the other three.
+ * No secondary dialog, no text-link disclosure.
+ *
+ * Stateful: owns the selected intent and the custom-price field. Placed inside
+ * AlertSurface (centred dialog on desktop, bottom sheet on mobile).
  */
 export function AlertConfig({
   titleId,
   bookTitle,
   store,
   currentPrice,
-  typicalRangeMin,
+  favourablePrice,
+  favourableState = 'collecting',
   editing = false,
   paused = false,
   initialIntent,
@@ -84,11 +94,12 @@ export function AlertConfig({
   const [selectedIntent, setSelectedIntent] = useState<AlertIntent>(
     initialIntent ?? 'below-current',
   );
-  const [customOpen, setCustomOpen] = useState<boolean>(!!initialCustomAmount);
-  // Custom amount stored as a display string (₴); converted to kopiyky on submit.
+  // Custom amount as a display string (₴); converted to kopiyky on confirm.
   const [customAmountStr, setCustomAmountStr] = useState<string>(
     initialCustomAmount != null ? String(Math.trunc(initialCustomAmount / 100)) : '',
   );
+  /** Confirmed custom threshold (kopiyky). Null until «Підтвердити» is pressed. */
+  const [customAmount, setCustomAmount] = useState<number | null>(initialCustomAmount ?? null);
 
   const title = paused
     ? 'Сповіщення призупинено'
@@ -97,51 +108,75 @@ export function AlertConfig({
       : 'Коли повідомити про ціну?';
 
   const subParts: string[] = [`«${bookTitle}»`];
-  if (currentPrice != null) {
-    subParts.push(`зараз ${formatMoney(currentPrice)}`);
-  }
-  if (store != null) {
-    subParts.push(`у ${store}`);
-  }
+  if (currentPrice != null) subParts.push(`зараз ${formatMoney(currentPrice)}`);
+  if (store != null) subParts.push(`у ${store}`);
   const subText = subParts.join(' · ');
 
-  /** Resolve current form custom amount to kopiyky or null. */
-  const customAmountKopiyky: number | null = (() => {
+  /** The typed value parsed to kopiyky, or null when it is not a usable price. */
+  const typedAmount: number | null = (() => {
     const parsed = parseFloat(customAmountStr.replace(',', '.'));
     if (!Number.isFinite(parsed) || parsed <= 0) return null;
     return Math.round(parsed * 100);
   })();
 
-  /** The intent that drives resolveTargetAmount — custom-price when the disclosure is open. */
-  const effectiveIntent: AlertIntent = customOpen ? 'custom-price' : selectedIntent;
+  const customDirty = typedAmount !== customAmount;
 
-  const resolvedAmount = resolveTargetAmount(effectiveIntent, {
+  const resolvedAmount = resolveTargetAmount(selectedIntent, {
     currentAmount: currentPrice?.amount ?? null,
-    typicalRangeMin,
-    customAmount: customAmountKopiyky,
+    typicalRangeMin: favourablePrice,
+    customAmount,
   });
 
   const submitDisabled = busy || resolvedAmount === null;
 
   function handleSubmit(): void {
     if (resolvedAmount === null) return;
-    onSubmit(effectiveIntent, resolvedAmount);
+    onSubmit(selectedIntent, resolvedAmount);
   }
 
-  function handleIntentClick(key: AlertIntent): void {
-    setSelectedIntent(key);
-    setCustomOpen(false);
+  /** Per-mode threshold shown on the right of each option. */
+  function priceFor(key: AlertIntent): string {
+    if (key === 'below-current') {
+      return currentPrice != null ? `< ${formatMoney(currentPrice)}` : '';
+    }
+    if (key === 'favourable-price') {
+      return favourablePrice != null
+        ? `< ${formatMoney({ amount: favourablePrice, currency: 'UAH' })}`
+        : '';
+    }
+    if (key === 'custom-price') {
+      return customAmount != null
+        ? `< ${formatMoney({ amount: customAmount, currency: 'UAH' })}`
+        : '';
+    }
+    return '';
+  }
+
+  /** A mode is unavailable when its threshold cannot be resolved at all. */
+  function disabledReason(key: AlertIntent): string | null {
+    if (key === 'favourable-price' && favourablePrice == null) {
+      // Never restate the current price here — that is what made this mode
+      // indistinguishable from «Нижче за поточну».
+      return favourableState === 'collecting' ? 'Визначаємо вигідну ціну' : 'Недоступно';
+    }
+    if ((key === 'any-drop' || key === 'below-current') && currentPrice == null) {
+      return 'Немає поточної ціни';
+    }
+    return null;
   }
 
   return (
     <div className="al-config">
-      {/* Head */}
       <div className="al-config__head">
-        <span className="al-config__title" id={titleId}>{title}</span>
-        <span className="al-config__sub">{subText}</span>
+        <div className="al-config__headmain">
+          <span className="al-config__title" id={titleId}>{title}</span>
+          <span className="al-config__sub">{subText}</span>
+        </div>
+        <button type="button" className="al-config__x" aria-label="Закрити" onClick={onCancel}>
+          <X size={18} aria-hidden />
+        </button>
       </div>
 
-      {/* Optional error note */}
       {errorNote}
 
       {paused ? (
@@ -151,54 +186,27 @@ export function AlertConfig({
             <Info size={18} aria-hidden />
             <span>
               Книговик не стежить за ціною, доки сповіщення призупинене. Поновіть, щоб далі чекати
-              на ціль{' '}
-              {targetPrice != null && (
-                <b>{formatMoney(targetPrice)}</b>
-              )}
-              .
+              на ціль {targetPrice != null && <b>{formatMoney(targetPrice)}</b>}.
             </span>
           </div>
           <div className="al-config__actions">
             <Button variant="ghost" onClick={onRemove}>
-              Прибрати
+              Прибрати сповіщення
             </Button>
-            <span className="al-grow">
-              <Button variant="primary" onClick={onResume}>
-                Поновити сповіщення
-              </Button>
-            </span>
+            <Button variant="primary" onClick={onResume}>
+              Поновити сповіщення
+            </Button>
           </div>
         </>
       ) : (
         /* ── Intent form ──────────────────────────────────────────────── */
         <>
-          {/* Intent radiogroup */}
           <div className="al-opts" role="radiogroup" aria-label="Коли повідомити">
             {ALERT_INTENTS.map((intentDef) => {
-              const isDisabled = intentDef.needsHistory && typicalRangeMin === null;
-              const isSelected = !customOpen && selectedIntent === intentDef.key;
-
-              let priceText: string = '';
-              if (!isDisabled) {
-                if (intentDef.key === 'any-drop') {
-                  priceText = '';
-                } else if (intentDef.key === 'below-current') {
-                  priceText = currentPrice != null ? formatMoney(currentPrice) : '';
-                } else if (intentDef.key === 'favourable-price') {
-                  priceText =
-                    typicalRangeMin != null
-                      ? formatMoney({ amount: typicalRangeMin, currency: 'UAH' })
-                      : '';
-                }
-              }
-
-              const optClassName = [
-                'al-opt',
-                isSelected ? 'al-opt--on' : '',
-                isDisabled ? 'al-opt--disabled' : '',
-              ]
-                .filter(Boolean)
-                .join(' ');
+              const reason = disabledReason(intentDef.key);
+              const isDisabled = reason !== null;
+              const isSelected = selectedIntent === intentDef.key;
+              const priceText = priceFor(intentDef.key);
 
               return (
                 <button
@@ -207,16 +215,20 @@ export function AlertConfig({
                   role="radio"
                   aria-checked={isSelected}
                   aria-disabled={isDisabled || undefined}
-                  className={optClassName}
+                  className={[
+                    'al-opt',
+                    isSelected ? 'al-opt--on' : '',
+                    isDisabled ? 'al-opt--disabled' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
                   disabled={isDisabled}
-                  onClick={isDisabled ? undefined : () => handleIntentClick(intentDef.key)}
+                  onClick={isDisabled ? undefined : () => setSelectedIntent(intentDef.key)}
                 >
                   <span className="al-radio" aria-hidden />
                   <span className="al-opt__main">
                     <span className="al-opt__label">{intentDef.label}</span>
-                    <span className="al-opt__desc">
-                      {isDisabled ? 'Збираємо історію цін…' : intentDef.desc}
-                    </span>
+                    <span className="al-opt__desc">{reason ?? intentDef.desc}</span>
                   </span>
                   {priceText !== '' && !isDisabled && (
                     <span className="al-opt__price">{priceText}</span>
@@ -226,51 +238,46 @@ export function AlertConfig({
             })}
           </div>
 
-          {/* Custom-price disclosure */}
-          {customOpen ? (
+          {/* Inline custom-price field — expands under the grid, never a second dialog. */}
+          {selectedIntent === 'custom-price' && (
             <div className="al-custom">
+              <label className="al-custom__label" htmlFor="al-custom-price">
+                Вказати свою ціну
+              </label>
               <div className="al-custom__row">
-                <input
-                  className="kn-input"
-                  type="text"
-                  inputMode="numeric"
-                  aria-label="Власна ціна"
-                  value={customAmountStr}
-                  onChange={(e) => setCustomAmountStr(e.target.value)}
-                  placeholder="230"
-                />
-                <span className="al-custom__unit">₴</span>
-                <button
-                  type="button"
-                  className="al-link al-link--sm al-custom__cancel"
-                  aria-label="Скасувати власну ціну"
-                  onClick={() => {
-                    setCustomOpen(false);
-                    setCustomAmountStr('');
-                  }}
+                <span className="al-custom__field">
+                  <input
+                    id="al-custom-price"
+                    className="kn-input"
+                    type="text"
+                    inputMode="numeric"
+                    value={customAmountStr}
+                    onChange={(e) => setCustomAmountStr(e.target.value)}
+                    placeholder="500"
+                  />
+                  <span className="al-custom__unit" aria-hidden>₴</span>
+                </span>
+                <Button
+                  variant="secondary"
+                  disabled={typedAmount === null || !customDirty}
+                  onClick={() => setCustomAmount(typedAmount)}
                 >
-                  <X size={13} aria-hidden />
-                  Скасувати
-                </button>
+                  Підтвердити
+                </Button>
               </div>
-              <span className="al-opt__desc">
-                Книговик напише, коли ціна стане нижчою за вашу.
+              <span className="al-custom__hint">
+                {customAmount != null && !customDirty ? (
+                  <>
+                    <Check size={13} aria-hidden />
+                    Поріг — нижче {formatMoney({ amount: customAmount, currency: 'UAH' })}
+                  </>
+                ) : (
+                  'Введіть ціну й натисніть «Підтвердити».'
+                )}
               </span>
             </div>
-          ) : (
-            <button
-              type="button"
-              className="al-link al-link--sm"
-              onClick={() => {
-                setCustomOpen(true);
-              }}
-            >
-              <Pencil size={13} aria-hidden />
-              Вказати свою ціну
-            </button>
           )}
 
-          {/* Pause affordance — edit mode only */}
           {editing && onPause != null && (
             <div className="al-manage">
               <button type="button" className="al-manage__btn" onClick={onPause}>
@@ -280,7 +287,6 @@ export function AlertConfig({
             </div>
           )}
 
-          {/* Footer */}
           <div className="al-config__foot">
             <Clock size={14} aria-hidden />
             <span>
@@ -289,31 +295,19 @@ export function AlertConfig({
             </span>
           </div>
 
-          {/* Actions */}
           <div className="al-config__actions">
             {editing ? (
-              <>
-                <Button variant="ghost" onClick={onRemove}>
-                  Прибрати
-                </Button>
-                <span className="al-grow">
-                  <Button variant="primary" disabled={submitDisabled} onClick={handleSubmit}>
-                    Зберегти
-                  </Button>
-                </span>
-              </>
+              <Button variant="ghost" onClick={onRemove}>
+                Прибрати сповіщення
+              </Button>
             ) : (
-              <>
-                <Button variant="ghost" onClick={onCancel}>
-                  Скасувати
-                </Button>
-                <span className="al-grow">
-                  <Button variant="primary" disabled={submitDisabled} onClick={handleSubmit}>
-                    Увімкнути сповіщення
-                  </Button>
-                </span>
-              </>
+              <Button variant="ghost" onClick={onCancel}>
+                Скасувати
+              </Button>
             )}
+            <Button variant="primary" disabled={submitDisabled} onClick={handleSubmit}>
+              Зберегти
+            </Button>
           </div>
         </>
       )}

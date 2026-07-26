@@ -26,10 +26,14 @@ function getFocusable(container: HTMLElement): HTMLElement[] {
 }
 
 /**
- * AlertSurface — responsive dialog container. Renders as an anchored
- * popover on desktop (≥768px) and as a bottom sheet on mobile (<768px).
- * Implements focus trap, Escape-to-close, outside-click-to-close (desktop),
- * scrim-click-to-close (mobile), and body-scroll lock (mobile).
+ * AlertSurface — responsive dialog container. Renders as a centred overlay
+ * dialog on desktop (≥768px) and as a bottom sheet on mobile (<768px).
+ * Implements focus trap, Escape-to-close, scrim-click-to-close and
+ * body-scroll lock on both breakpoints.
+ *
+ * Desktop was an absolutely-positioned popover anchored to the trigger; it is
+ * now centred, because the configurator is a desktop-first two-column form that
+ * no longer fits (or reads) as a dropdown hanging off a 52px row.
  *
  * Returns `null` when `open` is false.
  */
@@ -117,35 +121,15 @@ export function AlertSurface({
     };
   }, [mounted, open, onClose]);
 
-  // Outside mousedown closes the desktop popover.
-  useEffect(() => {
-    if (!mounted || !open || isMobile) return;
-
-    function handleMouseDown(e: MouseEvent): void {
-      const container = containerRef.current;
-      if (container != null && !container.contains(e.target as Node)) {
-        onClose();
-      }
-    }
-
-    document.addEventListener('mousedown', handleMouseDown);
-    return () => {
-      document.removeEventListener('mousedown', handleMouseDown);
-    };
-  }, [mounted, open, isMobile, onClose]);
-
-  // Lock body scroll on mobile while the sheet is open.
+  // Lock body scroll while the surface is open (both breakpoints — desktop is a
+  // centred modal now, so the page must not scroll behind it either).
   useEffect(() => {
     if (!mounted) return;
-    if (open && isMobile) {
-      document.body.style.overflow = 'hidden';
-    } else {
-      document.body.style.overflow = '';
-    }
+    document.body.style.overflow = open ? 'hidden' : '';
     return () => {
       document.body.style.overflow = '';
     };
-  }, [mounted, open, isMobile]);
+  }, [mounted, open]);
 
   if (!open || !mounted) return null;
 
@@ -171,17 +155,22 @@ export function AlertSurface({
     );
   }
 
-  // Desktop inline popover — caller wraps trigger + AlertSurface in .al-anchor.
-  return (
-    <div
-      className="al-pop"
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby={titleId}
-      ref={containerRef}
-      tabIndex={-1}
-    >
-      {children}
-    </div>
+  // Desktop centred dialog — portalled so no ancestor (sticky panel, overflow,
+  // stacking context) can clip or mis-anchor it.
+  return createPortal(
+    <div className="al-overlay al-overlay--center">
+      <div className="al-overlay__scrim" onClick={onClose} />
+      <div
+        className="al-pop"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        ref={containerRef}
+        tabIndex={-1}
+      >
+        {children}
+      </div>
+    </div>,
+    document.body,
   );
 }

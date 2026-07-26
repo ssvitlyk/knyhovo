@@ -21,6 +21,7 @@ import { AlertConfig } from '@/components/alerts/AlertConfig';
 import { AlertSurface } from '@/components/alerts/AlertSurface';
 import { AlertNote } from '@/components/alerts/AlertNote';
 import { AlertToast } from '@/components/alerts/AlertToast';
+import { resolveFavourableTarget } from '@/lib/alerts';
 import { formatMoney } from '@/lib/format';
 import type { AlertDto, MoneyDto } from '@/lib/api/types';
 
@@ -64,15 +65,27 @@ export function WishlistToggle({
   const [wishlistToast, setWishlistToast] = useState<string | null>(null);
   const titleId = useId();
 
-  // typicalRangeMin for the favourable-price intent — lazily fetched on first open.
-  const [typicalRangeMin, setTypicalRangeMin] = useState<number | null>(null);
+  // Price History backing the favourable-price mode — lazily fetched on first open.
+  // Both the range minimum AND the number of recorded points are needed: below
+  // five points the API's typicalRange collapses onto lowest/highest, i.e. onto
+  // the current price (see resolveFavourableTarget).
+  const [history, setHistory] = useState<{ typicalRangeMin: number | null; pointCount: number }>({
+    typicalRangeMin: null,
+    pointCount: 0,
+  });
   const historyFetchedRef = useRef(false);
+
+  const favourable = resolveFavourableTarget({
+    typicalRangeMin: history.typicalRangeMin,
+    pointCount: history.pointCount,
+    currentAmount: currentPrice?.amount ?? null,
+  });
 
   const ctrl = useAlertController({
     bookId,
     initialAlert,
     currentPrice,
-    typicalRangeMin,
+    typicalRangeMin: favourable.amount,
   });
 
   /**
@@ -116,10 +129,13 @@ export function WishlistToggle({
       historyFetchedRef.current = true;
       getPriceHistory(bookId, '90d')
         .then((data) => {
-          setTypicalRangeMin(data.typicalRange?.min ?? null);
+          setHistory({
+            typicalRangeMin: data.typicalRange?.min ?? null,
+            pointCount: data.points.length,
+          });
         })
         .catch(() => {
-          // Swallow — favourable-price intent stays disabled (typicalRangeMin stays null).
+          // Swallow — favourable-price mode stays «Визначаємо вигідну ціну».
         });
     }
     setRowError(null);
@@ -192,18 +208,27 @@ export function WishlistToggle({
       );
     }
 
-    const chip = (
-      <span className="wsh-chip" aria-hidden>
-        <Pencil size={15} />
-      </span>
+    // Editing affordance: the pencil chip alone did not say what tapping the row
+    // does, so >=768px spells it out (same text-tail treatment the wishlist row
+    // uses). Still one hit area, still one focus stop — the tail is decorative and
+    // the row carries an explicit accessible name instead.
+    const editTail = (
+      <>
+        <span className="wsh-row__ed">Редагувати</span>
+        <span className="wsh-chip">
+          <Pencil size={15} />
+        </span>
+      </>
     );
 
     let mods = '';
     let icon: React.JSX.Element;
     let label: string;
     let sub: React.ReactNode = null;
+    let subPlain: string | null = null;
     let tail: React.ReactNode;
     let onClick: () => void;
+    let editable = false;
 
     switch (uiState) {
       case 'saved':
@@ -216,13 +241,15 @@ export function WishlistToggle({
       case 'watch':
         icon = <BellDot size={18} aria-hidden />;
         label = 'Сповіщення про зниження увімкнено';
-        sub =
+        subPlain =
           ctrl.alert?.intent === 'any-drop'
             ? 'Будь-яке зниження ціни'
             : ctrl.alert != null
               ? `Ціль — нижче ${formatMoney(ctrl.alert.targetPrice)}`
               : null;
-        tail = chip;
+        sub = subPlain;
+        tail = editTail;
+        editable = true;
         onClick = openConfig;
         break;
 
@@ -246,7 +273,12 @@ export function WishlistToggle({
               вашої цілі {formatMoney(ctrl.alert.targetPrice)}
             </>
           ) : null;
-        tail = chip;
+        subPlain =
+          ctrl.alert != null && currentPrice != null
+            ? `${formatMoney(currentPrice)} — нижче вашої цілі ${formatMoney(ctrl.alert.targetPrice)}`
+            : null;
+        tail = editTail;
+        editable = true;
         onClick = openConfig;
         break;
 
@@ -264,6 +296,11 @@ export function WishlistToggle({
         type="button"
         className={`wsh-row ${mods}`.trimEnd()}
         aria-busy={alertBusy ? 'true' : undefined}
+        aria-label={
+          editable
+            ? [label, subPlain, 'Редагувати ціль'].filter(Boolean).join('. ')
+            : undefined
+        }
         onClick={onClick}
       >
         <span className="wsh-row__ico">{icon}</span>
@@ -341,7 +378,11 @@ export function WishlistToggle({
           bookTitle={bookTitle}
           store={store}
           currentPrice={currentPrice}
-          typicalRangeMin={typicalRangeMin}
+          favourablePrice={favourable.amount}
+          favourableState={favourable.state}
+          initialCustomAmount={
+            ctrl.alert?.intent === 'custom-price' ? ctrl.alert.targetPrice.amount : null
+          }
           editing={ctrl.alert !== null}
           paused={uiState === 'paused'}
           initialIntent={ctrl.alert?.intent}

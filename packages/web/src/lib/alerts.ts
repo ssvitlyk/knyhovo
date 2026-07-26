@@ -32,32 +32,76 @@ export interface AlertIntentDef {
 }
 
 /**
- * The three primary intents shown as radios in the alert configuration form,
- * in display order (frozen W4 design, `al-data.jsx`).
- * `'custom-price'` is the quiet secondary disclosure — it is intentionally
- * absent from this list but accessible via {@link getIntentDef} with `undefined`
- * as its return sentinel.
+ * All four intents shown as radios in the alert configuration form, in display
+ * order. `'custom-price'` used to be a text-link disclosure below the group; it
+ * is a first-class fourth mode now (its own radio + an inline price field), so
+ * the form has exactly one control model for "how should the threshold be
+ * chosen" instead of two competing ones.
  */
 export const ALERT_INTENTS: readonly AlertIntentDef[] = [
   {
     key: 'any-drop',
     label: 'Будь-яке зниження',
-    desc: 'Книговик напише, щойно ціна впаде.',
+    desc: 'Повідомимо при першому падінні ціни.',
     needsHistory: false,
   },
   {
     key: 'below-current',
     label: 'Нижче за поточну',
-    desc: 'Повідомимо, коли стане дешевше за сьогодні.',
+    desc: 'Коли стане дешевше, ніж зараз.',
     needsHistory: false,
   },
   {
     key: 'favourable-price',
     label: 'Вигідна ціна',
-    desc: 'Коли ціна впаде до вигідного діапазону книги.',
+    desc: 'Коли книга повернеться до історично вигідної ціни.',
     needsHistory: true,
   },
+  {
+    key: 'custom-price',
+    label: 'Вказати свою ціну',
+    desc: 'Оберіть власний поріг.',
+    needsHistory: false,
+  },
 ] as const;
+
+/**
+ * Minimum number of recorded price points before the API's `typicalRange` is a
+ * real "typical" band rather than a restatement of the only prices we have.
+ *
+ * The API trims one min and one max before computing the range, but only when it
+ * has ≥5 points; below that it collapses `typicalRange` to `lowest`/`highest`
+ * (packages/api/.../price-history/mapper.ts). For a freshly-ingested book that
+ * makes `typicalRange.min` equal to the current price — which is why the form
+ * used to show the same number for «Нижче за поточну» and «Вигідна ціна».
+ */
+export const FAVOURABLE_MIN_POINTS = 5;
+
+/** Why the favourable-price mode has no threshold to offer. */
+export type FavourableState = 'ready' | 'collecting';
+
+/**
+ * Resolve the favourable-price threshold from a Price History response.
+ *
+ * Returns `'collecting'` — never a price — unless the range is backed by enough
+ * recorded points AND actually sits below today's price. A "target" at or above
+ * the current price is not a target: it would fire the moment it is saved and
+ * tells the reader nothing that «Нижче за поточну» doesn't already say.
+ */
+export function resolveFavourableTarget(ctx: {
+  readonly typicalRangeMin: number | null;
+  readonly pointCount: number;
+  readonly currentAmount: number | null;
+}): { state: 'ready'; amount: number } | { state: 'collecting'; amount: null } {
+  const { typicalRangeMin, pointCount, currentAmount } = ctx;
+  if (typicalRangeMin == null || pointCount < FAVOURABLE_MIN_POINTS) {
+    return { state: 'collecting', amount: null };
+  }
+  if (currentAmount != null && typicalRangeMin >= currentAmount) {
+    return { state: 'collecting', amount: null };
+  }
+  return { state: 'ready', amount: typicalRangeMin };
+}
 
 /**
  * Map a server-returned {@link AlertDto} (or `null`) to the UI state used for
@@ -88,14 +132,20 @@ export function alertUiState(alert: AlertDto | null): AlertUiState {
  *
  * Returns `null` when the amount cannot be resolved — the caller **must** disable
  * the submit action in that case to prevent an invalid API request:
- * - `'any-drop'`         → `currentAmount` (per W4b decision: sends current best
- *                          price; API requires `amount > 0`, so null when no price)
- * - `'below-current'`    → `currentAmount`
- * - `'favourable-price'` → `typicalRangeMin` (null when Price History has no range)
+ * - `'any-drop'`         → one kopiyka below `currentAmount` (see below)
+ * - `'below-current'`    → one kopiyka below `currentAmount`
+ * - `'favourable-price'` → `typicalRangeMin`, already gated by
+ *                          {@link resolveFavourableTarget} (null while collecting)
  * - `'custom-price'`     → `customAmount` (null when user has not entered a value)
  *
  * All amounts are in kopiyky (integer). 240 ₴ → 24000.
  */
+/** One kopiyka below the current price, or null when there is no price. */
+function belowCurrent(currentAmount: number | null): number | null {
+  if (currentAmount == null) return null;
+  return Math.max(1, currentAmount - 1);
+}
+
 export function resolveTargetAmount(
   intent: AlertIntent,
   ctx: {
@@ -105,15 +155,18 @@ export function resolveTargetAmount(
   },
 ): number | null {
   switch (intent) {
-    // TODO(trigger-engine): W4a derives `triggered` from `lowestPrice <= targetPrice`.
-    // Because `any-drop` writes the *current* best price as the target, the alert
-    // may read back as `triggered` on the next price read even without a real drop.
-    // Refining any-drop semantics (e.g. "below the price at creation time") belongs
-    // to future trigger-engine work — not this UI fix. API/target resolution unchanged.
+    // The server derives `triggered` from `lowestPrice <= targetPrice`
+    // (deriveAlertStatus, packages/api/src/wishlist/alert/service.ts), so storing
+    // the current price verbatim made both of these modes read back as
+    // «Ціль досягнута» the moment they were saved, at an unchanged price.
+    // One kopiyka below the current price makes `<=` mean "strictly cheaper than
+    // today" — which is what both labels promise — without an API change.
+    // The alternative (a per-intent `<` comparison server-side) is the cleaner
+    // fix and belongs to trigger-engine work.
     case 'any-drop':
-      return ctx.currentAmount;
+      return belowCurrent(ctx.currentAmount);
     case 'below-current':
-      return ctx.currentAmount;
+      return belowCurrent(ctx.currentAmount);
     case 'favourable-price':
       return ctx.typicalRangeMin;
     case 'custom-price':
@@ -122,11 +175,9 @@ export function resolveTargetAmount(
 }
 
 /**
- * Look up an intent definition by its API key.
- *
- * Returns `undefined` for `'custom-price'` — that intent has no radio definition
- * in {@link ALERT_INTENTS} and is exposed only as a quiet secondary disclosure
- * in the config form.
+ * Look up an intent definition by its API key. All four API intents — including
+ * `'custom-price'` — have a definition, so this only returns `undefined` for a
+ * key outside {@link AlertIntent}.
  */
 export function getIntentDef(key: AlertIntent): AlertIntentDef | undefined {
   return ALERT_INTENTS.find((def) => def.key === key);

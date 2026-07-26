@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
   ALERT_INTENTS,
+  FAVOURABLE_MIN_POINTS,
   alertUiState,
+  resolveFavourableTarget,
   resolveTargetAmount,
   getIntentDef,
 } from '../alerts';
@@ -62,12 +64,12 @@ describe('resolveTargetAmount()', () => {
     customAmount: 18000,
   };
 
-  it('any-drop → returns currentAmount', () => {
-    expect(resolveTargetAmount('any-drop', ctx)).toBe(24000);
+  it('any-drop → returns currentAmount - 1 kopiyka', () => {
+    expect(resolveTargetAmount('any-drop', ctx)).toBe(23999);
   });
 
-  it('below-current → returns currentAmount', () => {
-    expect(resolveTargetAmount('below-current', ctx)).toBe(24000);
+  it('below-current → returns currentAmount - 1 kopiyka', () => {
+    expect(resolveTargetAmount('below-current', ctx)).toBe(23999);
   });
 
   it('favourable-price → returns typicalRangeMin', () => {
@@ -93,6 +95,79 @@ describe('resolveTargetAmount()', () => {
   it('custom-price + null customAmount → null', () => {
     expect(resolveTargetAmount('custom-price', { ...ctx, customAmount: null })).toBeNull();
   });
+
+  it('any-drop + currentAmount at 1 kopiyka → floors at 1, not 0', () => {
+    expect(resolveTargetAmount('any-drop', { ...ctx, currentAmount: 1 })).toBe(1);
+  });
+
+  it('below-current + currentAmount at 1 kopiyka → floors at 1, not 0', () => {
+    expect(resolveTargetAmount('below-current', { ...ctx, currentAmount: 1 })).toBe(1);
+  });
+});
+
+/* ── resolveFavourableTarget ────────────────────────────────────────────────── */
+describe('resolveFavourableTarget()', () => {
+  it('ready: enough points, range below current → {state: "ready", amount}', () => {
+    expect(
+      resolveFavourableTarget({ typicalRangeMin: 20000, pointCount: 6, currentAmount: 24000 }),
+    ).toEqual({ state: 'ready', amount: 20000 });
+  });
+
+  it('null typicalRangeMin → collecting', () => {
+    expect(
+      resolveFavourableTarget({ typicalRangeMin: null, pointCount: 10, currentAmount: 24000 }),
+    ).toEqual({ state: 'collecting', amount: null });
+  });
+
+  it('pointCount below FAVOURABLE_MIN_POINTS → collecting', () => {
+    expect(
+      resolveFavourableTarget({ typicalRangeMin: 20000, pointCount: 4, currentAmount: 24000 }),
+    ).toEqual({ state: 'collecting', amount: null });
+  });
+
+  it('pointCount exactly FAVOURABLE_MIN_POINTS (5) → ready (boundary)', () => {
+    expect(
+      resolveFavourableTarget({
+        typicalRangeMin: 20000,
+        pointCount: FAVOURABLE_MIN_POINTS,
+        currentAmount: 24000,
+      }),
+    ).toEqual({ state: 'ready', amount: 20000 });
+  });
+
+  it('typicalRangeMin equal to currentAmount → collecting (boundary, never restate current price)', () => {
+    expect(
+      resolveFavourableTarget({ typicalRangeMin: 24000, pointCount: 10, currentAmount: 24000 }),
+    ).toEqual({ state: 'collecting', amount: null });
+  });
+
+  it('typicalRangeMin greater than currentAmount → collecting', () => {
+    expect(
+      resolveFavourableTarget({ typicalRangeMin: 25000, pointCount: 10, currentAmount: 24000 }),
+    ).toEqual({ state: 'collecting', amount: null });
+  });
+
+  it('typicalRangeMin one kopiyka below currentAmount → ready', () => {
+    expect(
+      resolveFavourableTarget({ typicalRangeMin: 23999, pointCount: 10, currentAmount: 24000 }),
+    ).toEqual({ state: 'ready', amount: 23999 });
+  });
+
+  it('null currentAmount → ready is still possible (no current price to compare against)', () => {
+    expect(
+      resolveFavourableTarget({ typicalRangeMin: 20000, pointCount: 10, currentAmount: null }),
+    ).toEqual({ state: 'ready', amount: 20000 });
+  });
+
+  it('null currentAmount + insufficient points → collecting', () => {
+    expect(
+      resolveFavourableTarget({ typicalRangeMin: 20000, pointCount: 2, currentAmount: null }),
+    ).toEqual({ state: 'collecting', amount: null });
+  });
+
+  it('FAVOURABLE_MIN_POINTS constant is 5', () => {
+    expect(FAVOURABLE_MIN_POINTS).toBe(5);
+  });
 });
 
 /* ── getIntentDef ───────────────────────────────────────────────────────────── */
@@ -113,21 +188,23 @@ describe('getIntentDef()', () => {
     expect(def?.key).toBe('favourable-price');
   });
 
-  it('custom-price → returns undefined (not in ALERT_INTENTS)', () => {
-    expect(getIntentDef('custom-price')).toBeUndefined();
+  it('custom-price → returns def with correct key (first-class radio now)', () => {
+    const def = getIntentDef('custom-price');
+    expect(def?.key).toBe('custom-price');
   });
 });
 
 /* ── ALERT_INTENTS shape ────────────────────────────────────────────────────── */
 describe('ALERT_INTENTS', () => {
-  it('has exactly 3 entries', () => {
-    expect(ALERT_INTENTS).toHaveLength(3);
+  it('has exactly 4 entries', () => {
+    expect(ALERT_INTENTS).toHaveLength(4);
   });
 
-  it('entries are any-drop, below-current, favourable-price in order', () => {
+  it('entries are any-drop, below-current, favourable-price, custom-price in order', () => {
     expect(ALERT_INTENTS[0].key).toBe('any-drop');
     expect(ALERT_INTENTS[1].key).toBe('below-current');
     expect(ALERT_INTENTS[2].key).toBe('favourable-price');
+    expect(ALERT_INTENTS[3].key).toBe('custom-price');
   });
 
   it('favourable-price.needsHistory is true', () => {
@@ -143,6 +220,18 @@ describe('ALERT_INTENTS', () => {
   it('below-current.needsHistory is false', () => {
     const def = ALERT_INTENTS.find((d) => d.key === 'below-current');
     expect(def?.needsHistory).toBe(false);
+  });
+
+  it('custom-price.needsHistory is false', () => {
+    const def = ALERT_INTENTS.find((d) => d.key === 'custom-price');
+    expect(def?.needsHistory).toBe(false);
+  });
+
+  it('descriptions match the frozen copy', () => {
+    expect(ALERT_INTENTS[0].desc).toBe('Повідомимо при першому падінні ціни.');
+    expect(ALERT_INTENTS[1].desc).toBe('Коли стане дешевше, ніж зараз.');
+    expect(ALERT_INTENTS[2].desc).toBe('Коли книга повернеться до історично вигідної ціни.');
+    expect(ALERT_INTENTS[3].desc).toBe('Оберіть власний поріг.');
   });
 
   it('all entries have label, desc and needsHistory fields', () => {

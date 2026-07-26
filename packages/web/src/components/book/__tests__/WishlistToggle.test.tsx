@@ -45,6 +45,14 @@ import { addToWishlist, removeFromWishlist } from '@/lib/api/wishlist';
 import { setAlert, pauseAlert, AlertError } from '@/lib/api/priceAlerts';
 import { getPriceHistory } from '@/lib/api/priceHistory';
 
+/** Five recorded points — the minimum for typicalRange to be a real "typical" band. */
+const FIVE_POINTS = Array.from({ length: 5 }, (_, i) => ({
+  amount: 20000 + i * 100,
+  currency: 'UAH',
+  availability: 'in-stock' as const,
+  recordedAt: `2026-07-${10 + i}T08:00:00.000Z`,
+}));
+
 function makeMatchMedia(matches: boolean): typeof window.matchMedia {
   return vi.fn().mockImplementation((query: string) => ({
     matches,
@@ -77,7 +85,7 @@ beforeEach(() => {
     highest: null,
     typicalRange: { min: 20000, max: 28000, currency: 'UAH' },
     change: null,
-    points: [],
+    points: FIVE_POINTS,
   });
 });
 
@@ -286,7 +294,7 @@ describe('WishlistToggle', () => {
     });
 
     // Click submit (below-current is default, currentPrice=24000 so enabled)
-    const submitBtn = screen.getByRole('button', { name: 'Увімкнути сповіщення' });
+    const submitBtn = screen.getByRole('button', { name: 'Зберегти' });
     fireEvent.click(submitBtn);
 
     await act(async () => { vi.runAllTimers(); });
@@ -295,7 +303,7 @@ describe('WishlistToggle', () => {
       expect(setAlert).toHaveBeenCalledWith(
         'book-1',
         'below-current',
-        { amount: 24000, currency: 'UAH' },
+        { amount: 23999, currency: 'UAH' },
       );
     });
 
@@ -479,7 +487,7 @@ describe('WishlistToggle', () => {
       expect(screen.getByText('Коли повідомити про ціну?')).toBeTruthy();
     });
 
-    const submitBtn = screen.getByRole('button', { name: 'Увімкнути сповіщення' });
+    const submitBtn = screen.getByRole('button', { name: 'Зберегти' });
     fireEvent.click(submitBtn);
 
     await act(async () => { vi.runAllTimers(); });
