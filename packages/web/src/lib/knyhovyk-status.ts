@@ -45,20 +45,20 @@ export interface DeriveKnyhovykStatusInput {
 
 /** The alert slice the target-amount derivation needs (mirrors `AlertDto`). */
 export interface KnyhovykAlertSlice {
-  readonly status: 'active' | 'paused' | 'triggered' | 'unavailable';
-  readonly targetPrice: { readonly amount: number };
+  readonly state: 'armed' | 'paused' | 'reached' | 'unavailable';
+  readonly threshold: { readonly amount: number };
 }
 
 /**
- * Extract the goal target amount from a wishlist alert. `triggered` is a
- * read-time derived status meaning the target is already met — exactly the
- * case the `goal` stamp exists for — so it counts alongside `active`.
+ * Extract the goal target amount from a wishlist alert. `reached` is a
+ * read-time derived state meaning the target is already met — exactly the
+ * case the `goal` stamp exists for — so it counts alongside `armed`.
  * `paused` (user muted) and `unavailable` (no offers) do not.
  */
 export function alertTargetAmount(alert: KnyhovykAlertSlice | null | undefined): number | null {
   if (alert == null) return null;
-  if (alert.status !== 'active' && alert.status !== 'triggered') return null;
-  return alert.targetPrice.amount;
+  if (alert.state !== 'armed' && alert.state !== 'reached') return null;
+  return alert.threshold.amount;
 }
 
 const STATUS_LABEL: Readonly<Record<Exclude<KnyhovykStatusKind, 'none'>, string>> = {

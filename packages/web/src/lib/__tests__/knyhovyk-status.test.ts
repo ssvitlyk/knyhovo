@@ -143,17 +143,17 @@ describe('deriveKnyhovykStatus', () => {
 });
 
 describe('alertTargetAmount', () => {
-  const alert = (status: KnyhovykAlertSlice['status']): KnyhovykAlertSlice => ({
-    status,
-    targetPrice: { amount: 15500 },
+  const alert = (state: KnyhovykAlertSlice['state']): KnyhovykAlertSlice => ({
+    state,
+    threshold: { amount: 15500 },
   });
 
-  it('returns the target for an active alert', () => {
-    expect(alertTargetAmount(alert('active'))).toBe(15500);
+  it('returns the target for an armed alert', () => {
+    expect(alertTargetAmount(alert('armed'))).toBe(15500);
   });
 
-  it('returns the target for a triggered alert (derived status when the goal is already met)', () => {
-    expect(alertTargetAmount(alert('triggered'))).toBe(15500);
+  it('returns the target for a reached alert (derived state when the goal is already met)', () => {
+    expect(alertTargetAmount(alert('reached'))).toBe(15500);
   });
 
   it('ignores paused and unavailable alerts', () => {
@@ -166,10 +166,10 @@ describe('alertTargetAmount', () => {
     expect(alertTargetAmount(undefined)).toBeNull();
   });
 
-  it('regression: a triggered alert (target 15500, price 15000) derives goal, not best/low90/drop', () => {
+  it('regression: a reached alert (target 15500, price 15000) derives goal, not best/low90/drop', () => {
     // Composed path as the page uses it: alert slice → targetAmount → derivation.
     // best/low90/drop would all match here too — goal must win.
-    const targetAmount = alertTargetAmount(alert('triggered'));
+    const targetAmount = alertTargetAmount(alert('reached'));
     expect(targetAmount).toBe(15500);
 
     const result = deriveKnyhovykStatus({

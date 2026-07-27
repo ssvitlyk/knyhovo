@@ -61,6 +61,7 @@ function makeFilledDto(period: string = '90d'): BookPriceHistoryDto {
         recordedAt: '2026-06-13T08:00:00.000Z',
       },
     ],
+    alertPolicyPreview: [],
   };
 }
 
@@ -75,6 +76,7 @@ function makeEmptyDto(): BookPriceHistoryDto {
     typicalRange: null,
     change: null,
     points: [],
+    alertPolicyPreview: [],
   };
 }
 

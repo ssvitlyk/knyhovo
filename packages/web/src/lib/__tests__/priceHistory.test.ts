@@ -142,6 +142,7 @@ const BASE_DTO: BookPriceHistoryDto = {
       recordedAt: '2026-06-13T08:00:00.000Z',
     },
   ],
+  alertPolicyPreview: [],
 };
 
 describe('toViewModel', () => {

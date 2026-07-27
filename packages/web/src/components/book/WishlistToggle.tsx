@@ -21,15 +21,14 @@ import { AlertConfig } from '@/components/alerts/AlertConfig';
 import { AlertSurface } from '@/components/alerts/AlertSurface';
 import { AlertNote } from '@/components/alerts/AlertNote';
 import { AlertToast } from '@/components/alerts/AlertToast';
-import { resolveFavourableTarget } from '@/lib/alerts';
 import { formatMoney } from '@/lib/format';
-import type { AlertDto, MoneyDto } from '@/lib/api/types';
+import type { AlertDto, AlertModePreviewDto, MoneyDto } from '@/lib/api/types';
 
 export interface WishlistToggleProps {
   readonly bookId: string;
   readonly initialInWishlist: boolean;
   readonly initialAlert: AlertDto | null;
-  /** Best price today; drives below-current / any-drop targets and the sub-heading. */
+  /** Best price today; drives the sub-heading and the row's target diff copy. */
   readonly currentPrice: MoneyDto | null;
   readonly bookTitle: string;
   /** Display name of the best-price store (e.g. 'Yakaboo'). */
@@ -49,6 +48,11 @@ interface RowError {
  * only *sleeps*, and tapping it adds the book and opens the target editor.
  * Alert mutations stay in useAlertController; failures surface locally as a
  * third `.wsh-err` segment so the panel itself never breaks.
+ *
+ * notifications-model-v2: this component never computes a threshold or infers
+ * alert state — it reads `state`/`mode`/`threshold`/`thresholdProof` verbatim
+ * from the server, and forwards the price-history `alertPolicyPreview` to
+ * AlertConfig unmodified.
  */
 export function WishlistToggle({
   bookId,
@@ -65,27 +69,17 @@ export function WishlistToggle({
   const [wishlistToast, setWishlistToast] = useState<string | null>(null);
   const titleId = useId();
 
-  // Price History backing the favourable-price mode — lazily fetched on first open.
-  // Both the range minimum AND the number of recorded points are needed: below
-  // five points the API's typicalRange collapses onto lowest/highest, i.e. onto
-  // the current price (see resolveFavourableTarget).
-  const [history, setHistory] = useState<{ typicalRangeMin: number | null; pointCount: number }>({
-    typicalRangeMin: null,
-    pointCount: 0,
-  });
+  // Per-mode alert preview backing AlertConfig — lazily fetched on first open.
+  // Exactly 3 entries (any-drop, good-price, my-price) once loaded; empty
+  // until then (AlertConfig renders nothing until the fetch resolves, which is
+  // fast enough that the dialog never has to show its own loading state here).
+  const [preview, setPreview] = useState<readonly AlertModePreviewDto[]>([]);
   const historyFetchedRef = useRef(false);
-
-  const favourable = resolveFavourableTarget({
-    typicalRangeMin: history.typicalRangeMin,
-    pointCount: history.pointCount,
-    currentAmount: currentPrice?.amount ?? null,
-  });
 
   const ctrl = useAlertController({
     bookId,
     initialAlert,
     currentPrice,
-    typicalRangeMin: favourable.amount,
   });
 
   /**
@@ -124,18 +118,19 @@ export function WishlistToggle({
   }
 
   function openConfig(): void {
-    // Lazily fetch price history the first time the config opens for favourable-price.
+    // Lazily fetch price history the first time the config opens — the
+    // dialog needs its alertPolicyPreview (fixed window, independent of chart
+    // period — the '90d' argument here only drives what would otherwise be
+    // rendered as a chart, not the preview itself).
     if (!historyFetchedRef.current) {
       historyFetchedRef.current = true;
       getPriceHistory(bookId, '90d')
         .then((data) => {
-          setHistory({
-            typicalRangeMin: data.typicalRange?.min ?? null,
-            pointCount: data.points.length,
-          });
+          setPreview(data.alertPolicyPreview);
         })
         .catch(() => {
-          // Swallow — favourable-price mode stays «Визначаємо вигідну ціну».
+          // Swallow — AlertConfig simply has nothing to render yet; the user
+          // can retry by reopening.
         });
     }
     setRowError(null);
@@ -238,14 +233,14 @@ export function WishlistToggle({
         onClick = openConfig;
         break;
 
-      case 'watch':
+      case 'armed':
         icon = <BellDot size={18} aria-hidden />;
         label = 'Сповіщення про зниження увімкнено';
         subPlain =
-          ctrl.alert?.intent === 'any-drop'
+          ctrl.alert?.mode === 'any-drop'
             ? 'Будь-яке зниження ціни'
             : ctrl.alert != null
-              ? `Ціль — нижче ${formatMoney(ctrl.alert.targetPrice)}`
+              ? `Ціль — нижче ${formatMoney(ctrl.alert.threshold)}`
               : null;
         sub = subPlain;
         tail = editTail;
@@ -253,7 +248,7 @@ export function WishlistToggle({
         onClick = openConfig;
         break;
 
-      case 'triggered':
+      case 'reached':
         mods = 'wsh-row--ok';
         icon = <CheckCircle2 size={18} aria-hidden />;
         label = 'Ціль досягнута';
@@ -265,17 +260,17 @@ export function WishlistToggle({
               {formatMoney(currentPrice)} — на{' '}
               <b>
                 {formatMoney({
-                  amount: ctrl.alert.targetPrice.amount - currentPrice.amount,
+                  amount: ctrl.alert.threshold.amount - currentPrice.amount,
                   currency: currentPrice.currency,
                 })}{' '}
                 нижче
               </b>{' '}
-              вашої цілі {formatMoney(ctrl.alert.targetPrice)}
+              вашої цілі {formatMoney(ctrl.alert.threshold)}
             </>
           ) : null;
         subPlain =
           ctrl.alert != null && currentPrice != null
-            ? `${formatMoney(currentPrice)} — нижче вашої цілі ${formatMoney(ctrl.alert.targetPrice)}`
+            ? `${formatMoney(currentPrice)} — нижче вашої цілі ${formatMoney(ctrl.alert.threshold)}`
             : null;
         tail = editTail;
         editable = true;
@@ -378,20 +373,19 @@ export function WishlistToggle({
           bookTitle={bookTitle}
           store={store}
           currentPrice={currentPrice}
-          favourablePrice={favourable.amount}
-          favourableState={favourable.state}
-          initialCustomAmount={
-            ctrl.alert?.intent === 'custom-price' ? ctrl.alert.targetPrice.amount : null
+          preview={preview}
+          initialMode={ctrl.alert?.mode}
+          initialThresholdAmount={
+            ctrl.alert?.mode === 'my-price' ? ctrl.alert.threshold.amount : null
           }
           editing={ctrl.alert !== null}
           paused={uiState === 'paused'}
-          initialIntent={ctrl.alert?.intent}
           busy={ctrl.busy}
           errorNote={
             ctrl.errorNote != null ? <AlertNote kind="err">{ctrl.errorNote}</AlertNote> : undefined
           }
-          targetPrice={ctrl.alert?.targetPrice}
-          onSubmit={(intent, targetAmount) => void ctrl.submit(intent, targetAmount)}
+          currentAlert={ctrl.alert}
+          onSubmit={(mode, threshold) => void ctrl.submit(mode, threshold)}
           onCancel={ctrl.closeConfig}
           onRemove={() => void ctrl.remove()}
           onPause={() => void ctrl.pause()}

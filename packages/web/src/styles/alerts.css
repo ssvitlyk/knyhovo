@@ -51,10 +51,11 @@
 .al-link--sm { font-size: var(--fs-xs); }
 
 /* ── Alert configuration — centred dialog (desktop) / sheet (mobile) ─────────
-   Desktop-first: 600px card, modes in a 2x2 grid so the whole choice reads in one
-   glance. The single narrow column below is the mobile-sheet form, not the base. */
+   notifications-model-v2 §6-8: one question, three answers, one action. A
+   single 520px vertical column of exactly 3 mode cards — no grid, no fourth
+   mode. Desktop and mobile share the anatomy; only density differs. */
 .al-config {
-  width: 600px; max-width: 100%;
+  width: 520px; max-width: 100%;
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius-md); box-shadow: var(--shadow-lg);
   padding: var(--space-6);
@@ -75,10 +76,11 @@
 .al-config__x:hover { background: var(--surface-sunk); color: var(--text-body); }
 .al-config__x:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 
-.al-opts { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); }
+/* single vertical column — three mode cards, one axis, no zigzag */
+.al-opts { display: flex; flex-direction: column; gap: var(--space-2); }
 .al-opt {
   display: grid; grid-template-columns: 18px minmax(0,1fr); gap: var(--space-2) var(--space-3);
-  align-items: start; text-align: left; width: 100%;
+  align-items: start; text-align: left; width: 100%; min-height: 64px;
   background: var(--surface-sunk); border: 1px solid var(--border);
   border-radius: var(--radius-sm); padding: var(--space-3) var(--space-4);
   cursor: pointer; font-family: inherit; color: var(--text-body);
@@ -87,6 +89,7 @@
 .al-opt:hover:not(.al-opt--disabled) { border-color: var(--border-strong); }
 .al-opt--on { border-color: var(--accent); background: var(--accent-weak); }
 .al-opt--disabled { opacity: 0.55; cursor: not-allowed; }
+.al-opt:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
 .al-radio {
   width: 18px; height: 18px; border-radius: var(--radius-pill); margin-top: 1px;
   border: 2px solid var(--border-strong); flex: none; position: relative;
@@ -98,54 +101,60 @@
   background: var(--accent);
 }
 .al-opt__main { min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.al-opt__row { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-3); }
 .al-opt__label { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--text); }
 .al-opt__desc { font-size: var(--fs-xs); color: var(--text-muted); text-wrap: pretty; }
-/* threshold sits under the description, in the text column — it must never
-   compete with the label for the row's first line */
+/* threshold sits on the right of the label — serif, never competes for the first line */
 .al-opt__price {
-  grid-column: 2; font-family: var(--font-display); font-weight: var(--fw-semibold);
+  flex: none; font-family: var(--font-display); font-weight: var(--fw-semibold);
   font-size: var(--fs-sm); color: var(--accent); white-space: nowrap;
 }
 
-/* custom-price — inline block under the grid, expanded by the 4th mode */
-.al-custom {
+/* «Моя ціна» — inline block INSIDE its own card, not a second dialog/popover */
+.al-my {
   display: flex; flex-direction: column; gap: var(--space-2);
-  background: var(--surface-sunk); border: 1px solid var(--border);
-  border-radius: var(--radius-sm); padding: var(--space-4);
+  margin-top: var(--space-1);
 }
-.al-custom__label { font-size: var(--fs-sm); font-weight: var(--fw-semibold); color: var(--text); }
-.al-custom__row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
-.al-custom__field { position: relative; display: inline-flex; align-items: center; }
-.al-custom__field .kn-input { width: 148px; padding-right: 30px; }
-.al-custom__unit {
+.al-my__row { display: flex; align-items: center; gap: var(--space-3); flex-wrap: nowrap; }
+.al-my__field { position: relative; display: inline-flex; align-items: center; }
+.al-my__field .kn-input { width: 132px; padding-right: 30px; }
+.al-my__unit {
   position: absolute; right: var(--space-3); pointer-events: none;
   font-family: var(--font-display); font-weight: var(--fw-semibold); color: var(--text-muted);
 }
-.al-custom__hint {
+.al-my__hint {
   display: inline-flex; align-items: center; gap: 6px;
   font-size: var(--fs-xs); color: var(--text-muted); text-wrap: pretty;
 }
-.al-custom__hint svg { flex: none; color: var(--brand-green); }
+.al-my__hint svg { flex: none; color: var(--brand-green); }
 
-.al-config__foot { display: flex; align-items: flex-start; gap: var(--space-2); font-size: var(--fs-xs); color: var(--text-muted); text-wrap: pretty; }
-.al-config__foot svg { flex: none; color: var(--icon-muted); margin-top: 1px; }
-/* footer: escape/destructive on the left, commit on the right */
-.al-config__actions {
-  display: flex; align-items: center; justify-content: space-between;
-  gap: var(--space-3); padding-top: var(--space-4); border-top: 1px solid var(--border);
+/* ── Footer — cadence line + Save, quiet Remove text in edit mode ─────────
+   Mobile-first order (column): cadence, Save row, Remove — Remove sits under
+   the button so it never competes with it. Desktop reorders into one row:
+   cadence + Remove on the left, Save on the right. */
+.al-config__footer {
+  display: flex; flex-direction: column; gap: var(--space-3);
+  padding-top: var(--space-4); border-top: 1px solid var(--border);
 }
+.al-config__cadence { order: 1; font-size: 12px; color: var(--text-muted); text-wrap: pretty; }
+.al-config__actions { order: 2; display: flex; align-items: center; gap: var(--space-3); }
 .al-config__actions .kn-btn { min-width: 132px; }
-
-/* manage affordance inside the edit sheet — quiet «Призупинити» secondary path */
-.al-manage { display: flex; align-items: center; padding-top: var(--space-3); border-top: 1px solid var(--border); }
-.al-manage__btn {
-  display: inline-flex; align-items: center; gap: var(--space-2);
-  background: none; border: none; padding: 4px 0; cursor: pointer;
+/* quiet, non-button-weight destructive text — reddish only on hover, never by default */
+.al-config__remove {
+  order: 3; align-self: flex-start;
+  background: none; border: none; padding: 2px 0; cursor: pointer;
   font-family: var(--font-body); font-size: var(--fs-sm); font-weight: var(--fw-medium);
   color: var(--text-muted); transition: color var(--dur-fast) var(--ease-out);
 }
-.al-manage__btn:hover { color: var(--text-body); }
-.al-manage__btn svg { flex: none; color: var(--icon-muted); }
+.al-config__remove:hover { color: color-mix(in oklab, #B0403A 60%, var(--text-muted)); }
+.al-config__remove:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--ring); }
+
+@media (min-width: 768px) {
+  .al-config__footer { flex-direction: row; align-items: center; justify-content: space-between; }
+  .al-config__cadence { order: 1; }
+  .al-config__remove { order: 2; margin-left: var(--space-3); }
+  .al-config__actions { order: 3; margin-left: auto; }
+}
 
 /* paused state inside the sheet — muted notice, not an error */
 .al-paused-note {
@@ -204,19 +213,20 @@
 
 /* ════════════════════════════════════════════════════════════════════════
    W4 MOBILE BUTTON SYSTEM — bottom-sheet actions. Scoped to .al-sheet so the
-   desktop popover is untouched.
-   • Every actionable sheet button is exactly 44px (touch target).
-   • Two-button row: [ Secondary (outlined) ] [ Primary (filled) ].
+   desktop dialog is untouched.
+   • «Зберегти» is full-width, 48px (touch target + PRD §8).
+   • Two-button row (create mode): [ Secondary (outlined) ] [ Primary (filled) ].
    • Error recovery («Ще раз») is a real secondary button, not a chip.
    ════════════════════════════════════════════════════════════════════════ */
-.al-sheet .al-opts { grid-template-columns: minmax(0, 1fr); }
 .al-sheet .al-config__actions {
   display: flex; align-items: stretch; gap: var(--space-3);
 }
 .al-sheet .al-config__actions .kn-btn {
-  min-height: 44px; height: 44px; font-size: var(--fs-sm); min-width: 120px;
+  min-height: 48px; height: 48px; font-size: var(--fs-sm); min-width: 120px;
 }
-/* left = secondary escape: content-sized; right = primary commit fills the rest */
+/* left = secondary escape: content-sized; right = primary commit fills the rest.
+   In edit mode Save is the only child, so it matches both selectors — the
+   later rule (fill) wins, giving it the full-width treatment §8 asks for. */
 .al-sheet .al-config__actions .kn-btn:first-child { flex: 0 0 auto; }
 .al-sheet .al-config__actions .kn-btn:last-child { flex: 1 1 auto; }
 /* the left escape always renders as an outlined secondary inside a sheet */
@@ -232,7 +242,9 @@
 .al-sheet .al-note__action .kn-btn {
   min-height: 44px; height: 44px; min-width: 120px; font-size: var(--fs-sm);
 }
-.al-sheet .al-opt { min-height: 56px; }
+.al-sheet .al-opt { min-height: 72px; }
+/* mobile: cadence / actions / remove is already document order (column) —
+   no reorder needed, unlike the desktop row override above. */
 
 /* ── Inline confirmation / error notes — subtle, non-promotional ──────────
    Knyhovo avoids celebration patterns and never uses red. Success = calm
