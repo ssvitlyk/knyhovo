@@ -30,7 +30,16 @@ export type { PriceHistoryPoint } from './types/price-history.js';
 
 export type { User } from './types/user.js';
 
-export type { WishlistItem, AlertStatus, AlertIntent, Alert, BuyingReason } from './types/wishlist.js';
+export type {
+  WishlistItem,
+  AlertStatus,
+  AlertLifecycle,
+  AlertState,
+  AlertIntent,
+  AlertMode,
+  Alert,
+  BuyingReason,
+} from './types/wishlist.js';
 
 export type { HomeShelfKey } from './types/home.js';
 export { HOME_SHELF_KEYS } from './types/home.js';

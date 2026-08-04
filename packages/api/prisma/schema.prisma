@@ -49,12 +49,30 @@ enum Availability {
 }
 
 enum AlertStatus {
-  ACTIVE      @map("active")
-  PAUSED      @map("paused")
-  TRIGGERED   @map("triggered")    // reserved for a future trigger engine; not written in W4a
-  UNAVAILABLE @map("unavailable")  // reserved; derived at read time in W4a
+  ACTIVE @map("active")
+  PAUSED @map("paused")
 
   @@map("alert_status")
+}
+
+/// How a user asked for the threshold to be chosen (notifications-model-v2 §3).
+/// The engine never reads this — it is a resolver selector plus a display label.
+enum AlertMode {
+  ANY_DROP   @map("any-drop")
+  GOOD_PRICE @map("good-price")
+  MY_PRICE   @map("my-price")
+
+  @@map("alert_mode")
+}
+
+/// What happens to the policy after a notification is delivered (§9.1).
+enum AlertRearmPolicy {
+  /// Threshold and baseline follow the price down after every email.
+  FOLLOW_DOWN @map("follow-down")
+  /// Threshold stays where the user (or the resolver) put it.
+  STATIC      @map("static")
+
+  @@map("alert_rearm_policy")
 }
 
 enum AlertIntent {
@@ -336,11 +354,6 @@ model WishlistItem {
   id                  String    @id @default(uuid())
   userId              String    @map("user_id")
   canonicalBookId     String    @map("canonical_book_id")
-  /// @deprecated — alerts own the threshold now (W4)
-  /// null means no price alert is configured for this item
-  targetPriceAmount   Int?      @map("target_price_amount")
-  /// @deprecated — alerts own the threshold now (W4)
-  targetPriceCurrency Currency? @map("target_price_currency")
   createdAt           DateTime  @default(now()) @map("created_at")
 
   user          User          @relation(fields: [userId], references: [id])
@@ -393,9 +406,23 @@ model Alert {
   id                  String      @id @default(uuid())
   wishlistItemId      String      @unique @map("wishlist_item_id")
   status              AlertStatus @default(ACTIVE)
+  /// The UX mode the user picked. Resolver selector + display label only — the
+  /// engine works exclusively with the policy fields below (§9.1).
+  mode                AlertMode
+  /// @deprecated Superseded by `mode`; kept for one release so a rollback can read it.
   intent              AlertIntent
-  targetPriceAmount   Int         @map("target_price_amount")    // копійки
+  /// Policy: the price whose reaching is an event (копійки).
+  targetPriceAmount   Int         @map("target_price_amount")
   targetPriceCurrency Currency    @map("target_price_currency")
+  /// Policy: the price a further drop is measured against (копійки). Null for
+  /// static policies, where only the threshold matters.
+  baselineAmount      Int?             @map("baseline_amount")
+  /// Policy: what happens to threshold/baseline after a delivered notification.
+  rearmPolicy         AlertRearmPolicy @default(STATIC) @map("rearm_policy")
+  /// Policy provenance: which resolver rule produced `targetPriceAmount`.
+  thresholdBasis      String?          @map("threshold_basis")
+  /// Policy provenance: the human-readable proof shown in the UI and the email.
+  thresholdProof      String?          @map("threshold_proof")
   pausedAt            DateTime?   @map("paused_at")
   /// Dedup marker (W10.4): when this alert last fired a notification. Null until first notification.
   /// Reset to null when the price condition no longer holds, re-arming a future notification.

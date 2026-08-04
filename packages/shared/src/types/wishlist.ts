@@ -31,11 +31,46 @@ export interface WishlistItem {
  */
 export type BuyingReason = 'TARGET_REACHED' | 'LOWEST_90_DAYS' | 'PRICE_DROPPED';
 
-/** The persisted status values for an Alert. TRIGGERED and UNAVAILABLE are derived at read time. */
+/**
+ * @deprecated Superseded by {@link AlertLifecycle} (what is stored) and
+ * {@link AlertState} (what the user is told). Kept until the read models stop
+ * emitting it.
+ */
 export type AlertStatus = 'active' | 'paused' | 'triggered' | 'unavailable';
 
-/** The intent a user has set for an Alert — drives how the derived status is computed. */
+/**
+ * The only alert state that is PERSISTED (notifications-model-v2 §9.1).
+ * Everything else about an alert is either a fact (a notification marker) or a
+ * property of the live listing data.
+ */
+export type AlertLifecycle = 'active' | 'paused';
+
+/**
+ * The effective alert state shown to the user (notifications-model-v2 §9.3).
+ *
+ * - `paused`      — the user muted it (persisted).
+ * - `unavailable` — the book has no strictly-IN_STOCK offer, so no promise can be kept.
+ * - `reached`     — we have already emailed about the current threshold. This is a
+ *                   FACT read from the notification marker, never a price
+ *                   comparison, so the UI cannot claim an email that was never sent.
+ * - `armed`       — watching.
+ */
+export type AlertState = 'armed' | 'reached' | 'unavailable' | 'paused';
+
+/**
+ * @deprecated Superseded by {@link AlertMode}. `below-current` was the same user
+ * intent as `any-drop` expressed with a frozen baseline and is gone; the column
+ * survives one release for rollback safety.
+ */
 export type AlertIntent = 'any-drop' | 'below-current' | 'favourable-price' | 'custom-price';
+
+/**
+ * How the user asked the threshold to be chosen (notifications-model-v2 §3).
+ *
+ * A mode is a resolver selector and a display label — nothing downstream of the
+ * resolver may branch on it.
+ */
+export type AlertMode = 'any-drop' | 'good-price' | 'my-price';
 
 /** A price alert associated with a WishlistItem. */
 export interface Alert {

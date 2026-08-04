@@ -6,6 +6,8 @@ import {
   AlertStatus,
   AlertIntent,
   CollectionType,
+  AlertMode,
+  AlertRearmPolicy,
 } from '@prisma/client';
 import { CANONICAL_GENRES } from '../src/genres/taxonomy.js';
 
@@ -793,17 +795,25 @@ async function main(): Promise<void> {
     where: { wishlistItemId: wishlistItemForKobzarId },
     update: {
       status: AlertStatus.ACTIVE,
+      mode: AlertMode.ANY_DROP,
       intent: AlertIntent.BELOW_CURRENT,
       targetPriceAmount: 20000,
       targetPriceCurrency: Currency.UAH,
+      baselineAmount: 20000,
+      rearmPolicy: AlertRearmPolicy.FOLLOW_DOWN,
+      thresholdBasis: 'seed',
       pausedAt: null,
     },
     create: {
       wishlistItemId: wishlistItemForKobzarId,
       status: AlertStatus.ACTIVE,
+      mode: AlertMode.ANY_DROP,
       intent: AlertIntent.BELOW_CURRENT,
       targetPriceAmount: 20000,
       targetPriceCurrency: Currency.UAH,
+      baselineAmount: 20000,
+      rearmPolicy: AlertRearmPolicy.FOLLOW_DOWN,
+      thresholdBasis: 'seed',
       pausedAt: null,
     },
   });

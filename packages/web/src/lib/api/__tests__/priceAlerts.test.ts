@@ -1,5 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { setAlert, pauseAlert, removeAlert, AlertError } from '../priceAlerts';
+import type { AlertDto } from '../types';
 
 function mockFetch(impl: typeof fetch): void {
   vi.stubGlobal('fetch', vi.fn(impl));
@@ -9,73 +10,116 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
+const RESOLVED_ALERT: AlertDto = {
+  state: 'armed',
+  mode: 'any-drop',
+  threshold: { amount: 24000, currency: 'UAH' },
+  baseline: { amount: 24000, currency: 'UAH' },
+  thresholdProof: null,
+  pausedAt: null,
+  notifiedAt: null,
+};
+
 /* ── setAlert ───────────────────────────────────────────────────────────────── */
 describe('setAlert()', () => {
-  it('200 → resolves without throwing', async () => {
-    mockFetch((async () => new Response(JSON.stringify({ ok: true }), { status: 200 })) as typeof fetch);
-    await expect(
-      setAlert('book-1', 'below-current', { amount: 24000, currency: 'UAH' }),
-    ).resolves.toBeUndefined();
+  it('200 → resolves with the alert the server returned', async () => {
+    mockFetch((async () =>
+      new Response(JSON.stringify({ alert: RESOLVED_ALERT }), { status: 200 })) as typeof fetch);
+    await expect(setAlert('book-1', 'any-drop')).resolves.toEqual(RESOLVED_ALERT);
   });
 
-  it('sends PUT to /api/wishlist/:bookId/alert with intent + targetPrice body', async () => {
+  it('sends PUT to /api/wishlist/:bookId/alert with { mode } when no threshold given', async () => {
     let capturedUrl = '';
     let capturedInit: RequestInit | undefined;
     mockFetch((async (url: RequestInfo | URL, init?: RequestInit) => {
       capturedUrl = String(url);
       capturedInit = init;
-      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      return new Response(JSON.stringify({ alert: RESOLVED_ALERT }), { status: 200 });
     }) as typeof fetch);
 
-    await setAlert('book-42', 'below-current', { amount: 24000, currency: 'UAH' });
+    await setAlert('book-42', 'any-drop');
 
     expect(capturedUrl).toContain('/api/wishlist/book-42/alert');
     expect(capturedInit?.method).toBe('PUT');
     expect(capturedInit?.credentials).toBe('include');
     const body = JSON.parse(capturedInit?.body as string) as unknown;
-    expect(body).toEqual({
-      intent: 'below-current',
-      targetPrice: { amount: 24000, currency: 'UAH' },
-    });
+    expect(body).toEqual({ mode: 'any-drop' });
+  });
+
+  it('sends { mode, threshold } when a threshold is given (my-price)', async () => {
+    let capturedInit: RequestInit | undefined;
+    mockFetch((async (_url: RequestInfo | URL, init?: RequestInit) => {
+      capturedInit = init;
+      return new Response(JSON.stringify({ alert: RESOLVED_ALERT }), { status: 200 });
+    }) as typeof fetch);
+
+    await setAlert('book-1', 'my-price', { amount: 19900, currency: 'UAH' });
+
+    const body = JSON.parse(capturedInit?.body as string) as unknown;
+    expect(body).toEqual({ mode: 'my-price', threshold: { amount: 19900, currency: 'UAH' } });
   });
 
   it('encodes bookId in the URL', async () => {
     let capturedUrl = '';
     mockFetch((async (url: RequestInfo | URL) => {
       capturedUrl = String(url);
-      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+      return new Response(JSON.stringify({ alert: RESOLVED_ALERT }), { status: 200 });
     }) as typeof fetch);
 
-    await setAlert('book with spaces', 'any-drop', { amount: 10000, currency: 'UAH' });
+    await setAlert('book with spaces', 'any-drop');
     expect(capturedUrl).toContain('book%20with%20spaces');
   });
 
-  it('non-2xx → throws AlertError with the HTTP status', async () => {
-    mockFetch((async () => new Response('{}', { status: 422 })) as typeof fetch);
+  it('non-2xx with a parsable {error} body → throws AlertError using the server message + code verbatim', async () => {
+    mockFetch((async () =>
+      new Response(
+        JSON.stringify({
+          error: { code: 'THRESHOLD_NOT_BELOW_CURRENT', message: 'Ціна має бути нижчою за поточну.' },
+        }),
+        { status: 422 },
+      )) as typeof fetch);
 
-    await expect(
-      setAlert('book-1', 'any-drop', { amount: 24000, currency: 'UAH' }),
-    ).rejects.toMatchObject({ name: 'AlertError', status: 422 });
+    const err = await setAlert('book-1', 'my-price', { amount: 30000, currency: 'UAH' }).catch(
+      (e: unknown) => e,
+    );
+    expect(err).toBeInstanceOf(AlertError);
+    expect((err as AlertError).message).toBe('Ціна має бути нижчою за поточну.');
+    expect((err as AlertError).code).toBe('THRESHOLD_NOT_BELOW_CURRENT');
+    expect((err as AlertError).status).toBe(422);
   });
 
-  it('401 → throws AlertError with status 401', async () => {
-    mockFetch((async () => new Response('{}', { status: 401 })) as typeof fetch);
+  it('409 INSUFFICIENT_HISTORY → throws AlertError with that code', async () => {
+    mockFetch((async () =>
+      new Response(
+        JSON.stringify({ error: { code: 'INSUFFICIENT_HISTORY', message: 'Збираємо історію цін.' } }),
+        { status: 409 },
+      )) as typeof fetch);
 
-    await expect(
-      setAlert('book-1', 'any-drop', { amount: 24000, currency: 'UAH' }),
-    ).rejects.toMatchObject({ name: 'AlertError', status: 401 });
+    const err = await setAlert('book-1', 'good-price').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(AlertError);
+    expect((err as AlertError).code).toBe('INSUFFICIENT_HISTORY');
+    expect((err as AlertError).status).toBe(409);
   });
 
-  it('transport error → throws AlertError with status null', async () => {
+  it('non-2xx with an unparsable body → falls back to a generic message with null code', async () => {
+    mockFetch((async () => new Response('not json', { status: 500 })) as typeof fetch);
+
+    const err = await setAlert('book-1', 'any-drop').catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(AlertError);
+    expect((err as AlertError).status).toBe(500);
+    expect((err as AlertError).code).toBeNull();
+    expect((err as AlertError).message).toContain('500');
+  });
+
+  it('transport error → throws AlertError with status null and code null', async () => {
     mockFetch((async () => {
       throw new Error('network down');
     }) as typeof fetch);
 
-    const err = await setAlert('book-1', 'any-drop', { amount: 24000, currency: 'UAH' }).catch(
-      (e: unknown) => e,
-    );
+    const err = await setAlert('book-1', 'any-drop').catch((e: unknown) => e);
     expect(err).toBeInstanceOf(AlertError);
     expect((err as AlertError).status).toBeNull();
+    expect((err as AlertError).code).toBeNull();
   });
 });
 
@@ -113,7 +157,19 @@ describe('pauseAlert()', () => {
     expect(JSON.parse(capturedInit?.body as string)).toEqual({ paused: false });
   });
 
-  it('non-2xx → throws AlertError with status', async () => {
+  it('non-2xx with a parsable {error} body → throws AlertError using the server message', async () => {
+    mockFetch((async () =>
+      new Response(JSON.stringify({ error: { code: 'NOT_FOUND', message: 'Не знайдено.' } }), {
+        status: 404,
+      })) as typeof fetch);
+
+    const err = await pauseAlert('book-1', true).catch((e: unknown) => e);
+    expect(err).toBeInstanceOf(AlertError);
+    expect((err as AlertError).message).toBe('Не знайдено.');
+    expect((err as AlertError).status).toBe(404);
+  });
+
+  it('non-2xx with an unparsable body → falls back to a generic message', async () => {
     mockFetch((async () => new Response('{}', { status: 404 })) as typeof fetch);
 
     await expect(pauseAlert('book-1', true)).rejects.toMatchObject({
@@ -182,9 +238,11 @@ describe('AlertError', () => {
     expect(err.name).toBe('AlertError');
   });
 
-  it('exposes status', () => {
-    expect(new AlertError('test', 404).status).toBe(404);
+  it('exposes status and code', () => {
+    expect(new AlertError('test', 404, 'SOME_CODE').status).toBe(404);
+    expect(new AlertError('test', 404, 'SOME_CODE').code).toBe('SOME_CODE');
     expect(new AlertError('test', null).status).toBeNull();
+    expect(new AlertError('test', null).code).toBeNull();
   });
 
   it('is an instance of Error', () => {

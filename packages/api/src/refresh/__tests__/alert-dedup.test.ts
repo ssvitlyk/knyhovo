@@ -7,6 +7,7 @@ import {
   type AlertNotificationState,
   type AlertNotificationDecision,
 } from '../alert-dedup.js';
+import { isSignificantDrop, applyRearm, type SignificanceConfig } from '../../wishlist/alert/policy.js';
 
 // ---------------------------------------------------------------------------
 // Fixtures
@@ -15,11 +16,14 @@ import {
 const NOW = new Date('2026-06-22T10:00:00.000Z');
 const TARGET = 10000; // 100 UAH in копійки
 
+/** Significance config that never interferes — used for the pre-existing (static-policy) cases. */
+const NO_SIGNIFICANCE: SignificanceConfig = { minDropAbs: 0, minDropPct: 0 };
+
 function makeState(
   overrides: Partial<AlertNotificationState> = {},
 ): AlertNotificationState {
   return {
-    targetPriceAmount: TARGET,
+    policy: { threshold: TARGET, baseline: null, rearmPolicy: 'static' },
     lastNotifiedAt: null,
     lastNotifiedPriceAmount: null,
     ...overrides,
@@ -37,7 +41,7 @@ describe('evaluateAlertNotification', () => {
 
   it('first drop to exactly target => notify', () => {
     const state = makeState();
-    const decision = evaluateAlertNotification(state, TARGET, NOW);
+    const decision = evaluateAlertNotification(state, TARGET, NOW, NO_SIGNIFICANCE);
     expect(decision.action).toBe('notify');
     if (decision.action === 'notify') {
       expect(decision.lastNotifiedAt).toEqual(NOW);
@@ -47,7 +51,7 @@ describe('evaluateAlertNotification', () => {
 
   it('first drop below target => notify', () => {
     const state = makeState();
-    const decision = evaluateAlertNotification(state, TARGET - 500, NOW);
+    const decision = evaluateAlertNotification(state, TARGET - 500, NOW, NO_SIGNIFICANCE);
     expect(decision.action).toBe('notify');
     if (decision.action === 'notify') {
       expect(decision.lastNotifiedPriceAmount).toBe(TARGET - 500);
@@ -60,7 +64,7 @@ describe('evaluateAlertNotification', () => {
       lastNotifiedPriceAmount: TARGET - 200,
     });
     const newLow = TARGET - 500; // strictly lower than last notified
-    const decision = evaluateAlertNotification(state, newLow, NOW);
+    const decision = evaluateAlertNotification(state, newLow, NOW, NO_SIGNIFICANCE);
     expect(decision.action).toBe('notify');
     if (decision.action === 'notify') {
       expect(decision.lastNotifiedPriceAmount).toBe(newLow);
@@ -73,7 +77,7 @@ describe('evaluateAlertNotification', () => {
       lastNotifiedAt: new Date('2026-06-21T00:00:00.000Z'),
       lastNotifiedPriceAmount: null,
     });
-    const decision = evaluateAlertNotification(state, TARGET - 100, NOW);
+    const decision = evaluateAlertNotification(state, TARGET - 100, NOW, NO_SIGNIFICANCE);
     expect(decision.action).toBe('notify');
   });
 
@@ -86,7 +90,7 @@ describe('evaluateAlertNotification', () => {
       lastNotifiedAt: NOW,
       lastNotifiedPriceAmount: TARGET - 200,
     });
-    const decision = evaluateAlertNotification(state, TARGET - 200, NOW);
+    const decision = evaluateAlertNotification(state, TARGET - 200, NOW, NO_SIGNIFICANCE);
     expect(decision.action).toBe('none');
   });
 
@@ -97,14 +101,14 @@ describe('evaluateAlertNotification', () => {
       lastNotifiedAt: new Date('2026-06-20T00:00:00.000Z'),
       lastNotifiedPriceAmount: 8000,
     });
-    const decision = evaluateAlertNotification(state, 9000, NOW);
+    const decision = evaluateAlertNotification(state, 9000, NOW, NO_SIGNIFICANCE);
     // 9000 <= 10000 (target) but 9000 > 8000 (lastNotified) => none
     expect(decision.action).toBe('none');
   });
 
   it('no in-stock offer and no marker => none', () => {
     const state = makeState();
-    const decision = evaluateAlertNotification(state, null, NOW);
+    const decision = evaluateAlertNotification(state, null, NOW, NO_SIGNIFICANCE);
     expect(decision.action).toBe('none');
   });
 
@@ -113,7 +117,7 @@ describe('evaluateAlertNotification', () => {
       lastNotifiedAt: NOW,
       lastNotifiedPriceAmount: TARGET,
     });
-    const decision = evaluateAlertNotification(state, TARGET, NOW);
+    const decision = evaluateAlertNotification(state, TARGET, NOW, NO_SIGNIFICANCE);
     expect(decision.action).toBe('none');
   });
 
@@ -126,7 +130,7 @@ describe('evaluateAlertNotification', () => {
       lastNotifiedAt: new Date('2026-06-21T00:00:00.000Z'),
       lastNotifiedPriceAmount: TARGET - 500,
     });
-    const decision = evaluateAlertNotification(state, TARGET + 1000, NOW);
+    const decision = evaluateAlertNotification(state, TARGET + 1000, NOW, NO_SIGNIFICANCE);
     expect(decision.action).toBe('reset');
   });
 
@@ -135,7 +139,7 @@ describe('evaluateAlertNotification', () => {
       lastNotifiedAt: new Date('2026-06-21T00:00:00.000Z'),
       lastNotifiedPriceAmount: TARGET - 200,
     });
-    const decision = evaluateAlertNotification(state, null, NOW);
+    const decision = evaluateAlertNotification(state, null, NOW, NO_SIGNIFICANCE);
     expect(decision.action).toBe('reset');
   });
 
@@ -144,7 +148,7 @@ describe('evaluateAlertNotification', () => {
       lastNotifiedAt: new Date('2026-06-21T00:00:00.000Z'),
       lastNotifiedPriceAmount: null,
     });
-    const decision = evaluateAlertNotification(state, TARGET + 500, NOW);
+    const decision = evaluateAlertNotification(state, TARGET + 500, NOW, NO_SIGNIFICANCE);
     expect(decision.action).toBe('reset');
   });
 
@@ -153,7 +157,7 @@ describe('evaluateAlertNotification', () => {
       lastNotifiedAt: null,
       lastNotifiedPriceAmount: TARGET - 100,
     });
-    const decision = evaluateAlertNotification(state, TARGET + 1, NOW);
+    const decision = evaluateAlertNotification(state, TARGET + 1, NOW, NO_SIGNIFICANCE);
     expect(decision.action).toBe('reset');
   });
 
@@ -163,7 +167,7 @@ describe('evaluateAlertNotification', () => {
 
   it('lowest exactly == target and no marker => notify (<= boundary)', () => {
     const state = makeState();
-    const decision = evaluateAlertNotification(state, TARGET, NOW);
+    const decision = evaluateAlertNotification(state, TARGET, NOW, NO_SIGNIFICANCE);
     expect(decision.action).toBe('notify');
   });
 
@@ -174,13 +178,146 @@ describe('evaluateAlertNotification', () => {
   it('notify decision carries correct lastNotifiedAt and lastNotifiedPriceAmount', () => {
     const state = makeState();
     const low = TARGET - 300;
-    const decision = evaluateAlertNotification(state, low, NOW) as Extract<
+    const decision = evaluateAlertNotification(state, low, NOW, NO_SIGNIFICANCE) as Extract<
       AlertNotificationDecision,
       { action: 'notify' }
     >;
     expect(decision.action).toBe('notify');
     expect(decision.lastNotifiedAt).toBe(NOW);
     expect(decision.lastNotifiedPriceAmount).toBe(low);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// evaluateAlertNotification — significance gating for follow-down policies
+// (notifications-model-v2 §9.2)
+// ---------------------------------------------------------------------------
+
+describe('evaluateAlertNotification (follow-down significance)', () => {
+  it('suppresses an insignificant drop (below minDropAbs) — threshold reached but no notify', () => {
+    const state = makeState({
+      policy: { threshold: TARGET, baseline: TARGET, rearmPolicy: 'follow-down' },
+    });
+    // Drop of 500 kopiyky, below the 1000 minDropAbs gate.
+    const decision = evaluateAlertNotification(state, TARGET - 500, NOW, {
+      minDropAbs: 1000,
+      minDropPct: 0,
+    });
+    expect(decision.action).toBe('none');
+  });
+
+  it('fires once the drop clears both minDropAbs and minDropPct', () => {
+    const state = makeState({
+      policy: { threshold: TARGET, baseline: TARGET, rearmPolicy: 'follow-down' },
+    });
+    // Drop of 1500 kopiyky (15% of baseline) clears minDropAbs=1000 and minDropPct=2.
+    const decision = evaluateAlertNotification(state, TARGET - 1500, NOW, {
+      minDropAbs: 1000,
+      minDropPct: 2,
+    });
+    expect(decision.action).toBe('notify');
+    if (decision.action === 'notify') {
+      expect(decision.lastNotifiedPriceAmount).toBe(TARGET - 1500);
+    }
+  });
+
+  it('minDropPct gates independently: a large absolute drop on an expensive book can still be insignificant', () => {
+    const baseline = 1_000_000; // 10 000 UAH
+    const state = makeState({
+      policy: { threshold: baseline, baseline, rearmPolicy: 'follow-down' },
+    });
+    // Absolute drop of 10 000 kopiyky is large in isolation, but only 1% of baseline.
+    const decision = evaluateAlertNotification(state, baseline - 10_000, NOW, {
+      minDropAbs: 0,
+      minDropPct: 5,
+    });
+    expect(decision.action).toBe('none');
+  });
+
+  it('minDropPct gates independently: a small absolute drop on a cheap book can still be significant', () => {
+    const baseline = 1000; // 10 UAH
+    const state = makeState({
+      policy: { threshold: baseline, baseline, rearmPolicy: 'follow-down' },
+    });
+    // Absolute drop of only 100 kopiyky, but 10% of baseline clears minDropPct=5.
+    const decision = evaluateAlertNotification(state, baseline - 100, NOW, {
+      minDropAbs: 0,
+      minDropPct: 5,
+    });
+    expect(decision.action).toBe('notify');
+  });
+
+  it('a follow-down policy with baseline=null treats any threshold-reaching price as significant', () => {
+    // A book that was out of stock when the alert was created (baseline never observed)
+    // must not be stranded by the significance gate.
+    const state = makeState({
+      policy: { threshold: TARGET, baseline: null, rearmPolicy: 'follow-down' },
+    });
+    const decision = evaluateAlertNotification(state, TARGET - 1, NOW, {
+      minDropAbs: 5000,
+      minDropPct: 50,
+    });
+    expect(decision.action).toBe('notify');
+  });
+
+  it('a significant-but-already-notified same price still returns none (marker wins)', () => {
+    const state = makeState({
+      policy: { threshold: TARGET, baseline: TARGET, rearmPolicy: 'follow-down' },
+      lastNotifiedAt: new Date('2026-06-21T00:00:00.000Z'),
+      lastNotifiedPriceAmount: TARGET - 2000,
+    });
+    // Same price as last notified: the drop from baseline is significant, but the
+    // marker already covers this exact price, so no new email is due.
+    const decision = evaluateAlertNotification(state, TARGET - 2000, NOW, {
+      minDropAbs: 1000,
+      minDropPct: 2,
+    });
+    expect(decision.action).toBe('none');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// isSignificantDrop / applyRearm — direct unit tests
+// ---------------------------------------------------------------------------
+
+describe('isSignificantDrop', () => {
+  it('null baseline is always significant (nothing to compare against yet)', () => {
+    expect(isSignificantDrop(9999, null, { minDropAbs: 5000, minDropPct: 50 })).toBe(true);
+  });
+
+  it('a non-positive drop (price >= baseline) is never significant', () => {
+    expect(isSignificantDrop(10000, 10000, NO_SIGNIFICANCE)).toBe(false);
+    expect(isSignificantDrop(10500, 10000, NO_SIGNIFICANCE)).toBe(false);
+  });
+
+  it('minDropAbs=0 disables the absolute-drop check', () => {
+    expect(isSignificantDrop(9999, 10000, { minDropAbs: 0, minDropPct: 0 })).toBe(true);
+  });
+
+  it('minDropPct=0 disables the percentage-drop check', () => {
+    expect(isSignificantDrop(9999, 10000, { minDropAbs: 0, minDropPct: 0 })).toBe(true);
+    // Large baseline, tiny drop: passes only because minDropPct is disabled.
+    expect(isSignificantDrop(999_999, 1_000_000, { minDropAbs: 0, minDropPct: 0 })).toBe(true);
+  });
+
+  it('both thresholds must be exceeded when both are enabled', () => {
+    // Clears minDropAbs but not minDropPct.
+    expect(isSignificantDrop(989_000, 1_000_000, { minDropAbs: 1000, minDropPct: 5 })).toBe(false);
+    // Clears both.
+    expect(isSignificantDrop(940_000, 1_000_000, { minDropAbs: 1000, minDropPct: 5 })).toBe(true);
+  });
+});
+
+describe('applyRearm', () => {
+  it('returns null for a static policy (nothing to persist)', () => {
+    expect(applyRearm({ rearmPolicy: 'static' }, 7000)).toBeNull();
+  });
+
+  it('returns {threshold, baseline} both equal to the notified price for a follow-down policy', () => {
+    expect(applyRearm({ rearmPolicy: 'follow-down' }, 7000)).toEqual({
+      threshold: 7000,
+      baseline: 7000,
+    });
   });
 });
 

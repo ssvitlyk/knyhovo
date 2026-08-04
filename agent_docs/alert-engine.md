@@ -4,47 +4,99 @@
 
 ## Стан реалізації
 
-### W4a (реалізовано) — Persistence + API + Read-time derivation
+> **Модель сповіщень v2 (`docs/prd/notifications-model-v2.md`) — чинна.** Цей файл
+> описує реалізацію; продуктові рішення й контракт — у PRD. Записи нижче про
+> `deriveAlertStatus`, `alert_intent` та чотири режими стосуються **старої** моделі
+> й лишені лише як історія.
 
-W4a постачає:
-- Схема БД: таблиця `alerts` + enums `alert_status`, `alert_intent` (Prisma schema).
-- REST API для управління алертами: `PUT/PATCH/DELETE /api/wishlist/:bookId/alert`.
-- Алерт додається до відповіді `GET /api/wishlist` як поле `alert` у кожному `WishlistItemDto`.
-- **Статус виводиться (derive) при читанні** (`packages/api/src/wishlist/alert/service.ts#deriveAlertStatus`) — не записується у БД.
-- `TRIGGERED` та `UNAVAILABLE` у Prisma enum зарезервовані; у W4a вони ніколи не записуються.
+### Що змінилось у v2
 
-### W4b — Alerts Engine (затверджено, в реалізації)
+| Було | Стало |
+|------|-------|
+| 4 режими (`any-drop`, `below-current`, `favourable-price`, `custom-price`) | 3 режими (`any-drop`, `good-price`, `my-price`); `below-current` злився в `any-drop` |
+| `intent` — write-only лейбл, рушій його не читав | `mode` — селектор резолвера; рушій працює лише з **AlertPolicy** |
+| поріг присилав клієнт, API приймав будь-яке число | поріг рахує **сервер**; `threshold` у тілі дозволений лише для `my-price` |
+| статус = порівняння `lowestPrice <= target` при читанні | стан = **факт**: `paused` / `unavailable` / `reached` (є маркер листа) / `armed` |
+| три різні означення «найнижчої ціни» | одна канонічна ціна: `src/pricing/canonical-price.ts` |
+| `PUT` віддавав `{ok:true}` | `PUT` віддає повний об'єкт сповіщення |
 
-> Повний дизайн: `docs/prd/wishlist.md` → секція «W4b: Alerts Engine».
+### AlertPolicy — єдиний словник рушія
 
-Уже реалізовано (W10.3/W10.4): детекція подій (`refresh/events.ts`), чистий dedup
-(`refresh/alert-dedup.ts`), оркестрація (`refresh/alert-notify.ts`, наразі оновлює
-маркери inline і **не** шле email).
+`packages/api/src/wishlist/alert/policy.ts`:
 
-**Затверджений підхід — instant per-refresh + outbox** (інтеграція у наявний
-`WISHLIST_REFRESH` run, без окремого cron):
+| Поле | Сенс |
+|------|------|
+| `threshold` | ціна, досягнення якої є подією (копійки) |
+| `baseline` | ціна, від якої міряється наступне зниження; `null` для статичних політик |
+| `rearmPolicy` | `follow-down` (після листа поріг і база опускаються) \| `static` |
+| `thresholdBasis` / `thresholdProof` | походження порогу + рядок-доказ для UI та листа |
+| `lifecycle` | `active` \| `paused` — єдиний **збережений** стан |
 
-1. **Enqueue** (рефактор `alert-notify.ts`): оцінка dedup для price-drop + back-in-stock
-   → `INSERT notification_deliveries (PENDING)`, idempotent через `dedupKey @unique`.
-   Маркери `Alert` тут **не** оновлюються.
-2. **Dispatch** (inline, новий): `PENDING` → render → Resend send. Успіх → `SENT` +
-   оновлення dedup-маркера `Alert` + `providerMessageId`; збій → `FAILED` + `attempts++`.
+**Резолвер** (`alert/resolver.ts`) — єдине місце, де режим стає поведінкою. Виконується
+один раз, при create/update. Нижче за резолвер про режими не знає ніхто.
+
+| Резолвер | threshold | baseline | rearm | порог значущості |
+|----------|-----------|----------|-------|------------------|
+| `any-drop` | канонічна ціна | те саме | `follow-down` | застосовується |
+| `good-price` | формула (`alert/good-price.ts`) | — | `static` | ні |
+| `my-price` | число користувача | — | `static` | ні |
+
+`good-price` віддає `PENDING_CALIBRATION`, доки не завершене дослідження
+(`docs/research/good-price-threshold-study.md`) — режим показується неактивним,
+**без цифри**, і `PUT` віддає `409 INSUFFICIENT_HISTORY`. Заповнити формулу = змінити
+один файл; API, DTO, рушій і UI лишаються як є.
+
+### Стан (read-time)
+
+`alert/service.ts#deriveAlertState` — **без жодного порівняння цін**:
+
+```
+1. lifecycle === 'paused'        → 'paused'
+2. канонічної ціни немає         → 'unavailable'
+3. lastNotifiedAt != null        → 'reached'   (ми справді написали)
+4. інакше                        → 'armed'
+```
+
+Маркер пишеться лише диспетчером і лише після успішної відправки, а при заміні порогу
+(`upsertAlert`) очищується — саме це робить `reached` твердженням «ми написали про
+поточний поріг», а не результатом обчислення.
+
+### Порог значущості зниження
+
+Конфігурація, не константа продукту (PRD §4): `ALERT_MIN_DROP_ABS` (копійки) і
+`ALERT_MIN_DROP_PCT` (%), обидва як **І**, кожен вимикається нулем. Дефолти —
+`alerts/config.ts#DEFAULT_SIGNIFICANCE`, калібрування — те саме дослідження.
+Застосовується лише до `follow-down` політик.
+
+### Історія: W4a (реалізовано) — Persistence + API + Read-time derivation
+
+- Схема БД: таблиця `alerts` + enums `alert_status`, `alert_intent`.
+- REST API: `PUT/PATCH/DELETE /api/wishlist/:bookId/alert`.
+- Алерт у відповіді `GET /api/wishlist` як поле `alert`.
+- `deriveAlertStatus` виводив статус порівнянням цін — **замінено** на `deriveAlertState`.
+- `TRIGGERED`/`UNAVAILABLE` в enum ніколи не записувались — у v2 значення прибрані міграцією.
+
+### W4b — Alerts Engine (реалізовано 2026-06-29)
+
+Живий ланцюг: Railway cron `0 5 * * *` UTC (`railway.scrape-wishlist.json`) →
+`scrape:wishlist` → `run-wishlist-refresh.ts` → `runWishlistRefresh` →
+`runAlertNotificationsForBooks` (enqueue в outbox) → `dispatchPendingDeliveries` (Resend).
+Обидві фази non-fatal. **Каденс — раз на добу**, не «кожні 2–4 год»; `0 5 * * *` UTC —
+це 08:00 за Києвом літом і 07:00 зимою, тому копірайт у UI — «щоранку».
 
 Принцип: маркер = «успішно надіслано», не «вирішено надіслати».
-**Критично**: прибрати оновлення маркера з enqueue-фази ([alert-notify.ts:74](../packages/api/src/refresh/alert-notify.ts#L74)) — інакше збій email втрачає лист.
 
-**Scope v1**: price-drop (`lowestPrice ≤ targetPriceAmount`) + back-in-stock (окремий тип,
-один email на перехід OUT→IN, re-arm після повторного OUT). OUT: новий дешевший провайдер,
-digest, intent-и `any-drop`/`below-current` — v2.
+**Scope**: price-drop (політика) + back-in-stock (окремий тип, один email на перехід
+OUT→IN, re-arm після повторного OUT). Розсилка **не** фільтрує за режимом — усі три
+режими надсилають листи однаково.
 
-Чеклист реалізації:
-- [x] PR1: `notification_deliveries` + enums, маркери back-in-stock на `Alert`, prefs + `unsubscribeToken`, міграція, repository.
-- [x] PR2: рефактор `alert-notify.ts` → enqueue; back-in-stock dedup (окремий ключ); unit-тести.
-      Back-in-stock детекція — через rising-edge маркер `last_notified_availability` (перша поява книги не шле alert). dedupKey price-drop=`<alertId>:price:<lowest>`, back-in-stock=`<alertId>:stock:<run ISO>`. Маркер price оновлюється лише у dispatch (PR3).
-- [x] PR3: `AlertMailer` порт (`alerts/mailer.ts`: Console/Resend-адаптер/Fake), шаблони (`alerts/templates.ts`), dispatch (`alerts/dispatch.ts`) + retry/backoff + rate-limit + unsubscribe-гейт. ResendAlertMailer бере мінімальний ін'єктований клієнт (без імпорту `resend` у src — конструювання у PR4).
-- [x] PR4: dispatch wired у `wishlist.refresh.ts` (instant, ін'єктований порт `dispatch`), mailer-factory (`alerts/mailer-factory.ts` — єдиний імпорт `resend`), config (`alerts/config.ts`), CLI `run-wishlist-refresh.ts`. Summary у логах/результаті; Prometheus email-лічильники — follow-up (наразі /metrics scrape_runs-derived).
-- [x] PR5a: API — `GET /api/notifications/unsubscribe` (public, one-click), `GET/PATCH /api/notifications/preferences` (auth), модуль `notifications/` + тести.
-- [ ] PR5b: web-UI — сторінка налаштувань сповіщень + per-alert back-in-stock тогл.
+Чеклист W4b:
+- [x] PR1: `notification_deliveries` + enums, маркери back-in-stock, prefs + `unsubscribeToken`.
+- [x] PR2: `alert-notify.ts` → enqueue; back-in-stock dedup; unit-тести.
+- [x] PR3: `AlertMailer` порт, шаблони, dispatch + retry/backoff + rate-limit + unsubscribe-гейт.
+- [x] PR4: dispatch wired у `wishlist.refresh.ts`, mailer-factory, config, CLI.
+- [x] PR5a: `GET /api/notifications/unsubscribe`, `GET/PATCH /api/notifications/preferences`.
+- [ ] PR5b: web-UI — per-alert back-in-stock тогл.
 
 ### Env (W4b)
 
@@ -54,6 +106,8 @@ digest, intent-и `any-drop`/`below-current` — v2.
 | `ALERT_FROM_EMAIL` | From-адреса | `Knyhovo <alerts@knyhovo.com>` |
 | `ALERT_BASE_URL` | база для лінків (книга + unsubscribe) | `https://knyhovo.com` |
 | `ALERT_MAX_EMAILS_PER_DAY` | rate-limit на користувача (rolling 24h) | `20` |
+| `ALERT_MIN_DROP_ABS` | мінімальне зниження в копійках (`0` — вимкнено) | `1000` |
+| `ALERT_MIN_DROP_PCT` | мінімальне зниження у % від бази (`0` — вимкнено) | `2` |
 
 Safety: cooldown 24 год (однакова подія), rate limit 20/добу, retry cap 3 з backoff
 1m/5m/30m через `nextAttemptAt` (5xx/network — retry, 4xx — `SKIPPED`),
@@ -61,48 +115,54 @@ unsubscribe через токен + `List-Unsubscribe`. Prefs — поля на 
 
 ---
 
-## Архітектура алертів (W4a)
+## Архітектура алертів (v2)
 
 ### Моделі
 
 - **Alert** — один per wishlist item (`@unique wishlist_item_id`). Каскадно видаляється разом з `WishlistItem`.
-- Власник порогу ціни — `alerts.target_price_amount` / `target_price_currency`.
-- `wishlist_items.target_price_amount/currency` — **deprecated**, збережені для зворотної сумісності, не використовуються логікою W4+.
+- Власник порогу — `alerts.target_price_amount` / `target_price_currency`; політику доповнюють
+  `baseline_amount`, `rearm_policy`, `threshold_basis`, `threshold_proof`.
+- `alerts.intent` — **deprecated**, лишений на один реліз для rollback-безпеки; пишеться
+  похідним від `mode`. Логіка його не читає.
+- `wishlist_items.target_price_amount/currency` — **дропнуті** міграцією `20260726120000_alert_policy`.
 
-### AlertIntent
+### Історія: AlertIntent (стара модель, не використовується)
 
-| Slug | Опис |
-|------|------|
-| `any-drop` | Будь-яке зниження ціни |
-| `below-current` | Ціна нижча за поточну |
-| `favourable-price` | Сприятлива ціна (алгоритм — TBD) |
-| `custom-price` | Користувацький поріг (`targetPriceAmount`) |
-
-### Derivation логіка (read-time)
-
-```
-deriveAlertStatus(persisted, lowestPrice, offersCount):
-  1. persisted.status === 'PAUSED'                          → 'paused'
-  2. offersCount === 0                                      → 'unavailable'
-  3. lowestPrice != null && lowestPrice.amount ≤ target     → 'triggered'
-  4. else                                                   → 'active'
-```
-
-Реалізація: `packages/api/src/wishlist/alert/service.ts#deriveAlertStatus`.
-Тести: `packages/api/src/wishlist/alert/__tests__/service.test.ts`.
+| Slug | Що стало |
+|------|----------|
+| `any-drop` | → mode `any-drop` |
+| `below-current` | → mode `any-drop` (був тим самим сценарієм із замороженою базою) |
+| `favourable-price` | → mode `good-price` |
+| `custom-price` | → mode `my-price` |
 
 ### Модулі
 
 | Файл | Відповідальність |
 |------|-----------------|
-| `wishlist/alert/dto.ts` | AlertDto, re-export AlertStatus/AlertIntent з shared |
-| `wishlist/alert/repository.ts` | WishlistAlertRow, findWishlistItemId, upsertAlert, setAlertStatus, deleteAlert |
-| `wishlist/alert/service.ts` | deriveAlertStatus (pure), setAlert, setAlertPaused, removeAlert |
-| `wishlist/alert/schema.ts` | parseSetAlertBody, parsePauseAlertBody, parseAlertParams (reuse) |
-| `wishlist/alert/route.ts` | registerWishlistAlertRoute (PUT/PATCH/DELETE) |
+| `pricing/canonical-price.ts` | **єдине** означення канонічної ціни (pure + один SQL-агрегат) |
+| `wishlist/alert/policy.ts` | AlertPolicy, `isSignificantDrop`, `applyRearm` |
+| `wishlist/alert/resolver.ts` | `resolveAlertPolicy` — режим → політика, лише на create/update |
+| `wishlist/alert/good-price.ts` | джерело порогу «вигідної ціни» (формула — після дослідження) |
+| `wishlist/alert/dto.ts` | AlertDto: `state`, `mode`, `threshold`, `baseline`, `thresholdProof`, `notifiedAt` |
+| `wishlist/alert/repository.ts` | `WishlistAlertRow`, `upsertAlert` (політика + очищення маркера), `applyRearmToAlert`, dedup-хелпери |
+| `wishlist/alert/service.ts` | `deriveAlertState`, `toLifecycle`, `setAlert` (володіє порогом), pause/remove |
+| `wishlist/alert/schema.ts` | `parseSetAlertBody` (`{mode, threshold?}`), `parsePauseAlertBody` |
+| `wishlist/alert/route.ts` | `registerWishlistAlertRoute` (PUT віддає повний об'єкт) |
+| `books/price-history/alert-preview.ts` | `alertPolicyPreview` — прев'ю режимів для конфігуратора |
+| `refresh/alert-dedup.ts` | чистий рушій над політикою (без знання режимів) |
+
+### Коди помилок `PUT .../alert`
+
+| Код | HTTP | Коли |
+|-----|------|------|
+| `THRESHOLD_REQUIRED` | 422 | `my-price` без числа |
+| `THRESHOLD_NOT_ALLOWED` | 422 | поріг присланий для режиму, яким володіє сервер |
+| `THRESHOLD_NOT_BELOW_CURRENT` | 422 | `my-price` ≥ поточної ціни (спрацював би одразу) |
+| `NO_CANONICAL_PRICE` | 422 | немає жодної in-stock пропозиції |
+| `INSUFFICIENT_HISTORY` | 409 | `good-price` без калібрування/історії |
 
 ## Email провайдер
 
-**Resend** — планується для:
-- Magic Link (авторизація) — вже реалізовано
-- Price alert (сповіщення про зниження ціни) — майбутнє (W4b+)
+**Resend** — реалізовано для:
+- Magic Link (авторизація)
+- Price alert + back-in-stock (`alerts/mailer.ts`, `alerts/templates.ts`) — з 2026-06-29

@@ -1,13 +1,18 @@
 /**
- * Pure alert deduplication logic — no Prisma, no I/O.
+ * Pure alert deduplication logic — no Prisma, no I/O, no knowledge of UX modes.
  *
- * Implements the W10 PRD §4 notification rule:
- * - Notify when price drops to/below target AND is strictly lower than last notified price.
- * - Reset the dedup marker when the price condition no longer holds.
+ * Operates only on an AlertPolicy (notifications-model-v2 §9.1–9.2):
+ * - notify when the canonical price reaches the policy threshold, the drop is
+ *   significant for follow-down policies, and the price is strictly lower than
+ *   the last notified one;
+ * - reset the dedup marker when the threshold is no longer reached.
  */
+import type { AlertPolicy, SignificanceConfig } from '../wishlist/alert/policy.js';
+import { isSignificantDrop } from '../wishlist/alert/policy.js';
 
 export interface AlertNotificationState {
-  readonly targetPriceAmount: number;
+  /** The policy the engine evaluates — no mode, no UX vocabulary (§9.1). */
+  readonly policy: Pick<AlertPolicy, 'threshold' | 'baseline' | 'rearmPolicy'>;
   readonly lastNotifiedAt: Date | null;
   readonly lastNotifiedPriceAmount: number | null;
 }
@@ -22,50 +27,60 @@ export type AlertNotificationDecision =
   | { readonly action: 'none' }; // no change
 
 /**
- * lowestPriceAmount = lowest IN-STOCK price (копійки) across the book's listings; null = no in-stock offer.
+ * Decide whether a delivered price-drop notification is due.
  *
- * Rules (W10 PRD §4):
- * - targetReached = lowestPriceAmount != null && lowestPriceAmount <= targetPriceAmount.
- * - if targetReached:
- *     notify when (lastNotifiedAt == null) OR (lowestPriceAmount < lastNotifiedPriceAmount);
- *     otherwise 'none'.
- * - if NOT targetReached:
- *     if a marker is set (lastNotifiedAt != null || lastNotifiedPriceAmount != null) => 'reset';
- *     else 'none'.
+ * `canonicalPriceAmount` = the book's canonical price (cheapest strictly IN_STOCK
+ * offer, `src/pricing/canonical-price.ts`); null = nothing buyable right now.
+ *
+ * Rules (notifications-model-v2 §9.2):
+ * - thresholdReached = price != null && price <= policy.threshold.
+ * - a follow-down policy additionally requires the drop below `policy.baseline`
+ *   to be significant under `significance` — that is what keeps «будь-яке
+ *   зниження» from emailing about jitter.
+ * - if due: notify when no marker exists, or when the price is strictly lower
+ *   than the last notified one; otherwise 'none'.
+ * - if not due: clear an existing marker ('reset') so the alert can re-arm.
+ *
+ * The function is pure and knows nothing about modes.
  */
 export function evaluateAlertNotification(
   state: AlertNotificationState,
-  lowestPriceAmount: number | null,
+  canonicalPriceAmount: number | null,
   now: Date,
+  significance: SignificanceConfig,
 ): AlertNotificationDecision {
-  const targetReached =
-    lowestPriceAmount != null && lowestPriceAmount <= state.targetPriceAmount;
+  const { policy } = state;
+  const hasMarker = state.lastNotifiedAt != null || state.lastNotifiedPriceAmount != null;
 
-  if (targetReached) {
-    // lowestPriceAmount is non-null here (targetReached guard above).
-    const lowest = lowestPriceAmount as number;
+  const thresholdReached =
+    canonicalPriceAmount != null && canonicalPriceAmount <= policy.threshold;
 
-    const hasMarker = state.lastNotifiedAt != null || state.lastNotifiedPriceAmount != null;
+  const significantEnough =
+    thresholdReached &&
+    (policy.rearmPolicy !== 'follow-down' ||
+      isSignificantDrop(canonicalPriceAmount as number, policy.baseline, significance));
+
+  if (thresholdReached && significantEnough) {
+    const price = canonicalPriceAmount as number;
 
     if (!hasMarker) {
       // First notification — no prior marker.
-      return { action: 'notify', lastNotifiedAt: now, lastNotifiedPriceAmount: lowest };
+      return { action: 'notify', lastNotifiedAt: now, lastNotifiedPriceAmount: price };
     }
 
-    // Notify only on a strictly lower price.
-    // lastNotifiedPriceAmount may be null when only lastNotifiedAt is set (partial marker);
-    // treat null as "no prior price" → fire notify.
-    if (state.lastNotifiedPriceAmount == null || lowest < state.lastNotifiedPriceAmount) {
-      return { action: 'notify', lastNotifiedAt: now, lastNotifiedPriceAmount: lowest };
+    // Notify only on a strictly lower price. A null lastNotifiedPriceAmount is a
+    // partial marker (only the timestamp survived) — treat it as "no prior price".
+    if (state.lastNotifiedPriceAmount == null || price < state.lastNotifiedPriceAmount) {
+      return { action: 'notify', lastNotifiedAt: now, lastNotifiedPriceAmount: price };
     }
 
-    // Same or higher price with existing marker — suppress.
     return { action: 'none' };
   }
 
-  // Target not reached — reset marker if one exists so the alert can re-arm later.
-  const hasMarker = state.lastNotifiedAt != null || state.lastNotifiedPriceAmount != null;
-  if (hasMarker) {
+  // Threshold no longer reached (or the drop is noise) — clear the marker so the
+  // alert re-arms. A significant-but-suppressed drop keeps its marker: the
+  // threshold IS still reached, so resetting would re-fire the same email.
+  if (!thresholdReached && hasMarker) {
     return { action: 'reset' };
   }
 

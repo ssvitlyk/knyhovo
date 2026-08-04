@@ -91,25 +91,37 @@ export interface AuthUserDto {
 }
 
 /**
- * Frontend mirror of the W4a price-alert contract
- * (`GET /api/wishlist` alert field, `PUT/PATCH/DELETE /api/wishlist/:bookId/alert`).
+ * Frontend mirror of the notifications-model-v2 price-alert contract
+ * (`GET /api/wishlist` alert field, `PUT/PATCH/DELETE /api/wishlist/:bookId/alert`,
+ * packages/api/src/wishlist/alert/dto.ts — AlertDto).
  * The DTOs are not exported from `@knyhovo/shared`; the shape is mirrored here.
+ *
+ * The client never infers state or computes thresholds — everything below is
+ * read verbatim from the server (notifications-model-v2 §9).
  */
 
-/** Server-derived effective status of a price alert, returned at read time. */
-export type AlertStatus = 'active' | 'paused' | 'triggered' | 'unavailable';
+/** Effective state shown to the user — derived from facts, never from a price comparison. */
+export type AlertState = 'armed' | 'reached' | 'unavailable' | 'paused';
 
-/** The intent the user selected when configuring the alert. */
-export type AlertIntent = 'any-drop' | 'below-current' | 'favourable-price' | 'custom-price';
+/** The mode the user picked — a label, never behaviour (§9.1). */
+export type AlertMode = 'any-drop' | 'good-price' | 'my-price';
 
 /** Price alert configuration nested in each {@link WishlistItemDto}. */
 export interface AlertDto {
-  /** Server-derived effective status at read time. */
-  readonly status: AlertStatus;
-  readonly intent: AlertIntent;
-  readonly targetPrice: MoneyDto;
+  /** Server-derived effective state at read time. */
+  readonly state: AlertState;
+  /** The mode the user picked when configuring the alert. */
+  readonly mode: AlertMode;
+  /** The policy threshold the server resolved and froze. */
+  readonly threshold: MoneyDto;
+  /** The price a further drop is measured against; null for static policies. */
+  readonly baseline: MoneyDto | null;
+  /** One-line human proof of where the threshold came from; render as-is. */
+  readonly thresholdProof: string | null;
   /** ISO 8601 timestamp when the alert was paused, or null when not paused. */
   readonly pausedAt: string | null;
+  /** ISO 8601 timestamp of the last email about the current threshold; null = never. */
+  readonly notifiedAt: string | null;
 }
 
 /**
@@ -229,6 +241,31 @@ export interface BookPriceHistoryDto {
   readonly typicalRange: TypicalRangeDto | null;
   readonly change: PriceHistoryChangeDto | null;
   readonly points: readonly PriceHistoryPointDto[];
+  /**
+   * Per-mode alert preview (notifications-model-v2 §10), exactly 3 entries in
+   * fixed order (any-drop, good-price, my-price), independent of `period`.
+   * Lets the configurator render every mode without any client-side calculation.
+   * A preview, not the contract — the authoritative policy is built by the
+   * server on `PUT .../alert` and returned in that response.
+   */
+  readonly alertPolicyPreview: readonly AlertModePreviewDto[];
+}
+
+/** One selectable mode as the configurator should render it. */
+export interface AlertModePreviewDto {
+  readonly mode: AlertMode;
+  /** False → the mode must be shown disabled, with `reason` and no threshold. */
+  readonly available: boolean;
+  /**
+   * The threshold the server would freeze, or null (my-price / unavailable).
+   * Always null for `my-price` even when `available: true` — the user hasn't
+   * typed a number yet. This is not a bug.
+   */
+  readonly threshold: MoneyDto | null;
+  /** One-line human proof of the threshold, or null. */
+  readonly proof: string | null;
+  /** Why the mode is unavailable; null when it is available. */
+  readonly reason: string | null;
 }
 
 /**

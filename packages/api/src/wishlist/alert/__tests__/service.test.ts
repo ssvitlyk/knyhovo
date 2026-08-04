@@ -1,104 +1,86 @@
 import { describe, it, expect } from 'vitest';
-import { deriveAlertStatus } from '../service.js';
-import type { MoneyDto } from '../../dto.js';
+import { deriveAlertState, toLifecycle } from '../service.js';
 
 // ---------------------------------------------------------------------------
-// Helpers
+// toLifecycle — the persisted column narrows to exactly two values
 // ---------------------------------------------------------------------------
 
-function money(amount: number): MoneyDto {
-  return { amount, currency: 'UAH' };
-}
+describe('toLifecycle', () => {
+  it('PAUSED → paused', () => {
+    expect(toLifecycle('PAUSED')).toBe('paused');
+  });
 
-const ACTIVE_PERSISTED = { status: 'ACTIVE' as const, targetPriceAmount: 20000 };
-const PAUSED_PERSISTED = { status: 'PAUSED' as const, targetPriceAmount: 20000 };
-const TRIGGERED_PERSISTED = { status: 'TRIGGERED' as const, targetPriceAmount: 20000 };
-const UNAVAILABLE_PERSISTED = { status: 'UNAVAILABLE' as const, targetPriceAmount: 20000 };
+  it('ACTIVE → active', () => {
+    expect(toLifecycle('ACTIVE')).toBe('active');
+  });
+
+  it('reads the never-written reserved enum values defensively as active', () => {
+    // No code path ever persisted these; they read as `active` until the enum is
+    // narrowed by migration.
+    expect(toLifecycle('TRIGGERED')).toBe('active');
+    expect(toLifecycle('UNAVAILABLE')).toBe('active');
+  });
+});
 
 // ---------------------------------------------------------------------------
-// deriveAlertStatus — exhaustive truth table
+// deriveAlertState — exhaustive truth table over FACTS (no price comparison)
 // ---------------------------------------------------------------------------
 
-describe('deriveAlertStatus', () => {
-  // ── Precedence 1: PAUSED wins over everything ─────────────────────────────
+const NOTIFIED = new Date('2026-07-20T08:00:00.000Z');
 
-  it('PAUSED × offers > 0 × lowestPrice below target → paused (PAUSED beats triggered)', () => {
-    expect(deriveAlertStatus(PAUSED_PERSISTED, money(10000), 1)).toBe('paused');
+describe('deriveAlertState', () => {
+  // ── Precedence 1: paused wins over everything ─────────────────────────────
+
+  it('paused × price present × marker set → paused', () => {
+    expect(deriveAlertState({ lifecycle: 'paused', lastNotifiedAt: NOTIFIED }, 10000)).toBe(
+      'paused',
+    );
   });
 
-  it('PAUSED × offers = 0 × lowestPrice null → paused (PAUSED beats unavailable)', () => {
-    expect(deriveAlertStatus(PAUSED_PERSISTED, null, 0)).toBe('paused');
+  it('paused × no canonical price → paused (beats unavailable)', () => {
+    expect(deriveAlertState({ lifecycle: 'paused', lastNotifiedAt: null }, null)).toBe('paused');
   });
 
-  it('PAUSED × offers > 0 × lowestPrice above target → paused', () => {
-    expect(deriveAlertStatus(PAUSED_PERSISTED, money(30000), 2)).toBe('paused');
+  // ── Precedence 2: no canonical price → unavailable ────────────────────────
+
+  it('active × no canonical price × no marker → unavailable', () => {
+    expect(deriveAlertState({ lifecycle: 'active', lastNotifiedAt: null }, null)).toBe(
+      'unavailable',
+    );
   });
 
-  it('PAUSED × offers = 0 × lowestPrice = null → paused', () => {
-    expect(deriveAlertStatus(PAUSED_PERSISTED, null, 0)).toBe('paused');
+  it('active × no canonical price × marker set → unavailable (beats reached)', () => {
+    expect(deriveAlertState({ lifecycle: 'active', lastNotifiedAt: NOTIFIED }, null)).toBe(
+      'unavailable',
+    );
   });
 
-  // ── Precedence 2: offersCount = 0 → unavailable (when not PAUSED) ─────────
+  // ── Precedence 3: marker set → reached ───────────────────────────────────
 
-  it('ACTIVE × offers = 0 × lowestPrice null → unavailable', () => {
-    expect(deriveAlertStatus(ACTIVE_PERSISTED, null, 0)).toBe('unavailable');
+  it('active × price present × marker set → reached', () => {
+    expect(deriveAlertState({ lifecycle: 'active', lastNotifiedAt: NOTIFIED }, 30000)).toBe(
+      'reached',
+    );
   });
 
-  it('TRIGGERED × offers = 0 × lowestPrice null → unavailable', () => {
-    expect(deriveAlertStatus(TRIGGERED_PERSISTED, null, 0)).toBe('unavailable');
+  it('reached does not depend on the price relative to anything', () => {
+    // The point of the model: `reached` means "we emailed", so even a price far
+    // above any plausible threshold still reads as reached while the marker stands.
+    expect(deriveAlertState({ lifecycle: 'active', lastNotifiedAt: NOTIFIED }, 999_999)).toBe(
+      'reached',
+    );
   });
 
-  it('UNAVAILABLE × offers = 0 × lowestPrice null → unavailable', () => {
-    expect(deriveAlertStatus(UNAVAILABLE_PERSISTED, null, 0)).toBe('unavailable');
+  // ── Precedence 4: default ────────────────────────────────────────────────
+
+  it('active × price present × no marker → armed', () => {
+    expect(deriveAlertState({ lifecycle: 'active', lastNotifiedAt: null }, 30000)).toBe('armed');
   });
 
-  // ── Precedence 3: lowestPrice ≤ target → triggered ───────────────────────
-
-  it('ACTIVE × offers > 0 × lowestPrice strictly below target → triggered', () => {
-    expect(deriveAlertStatus(ACTIVE_PERSISTED, money(15000), 1)).toBe('triggered');
-  });
-
-  it('ACTIVE × offers > 0 × lowestPrice exactly equals target (boundary) → triggered', () => {
-    // Boundary case: lowestPrice.amount === targetPriceAmount
-    expect(deriveAlertStatus(ACTIVE_PERSISTED, money(20000), 1)).toBe('triggered');
-  });
-
-  it('TRIGGERED × offers > 0 × lowestPrice below target → triggered', () => {
-    expect(deriveAlertStatus(TRIGGERED_PERSISTED, money(10000), 3)).toBe('triggered');
-  });
-
-  it('UNAVAILABLE × offers > 0 × lowestPrice below target → triggered', () => {
-    expect(deriveAlertStatus(UNAVAILABLE_PERSISTED, money(19999), 1)).toBe('triggered');
-  });
-
-  // ── Precedence 4: else → active ───────────────────────────────────────────
-
-  it('ACTIVE × offers > 0 × lowestPrice above target → active', () => {
-    expect(deriveAlertStatus(ACTIVE_PERSISTED, money(25000), 2)).toBe('active');
-  });
-
-  it('ACTIVE × offers > 0 × lowestPrice null → active', () => {
-    // offers > 0 but lowestPrice is null (should not happen in practice, but defensive)
-    expect(deriveAlertStatus(ACTIVE_PERSISTED, null, 1)).toBe('active');
-  });
-
-  it('TRIGGERED × offers > 0 × lowestPrice above target → active', () => {
-    expect(deriveAlertStatus(TRIGGERED_PERSISTED, money(99999), 5)).toBe('active');
-  });
-
-  it('UNAVAILABLE × offers > 0 × lowestPrice above target → active', () => {
-    expect(deriveAlertStatus(UNAVAILABLE_PERSISTED, money(50000), 2)).toBe('active');
-  });
-
-  // ── Edge: lowestPrice.amount = target + 1 (just above) → active ──────────
-
-  it('ACTIVE × offers > 0 × lowestPrice one kopika above target → active', () => {
-    expect(deriveAlertStatus(ACTIVE_PERSISTED, money(20001), 1)).toBe('active');
-  });
-
-  // ── Edge: lowestPrice.amount = target - 1 (just below) → triggered ───────
-
-  it('ACTIVE × offers > 0 × lowestPrice one kopika below target → triggered', () => {
-    expect(deriveAlertStatus(ACTIVE_PERSISTED, money(19999), 1)).toBe('triggered');
+  it('a cheap price alone never produces reached without a marker', () => {
+    // Regression guard for the defect this model removes: the old implementation
+    // compared lowestPrice <= target and could claim «Ціль досягнута» for an
+    // alert the mailer had never fired on.
+    expect(deriveAlertState({ lifecycle: 'active', lastNotifiedAt: null }, 1)).toBe('armed');
   });
 });

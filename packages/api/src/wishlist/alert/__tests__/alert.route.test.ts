@@ -91,10 +91,19 @@ interface BookRow {
 interface AlertRow {
   wishlistItemId: string;
   status: 'ACTIVE' | 'PAUSED' | 'TRIGGERED' | 'UNAVAILABLE';
-  intent: 'ANY_DROP' | 'BELOW_CURRENT' | 'FAVOURABLE_PRICE' | 'CUSTOM_PRICE';
+  // `intent` is a legacy column still written by `upsertAlert` for rollback
+  // safety (see repository.ts `LEGACY_INTENT`) — kept here so the fake's
+  // `create`/`update` typing matches what the real repository writes.
+  intent: 'ANY_DROP' | 'FAVOURABLE_PRICE' | 'CUSTOM_PRICE';
+  mode: 'ANY_DROP' | 'GOOD_PRICE' | 'MY_PRICE';
   targetPriceAmount: number;
   targetPriceCurrency: 'UAH';
+  baselineAmount: number | null;
+  rearmPolicy: 'FOLLOW_DOWN' | 'STATIC';
+  thresholdBasis: string | null;
+  thresholdProof: string | null;
   pausedAt: Date | null;
+  lastNotifiedAt: Date | null;
 }
 
 let _sessions: SessionRow[] = [];
@@ -230,6 +239,37 @@ function makeFakePrisma(): PrismaClient {
       count: vi.fn(async ({ where }: { where: { id: string } }) => {
         return _books.filter((b) => b.id === where.id).length;
       }),
+    },
+    providerListing: {
+      // Backs `findCanonicalPriceByBook` (src/pricing/canonical-price.ts): the
+      // cheapest strictly IN_STOCK listing's price, grouped by canonicalBookId.
+      // Books with no IN_STOCK listing are simply omitted from the result — the
+      // real Prisma groupBy over an empty match set does the same.
+      groupBy: vi.fn(
+        async ({
+          where,
+        }: {
+          by: ['canonicalBookId'];
+          where: { canonicalBookId: { in: string[] }; availability: 'IN_STOCK' };
+          _min: { priceAmount: true };
+        }) => {
+          return where.canonicalBookId.in.flatMap((id) => {
+            const book = _books.find((b) => b.id === id);
+            if (!book) return [];
+            const inStockPrices = book.listings
+              .filter((l) => l.availability === 'IN_STOCK')
+              .map((l) => l.priceAmount);
+            if (inStockPrices.length === 0) return [];
+            return [{ canonicalBookId: id, _min: { priceAmount: Math.min(...inStockPrices) } }];
+          });
+        },
+      ),
+    },
+    priceHistoryPoint: {
+      // Backs `goodPriceForBook` — good-price is always PENDING_CALIBRATION
+      // regardless of sample content, so an empty history is sufficient for
+      // every fixture in this file.
+      findMany: vi.fn(async () => []),
     },
     alert: {
       upsert: vi.fn(
@@ -385,29 +425,34 @@ describe('401 AUTH_REQUIRED without cookie', () => {
 // ── PUT /api/wishlist/:bookId/alert ───────────────────────────────────────────
 
 describe('PUT /api/wishlist/:bookId/alert', () => {
-  it('happy path — creates alert → 200 {ok: true}', async () => {
+  // Seeded canonical price for BOOK_UUID_A (see beforeEach) is 34900.
+  const CANONICAL_PRICE = 34900;
+
+  it('happy path — creates alert (my-price) → 200 {alert}', async () => {
     const { app } = makeApp();
     const res = await app.inject({
       method: 'PUT',
       url: `/api/wishlist/${BOOK_UUID_A}/alert`,
       headers: { cookie: AUTH_COOKIE },
-      payload: { intent: 'any-drop', targetPrice: { amount: 20000, currency: 'UAH' } },
+      payload: { mode: 'my-price', threshold: { amount: 20000, currency: 'UAH' } },
     });
     expect(res.statusCode).toBe(200);
-    expect(res.json()).toEqual({ ok: true });
+    const body = res.json();
+    expect(body.alert.mode).toBe('my-price');
+    expect(body.alert.threshold).toEqual({ amount: 20000, currency: 'UAH' });
     expect(_alerts).toHaveLength(1);
-    expect(_alerts[0]?.intent).toBe('ANY_DROP');
+    expect(_alerts[0]?.mode).toBe('MY_PRICE');
     expect(_alerts[0]?.targetPriceAmount).toBe(20000);
     expect(_alerts[0]?.status).toBe('ACTIVE');
   });
 
-  it('GET /api/wishlist shows alert after PUT', async () => {
+  it('GET /api/wishlist shows alert after PUT (any-drop)', async () => {
     const { app } = makeApp();
     await app.inject({
       method: 'PUT',
       url: `/api/wishlist/${BOOK_UUID_A}/alert`,
       headers: { cookie: AUTH_COOKIE },
-      payload: { intent: 'below-current', targetPrice: { amount: 30000, currency: 'UAH' } },
+      payload: { mode: 'any-drop' },
     });
 
     const res = await app.inject({
@@ -419,20 +464,23 @@ describe('PUT /api/wishlist/:bookId/alert', () => {
     expect(res.statusCode).toBe(200);
     const item = res.json().items[0];
     expect(item.alert).not.toBeNull();
-    expect(item.alert.intent).toBe('below-current');
-    expect(item.alert.targetPrice).toEqual({ amount: 30000, currency: 'UAH' });
-    // lowestPrice (34900) > target (30000) → active
-    expect(item.alert.status).toBe('active');
+    expect(item.alert.mode).toBe('any-drop');
+    expect(item.alert.threshold).toEqual({ amount: CANONICAL_PRICE, currency: 'UAH' });
+    // No email has been sent for this alert yet → armed (state is a fact, not a
+    // price comparison).
+    expect(item.alert.state).toBe('armed');
+    expect(item.alert.notifiedAt).toBeNull();
   });
 
-  it('GET /api/wishlist shows status=triggered when lowestPrice ≤ target', async () => {
+  it('a my-price target below the current price stays armed (no false reached)', async () => {
     const { app } = makeApp();
-    // Set target above the listing price (34900)
+    // Threshold below the listing price (34900): armed is a fact from the
+    // notification marker, never a live price comparison.
     await app.inject({
       method: 'PUT',
       url: `/api/wishlist/${BOOK_UUID_A}/alert`,
       headers: { cookie: AUTH_COOKIE },
-      payload: { intent: 'custom-price', targetPrice: { amount: 35000, currency: 'UAH' } },
+      payload: { mode: 'my-price', threshold: { amount: 30000, currency: 'UAH' } },
     });
 
     const res = await app.inject({
@@ -442,8 +490,23 @@ describe('PUT /api/wishlist/:bookId/alert', () => {
     });
 
     const item = res.json().items[0];
-    // lowestPrice (34900) ≤ target (35000) → triggered
-    expect(item.alert.status).toBe('triggered');
+    expect(item.alert.state).toBe('armed');
+  });
+
+  it('a my-price target at/above the current price is rejected, not stored as not-yet-reached', async () => {
+    const { app } = makeApp();
+    // Under the old model this was accepted and read as not-yet-triggered; the
+    // new contract rejects it outright (THRESHOLD_NOT_BELOW_CURRENT) so no
+    // dishonest threshold is ever persisted.
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/wishlist/${BOOK_UUID_A}/alert`,
+      headers: { cookie: AUTH_COOKIE },
+      payload: { mode: 'my-price', threshold: { amount: 35000, currency: 'UAH' } },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(res.json().error.code).toBe('THRESHOLD_NOT_BELOW_CURRENT');
+    expect(_alerts).toHaveLength(0);
   });
 
   it('book not in wishlist → 404 WISHLIST_ITEM_NOT_FOUND', async () => {
@@ -452,43 +515,43 @@ describe('PUT /api/wishlist/:bookId/alert', () => {
       method: 'PUT',
       url: `/api/wishlist/${MISSING_UUID}/alert`,
       headers: { cookie: AUTH_COOKIE },
-      payload: { intent: 'any-drop', targetPrice: { amount: 20000, currency: 'UAH' } },
+      payload: { mode: 'any-drop' },
     });
     expect(res.statusCode).toBe(404);
     expect(res.json().error.code).toBe('WISHLIST_ITEM_NOT_FOUND');
   });
 
-  it('invalid intent → 400 VALIDATION_ERROR', async () => {
+  it('invalid mode → 400 VALIDATION_ERROR', async () => {
     const { app } = makeApp();
     const res = await app.inject({
       method: 'PUT',
       url: `/api/wishlist/${BOOK_UUID_A}/alert`,
       headers: { cookie: AUTH_COOKIE },
-      payload: { intent: 'bad-intent', targetPrice: { amount: 20000, currency: 'UAH' } },
+      payload: { mode: 'bad-mode' },
     });
     expect(res.statusCode).toBe(400);
     expect(res.json().error.code).toBe('VALIDATION_ERROR');
   });
 
-  it('non-positive targetPrice amount → 400 VALIDATION_ERROR', async () => {
+  it('non-positive threshold amount → 400 VALIDATION_ERROR', async () => {
     const { app } = makeApp();
     const res = await app.inject({
       method: 'PUT',
       url: `/api/wishlist/${BOOK_UUID_A}/alert`,
       headers: { cookie: AUTH_COOKIE },
-      payload: { intent: 'any-drop', targetPrice: { amount: 0, currency: 'UAH' } },
+      payload: { mode: 'my-price', threshold: { amount: 0, currency: 'UAH' } },
     });
     expect(res.statusCode).toBe(400);
     expect(res.json().error.code).toBe('VALIDATION_ERROR');
   });
 
-  it('non-integer targetPrice amount → 400 VALIDATION_ERROR', async () => {
+  it('non-integer threshold amount → 400 VALIDATION_ERROR', async () => {
     const { app } = makeApp();
     const res = await app.inject({
       method: 'PUT',
       url: `/api/wishlist/${BOOK_UUID_A}/alert`,
       headers: { cookie: AUTH_COOKIE },
-      payload: { intent: 'any-drop', targetPrice: { amount: 199.99, currency: 'UAH' } },
+      payload: { mode: 'my-price', threshold: { amount: 199.99, currency: 'UAH' } },
     });
     expect(res.statusCode).toBe(400);
     expect(res.json().error.code).toBe('VALIDATION_ERROR');
@@ -500,7 +563,105 @@ describe('PUT /api/wishlist/:bookId/alert', () => {
       method: 'PUT',
       url: '/api/wishlist/not-a-uuid/alert',
       headers: { cookie: AUTH_COOKIE },
-      payload: { intent: 'any-drop', targetPrice: { amount: 20000, currency: 'UAH' } },
+      payload: { mode: 'my-price', threshold: { amount: 20000, currency: 'UAH' } },
+    });
+    expect(res.statusCode).toBe(400);
+    expect(res.json().error.code).toBe('VALIDATION_ERROR');
+  });
+
+  // ── New coverage: notifications-model-v2 resolver contract end to end ──────
+
+  it('my-price with threshold below current price → 200, armed, STATIC rearm', async () => {
+    const { app } = makeApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/wishlist/${BOOK_UUID_A}/alert`,
+      headers: { cookie: AUTH_COOKIE },
+      payload: { mode: 'my-price', threshold: { amount: 25000, currency: 'UAH' } },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.alert.mode).toBe('my-price');
+    expect(body.alert.threshold.amount).toBe(25000);
+    expect(body.alert.state).toBe('armed');
+    expect(_alerts[0]?.rearmPolicy).toBe('STATIC');
+  });
+
+  it('my-price without threshold in body → 422 THRESHOLD_REQUIRED', async () => {
+    const { app } = makeApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/wishlist/${BOOK_UUID_A}/alert`,
+      headers: { cookie: AUTH_COOKIE },
+      payload: { mode: 'my-price' },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(res.json().error.code).toBe('THRESHOLD_REQUIRED');
+    expect(_alerts).toHaveLength(0);
+  });
+
+  it('my-price with threshold at current price → 422 THRESHOLD_NOT_BELOW_CURRENT', async () => {
+    const { app } = makeApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/wishlist/${BOOK_UUID_A}/alert`,
+      headers: { cookie: AUTH_COOKIE },
+      payload: { mode: 'my-price', threshold: { amount: CANONICAL_PRICE, currency: 'UAH' } },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(res.json().error.code).toBe('THRESHOLD_NOT_BELOW_CURRENT');
+    expect(_alerts).toHaveLength(0);
+  });
+
+  it('any-drop (no threshold) → 200, threshold = canonical price, FOLLOW_DOWN rearm, baseline set', async () => {
+    const { app } = makeApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/wishlist/${BOOK_UUID_A}/alert`,
+      headers: { cookie: AUTH_COOKIE },
+      payload: { mode: 'any-drop' },
+    });
+    expect(res.statusCode).toBe(200);
+    const body = res.json();
+    expect(body.alert.mode).toBe('any-drop');
+    expect(body.alert.threshold).toEqual({ amount: CANONICAL_PRICE, currency: 'UAH' });
+    expect(_alerts[0]?.rearmPolicy).toBe('FOLLOW_DOWN');
+    expect(_alerts[0]?.baselineAmount).toBe(CANONICAL_PRICE);
+  });
+
+  it('any-drop with a threshold in the body → 422 THRESHOLD_NOT_ALLOWED', async () => {
+    const { app } = makeApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/wishlist/${BOOK_UUID_A}/alert`,
+      headers: { cookie: AUTH_COOKIE },
+      payload: { mode: 'any-drop', threshold: { amount: 20000, currency: 'UAH' } },
+    });
+    expect(res.statusCode).toBe(422);
+    expect(res.json().error.code).toBe('THRESHOLD_NOT_ALLOWED');
+    expect(_alerts).toHaveLength(0);
+  });
+
+  it('good-price → 409 INSUFFICIENT_HISTORY (always PENDING_CALIBRATION today)', async () => {
+    const { app } = makeApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/wishlist/${BOOK_UUID_A}/alert`,
+      headers: { cookie: AUTH_COOKIE },
+      payload: { mode: 'good-price' },
+    });
+    expect(res.statusCode).toBe(409);
+    expect(res.json().error.code).toBe('INSUFFICIENT_HISTORY');
+    expect(_alerts).toHaveLength(0);
+  });
+
+  it('unknown mode string → 400 VALIDATION_ERROR', async () => {
+    const { app } = makeApp();
+    const res = await app.inject({
+      method: 'PUT',
+      url: `/api/wishlist/${BOOK_UUID_A}/alert`,
+      headers: { cookie: AUTH_COOKIE },
+      payload: { mode: 'not-a-real-mode' },
     });
     expect(res.statusCode).toBe(400);
     expect(res.json().error.code).toBe('VALIDATION_ERROR');
@@ -516,9 +677,15 @@ describe('PATCH /api/wishlist/:bookId/alert', () => {
         wishlistItemId: WISHLIST_ITEM_ID,
         status: 'ACTIVE',
         intent: 'ANY_DROP',
+        mode: 'ANY_DROP',
         targetPriceAmount: 20000,
         targetPriceCurrency: 'UAH',
+        baselineAmount: 20000,
+        rearmPolicy: 'FOLLOW_DOWN',
+        thresholdBasis: 'current-price',
+        thresholdProof: 'Щойно ціна впаде',
         pausedAt: null,
+        lastNotifiedAt: null,
       },
     ];
   });
@@ -551,7 +718,7 @@ describe('PATCH /api/wishlist/:bookId/alert', () => {
       url: '/api/wishlist',
       headers: { cookie: AUTH_COOKIE },
     });
-    expect(res.json().items[0].alert.status).toBe('paused');
+    expect(res.json().items[0].alert.state).toBe('paused');
   });
 
   it('paused=false after paused=true → status back to active/triggered', async () => {
@@ -607,9 +774,15 @@ describe('DELETE /api/wishlist/:bookId/alert', () => {
         wishlistItemId: WISHLIST_ITEM_ID,
         status: 'ACTIVE',
         intent: 'ANY_DROP',
+        mode: 'ANY_DROP',
         targetPriceAmount: 20000,
         targetPriceCurrency: 'UAH',
+        baselineAmount: 20000,
+        rearmPolicy: 'FOLLOW_DOWN',
+        thresholdBasis: 'current-price',
+        thresholdProof: 'Щойно ціна впаде',
         pausedAt: null,
+        lastNotifiedAt: null,
       },
     ];
   });

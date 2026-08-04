@@ -1,112 +1,237 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import { AlertConfig } from '../AlertConfig';
-import type { MoneyDto } from '@/lib/api/types';
+import type { AlertModePreviewDto, MoneyDto } from '@/lib/api/types';
 
 const CURRENT_PRICE: MoneyDto = { amount: 24000, currency: 'UAH' };
+
+const PREVIEW: readonly AlertModePreviewDto[] = [
+  {
+    mode: 'any-drop',
+    available: true,
+    threshold: { amount: 24000, currency: 'UAH' },
+    proof: null,
+    reason: null,
+  },
+  {
+    mode: 'good-price',
+    available: true,
+    threshold: { amount: 20000, currency: 'UAH' },
+    proof: 'дешевше, ніж у 80 % днів за пів року',
+    reason: null,
+  },
+  {
+    mode: 'my-price',
+    available: true,
+    threshold: null,
+    proof: null,
+    reason: null,
+  },
+];
 
 const DEFAULT_PROPS = {
   bookTitle: 'Кобзар',
   currentPrice: CURRENT_PRICE,
-  typicalRangeMin: 20000,
+  preview: PREVIEW,
   onSubmit: vi.fn(),
   onCancel: vi.fn(),
 };
 
 describe('AlertConfig', () => {
-  it('renders 3 intent radio buttons', () => {
+  it('renders exactly 3 mode radio cards, in preview order', () => {
     render(<AlertConfig {...DEFAULT_PROPS} />);
     const radios = screen.getAllByRole('radio');
     expect(radios).toHaveLength(3);
+    expect(radios[0]).toHaveTextContent('Будь-яке зниження');
+    expect(radios[1]).toHaveTextContent('Вигідна ціна');
+    expect(radios[2]).toHaveTextContent('Моя ціна');
   });
 
-  it('radio labels: «Будь-яке зниження», «Нижче за поточну», «Вигідна ціна»', () => {
-    render(<AlertConfig {...DEFAULT_PROPS} />);
-    expect(screen.getByText('Будь-яке зниження')).toBeTruthy();
-    expect(screen.getByText('Нижче за поточну')).toBeTruthy();
-    expect(screen.getByText('Вигідна ціна')).toBeTruthy();
-  });
-
-  it('default selected intent is below-current (aria-checked=true)', () => {
+  it('default selected mode is the first available preview entry (any-drop)', () => {
     render(<AlertConfig {...DEFAULT_PROPS} />);
     const radios = screen.getAllByRole('radio');
-    // below-current is 2nd (index 1)
-    expect(radios[1]).toHaveAttribute('aria-checked', 'true');
-    expect(radios[0]).toHaveAttribute('aria-checked', 'false');
+    expect(radios[0]).toHaveAttribute('aria-checked', 'true');
+    expect(radios[1]).toHaveAttribute('aria-checked', 'false');
     expect(radios[2]).toHaveAttribute('aria-checked', 'false');
   });
 
-  it('clicking any-drop sets aria-checked=true on it and false on others', () => {
+  it('any-drop shows the static «Щойно ціна впаде» description and no threshold', () => {
     render(<AlertConfig {...DEFAULT_PROPS} />);
     const radios = screen.getAllByRole('radio');
-    fireEvent.click(radios[0]); // any-drop
-    expect(radios[0]).toHaveAttribute('aria-checked', 'true');
+    expect(radios[0]).toHaveTextContent('Щойно ціна впаде');
+    expect(radios[0]).not.toHaveTextContent('₴');
+  });
+
+  it('good-price shows its threshold as "< 200 ₴" and its own proof string verbatim', () => {
+    render(<AlertConfig {...DEFAULT_PROPS} />);
+    const radios = screen.getAllByRole('radio');
+    expect(radios[1]).toHaveTextContent('< 200 ₴');
+    expect(radios[1]).toHaveTextContent('дешевше, ніж у 80 % днів за пів року');
+  });
+
+  it('clicking good-price selects it and deselects any-drop', () => {
+    render(<AlertConfig {...DEFAULT_PROPS} />);
+    const radios = screen.getAllByRole('radio');
+    fireEvent.click(radios[1]);
+    expect(radios[1]).toHaveAttribute('aria-checked', 'true');
+    expect(radios[0]).toHaveAttribute('aria-checked', 'false');
+  });
+
+  /* ── unavailable card ─────────────────────────────────────────────────── */
+  it('an unavailable entry renders disabled, shows its reason instead of a description, and no threshold', () => {
+    const preview: readonly AlertModePreviewDto[] = [
+      PREVIEW[0],
+      { mode: 'good-price', available: false, threshold: null, proof: null, reason: 'Збираємо історію цін' },
+      PREVIEW[2],
+    ];
+    render(<AlertConfig {...DEFAULT_PROPS} preview={preview} />);
+    const radios = screen.getAllByRole('radio');
+    expect(radios[1]).toHaveAttribute('aria-disabled', 'true');
+    expect(radios[1]).toHaveTextContent('Збираємо історію цін');
+    expect(radios[1]).not.toHaveTextContent('₴');
+  });
+
+  it('an unavailable entry cannot be selected by clicking', () => {
+    const preview: readonly AlertModePreviewDto[] = [
+      PREVIEW[0],
+      { mode: 'good-price', available: false, threshold: null, proof: null, reason: 'Збираємо історію цін' },
+      PREVIEW[2],
+    ];
+    render(<AlertConfig {...DEFAULT_PROPS} preview={preview} />);
+    const radios = screen.getAllByRole('radio');
+    fireEvent.click(radios[1]);
     expect(radios[1]).toHaveAttribute('aria-checked', 'false');
+    expect(radios[0]).toHaveAttribute('aria-checked', 'true');
   });
 
-  it('favourable-price is disabled when typicalRangeMin is null', () => {
-    render(<AlertConfig {...DEFAULT_PROPS} typicalRangeMin={null} />);
-    const radios = screen.getAllByRole('radio');
-    const favourable = radios[2];
-    expect(favourable).toBeDisabled();
-  });
-
-  it('favourable-price disabled → shows «Збираємо історію цін…» copy', () => {
-    render(<AlertConfig {...DEFAULT_PROPS} typicalRangeMin={null} />);
-    expect(screen.getByText('Збираємо історію цін…')).toBeTruthy();
-  });
-
-  it('favourable-price NOT disabled when typicalRangeMin is set', () => {
-    render(<AlertConfig {...DEFAULT_PROPS} typicalRangeMin={20000} />);
-    const radios = screen.getAllByRole('radio');
-    expect(radios[2]).not.toBeDisabled();
-  });
-
-  it('custom-price: «Вказати свою ціну» button is shown by default', () => {
+  /* ── my-price confirm-gating ──────────────────────────────────────────── */
+  it('selecting «Моя ціна» reveals the inline numeric field', () => {
     render(<AlertConfig {...DEFAULT_PROPS} />);
-    expect(screen.getByText('Вказати свою ціну')).toBeTruthy();
+    fireEvent.click(screen.getAllByRole('radio')[2]);
+    expect(screen.getByRole('textbox', { name: 'Моя ціна' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Підтвердити' })).toBeTruthy();
   });
 
-  it('clicking «Вказати свою ціну» opens the numeric input', () => {
+  it('«Підтвердити» is disabled until a valid amount is typed, then enables', () => {
     render(<AlertConfig {...DEFAULT_PROPS} />);
-    fireEvent.click(screen.getByText('Вказати свою ціну'));
-    expect(screen.getByRole('textbox', { name: 'Власна ціна' })).toBeTruthy();
+    fireEvent.click(screen.getAllByRole('radio')[2]);
+    const confirmBtn = screen.getByRole('button', { name: 'Підтвердити' });
+    expect(confirmBtn).toBeDisabled();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Моя ціна' }), { target: { value: '199' } });
+    expect(confirmBtn).not.toBeDisabled();
   });
 
-  it('primary submit is disabled when resolvedAmount is null (currentPrice null + below-current)', () => {
-    render(<AlertConfig {...DEFAULT_PROPS} currentPrice={null} />);
-    // below-current with null currentPrice → resolvedAmount=null → submit disabled
-    const submitBtn = screen.getByRole('button', { name: 'Увімкнути сповіщення' });
-    expect(submitBtn).toBeDisabled();
-  });
-
-  it('primary submit enabled when intent resolves (any-drop with currentPrice)', () => {
+  it('«Зберегти» stays disabled for my-price until the amount is confirmed, then enables', () => {
     render(<AlertConfig {...DEFAULT_PROPS} />);
-    // Switch to any-drop
+    fireEvent.click(screen.getAllByRole('radio')[2]);
+    const saveBtn = screen.getByRole('button', { name: 'Зберегти' });
+    expect(saveBtn).toBeDisabled();
+
+    fireEvent.change(screen.getByRole('textbox', { name: 'Моя ціна' }), { target: { value: '199' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Підтвердити' }));
+
+    expect(saveBtn).not.toBeDisabled();
+  });
+
+  it('after confirming, shows «Поріг — нижче 199 ₴»', () => {
+    render(<AlertConfig {...DEFAULT_PROPS} />);
+    fireEvent.click(screen.getAllByRole('radio')[2]);
+    fireEvent.change(screen.getByRole('textbox', { name: 'Моя ціна' }), { target: { value: '199' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Підтвердити' }));
+
+    expect(screen.getByText(/Поріг — нижче 199 ₴/)).toBeTruthy();
+  });
+
+  it('switching mode away and back preserves the typed (unconfirmed) my-price value', () => {
+    render(<AlertConfig {...DEFAULT_PROPS} />);
     const radios = screen.getAllByRole('radio');
+    fireEvent.click(radios[2]);
+    fireEvent.change(screen.getByRole('textbox', { name: 'Моя ціна' }), { target: { value: '199' } });
+
+    // Switch to any-drop, then back to my-price.
     fireEvent.click(radios[0]);
-    const submitBtn = screen.getByRole('button', { name: 'Увімкнути сповіщення' });
-    expect(submitBtn).not.toBeDisabled();
+    fireEvent.click(radios[2]);
+
+    expect(screen.getByRole('textbox', { name: 'Моя ціна' })).toHaveValue('199');
   });
 
-  it('clicking submit calls onSubmit with (intent, resolvedAmount in kopiyky)', () => {
+  it('Enter inside the my-price field confirms it, not save', () => {
     const onSubmit = vi.fn();
     render(<AlertConfig {...DEFAULT_PROPS} onSubmit={onSubmit} />);
-    // below-current with currentPrice=24000 → resolvedAmount=24000
-    const submitBtn = screen.getByRole('button', { name: 'Увімкнути сповіщення' });
-    fireEvent.click(submitBtn);
-    expect(onSubmit).toHaveBeenCalledWith('below-current', 24000);
+    fireEvent.click(screen.getAllByRole('radio')[2]);
+    const input = screen.getByRole('textbox', { name: 'Моя ціна' });
+    fireEvent.change(input, { target: { value: '199' } });
+    fireEvent.keyDown(input, { key: 'Enter' });
+
+    expect(screen.getByText(/Поріг — нижче 199 ₴/)).toBeTruthy();
+    expect(onSubmit).not.toHaveBeenCalled();
   });
 
-  it('edit mode → shows «Зберегти» and «Прибрати» buttons', () => {
+  it('submitting my-price sends mode "my-price" with the confirmed kopiyky threshold', () => {
+    const onSubmit = vi.fn();
+    render(<AlertConfig {...DEFAULT_PROPS} onSubmit={onSubmit} />);
+    fireEvent.click(screen.getAllByRole('radio')[2]);
+    fireEvent.change(screen.getByRole('textbox', { name: 'Моя ціна' }), { target: { value: '199' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Підтвердити' }));
+    fireEvent.click(screen.getByRole('button', { name: 'Зберегти' }));
+
+    expect(onSubmit).toHaveBeenCalledWith('my-price', { amount: 19900, currency: 'UAH' });
+  });
+
+  it('submitting any-drop sends only the mode, no threshold argument', () => {
+    const onSubmit = vi.fn();
+    render(<AlertConfig {...DEFAULT_PROPS} onSubmit={onSubmit} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Зберегти' }));
+    expect(onSubmit).toHaveBeenCalledWith('any-drop');
+  });
+
+  it('initialThresholdAmount pre-fills and pre-confirms the my-price field', () => {
+    render(
+      <AlertConfig
+        {...DEFAULT_PROPS}
+        initialMode="my-price"
+        initialThresholdAmount={19900}
+      />,
+    );
+    expect(screen.getByText(/Поріг — нижче 199 ₴/)).toBeTruthy();
+    const saveBtn = screen.getByRole('button', { name: 'Зберегти' });
+    expect(saveBtn).not.toBeDisabled();
+  });
+
+  /* ── error rendering (realistic 422/409 server message) ──────────────── */
+  it('errorNote renders the server message verbatim (e.g. a 422 THRESHOLD_NOT_BELOW_CURRENT sentence)', () => {
+    render(
+      <AlertConfig
+        {...DEFAULT_PROPS}
+        errorNote={<div role="alert">Ціна має бути нижчою за поточну.</div>}
+      />,
+    );
+    expect(screen.getByRole('alert')).toBeTruthy();
+    expect(screen.getByText('Ціна має бути нижчою за поточну.')).toBeTruthy();
+  });
+
+  it('errorNote renders a 409 INSUFFICIENT_HISTORY sentence verbatim', () => {
+    render(
+      <AlertConfig
+        {...DEFAULT_PROPS}
+        errorNote={<div role="alert">Ще збираємо історію цін для цієї книги.</div>}
+      />,
+    );
+    expect(screen.getByText('Ще збираємо історію цін для цієї книги.')).toBeTruthy();
+  });
+
+  /* ── modes: create / edit / paused ────────────────────────────────────── */
+  it('create mode → shows «Скасувати» and «Зберегти» in the footer', () => {
+    render(<AlertConfig {...DEFAULT_PROPS} />);
+    expect(screen.getByRole('button', { name: 'Скасувати' })).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Зберегти' })).toBeTruthy();
+  });
+
+  it('edit mode → shows a quiet «Прибрати сповіщення» text action and «Зберегти»', () => {
     render(<AlertConfig {...DEFAULT_PROPS} editing />);
     expect(screen.getByRole('button', { name: 'Зберегти' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Прибрати' })).toBeTruthy();
-  });
-
-  it('edit mode + onPause → shows «Призупинити сповіщення» button', () => {
-    render(<AlertConfig {...DEFAULT_PROPS} editing onPause={vi.fn()} />);
-    expect(screen.getByText('Призупинити сповіщення')).toBeTruthy();
+    expect(screen.getByRole('button', { name: 'Прибрати сповіщення' })).toBeTruthy();
   });
 
   it('edit mode → does NOT show «Скасувати»', () => {
@@ -114,14 +239,9 @@ describe('AlertConfig', () => {
     expect(screen.queryByRole('button', { name: 'Скасувати' })).toBeNull();
   });
 
-  it('create mode → shows «Увімкнути сповіщення» and «Скасувати»', () => {
-    render(<AlertConfig {...DEFAULT_PROPS} />);
-    expect(screen.getByRole('button', { name: 'Увімкнути сповіщення' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Скасувати' })).toBeTruthy();
-  });
-
-  it('paused mode → shows «Поновити сповіщення» button', () => {
+  it('paused mode → shows «Прибрати сповіщення» and «Поновити сповіщення» buttons', () => {
     render(<AlertConfig {...DEFAULT_PROPS} paused onResume={vi.fn()} onRemove={vi.fn()} />);
+    expect(screen.getByRole('button', { name: 'Прибрати сповіщення' })).toBeTruthy();
     expect(screen.getByRole('button', { name: 'Поновити сповіщення' })).toBeTruthy();
   });
 
@@ -132,7 +252,7 @@ describe('AlertConfig', () => {
 
   it('busy=true → submit button is disabled', () => {
     render(<AlertConfig {...DEFAULT_PROPS} busy />);
-    const submitBtn = screen.getByRole('button', { name: 'Увімкнути сповіщення' });
+    const submitBtn = screen.getByRole('button', { name: 'Зберегти' });
     expect(submitBtn).toBeDisabled();
   });
 
@@ -142,25 +262,41 @@ describe('AlertConfig', () => {
     expect(title.getAttribute('id')).toBe('cfg-title');
   });
 
-  it('custom-price disclosure → shows «× Скасувати» that closes the input', () => {
-    render(<AlertConfig {...DEFAULT_PROPS} />);
-    fireEvent.click(screen.getByText('Вказати свою ціну'));
-    expect(screen.getByRole('textbox', { name: 'Власна ціна' })).toBeTruthy();
-
-    fireEvent.click(screen.getByRole('button', { name: 'Скасувати власну ціну' }));
-    // Disclosure collapses back to the «Вказати свою ціну» link.
-    expect(screen.queryByRole('textbox', { name: 'Власна ціна' })).toBeNull();
-    expect(screen.getByText('Вказати свою ціну')).toBeTruthy();
+  it('header close button (aria-label="Закрити") calls onCancel', () => {
+    const onCancel = vi.fn();
+    render(<AlertConfig {...DEFAULT_PROPS} onCancel={onCancel} />);
+    fireEvent.click(screen.getByRole('button', { name: 'Закрити' }));
+    expect(onCancel).toHaveBeenCalledOnce();
   });
 
-  it('errorNote → renders the provided node', () => {
-    render(
-      <AlertConfig
-        {...DEFAULT_PROPS}
-        errorNote={<div role="alert">Помилка мережі</div>}
-      />,
-    );
-    expect(screen.getByRole('alert')).toBeTruthy();
-    expect(screen.getByText('Помилка мережі')).toBeTruthy();
+  /* ── keyboard ─────────────────────────────────────────────────────────── */
+  it('ArrowDown/ArrowUp move the selection between modes', () => {
+    render(<AlertConfig {...DEFAULT_PROPS} />);
+    const radios = screen.getAllByRole('radio');
+    const group = screen.getByRole('radiogroup');
+    fireEvent.keyDown(group, { key: 'ArrowDown' });
+    expect(radios[1]).toHaveAttribute('aria-checked', 'true');
+    fireEvent.keyDown(group, { key: 'ArrowUp' });
+    expect(radios[0]).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('ArrowDown skips a disabled entry', () => {
+    const preview: readonly AlertModePreviewDto[] = [
+      PREVIEW[0],
+      { mode: 'good-price', available: false, threshold: null, proof: null, reason: 'Збираємо історію цін' },
+      PREVIEW[2],
+    ];
+    render(<AlertConfig {...DEFAULT_PROPS} preview={preview} />);
+    const radios = screen.getAllByRole('radio');
+    const group = screen.getByRole('radiogroup');
+    fireEvent.keyDown(group, { key: 'ArrowDown' });
+    expect(radios[2]).toHaveAttribute('aria-checked', 'true');
+  });
+
+  it('Enter on the radiogroup saves (when not focused inside the my-price input)', () => {
+    const onSubmit = vi.fn();
+    render(<AlertConfig {...DEFAULT_PROPS} onSubmit={onSubmit} />);
+    fireEvent.keyDown(screen.getByRole('radiogroup'), { key: 'Enter' });
+    expect(onSubmit).toHaveBeenCalledWith('any-drop');
   });
 });

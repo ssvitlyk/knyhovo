@@ -15,6 +15,8 @@ vi.mock('../../refresh/notification-delivery.repository.js', () => ({
 vi.mock('../../wishlist/alert/repository.js', () => ({
   updateAlertNotificationMarker: vi.fn(async () => undefined),
   updateAlertStockMarker: vi.fn(async () => undefined),
+  applyRearmToAlert: vi.fn(async () => undefined),
+  REARM_SLUG: { FOLLOW_DOWN: 'follow-down', STATIC: 'static' },
 }));
 
 import * as repo from '../../refresh/notification-delivery.repository.js';
@@ -57,6 +59,9 @@ function makeCtx(overrides: Partial<Ctx> = {}): Ctx {
     type: 'PRICE_DROP',
     alertId: 'alert-1',
     canonicalBookId: 'book-1',
+    // Static by default: rearm is opt-in per policy, and most fixtures assert the
+    // marker only.
+    rearmPolicy: 'static',
     attempts: 0,
     triggerPriceAmount: 24999,
     targetPriceAmount: 30000,
@@ -103,6 +108,34 @@ describe('dispatchPendingDeliveries', () => {
       lastNotifiedPriceAmount: 24999,
     });
     expect(alertRepo.updateAlertStockMarker).not.toHaveBeenCalled();
+    // A static policy must not move: the threshold stays where the resolver put it.
+    expect(alertRepo.applyRearmToAlert).not.toHaveBeenCalled();
+  });
+
+  it('a follow-down policy lowers threshold and baseline onto the notified price', async () => {
+    vi.mocked(repo.findDueDeliveries).mockResolvedValue([makeDue()]);
+    vi.mocked(repo.loadDeliveryContext).mockResolvedValue(makeCtx({ rearmPolicy: 'follow-down' }));
+    const mailer = new FakeAlertMailer({ ok: true, messageId: 'm-1' });
+
+    await dispatchPendingDeliveries(prisma, makeDeps(mailer));
+
+    expect(alertRepo.applyRearmToAlert).toHaveBeenCalledWith(prisma, 'alert-1', {
+      threshold: 24999,
+      baseline: 24999,
+    });
+  });
+
+  it('does not rearm when the send fails', async () => {
+    vi.mocked(repo.findDueDeliveries).mockResolvedValue([makeDue()]);
+    vi.mocked(repo.loadDeliveryContext).mockResolvedValue(makeCtx({ rearmPolicy: 'follow-down' }));
+    const mailer = new FakeAlertMailer({ ok: false, retryable: true, error: 'boom' });
+
+    await dispatchPendingDeliveries(prisma, makeDeps(mailer));
+
+    // Rearming a policy for an email that never went out would silently raise the
+    // bar for the next notification.
+    expect(alertRepo.applyRearmToAlert).not.toHaveBeenCalled();
+    expect(alertRepo.updateAlertNotificationMarker).not.toHaveBeenCalled();
   });
 
   it('sends a BACK_IN_STOCK and advances the stock marker', async () => {

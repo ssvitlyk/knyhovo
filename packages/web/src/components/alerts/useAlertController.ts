@@ -2,27 +2,23 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { alertUiState } from '@/lib/alerts';
-import type { AlertUiState } from '@/lib/alerts';
 import { setAlert, pauseAlert, removeAlert, AlertError } from '@/lib/api/priceAlerts';
-import type { AlertDto, AlertIntent, MoneyDto } from '@/lib/api/types';
+import type { AlertDto, AlertMode, AlertState, MoneyDto } from '@/lib/api/types';
 
 export interface AlertControllerArgs {
   /** The canonical book id (must already be in the wishlist before calling mutating actions). */
   readonly bookId: string;
   /** Initial alert state fetched server-side; null means no alert configured. */
   readonly initialAlert: AlertDto | null;
-  /** Best price today (kopiyky); drives below-current / any-drop targets and the sub-heading. */
+  /** Best price today (kopiyky); used only for display, never for client-side computation. */
   readonly currentPrice: MoneyDto | null;
-  /** Typical-range minimum from Price History (kopiyky); null → favourable-price intent disabled. */
-  readonly typicalRangeMin: number | null;
 }
 
 export interface AlertController {
   /** Optimistic local copy of the alert (updated immediately on success). */
   readonly alert: AlertDto | null;
-  /** Derived UI state from the local alert copy. */
-  readonly uiState: AlertUiState;
+  /** The alert's server-derived state, or `'saved'` when there is no alert yet. */
+  readonly uiState: AlertState | 'saved';
   /** Whether the AlertConfig surface is open. */
   readonly open: boolean;
   /** True while any mutation request is in flight. */
@@ -39,12 +35,13 @@ export interface AlertController {
   readonly dismissToast: () => void;
   /**
    * Create or update the alert (AlertConfig primary action).
-   * On success: updates local alert optimistically, closes config, shows toast, calls router.refresh().
+   * On success: sets the local alert to the server's returned AlertDto (never
+   * reconstructed locally), closes config, shows toast, calls router.refresh().
    */
-  readonly submit: (intent: AlertIntent, targetAmount: number) => Promise<void>;
-  /** Pause the alert. On success: optimistic status='paused', toast, closes config, router.refresh(). */
+  readonly submit: (mode: AlertMode, threshold?: { amount: number; currency: 'UAH' }) => Promise<void>;
+  /** Pause the alert. On success: optimistic state='paused', toast, closes config, router.refresh(). */
   readonly pause: () => Promise<void>;
-  /** Resume a paused alert. On success: optimistic status='active', toast, closes config, router.refresh(). */
+  /** Resume a paused alert. On success: optimistic state='armed', toast, closes config, router.refresh(). */
   readonly resume: () => Promise<void>;
   /** Remove the alert. On success: local alert null, closes config, toast, router.refresh(). */
   readonly remove: () => Promise<void>;
@@ -55,13 +52,17 @@ export interface AlertController {
  * Encapsulates mutation logic (create/edit/pause/resume/remove), optimistic local state,
  * toast confirmations and error notes. Reused by Book Details and Wishlist surfaces.
  *
+ * Pure pass-through of the server's model (notifications-model-v2): `submit`
+ * never reconstructs an `AlertDto` — it takes whatever `PUT .../alert` returns.
+ * `pause`/`resume` don't get a fresh DTO back from `PATCH`, so they patch only
+ * `state`/`pausedAt` on the existing optimistic copy.
+ *
  * @param args - see {@link AlertControllerArgs}
  */
 export function useAlertController({
   bookId,
   initialAlert,
   currentPrice: _currentPrice,
-  typicalRangeMin: _typicalRangeMin,
 }: AlertControllerArgs): AlertController {
   const router = useRouter();
 
@@ -71,7 +72,7 @@ export function useAlertController({
   const [errorNote, setErrorNote] = useState<string | null>(null);
   const [toast, setToast] = useState<string | null>(null);
 
-  const uiState = alertUiState(alert);
+  const uiState: AlertState | 'saved' = alert === null ? 'saved' : alert.state;
 
   function openConfig(): void {
     setErrorNote(null);
@@ -86,21 +87,17 @@ export function useAlertController({
     setToast(null);
   }
 
-  async function submit(intent: AlertIntent, targetAmount: number): Promise<void> {
+  async function submit(
+    mode: AlertMode,
+    threshold?: { amount: number; currency: 'UAH' },
+  ): Promise<void> {
     setBusy(true);
     setErrorNote(null);
 
     const isEdit = alert !== null;
 
     try {
-      await setAlert(bookId, intent, { amount: targetAmount, currency: 'UAH' });
-
-      const nextAlert: AlertDto = {
-        status: 'active',
-        intent,
-        targetPrice: { amount: targetAmount, currency: 'UAH' },
-        pausedAt: null,
-      };
+      const nextAlert = await setAlert(bookId, mode, threshold);
 
       setLocalAlert(nextAlert);
       setOpen(false);
@@ -124,11 +121,11 @@ export function useAlertController({
     try {
       await pauseAlert(bookId, true);
 
-      // Optimistic update: keep existing alert data, flip status to paused.
-      // We do NOT compute a real timestamp — set pausedAt to null; chips/targets
-      // key off status only, not pausedAt.
+      // Optimistic update: keep existing alert data, flip state to paused.
+      // PATCH doesn't return a fresh AlertDto — pausedAt is left null; chips/
+      // targets key off state only, not pausedAt.
       if (alert !== null) {
-        setLocalAlert({ ...alert, status: 'paused', pausedAt: null });
+        setLocalAlert({ ...alert, state: 'paused', pausedAt: null });
       }
       setOpen(false);
       setToast('Сповіщення призупинено');
@@ -152,7 +149,7 @@ export function useAlertController({
       await pauseAlert(bookId, false);
 
       if (alert !== null) {
-        setLocalAlert({ ...alert, status: 'active', pausedAt: null });
+        setLocalAlert({ ...alert, state: 'armed', pausedAt: null });
       }
       setOpen(false);
       setToast('Сповіщення поновлено');

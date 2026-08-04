@@ -1,4 +1,17 @@
 import type { PrismaClient } from '@prisma/client';
+import type { AlertPolicy, RearmPolicy } from './policy.js';
+
+/** Prisma enum identifier → policy value. */
+export const REARM_SLUG: Record<'FOLLOW_DOWN' | 'STATIC', RearmPolicy> = {
+  FOLLOW_DOWN: 'follow-down',
+  STATIC: 'static',
+};
+
+/** Policy value → Prisma enum identifier (for writes). */
+export const REARM_ENUM: Record<RearmPolicy, 'FOLLOW_DOWN' | 'STATIC'> = {
+  'follow-down': 'FOLLOW_DOWN',
+  static: 'STATIC',
+};
 
 /**
  * Internal row shape for an Alert as returned by the wishlist repository.
@@ -8,10 +21,14 @@ import type { PrismaClient } from '@prisma/client';
  */
 export interface WishlistAlertRow {
   readonly status: 'ACTIVE' | 'PAUSED' | 'TRIGGERED' | 'UNAVAILABLE';
-  readonly intent: 'ANY_DROP' | 'BELOW_CURRENT' | 'FAVOURABLE_PRICE' | 'CUSTOM_PRICE';
+  readonly mode: 'ANY_DROP' | 'GOOD_PRICE' | 'MY_PRICE';
   readonly targetPriceAmount: number;
   readonly targetPriceCurrency: 'UAH';
+  readonly baselineAmount: number | null;
+  readonly thresholdProof: string | null;
   readonly pausedAt: Date | null;
+  /** Notification marker — the fact behind the `reached` state. */
+  readonly lastNotifiedAt: Date | null;
 }
 
 /**
@@ -30,21 +47,59 @@ export async function findWishlistItemId(
   return item?.id ?? null;
 }
 
+/** The persisted shape of a policy write (create or replace). */
+export interface AlertPolicyWrite {
+  readonly mode: 'ANY_DROP' | 'GOOD_PRICE' | 'MY_PRICE';
+  readonly targetPriceAmount: number;
+  readonly targetPriceCurrency: 'UAH';
+  readonly baselineAmount: number | null;
+  readonly rearmPolicy: 'FOLLOW_DOWN' | 'STATIC';
+  readonly thresholdBasis: string | null;
+  readonly thresholdProof: string | null;
+}
+
 /**
- * Upsert an alert for a wishlist item. Creates the alert if it does not exist,
- * or replaces it fully if it does.
+ * Legacy `intent` value written alongside `mode` for one release.
+ *
+ * The column is deprecated but still NOT NULL, so a rollback to the pre-v2 code
+ * path finds a usable value instead of a broken row.
+ */
+const LEGACY_INTENT: Record<
+  AlertPolicyWrite['mode'],
+  'ANY_DROP' | 'FAVOURABLE_PRICE' | 'CUSTOM_PRICE'
+> = {
+  ANY_DROP: 'ANY_DROP',
+  GOOD_PRICE: 'FAVOURABLE_PRICE',
+  MY_PRICE: 'CUSTOM_PRICE',
+};
+
+/**
+ * Create or fully replace the alert — and therefore its policy — for a wishlist
+ * item. Always writes lifecycle ACTIVE: configuring an alert un-pauses it.
  */
 export async function upsertAlert(
   prisma: PrismaClient,
   wishlistItemId: string,
-  data: {
-    status: 'ACTIVE' | 'PAUSED' | 'TRIGGERED' | 'UNAVAILABLE';
-    intent: 'ANY_DROP' | 'BELOW_CURRENT' | 'FAVOURABLE_PRICE' | 'CUSTOM_PRICE';
-    targetPriceAmount: number;
-    targetPriceCurrency: 'UAH';
-    pausedAt: Date | null;
-  },
+  policy: AlertPolicyWrite,
 ): Promise<void> {
+  // Replacing the alert replaces its threshold, so the notification marker no
+  // longer describes anything: clearing it here is what makes the `reached`
+  // state mean "we emailed about the CURRENT threshold" without any price maths.
+  const data = {
+    status: 'ACTIVE',
+    pausedAt: null,
+    mode: policy.mode,
+    intent: LEGACY_INTENT[policy.mode],
+    targetPriceAmount: policy.targetPriceAmount,
+    targetPriceCurrency: policy.targetPriceCurrency,
+    baselineAmount: policy.baselineAmount,
+    rearmPolicy: policy.rearmPolicy,
+    thresholdBasis: policy.thresholdBasis,
+    thresholdProof: policy.thresholdProof,
+    lastNotifiedAt: null,
+    lastNotifiedPriceAmount: null,
+  } as const;
+
   await prisma.alert.upsert({
     where: { wishlistItemId },
     create: { wishlistItemId, ...data },
@@ -53,20 +108,35 @@ export async function upsertAlert(
 }
 
 /**
- * Update the status and pausedAt of an existing alert.
+ * Update the lifecycle (and pausedAt) of an existing alert.
  * Uses updateMany so it is a no-op (rather than a throw) when no alert exists.
  */
 export async function setAlertStatus(
   prisma: PrismaClient,
   wishlistItemId: string,
   data: {
-    status: 'ACTIVE' | 'PAUSED' | 'TRIGGERED' | 'UNAVAILABLE';
+    status: 'ACTIVE' | 'PAUSED';
     pausedAt: Date | null;
   },
 ): Promise<void> {
   await prisma.alert.updateMany({
     where: { wishlistItemId },
     data,
+  });
+}
+
+/**
+ * Lower a follow-down policy's threshold and baseline onto the price we just
+ * emailed about (§9.2). Called by the dispatcher after a successful send only.
+ */
+export async function applyRearmToAlert(
+  prisma: PrismaClient,
+  alertId: string,
+  next: { threshold: number; baseline: number },
+): Promise<void> {
+  await prisma.alert.update({
+    where: { id: alertId },
+    data: { targetPriceAmount: next.threshold, baselineAmount: next.baseline },
   });
 }
 
@@ -89,7 +159,11 @@ export interface ActiveAlertForBook {
   readonly alertId: string;
   readonly canonicalBookId: string;
   readonly userId: string;
-  readonly targetPriceAmount: number;
+  /**
+   * The policy the engine evaluates. Deliberately does NOT include `mode`: the
+   * engine must not be able to tell the modes apart (§9.1).
+   */
+  readonly policy: Pick<AlertPolicy, 'threshold' | 'baseline' | 'rearmPolicy'>;
   readonly lastNotifiedAt: Date | null;
   readonly lastNotifiedPriceAmount: number | null;
   /** Book availability observed at the previous evaluation (back-in-stock baseline). */
@@ -114,6 +188,8 @@ export async function findActiveAlertsForBooks(
     select: {
       id: true,
       targetPriceAmount: true,
+      baselineAmount: true,
+      rearmPolicy: true,
       lastNotifiedAt: true,
       lastNotifiedPriceAmount: true,
       lastNotifiedAvailability: true,
@@ -125,41 +201,15 @@ export async function findActiveAlertsForBooks(
     alertId: row.id,
     canonicalBookId: row.wishlistItem.canonicalBookId,
     userId: row.wishlistItem.userId,
-    targetPriceAmount: row.targetPriceAmount,
+    policy: {
+      threshold: row.targetPriceAmount,
+      baseline: row.baselineAmount,
+      rearmPolicy: REARM_SLUG[row.rearmPolicy],
+    },
     lastNotifiedAt: row.lastNotifiedAt,
     lastNotifiedPriceAmount: row.lastNotifiedPriceAmount,
     lastObservedAvailability: row.lastNotifiedAvailability,
   }));
-}
-
-/**
- * Return a map of canonicalBookId → lowest IN_STOCK priceAmount across that
- * book's provider listings. Books with no in-stock listing are absent from the map.
- * Returns an empty Map immediately for empty input.
- */
-export async function findLowestInStockPriceByBook(
-  prisma: PrismaClient,
-  canonicalBookIds: string[],
-): Promise<Map<string, number>> {
-  if (canonicalBookIds.length === 0) return new Map();
-
-  const rows = await prisma.providerListing.groupBy({
-    by: ['canonicalBookId'],
-    where: {
-      canonicalBookId: { in: canonicalBookIds },
-      availability: 'IN_STOCK',
-    },
-    _min: { priceAmount: true },
-  });
-
-  const result = new Map<string, number>();
-  for (const row of rows) {
-    const min = row._min.priceAmount;
-    if (min != null) {
-      result.set(row.canonicalBookId, min);
-    }
-  }
-  return result;
 }
 
 /**

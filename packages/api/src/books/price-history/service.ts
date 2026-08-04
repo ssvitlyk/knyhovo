@@ -4,6 +4,7 @@ import { findBookPriceHistorySource } from './repository.js';
 import type { PriceHistoryListingRow, PriceHistoryPointRow } from './repository.js';
 import { toEmptyPriceHistory, toPriceHistory } from './mapper.js';
 import { BookNotFoundError } from '../../errors.js';
+import { buildAlertPolicyPreview } from './alert-preview.js';
 
 /** Dependency injection interface for clock-dependent operations. */
 export interface PriceHistoryDeps {
@@ -90,11 +91,15 @@ export async function getBookPriceHistory(
   const now = deps.now();
   const since = computeSince(period, now);
 
+  // Per-mode alert preview: computed from ALL listings over a fixed window, so it
+  // is unaffected by the chart's period (§10).
+  const alertPolicyPreview = buildAlertPolicyPreview(source.listings, 'UAH', now);
+
   // Select the most relevant listing.
   const selected = selectListing(source.listings);
   if (selected === null) {
     // Book exists but no listing has any history.
-    return toEmptyPriceHistory(bookId, period, 'UAH');
+    return { ...toEmptyPriceHistory(bookId, period, 'UAH'), alertPolicyPreview };
   }
 
   // Filter points by period window then by listing currency (no mixed currencies).
@@ -106,8 +111,14 @@ export async function getBookPriceHistory(
 
   if (filteredPoints.length === 0) {
     // Book and listing exist, but zero points in the requested period window.
-    return toEmptyPriceHistory(bookId, period, selected.priceCurrency);
+    return {
+      ...toEmptyPriceHistory(bookId, period, selected.priceCurrency),
+      alertPolicyPreview,
+    };
   }
 
-  return toPriceHistory(bookId, period, selected.priceCurrency, filteredPoints);
+  return {
+    ...toPriceHistory(bookId, period, selected.priceCurrency, filteredPoints),
+    alertPolicyPreview,
+  };
 }

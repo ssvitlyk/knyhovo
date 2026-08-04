@@ -22,7 +22,9 @@ import {
 import {
   updateAlertNotificationMarker,
   updateAlertStockMarker,
+  applyRearmToAlert,
 } from '../wishlist/alert/repository.js';
+import { applyRearm } from '../wishlist/alert/policy.js';
 
 export interface DispatchConfig {
   /** Total send attempts before giving up (1 initial + retries). Default 4. */
@@ -162,6 +164,15 @@ export async function dispatchPendingDeliveries(
             lastNotifiedAt: now(),
             lastNotifiedPriceAmount: ctx.triggerPriceAmount,
           });
+          // Rearm (§9.2): a follow-down policy lowers its threshold and baseline
+          // onto the price we just wrote about, so the next email needs a genuinely
+          // new drop. Static policies are left exactly where the resolver put them.
+          // Applied here, next to the marker, because both are only true once the
+          // email really went out.
+          const rearmed = applyRearm({ rearmPolicy: ctx.rearmPolicy }, ctx.triggerPriceAmount);
+          if (rearmed !== null) {
+            await applyRearmToAlert(prisma, ctx.alertId, rearmed);
+          }
         } else if (ctx.type === 'BACK_IN_STOCK') {
           await updateAlertStockMarker(prisma, ctx.alertId, {
             lastStockNotifiedAt: now(),

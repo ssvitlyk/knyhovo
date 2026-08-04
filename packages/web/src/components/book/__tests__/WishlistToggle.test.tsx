@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { WishlistToggle } from '../WishlistToggle';
-import type { AlertDto } from '@/lib/api/types';
+import type { AlertDto, AlertModePreviewDto } from '@/lib/api/types';
 
 vi.mock('next/navigation', () => ({ useRouter: () => ({ push: vi.fn(), refresh: vi.fn() }) }));
 vi.mock('@/lib/api/wishlist', () => ({
@@ -22,10 +22,12 @@ vi.mock('@/lib/api/priceAlerts', () => ({
   removeAlert: vi.fn(),
   AlertError: class AlertError extends Error {
     status: number | null;
-    constructor(msg: string, status: number | null) {
+    code: string | null;
+    constructor(msg: string, status: number | null, code: string | null = null) {
       super(msg);
       this.name = 'AlertError';
       this.status = status;
+      this.code = code;
     }
   },
 }));
@@ -44,6 +46,23 @@ vi.mock('@/lib/api/priceHistory', () => ({
 import { addToWishlist, removeFromWishlist } from '@/lib/api/wishlist';
 import { setAlert, pauseAlert, AlertError } from '@/lib/api/priceAlerts';
 import { getPriceHistory } from '@/lib/api/priceHistory';
+
+/** All 3 modes available — the common case in these tests. */
+const PREVIEW: readonly AlertModePreviewDto[] = [
+  { mode: 'any-drop', available: true, threshold: { amount: 24000, currency: 'UAH' }, proof: null, reason: null },
+  { mode: 'good-price', available: true, threshold: { amount: 20000, currency: 'UAH' }, proof: 'дешевше, ніж зазвичай', reason: null },
+  { mode: 'my-price', available: true, threshold: null, proof: null, reason: null },
+];
+
+const RESOLVED_ANY_DROP: AlertDto = {
+  state: 'armed',
+  mode: 'any-drop',
+  threshold: { amount: 24000, currency: 'UAH' },
+  baseline: { amount: 24000, currency: 'UAH' },
+  thresholdProof: null,
+  pausedAt: null,
+  notifiedAt: null,
+};
 
 function makeMatchMedia(matches: boolean): typeof window.matchMedia {
   return vi.fn().mockImplementation((query: string) => ({
@@ -66,7 +85,7 @@ beforeEach(() => {
   window.matchMedia = makeMatchMedia(false);
   vi.mocked(addToWishlist).mockResolvedValue(undefined);
   vi.mocked(removeFromWishlist).mockResolvedValue(undefined);
-  vi.mocked(setAlert).mockResolvedValue(undefined);
+  vi.mocked(setAlert).mockResolvedValue(RESOLVED_ANY_DROP);
   vi.mocked(pauseAlert).mockResolvedValue(undefined);
   vi.mocked(getPriceHistory).mockResolvedValue({
     bookId: 'book-1',
@@ -75,9 +94,10 @@ beforeEach(() => {
     current: null,
     lowest: null,
     highest: null,
-    typicalRange: { min: 20000, max: 28000, currency: 'UAH' },
+    typicalRange: null,
     change: null,
     points: [],
+    alertPolicyPreview: PREVIEW,
   });
 });
 
@@ -266,7 +286,7 @@ describe('WishlistToggle', () => {
     });
   });
 
-  it('submitting config calls setAlert and shows the toast', async () => {
+  it('submitting config (default mode any-drop) calls setAlert and shows the toast', async () => {
     render(
       <WishlistToggle
         bookId="book-1"
@@ -280,23 +300,20 @@ describe('WishlistToggle', () => {
     fireEvent.click(screen.getByText('Сповістити про зниження ціни'));
 
     await act(async () => { vi.advanceTimersByTime(0); });
+    // Let the lazily-fetched price-history preview resolve.
+    await act(async () => { vi.runAllTimers(); });
 
     await waitFor(() => {
       expect(screen.getByText('Коли повідомити про ціну?')).toBeTruthy();
     });
 
-    // Click submit (below-current is default, currentPrice=24000 so enabled)
-    const submitBtn = screen.getByRole('button', { name: 'Увімкнути сповіщення' });
+    const submitBtn = screen.getByRole('button', { name: 'Зберегти' });
     fireEvent.click(submitBtn);
 
     await act(async () => { vi.runAllTimers(); });
 
     await waitFor(() => {
-      expect(setAlert).toHaveBeenCalledWith(
-        'book-1',
-        'below-current',
-        { amount: 24000, currency: 'UAH' },
-      );
+      expect(setAlert).toHaveBeenCalledWith('book-1', 'any-drop', undefined);
     });
 
     // Toast appears
@@ -306,18 +323,21 @@ describe('WishlistToggle', () => {
     });
   });
 
-  it('watch alert → shows «Сповіщення про зниження увімкнено» + target sub; click opens AlertConfig', async () => {
-    const watchAlert: AlertDto = {
-      status: 'active',
-      intent: 'below-current',
-      targetPrice: { amount: 24000, currency: 'UAH' },
+  it('armed alert (good-price) → shows «Сповіщення про зниження увімкнено» + target sub; click opens AlertConfig', async () => {
+    const armedAlert: AlertDto = {
+      state: 'armed',
+      mode: 'good-price',
+      threshold: { amount: 24000, currency: 'UAH' },
+      baseline: null,
+      thresholdProof: 'дешевше, ніж зазвичай',
       pausedAt: null,
+      notifiedAt: null,
     };
     render(
       <WishlistToggle
         bookId="book-1"
         initialInWishlist={true}
-        initialAlert={watchAlert}
+        initialAlert={armedAlert}
         currentPrice={{ amount: 24000, currency: 'UAH' }}
         bookTitle="Кобзар"
       />,
@@ -336,18 +356,21 @@ describe('WishlistToggle', () => {
     });
   });
 
-  it('watch alert with any-drop intent → shows «Будь-яке зниження ціни» sub', () => {
-    const watchAlert: AlertDto = {
-      status: 'active',
-      intent: 'any-drop',
-      targetPrice: { amount: 24000, currency: 'UAH' },
+  it('armed alert with any-drop mode → shows «Будь-яке зниження ціни» sub', () => {
+    const armedAlert: AlertDto = {
+      state: 'armed',
+      mode: 'any-drop',
+      threshold: { amount: 24000, currency: 'UAH' },
+      baseline: { amount: 24000, currency: 'UAH' },
+      thresholdProof: null,
       pausedAt: null,
+      notifiedAt: null,
     };
     render(
       <WishlistToggle
         bookId="book-1"
         initialInWishlist={true}
-        initialAlert={watchAlert}
+        initialAlert={armedAlert}
         currentPrice={{ amount: 24000, currency: 'UAH' }}
         bookTitle="Кобзар"
       />,
@@ -355,18 +378,21 @@ describe('WishlistToggle', () => {
     expect(screen.getByText('Будь-яке зниження ціни')).toBeTruthy();
   });
 
-  it('triggered alert → shows «Ціль досягнута»', () => {
-    const triggeredAlert: AlertDto = {
-      status: 'triggered',
-      intent: 'below-current',
-      targetPrice: { amount: 24000, currency: 'UAH' },
+  it('reached alert → shows «Ціль досягнута»', () => {
+    const reachedAlert: AlertDto = {
+      state: 'reached',
+      mode: 'good-price',
+      threshold: { amount: 24000, currency: 'UAH' },
+      baseline: null,
+      thresholdProof: 'дешевше, ніж зазвичай',
       pausedAt: null,
+      notifiedAt: '2026-07-20T08:00:00.000Z',
     };
     render(
       <WishlistToggle
         bookId="book-1"
         initialInWishlist={true}
-        initialAlert={triggeredAlert}
+        initialAlert={reachedAlert}
         currentPrice={{ amount: 20000, currency: 'UAH' }}
         bookTitle="Кобзар"
       />,
@@ -376,10 +402,13 @@ describe('WishlistToggle', () => {
 
   it('paused alert → shows «Поновити сповіщення» + sub that calls pauseAlert(bookId, false)', async () => {
     const pausedAlert: AlertDto = {
-      status: 'paused',
-      intent: 'below-current',
-      targetPrice: { amount: 24000, currency: 'UAH' },
+      state: 'paused',
+      mode: 'good-price',
+      threshold: { amount: 24000, currency: 'UAH' },
+      baseline: null,
+      thresholdProof: 'дешевше, ніж зазвичай',
       pausedAt: '2026-06-01T08:00:00.000Z',
+      notifiedAt: null,
     };
     render(
       <WishlistToggle
@@ -406,10 +435,13 @@ describe('WishlistToggle', () => {
   it('failed resume from the row → local «Не вдалося поновити сповіщення.» segment', async () => {
     vi.mocked(pauseAlert).mockRejectedValue(new AlertError('Сервіс недоступний.', 500));
     const pausedAlert: AlertDto = {
-      status: 'paused',
-      intent: 'below-current',
-      targetPrice: { amount: 24000, currency: 'UAH' },
+      state: 'paused',
+      mode: 'good-price',
+      threshold: { amount: 24000, currency: 'UAH' },
+      baseline: null,
+      thresholdProof: null,
       pausedAt: '2026-06-01T08:00:00.000Z',
+      notifiedAt: null,
     };
     render(
       <WishlistToggle
@@ -438,10 +470,13 @@ describe('WishlistToggle', () => {
 
   it('unavailable alert → shows plain info text, not a button', () => {
     const unavailableAlert: AlertDto = {
-      status: 'unavailable',
-      intent: 'below-current',
-      targetPrice: { amount: 24000, currency: 'UAH' },
+      state: 'unavailable',
+      mode: 'good-price',
+      threshold: { amount: 24000, currency: 'UAH' },
+      baseline: null,
+      thresholdProof: null,
       pausedAt: null,
+      notifiedAt: null,
     };
     render(
       <WishlistToggle
@@ -457,7 +492,7 @@ describe('WishlistToggle', () => {
     expect(info.closest('button')).toBeNull();
   });
 
-  it('setAlert rejection (AlertError) → error note shown in the form', async () => {
+  it('setAlert rejection (AlertError) → error note shown in the form, with the server message verbatim', async () => {
     vi.mocked(setAlert).mockRejectedValue(
       new AlertError('Не вдалося ввімкнути сповіщення.', 500),
     );
@@ -474,12 +509,13 @@ describe('WishlistToggle', () => {
 
     fireEvent.click(screen.getByText('Сповістити про зниження ціни'));
     await act(async () => { vi.advanceTimersByTime(0); });
+    await act(async () => { vi.runAllTimers(); });
 
     await waitFor(() => {
       expect(screen.getByText('Коли повідомити про ціну?')).toBeTruthy();
     });
 
-    const submitBtn = screen.getByRole('button', { name: 'Увімкнути сповіщення' });
+    const submitBtn = screen.getByRole('button', { name: 'Зберегти' });
     fireEvent.click(submitBtn);
 
     await act(async () => { vi.runAllTimers(); });
@@ -490,7 +526,7 @@ describe('WishlistToggle', () => {
     });
   });
 
-  it('getPriceHistory resolves typicalRange → favourable-price intent is enabled', async () => {
+  it('getPriceHistory resolves alertPolicyPreview → the mode cards render from it (good-price enabled)', async () => {
     render(
       <WishlistToggle
         bookId="book-1"
@@ -511,8 +547,8 @@ describe('WishlistToggle', () => {
       expect(screen.getByText('Коли повідомити про ціну?')).toBeTruthy();
     });
 
-    // After typicalRangeMin is set, favourable-price should be enabled
     const radios = screen.getAllByRole('radio');
-    expect(radios[2]).not.toBeDisabled();
+    expect(radios).toHaveLength(3);
+    expect(radios[1]).not.toHaveAttribute('aria-disabled');
   });
 });

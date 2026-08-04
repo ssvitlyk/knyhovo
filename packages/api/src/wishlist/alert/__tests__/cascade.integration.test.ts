@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest';
-import { PrismaClient, AlertStatus, AlertIntent, Currency } from '@prisma/client';
+import { PrismaClient, AlertStatus, AlertMode, AlertIntent, Currency } from '@prisma/client';
 
 /**
  * Integration test: proves the `alerts.wishlist_item_id` foreign key is declared
@@ -48,7 +48,8 @@ describe.skipIf(!RUN_DB_INTEGRATION)(
         data: {
           wishlistItemId: ITEM_ID,
           status: AlertStatus.ACTIVE,
-          intent: AlertIntent.BELOW_CURRENT,
+          mode: AlertMode.MY_PRICE,
+          intent: AlertIntent.CUSTOM_PRICE,
           targetPriceAmount: 20000,
           targetPriceCurrency: Currency.UAH,
         },

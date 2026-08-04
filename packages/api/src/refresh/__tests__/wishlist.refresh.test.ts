@@ -821,7 +821,7 @@ describe('runWishlistRefresh', () => {
         alertId: ALERT_ID,
         canonicalBookId: BOOK_ID,
         userId: 'user-1',
-        targetPriceAmount: TARGET_PRICE,
+        policy: { threshold: TARGET_PRICE, baseline: null, rearmPolicy: 'static' as const },
         lastNotifiedAt: null,
         lastNotifiedPriceAmount: null,
         // Already in stock at baseline so back-in-stock does not fire on first sight.

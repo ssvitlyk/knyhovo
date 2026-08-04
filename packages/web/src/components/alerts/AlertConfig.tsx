@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import type { ReactNode } from 'react';
-import { Clock, BellOff, Info, Pencil, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
+import type { KeyboardEvent, ReactNode } from 'react';
+import { Info, X, Check } from 'lucide-react';
 import { Button } from '@/components/ds/Button';
-import { ALERT_INTENTS, resolveTargetAmount } from '@/lib/alerts';
-import type { AlertIntent, MoneyDto } from '@/lib/api/types';
+import { ALERT_MODE_COPY } from '@/lib/alerts';
+import type { AlertDto, AlertMode, AlertModePreviewDto, MoneyDto } from '@/lib/api/types';
 import { formatMoney } from '@/lib/format';
 
 export interface AlertConfigProps {
@@ -21,74 +21,121 @@ export interface AlertConfigProps {
   /** The current best price for the book (kopiyky); null when unavailable. */
   currentPrice: MoneyDto | null;
   /**
-   * The typical-range minimum from Price History (kopiyky).
-   * Null disables the 'favourable-price' intent option.
+   * Per-mode alert preview, exactly 3 entries in fixed order
+   * (any-drop, good-price, my-price), straight from the API
+   * (`GET /books/:id/price-history`'s `alertPolicyPreview`). Rendered in the
+   * order given — never re-sorted.
    */
-  typicalRangeMin: number | null;
-  /** When true, renders the edit variant (Save/Remove instead of Enable/Cancel). */
+  preview: readonly AlertModePreviewDto[];
+  /** When true, renders the edit variant (Remove instead of Cancel). */
   editing?: boolean;
-  /** When true, renders the paused-management surface instead of the intent form. */
+  /** When true, renders the paused-management surface instead of the mode form. */
   paused?: boolean;
-  /** Initial selected intent. Defaults to 'below-current'. */
-  initialIntent?: AlertIntent;
-  /** Initial custom amount in kopiyky; also opens the custom disclosure when set. */
-  initialCustomAmount?: number | null;
+  /** Initial selected mode. Defaults to the first available preview entry. */
+  initialMode?: AlertMode;
+  /** Initial my-price amount in kopiyky; pre-fills + pre-confirms the field when set (edit mode). */
+  initialThresholdAmount?: number | null;
   /** When true, disables the primary submit action while a request is in flight. */
   busy?: boolean;
   /** Optional error note rendered at the top of the config body. */
   errorNote?: ReactNode;
-  /**
-   * The stored target price used by the paused surface copy.
-   * Required for a meaningful paused surface; treated as null otherwise.
-   */
-  targetPrice?: MoneyDto | null;
-  /** Called with the resolved intent and target amount (kopiyky) on primary action. */
-  onSubmit: (intent: AlertIntent, targetAmount: number) => void;
+  /** The currently stored alert, used for the paused-surface copy. */
+  currentAlert?: AlertDto | null;
+  /** Called with the resolved mode and, for `my-price`, the confirmed threshold (kopiyky). */
+  onSubmit: (mode: AlertMode, threshold?: { amount: number; currency: 'UAH' }) => void;
   /** Called when the user dismisses the form without saving. */
   onCancel: () => void;
   /** Called when the user removes the alert. */
   onRemove?: () => void;
-  /** Called when the user pauses the alert (edit mode only). */
+  /**
+   * Called when the user pauses the alert. Kept for interface parity with the
+   * controller (`useAlertController.pause`) — the new anatomy (PRD §6) moves
+   * the pause affordance out of this dialog into the book card's own menu, so
+   * this component no longer renders a control that invokes it.
+   */
   onPause?: () => void;
   /** Called when the user resumes a paused alert. */
   onResume?: () => void;
 }
 
 /**
- * AlertConfig — the intent-first alert configuration form body.
- * Stateful: owns the selected intent, custom-price disclosure state and
- * custom amount field. Renders either the intent radiogroup form (create/edit)
- * or the paused-management surface depending on the `paused` prop.
+ * Pick the initial selected mode: the given mode if it is offered and
+ * available, else the first available preview entry, else the preview's
+ * first entry (so the group always has *some* selection, even if it renders
+ * disabled — nothing here computes a threshold, only chooses which card
+ * starts selected).
+ */
+function resolveInitialMode(
+  preview: readonly AlertModePreviewDto[],
+  initialMode?: AlertMode,
+): AlertMode {
+  if (initialMode != null) {
+    const found = preview.find((p) => p.mode === initialMode);
+    if (found != null && found.available) return initialMode;
+  }
+  const firstAvailable = preview.find((p) => p.available);
+  return (firstAvailable ?? preview[0])?.mode ?? 'any-drop';
+}
+
+/**
+ * AlertConfig — the mode-first alert configuration form body
+ * (notifications-model-v2 §6-8). One question, three answers, one action.
  *
- * Placed inside AlertSurface (popover or bottom sheet).
+ * Props-driven only: every threshold, availability and proof string comes
+ * from `preview` (itself sourced from the server's `alertPolicyPreview`). The
+ * only numeric work this component does is converting the my-price text the
+ * user themselves typed into integer kopiyky — that is not threshold
+ * inference, it is reading what the user chose.
+ *
+ * Single vertical column of exactly 3 mode cards, in the order `preview`
+ * gives them. `my-price` expands an inline confirm block inside its own card
+ * when selected — never a second dialog or popover.
+ *
+ * Placed inside AlertSurface (centred dialog on desktop, bottom sheet on mobile).
  */
 export function AlertConfig({
   titleId,
   bookTitle,
   store,
   currentPrice,
-  typicalRangeMin,
+  preview,
   editing = false,
   paused = false,
-  initialIntent,
-  initialCustomAmount,
+  initialMode,
+  initialThresholdAmount,
   busy = false,
   errorNote,
-  targetPrice,
+  currentAlert,
   onSubmit,
   onCancel,
   onRemove,
-  onPause,
+  onPause: _onPause,
   onResume,
 }: AlertConfigProps): React.JSX.Element {
-  const [selectedIntent, setSelectedIntent] = useState<AlertIntent>(
-    initialIntent ?? 'below-current',
+  const [selectedMode, setSelectedMode] = useState<AlertMode>(() =>
+    resolveInitialMode(preview, initialMode),
   );
-  const [customOpen, setCustomOpen] = useState<boolean>(!!initialCustomAmount);
-  // Custom amount stored as a display string (₴); converted to kopiyky on submit.
-  const [customAmountStr, setCustomAmountStr] = useState<string>(
-    initialCustomAmount != null ? String(Math.trunc(initialCustomAmount / 100)) : '',
+
+  // My-price local state — remembered across mode switches until the dialog
+  // closes (component unmounts), never reset just by selecting another mode.
+  const [myPriceStr, setMyPriceStr] = useState<string>(
+    initialMode === 'my-price' && initialThresholdAmount != null
+      ? String(Math.trunc(initialThresholdAmount / 100))
+      : '',
   );
+  const [myPriceConfirmed, setMyPriceConfirmed] = useState<number | null>(
+    initialMode === 'my-price' ? (initialThresholdAmount ?? null) : null,
+  );
+
+  const myPriceInputRef = useRef<HTMLInputElement>(null);
+  const cardRefs = useRef<Partial<Record<AlertMode, HTMLDivElement | null>>>({});
+
+  // Focus jumps into the my-price field automatically when it becomes selected.
+  useEffect(() => {
+    if (selectedMode === 'my-price') {
+      myPriceInputRef.current?.focus();
+    }
+  }, [selectedMode]);
 
   const title = paused
     ? 'Сповіщення призупинено'
@@ -97,51 +144,92 @@ export function AlertConfig({
       : 'Коли повідомити про ціну?';
 
   const subParts: string[] = [`«${bookTitle}»`];
-  if (currentPrice != null) {
-    subParts.push(`зараз ${formatMoney(currentPrice)}`);
-  }
-  if (store != null) {
-    subParts.push(`у ${store}`);
-  }
+  if (currentPrice != null) subParts.push(`зараз ${formatMoney(currentPrice)}`);
+  if (store != null) subParts.push(`у ${store}`);
   const subText = subParts.join(' · ');
 
-  /** Resolve current form custom amount to kopiyky or null. */
-  const customAmountKopiyky: number | null = (() => {
-    const parsed = parseFloat(customAmountStr.replace(',', '.'));
+  /**
+   * The typed value parsed to kopiyky, or null when it is not a usable number.
+   * This is the only numeric parsing this component does — converting a
+   * decimal ₴ string the user themselves typed into an integer kopiyky
+   * argument. It is not threshold arithmetic or alert-state inference.
+   */
+  const typedAmount: number | null = (() => {
+    const parsed = parseFloat(myPriceStr.replace(',', '.'));
     if (!Number.isFinite(parsed) || parsed <= 0) return null;
     return Math.round(parsed * 100);
   })();
 
-  /** The intent that drives resolveTargetAmount — custom-price when the disclosure is open. */
-  const effectiveIntent: AlertIntent = customOpen ? 'custom-price' : selectedIntent;
+  const myPriceDirty = typedAmount !== myPriceConfirmed;
 
-  const resolvedAmount = resolveTargetAmount(effectiveIntent, {
-    currentAmount: currentPrice?.amount ?? null,
-    typicalRangeMin,
-    customAmount: customAmountKopiyky,
-  });
-
-  const submitDisabled = busy || resolvedAmount === null;
-
-  function handleSubmit(): void {
-    if (resolvedAmount === null) return;
-    onSubmit(effectiveIntent, resolvedAmount);
+  function confirmMyPrice(): void {
+    if (typedAmount === null || !myPriceDirty) return;
+    setMyPriceConfirmed(typedAmount);
   }
 
-  function handleIntentClick(key: AlertIntent): void {
-    setSelectedIntent(key);
-    setCustomOpen(false);
+  const selectedEntry = preview.find((p) => p.mode === selectedMode);
+  const canSubmit =
+    selectedEntry?.available === true &&
+    (selectedMode !== 'my-price' || myPriceConfirmed != null);
+  const submitDisabled = busy || !canSubmit;
+
+  function handleSubmit(): void {
+    if (!canSubmit) return;
+    if (selectedMode === 'my-price') {
+      if (myPriceConfirmed == null) return;
+      onSubmit('my-price', { amount: myPriceConfirmed, currency: 'UAH' });
+    } else {
+      onSubmit(selectedMode);
+    }
+  }
+
+  const availableModes = preview.filter((p) => p.available).map((p) => p.mode);
+
+  function moveSelection(direction: 1 | -1): void {
+    if (availableModes.length === 0) return;
+    const idx = availableModes.indexOf(selectedMode);
+    const from = idx === -1 ? 0 : idx;
+    const next = availableModes[(from + direction + availableModes.length) % availableModes.length];
+    setSelectedMode(next);
+    cardRefs.current[next]?.focus();
+  }
+
+  function handleGroupKeyDown(e: KeyboardEvent<HTMLDivElement>): void {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      moveSelection(1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      moveSelection(-1);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      handleSubmit();
+    }
+  }
+
+  /** Enter in the my-price field confirms the field — never double-fires the group's Enter=save handling. */
+  function handleMyPriceKeyDown(e: KeyboardEvent<HTMLInputElement>): void {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      e.stopPropagation();
+      confirmMyPrice();
+    }
   }
 
   return (
     <div className="al-config">
-      {/* Head */}
       <div className="al-config__head">
-        <span className="al-config__title" id={titleId}>{title}</span>
-        <span className="al-config__sub">{subText}</span>
+        <div className="al-config__headmain">
+          <span className="al-config__title" id={titleId}>
+            {title}
+          </span>
+          <span className="al-config__sub">{subText}</span>
+        </div>
+        <button type="button" className="al-config__x" aria-label="Закрити" onClick={onCancel}>
+          <X size={18} aria-hidden />
+        </button>
       </div>
 
-      {/* Optional error note */}
       {errorNote}
 
       {paused ? (
@@ -151,168 +239,140 @@ export function AlertConfig({
             <Info size={18} aria-hidden />
             <span>
               Книговик не стежить за ціною, доки сповіщення призупинене. Поновіть, щоб далі чекати
-              на ціль{' '}
-              {targetPrice != null && (
-                <b>{formatMoney(targetPrice)}</b>
-              )}
-              .
+              на ціль {currentAlert != null && <b>{formatMoney(currentAlert.threshold)}</b>}.
             </span>
           </div>
           <div className="al-config__actions">
             <Button variant="ghost" onClick={onRemove}>
-              Прибрати
+              Прибрати сповіщення
             </Button>
-            <span className="al-grow">
-              <Button variant="primary" onClick={onResume}>
-                Поновити сповіщення
-              </Button>
-            </span>
+            <Button variant="primary" onClick={onResume}>
+              Поновити сповіщення
+            </Button>
           </div>
         </>
       ) : (
-        /* ── Intent form ──────────────────────────────────────────────── */
+        /* ── Mode form ────────────────────────────────────────────────── */
         <>
-          {/* Intent radiogroup */}
-          <div className="al-opts" role="radiogroup" aria-label="Коли повідомити">
-            {ALERT_INTENTS.map((intentDef) => {
-              const isDisabled = intentDef.needsHistory && typicalRangeMin === null;
-              const isSelected = !customOpen && selectedIntent === intentDef.key;
+          <div
+            className="al-opts"
+            role="radiogroup"
+            aria-label="Коли повідомити"
+            onKeyDown={handleGroupKeyDown}
+          >
+            {preview.map((entry) => {
+              const copy = ALERT_MODE_COPY[entry.mode];
+              const isSelected = selectedMode === entry.mode;
+              const isDisabled = !entry.available;
 
-              let priceText: string = '';
-              if (!isDisabled) {
-                if (intentDef.key === 'any-drop') {
-                  priceText = '';
-                } else if (intentDef.key === 'below-current') {
-                  priceText = currentPrice != null ? formatMoney(currentPrice) : '';
-                } else if (intentDef.key === 'favourable-price') {
-                  priceText =
-                    typicalRangeMin != null
-                      ? formatMoney({ amount: typicalRangeMin, currency: 'UAH' })
-                      : '';
-                }
+              let description: string | null = null;
+              if (isDisabled) {
+                description = entry.reason;
+              } else if (entry.mode === 'any-drop') {
+                description = copy.description;
+              } else if (entry.mode === 'good-price') {
+                description = entry.proof;
               }
 
-              const optClassName = [
-                'al-opt',
-                isSelected ? 'al-opt--on' : '',
-                isDisabled ? 'al-opt--disabled' : '',
-              ]
-                .filter(Boolean)
-                .join(' ');
+              // Only «Вигідна ціна» shows its threshold here — «Будь-яке
+              // зниження» always resolves to the current price, which would
+              // just restate the sub-heading; «Моя ціна» has no server
+              // threshold to show until the user confirms their own number.
+              const priceText =
+                !isDisabled && entry.mode === 'good-price' && entry.threshold != null
+                  ? `< ${formatMoney(entry.threshold)}`
+                  : null;
 
               return (
-                <button
-                  key={intentDef.key}
-                  type="button"
+                <div
+                  key={entry.mode}
+                  ref={(el) => {
+                    cardRefs.current[entry.mode] = el;
+                  }}
                   role="radio"
                   aria-checked={isSelected}
                   aria-disabled={isDisabled || undefined}
-                  className={optClassName}
-                  disabled={isDisabled}
-                  onClick={isDisabled ? undefined : () => handleIntentClick(intentDef.key)}
+                  tabIndex={isDisabled ? -1 : isSelected ? 0 : -1}
+                  className={[
+                    'al-opt',
+                    isSelected ? 'al-opt--on' : '',
+                    isDisabled ? 'al-opt--disabled' : '',
+                  ]
+                    .filter(Boolean)
+                    .join(' ')}
+                  onClick={isDisabled ? undefined : () => setSelectedMode(entry.mode)}
                 >
                   <span className="al-radio" aria-hidden />
                   <span className="al-opt__main">
-                    <span className="al-opt__label">{intentDef.label}</span>
-                    <span className="al-opt__desc">
-                      {isDisabled ? 'Збираємо історію цін…' : intentDef.desc}
+                    <span className="al-opt__row">
+                      <span className="al-opt__label">{copy.label}</span>
+                      {priceText != null && <span className="al-opt__price">{priceText}</span>}
                     </span>
+                    {description != null && <span className="al-opt__desc">{description}</span>}
+
+                    {entry.mode === 'my-price' && isSelected && (
+                      <div className="al-my">
+                        <div className="al-my__row">
+                          <span className="al-my__field">
+                            <input
+                              ref={myPriceInputRef}
+                              id="al-my-price"
+                              className="kn-input"
+                              type="text"
+                              inputMode="numeric"
+                              aria-label="Моя ціна"
+                              value={myPriceStr}
+                              onChange={(e) => setMyPriceStr(e.target.value)}
+                              onKeyDown={handleMyPriceKeyDown}
+                              onClick={(e) => e.stopPropagation()}
+                              placeholder="500"
+                            />
+                            <span className="al-my__unit" aria-hidden>
+                              ₴
+                            </span>
+                          </span>
+                          <Button
+                            variant="secondary"
+                            disabled={typedAmount === null || !myPriceDirty}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              confirmMyPrice();
+                            }}
+                          >
+                            Підтвердити
+                          </Button>
+                        </div>
+                        {myPriceConfirmed != null && !myPriceDirty && (
+                          <span className="al-my__hint">
+                            <Check size={13} aria-hidden />
+                            Поріг — нижче{' '}
+                            {formatMoney({ amount: myPriceConfirmed, currency: 'UAH' })}
+                          </span>
+                        )}
+                      </div>
+                    )}
                   </span>
-                  {priceText !== '' && !isDisabled && (
-                    <span className="al-opt__price">{priceText}</span>
-                  )}
-                </button>
+                </div>
               );
             })}
           </div>
 
-          {/* Custom-price disclosure */}
-          {customOpen ? (
-            <div className="al-custom">
-              <div className="al-custom__row">
-                <input
-                  className="kn-input"
-                  type="text"
-                  inputMode="numeric"
-                  aria-label="Власна ціна"
-                  value={customAmountStr}
-                  onChange={(e) => setCustomAmountStr(e.target.value)}
-                  placeholder="230"
-                />
-                <span className="al-custom__unit">₴</span>
-                <button
-                  type="button"
-                  className="al-link al-link--sm al-custom__cancel"
-                  aria-label="Скасувати власну ціну"
-                  onClick={() => {
-                    setCustomOpen(false);
-                    setCustomAmountStr('');
-                  }}
-                >
-                  <X size={13} aria-hidden />
-                  Скасувати
-                </button>
-              </div>
-              <span className="al-opt__desc">
-                Книговик напише, коли ціна стане нижчою за вашу.
-              </span>
-            </div>
-          ) : (
-            <button
-              type="button"
-              className="al-link al-link--sm"
-              onClick={() => {
-                setCustomOpen(true);
-              }}
-            >
-              <Pencil size={13} aria-hidden />
-              Вказати свою ціну
-            </button>
-          )}
-
-          {/* Pause affordance — edit mode only */}
-          {editing && onPause != null && (
-            <div className="al-manage">
-              <button type="button" className="al-manage__btn" onClick={onPause}>
-                <BellOff size={15} aria-hidden />
-                Призупинити сповіщення
-              </button>
-            </div>
-          )}
-
-          {/* Footer */}
-          <div className="al-config__foot">
-            <Clock size={14} aria-hidden />
-            <span>
-              Knyhovo перевіряє ціни щодня о 08:00 — щойно ціль досягнута, Книговик одразу напише
-              на пошту.
-            </span>
-          </div>
-
-          {/* Actions */}
-          <div className="al-config__actions">
-            {editing ? (
-              <>
-                <Button variant="ghost" onClick={onRemove}>
-                  Прибрати
-                </Button>
-                <span className="al-grow">
-                  <Button variant="primary" disabled={submitDisabled} onClick={handleSubmit}>
-                    Зберегти
-                  </Button>
-                </span>
-              </>
-            ) : (
-              <>
+          <div className="al-config__footer">
+            <span className="al-config__cadence">Перевіряємо ціни щоранку</span>
+            <div className="al-config__actions">
+              {!editing && (
                 <Button variant="ghost" onClick={onCancel}>
                   Скасувати
                 </Button>
-                <span className="al-grow">
-                  <Button variant="primary" disabled={submitDisabled} onClick={handleSubmit}>
-                    Увімкнути сповіщення
-                  </Button>
-                </span>
-              </>
+              )}
+              <Button variant="primary" disabled={submitDisabled} onClick={handleSubmit}>
+                Зберегти
+              </Button>
+            </div>
+            {editing && (
+              <button type="button" className="al-config__remove" onClick={onRemove}>
+                Прибрати сповіщення
+              </button>
             )}
           </div>
         </>

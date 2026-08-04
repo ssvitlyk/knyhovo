@@ -272,10 +272,13 @@ describe('toWishlistResponse', () => {
 describe('toWishlistResponse — alert mapping', () => {
   const BASE_ALERT: WishlistAlertRow = {
     status: 'ACTIVE',
-    intent: 'ANY_DROP',
+    mode: 'ANY_DROP',
     targetPriceAmount: 20000,
     targetPriceCurrency: 'UAH',
+    baselineAmount: null,
+    thresholdProof: null,
     pausedAt: null,
+    lastNotifiedAt: null,
   };
 
   it('alert is null when no alert row', () => {
@@ -292,78 +295,101 @@ describe('toWishlistResponse — alert mapping', () => {
     expect(dto.items[0]!.alert).toBeNull();
   });
 
-  it('derives status=triggered when lowestPrice ≤ targetPriceAmount', () => {
+  it('state=reached comes from the notification marker, not from the price', () => {
+    const notified = new Date('2026-07-20T08:00:00.000Z');
     const rows = [
       makeRow({
-        listings: [listing('YAKABOO', 15000)],   // lowestPrice = 15000 ≤ target 20000
-        alert: { ...BASE_ALERT, targetPriceAmount: 20000 },
+        // Price far ABOVE the target: under the old price-comparison model this
+        // would have read as `active`; the marker is what makes it `reached`.
+        listings: [listing('YAKABOO', 90000)],
+        alert: { ...BASE_ALERT, targetPriceAmount: 20000, lastNotifiedAt: notified },
       }),
     ];
     const dto = toWishlistResponse(rows);
-    expect(dto.items[0]!.alert?.status).toBe('triggered');
+    expect(dto.items[0]!.alert?.state).toBe('reached');
+    expect(dto.items[0]!.alert?.notifiedAt).toBe(notified.toISOString());
   });
 
-  it('derives status=unavailable when offersCount = 0', () => {
+  it('state=armed for a price below the target while no email has been sent', () => {
     const rows = [
       makeRow({
-        listings: [],   // no available offers → offersCount = 0
+        listings: [listing('YAKABOO', 15000)],   // below target 20000
+        alert: { ...BASE_ALERT, targetPriceAmount: 20000, lastNotifiedAt: null },
+      }),
+    ];
+    const dto = toWishlistResponse(rows);
+    expect(dto.items[0]!.alert?.state).toBe('armed');
+    expect(dto.items[0]!.alert?.notifiedAt).toBeNull();
+  });
+
+  it('state=unavailable when the book has no in-stock offer', () => {
+    const rows = [
+      makeRow({
+        listings: [],
         alert: BASE_ALERT,
       }),
     ];
     const dto = toWishlistResponse(rows);
-    expect(dto.items[0]!.alert?.status).toBe('unavailable');
+    expect(dto.items[0]!.alert?.state).toBe('unavailable');
   });
 
-  it('derives status=active when lowestPrice > targetPriceAmount', () => {
+  it('state=paused regardless of price or marker when persisted status is PAUSED', () => {
     const rows = [
       makeRow({
-        listings: [listing('YAKABOO', 30000)],   // lowestPrice = 30000 > target 20000
-        alert: BASE_ALERT,
-      }),
-    ];
-    const dto = toWishlistResponse(rows);
-    expect(dto.items[0]!.alert?.status).toBe('active');
-  });
-
-  it('derives status=paused regardless of price when persisted status is PAUSED', () => {
-    const rows = [
-      makeRow({
-        listings: [listing('YAKABOO', 5000)],   // would be triggered if not PAUSED
+        listings: [listing('YAKABOO', 5000)],
         alert: { ...BASE_ALERT, status: 'PAUSED', targetPriceAmount: 20000 },
       }),
     ];
     const dto = toWishlistResponse(rows);
-    expect(dto.items[0]!.alert?.status).toBe('paused');
+    expect(dto.items[0]!.alert?.state).toBe('paused');
   });
 
-  it('maps intent enum to slug correctly — ANY_DROP → any-drop', () => {
-    const rows = [makeRow({ alert: { ...BASE_ALERT, intent: 'ANY_DROP' } })];
+  it('maps mode enum to slug correctly — ANY_DROP → any-drop', () => {
+    const rows = [makeRow({ alert: { ...BASE_ALERT, mode: 'ANY_DROP' } })];
     const dto = toWishlistResponse(rows);
-    expect(dto.items[0]!.alert?.intent).toBe('any-drop');
+    expect(dto.items[0]!.alert?.mode).toBe('any-drop');
   });
 
-  it('maps intent enum to slug correctly — BELOW_CURRENT → below-current', () => {
-    const rows = [makeRow({ alert: { ...BASE_ALERT, intent: 'BELOW_CURRENT' } })];
+  it('maps mode enum to slug correctly — GOOD_PRICE → good-price', () => {
+    const rows = [makeRow({ alert: { ...BASE_ALERT, mode: 'GOOD_PRICE' } })];
     const dto = toWishlistResponse(rows);
-    expect(dto.items[0]!.alert?.intent).toBe('below-current');
+    expect(dto.items[0]!.alert?.mode).toBe('good-price');
   });
 
-  it('maps intent enum to slug correctly — FAVOURABLE_PRICE → favourable-price', () => {
-    const rows = [makeRow({ alert: { ...BASE_ALERT, intent: 'FAVOURABLE_PRICE' } })];
+  it('maps mode enum to slug correctly — MY_PRICE → my-price', () => {
+    const rows = [makeRow({ alert: { ...BASE_ALERT, mode: 'MY_PRICE' } })];
     const dto = toWishlistResponse(rows);
-    expect(dto.items[0]!.alert?.intent).toBe('favourable-price');
+    expect(dto.items[0]!.alert?.mode).toBe('my-price');
   });
 
-  it('maps intent enum to slug correctly — CUSTOM_PRICE → custom-price', () => {
-    const rows = [makeRow({ alert: { ...BASE_ALERT, intent: 'CUSTOM_PRICE' } })];
-    const dto = toWishlistResponse(rows);
-    expect(dto.items[0]!.alert?.intent).toBe('custom-price');
-  });
-
-  it('maps targetPrice correctly', () => {
+  it('maps threshold correctly', () => {
     const rows = [makeRow({ alert: { ...BASE_ALERT, targetPriceAmount: 34900 } })];
     const dto = toWishlistResponse(rows);
-    expect(dto.items[0]!.alert?.targetPrice).toEqual({ amount: 34900, currency: 'UAH' });
+    expect(dto.items[0]!.alert?.threshold).toEqual({ amount: 34900, currency: 'UAH' });
+  });
+
+  it('maps baseline correctly when set', () => {
+    const rows = [makeRow({ alert: { ...BASE_ALERT, baselineAmount: 15000 } })];
+    const dto = toWishlistResponse(rows);
+    expect(dto.items[0]!.alert?.baseline).toEqual({ amount: 15000, currency: 'UAH' });
+  });
+
+  it('maps baseline as null when not set', () => {
+    const rows = [makeRow({ alert: { ...BASE_ALERT, baselineAmount: null } })];
+    const dto = toWishlistResponse(rows);
+    expect(dto.items[0]!.alert?.baseline).toBeNull();
+  });
+
+  it('maps thresholdProof through when set', () => {
+    const rows = [makeRow({ alert: { ...BASE_ALERT, thresholdProof: 'Щойно ціна впаде' } })];
+    const dto = toWishlistResponse(rows);
+    expect(dto.items[0]!.alert?.thresholdProof).toBe('Щойно ціна впаде');
+  });
+
+  it('maps thresholdProof as null when not set', () => {
+    const rows = [makeRow({ alert: { ...BASE_ALERT, thresholdProof: null } })];
+    const dto = toWishlistResponse(rows);
+    expect(dto.items[0]!.alert?.thresholdProof).toBeNull();
   });
 
   it('maps pausedAt as ISO string when set', () => {

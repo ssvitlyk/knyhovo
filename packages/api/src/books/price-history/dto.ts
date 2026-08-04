@@ -1,4 +1,5 @@
-import type { Availability } from '@knyhovo/shared';
+import type { Availability, AlertMode } from '@knyhovo/shared';
+import type { MoneyDto } from '../../wishlist/dto.js';
 
 /**
  * Price History API v1.0 response contract.
@@ -74,4 +75,31 @@ export interface BookPriceHistoryDto {
   readonly change: PriceHistoryChangeDto | null;
   /** All price points in the period, ascending by `recordedAt`. */
   readonly points: readonly PriceHistoryPointDto[];
+  /**
+   * Per-mode alert preview (notifications-model-v2 §10).
+   *
+   * Lets the configurator render every mode — availability, threshold and proof —
+   * without a single client-side calculation, and without a new endpoint: the
+   * dialog already fetches this resource at exactly this moment.
+   *
+   * Computed over a FIXED window, deliberately independent of `period`: the
+   * `?period` parameter drives the chart, and must not silently change the advice.
+   *
+   * It is a preview, not the contract. The authoritative policy is built by the
+   * server on `PUT .../alert` and returned in that response.
+   */
+  readonly alertPolicyPreview: readonly AlertModePreviewDto[];
+}
+
+/** One selectable mode as the configurator should render it. */
+export interface AlertModePreviewDto {
+  readonly mode: AlertMode;
+  /** False → the mode must be shown disabled, with `reason` and no threshold. */
+  readonly available: boolean;
+  /** The threshold the server would freeze, or null (my-price / unavailable). */
+  readonly threshold: MoneyDto | null;
+  /** One-line human proof of the threshold, or null. */
+  readonly proof: string | null;
+  /** Why the mode is unavailable; null when it is available. */
+  readonly reason: string | null;
 }
