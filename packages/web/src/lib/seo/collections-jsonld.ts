@@ -1,5 +1,5 @@
 import type { CollectionBookDto, CollectionDto } from '@/lib/api/types';
-import { knBookWord } from '@/lib/format';
+import { knBookWord, toMajorUnits } from '@/lib/format';
 
 /**
  * SEO helpers for the Collections pages (Collections PRD Part 09). Pure
@@ -8,11 +8,6 @@ import { knBookWord } from '@/lib/format';
  */
 
 const META_DESCRIPTION_MAX = 155;
-
-/** Convert an integer kopiyky amount to major currency units (e.g. 34900 → 349). */
-function toMajorUnits(amount: number): number {
-  return Number((amount / 100).toFixed(2));
-}
 
 /**
  * Meta description pattern from the PRD:

@@ -14,6 +14,11 @@ const PROVIDER_DISPLAY_NAME: Readonly<Record<ProviderName, string>> = {
   megakniga: 'Мегакнига',
 };
 
+/** Convert an integer kopiyky amount to major currency units (e.g. 34900 → 349). */
+export function toMajorUnits(amount: number): number {
+  return Number((amount / 100).toFixed(2));
+}
+
 /** Group integer digits into 3s with a regular space (Ukrainian style). */
 function groupThousands(value: number): string {
   const sign = value < 0 ? '-' : '';

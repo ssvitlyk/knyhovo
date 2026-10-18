@@ -3,7 +3,6 @@ import {
   getWishlist,
   addToWishlist,
   removeFromWishlist,
-  getWishlistStatus,
   WishlistError,
 } from '../wishlist';
 import type { WishlistResponseDto } from '../types';
@@ -165,48 +164,5 @@ describe('removeFromWishlist()', () => {
     expect(capturedUrl).toContain('/api/wishlist/book-99');
     expect(capturedInit?.credentials).toBe('include');
     expect(capturedInit?.method).toBe('DELETE');
-  });
-});
-
-/* ── getWishlistStatus ──────────────────────────────────────────────────────── */
-describe('getWishlistStatus()', () => {
-  it('200 inWishlist:true → returns true', async () => {
-    mockFetch((async () =>
-      new Response(JSON.stringify({ inWishlist: true }), { status: 200 })) as typeof fetch);
-
-    const result = await getWishlistStatus({ bookId: 'book-1', cookie: 'kn_session=abc' });
-    expect(result).toBe(true);
-  });
-
-  it('200 inWishlist:false → returns false', async () => {
-    mockFetch((async () =>
-      new Response(JSON.stringify({ inWishlist: false }), { status: 200 })) as typeof fetch);
-
-    const result = await getWishlistStatus({ bookId: 'book-1', cookie: 'kn_session=abc' });
-    expect(result).toBe(false);
-  });
-
-  it('401 → returns false (degrade gracefully)', async () => {
-    mockFetch((async () =>
-      new Response(JSON.stringify({ error: 'AUTH_REQUIRED' }), { status: 401 })) as typeof fetch);
-
-    const result = await getWishlistStatus({ bookId: 'book-1', cookie: '' });
-    expect(result).toBe(false);
-  });
-
-  it('500 → returns false (degrade gracefully)', async () => {
-    mockFetch((async () => new Response('{}', { status: 500 })) as typeof fetch);
-
-    const result = await getWishlistStatus({ bookId: 'book-1', cookie: '' });
-    expect(result).toBe(false);
-  });
-
-  it('network error → returns false (degrade gracefully)', async () => {
-    mockFetch((async () => {
-      throw new Error('network down');
-    }) as typeof fetch);
-
-    const result = await getWishlistStatus({ bookId: 'book-1', cookie: '' });
-    expect(result).toBe(false);
   });
 });

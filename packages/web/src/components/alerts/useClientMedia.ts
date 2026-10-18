@@ -1,6 +1,7 @@
 'use client';
 
 import { useSyncExternalStore } from 'react';
+import { useMediaQuery } from '@/hooks/useMediaQuery';
 
 /** Stable no-op subscriber for client-only state that never changes after mount. */
 const subscribeNever = (): (() => void) => () => {};
@@ -18,32 +19,12 @@ export function useMounted(): boolean {
   );
 }
 
-const MOBILE_QUERY = '(max-width: 767px)';
-
-function hasMatchMedia(): boolean {
-  return typeof window !== 'undefined' && typeof window.matchMedia === 'function';
-}
-
-function subscribeMobile(callback: () => void): () => void {
-  if (!hasMatchMedia()) return () => {};
-  const mq = window.matchMedia(MOBILE_QUERY);
-  mq.addEventListener('change', callback);
-  return () => {
-    mq.removeEventListener('change', callback);
-  };
-}
-
-function getMobileSnapshot(): boolean {
-  if (!hasMatchMedia()) return false;
-  return window.matchMedia(MOBILE_QUERY).matches;
-}
-
 /**
  * useIsMobile — true when the viewport is below the bottom-sheet breakpoint
- * (<768px). Subscribes to matchMedia change events via useSyncExternalStore and
- * returns false on the server (and where matchMedia is unavailable), so the
- * surface defaults to the desktop popover until the client confirms otherwise.
+ * (<768px). Subscribes to matchMedia change events and returns false on the
+ * server (and where matchMedia is unavailable), so the surface defaults to the
+ * desktop popover until the client confirms otherwise.
  */
 export function useIsMobile(): boolean {
-  return useSyncExternalStore(subscribeMobile, getMobileSnapshot, () => false);
+  return useMediaQuery('(max-width: 767px)', false);
 }

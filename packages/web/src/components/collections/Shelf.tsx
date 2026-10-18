@@ -1,17 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState, type RefObject } from 'react';
-import type { CollectionBookDto } from '@/lib/api/types';
-import type { CardBadge } from '@/lib/collections/badges';
+import { useCallback, useEffect, useRef, useState, type RefObject } from 'react';
 import { BookCard } from './BookCard';
 import { DynIcon } from './icons';
-import { useWishlistHearts } from './useWishlistHearts';
+import { useWishlistHearts, type BookCardItem } from './useWishlistHearts';
 
 /** A shelf item: the card data + its precomputed (serializable) badge. */
-export interface ShelfItem {
-  readonly book: CollectionBookDto;
-  readonly badge: CardBadge | null;
-}
+export type ShelfItem = BookCardItem;
 
 /**
  * Horizontal-rail interactions, ported 1:1 from the frozen mock: wheel +
@@ -134,11 +129,7 @@ export function Shelf({ items, allLabel, allHref }: ShelfProps): React.JSX.Eleme
   const railRef = useRef<HTMLDivElement | null>(null);
   const wrapRef = useRef<HTMLDivElement | null>(null);
   const [nav, setNav] = useState({ left: false, right: true });
-  const initialSavedIds = useMemo(
-    () => items.filter(({ book }) => book.isWishlisted).map(({ book }) => book.id),
-    [items],
-  );
-  const { saved, toggle } = useWishlistHearts(initialSavedIds);
+  const { saved, toggle } = useWishlistHearts(items);
   useRailInteractions(railRef);
 
   // Track scroll extremes (to hide the end-stop arrow) + align the arrows to the cover mid-line.

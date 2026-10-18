@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
+import { getCookieHeader } from '@/lib/api/server';
 import { notFound, redirect } from 'next/navigation';
 import {
   CollectionsError,
@@ -132,7 +132,7 @@ export async function CollectionDetailsPage({
   searchParams,
 }: CollectionDetailsPageProps): Promise<React.JSX.Element> {
   const collection = await resolveCollection(slug, base);
-  const cookie = (await cookies()).toString();
+  const cookie = await getCookieHeader();
 
   const kind = kindFor(collection);
   const cfg = sortConfigFor(kind);

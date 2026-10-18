@@ -2,13 +2,12 @@
 
 import { Search, X } from 'lucide-react';
 
-import { Cover } from '@/components/ds/Cover';
 import {
   useSearchCombobox,
   type ComboboxContext,
   type ComboboxOption,
 } from '@/components/search/useSearchCombobox';
-import { formatMoney, providerDisplayName } from '@/lib/format';
+import { SuggestionList } from '@/components/search/SuggestionList';
 import { normalizeSearchInput } from '@/lib/search/normalize';
 
 const PLACEHOLDER = 'Назва книги, автора або ISBN…';
@@ -53,14 +52,6 @@ export function HeroSearch(): React.JSX.Element {
     clear,
   } = combobox;
 
-  /** mousedown (not click) so the field keeps focus and the pick counts as inside. */
-  const pick = (index: number) => (e: React.MouseEvent): void => {
-    e.preventDefault();
-    selectOption(index);
-  };
-
-  const showAllIndex = options.length - 1;
-
   return (
     <form className="hero__search" role="search" ref={rootRef} onSubmit={combobox.onSubmit}>
       <div className="kn-field">
@@ -100,78 +91,19 @@ export function HeroSearch(): React.JSX.Element {
       </div>
 
       {expanded && (
-        <ul id={listboxId} role="listbox" aria-label="Підказки пошуку" className="hp-sg">
-          {suggestions.loading && (
-            <li role="presentation" className="hp-sg__status" aria-busy="true">
-              <span className="hp-sg__spinner" aria-hidden="true" />
-              Шукаємо…
-            </li>
-          )}
-
-          {!suggestions.loading && suggestions.error && (
-            <li role="presentation" className="hp-sg__status hp-sg__status--error">
-              Не вдалося завантажити підказки
-              <button
-                type="button"
-                className="hp-sg__retry"
-                onMouseDown={(e) => {
-                  e.preventDefault();
-                  suggestions.retry();
-                }}
-              >
-                Повторити
-              </button>
-            </li>
-          )}
-
-          {!suggestions.loading && !suggestions.error && suggestions.items.length === 0 && (
-            <li role="presentation" className="hp-sg__status">
-              Нічого не знайдено
-            </li>
-          )}
-
-          {!suggestions.loading &&
-            !suggestions.error &&
-            suggestions.items.map((item, i) => {
-              const store = item.providers[0];
-              return (
-                <li
-                  key={item.id}
-                  id={optionId(i)}
-                  role="option"
-                  aria-selected={i === activeIndex}
-                  data-active={i === activeIndex ? 'true' : undefined}
-                  className="hp-sg__row"
-                  onMouseDown={pick(i)}
-                >
-                  <Cover src={item.coverUrl} alt="" className="hp-sg__cover" placeholderAs="span" />
-                  <span className="hp-sg__text">
-                    <span className="hp-sg__title">{item.title}</span>
-                    {item.author ? <span className="hp-sg__author">{item.author}</span> : null}
-                  </span>
-                  <span className="hp-sg__meta">
-                    <span className="hp-sg__price">{formatMoney(item.lowestPrice)}</span>
-                    {store ? (
-                      <span className="hp-sg__store">{providerDisplayName(store.provider)}</span>
-                    ) : null}
-                  </span>
-                </li>
-              );
-            })}
-
-          {!suggestions.loading && !suggestions.error && suggestions.items.length > 0 && (
-            <li
-              id={optionId(showAllIndex)}
-              role="option"
-              aria-selected={showAllIndex === activeIndex}
-              data-active={showAllIndex === activeIndex ? 'true' : undefined}
-              className="hp-sg__row hp-sg__row--action"
-              onMouseDown={pick(showAllIndex)}
-            >
-              Показати всі результати
-            </li>
-          )}
-        </ul>
+        <SuggestionList
+          classPrefix="hp-sg"
+          className="hp-sg"
+          listboxId={listboxId}
+          optionId={optionId}
+          items={suggestions.items}
+          loading={suggestions.loading}
+          error={suggestions.error}
+          activeIndex={activeIndex}
+          onSelectBook={selectOption}
+          onShowAll={() => selectOption(options.length - 1)}
+          onRetry={suggestions.retry}
+        />
       )}
     </form>
   );

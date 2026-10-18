@@ -1,4 +1,5 @@
 import { apiBaseUrl } from './env';
+import { apiJson, apiRequest, defineApiError, type ApiRequestOptions } from './http';
 import type {
   CollectionBooksPageDto,
   CollectionDto,
@@ -9,81 +10,28 @@ import type {
 /** Fixed page size for collection book listings (Collections PRD, not the 15 from the design mock). */
 export const COLLECTION_PAGE_SIZE = 24;
 
-const REQUEST_TIMEOUT_MS = 8000;
-
 /** Error thrown when a collections request fails (network, timeout, or non-2xx). */
-export class CollectionsError extends Error {
-  /** HTTP status, or `null` for a transport/timeout failure. */
-  readonly status: number | null;
-  /** API error-envelope code (e.g. `COLLECTION_NOT_FOUND`), when the body carried one. */
-  readonly code: string | null;
-
-  constructor(message: string, status: number | null, code: string | null = null) {
-    super(message);
-    this.name = 'CollectionsError';
-    this.status = status;
-    this.code = code;
-  }
-}
-
-/** Parse the repo-standard error envelope `{ error: { code, message } }`; null when absent. */
-async function readErrorEnvelope(
-  response: Response,
-): Promise<{ code: string | null; message: string | null }> {
-  try {
-    const body = (await response.json()) as {
-      error?: { code?: unknown; message?: unknown };
-    };
-    return {
-      code: typeof body.error?.code === 'string' ? body.error.code : null,
-      message: typeof body.error?.message === 'string' ? body.error.message : null,
-    };
-  } catch {
-    return { code: null, message: null };
-  }
-}
+export class CollectionsError extends defineApiError('CollectionsError') {}
 
 /**
- * Shared fetch helper for the collections endpoints. Runs server-side (Server
+ * Shared fetch options for the collections endpoints. Runs server-side (Server
  * Component / route), so the absolute backend URL is hit directly — no CORS.
- * The request carries an explicit timeout (security rule: external HTTP must
- * time out, no hidden retries). Throws {@link CollectionsError} on transport,
- * timeout, or non-2xx — with the envelope code attached when available.
+ * Failures throw {@link CollectionsError} — with the envelope code attached when available.
  */
-async function fetchCollectionsJson<T>(
+const COLLECTIONS_REQUEST = {
+  cache: 'no-store',
+  errorClass: CollectionsError,
+  envelope: true,
+  logTag: 'collections',
+  transportMessage: 'Не вдалося звʼязатися з сервісом добірок.',
+  httpMessage: (status: number) => `Сервіс добірок повернув помилку (${status}).`,
+} as const satisfies ApiRequestOptions;
+
+function fetchCollectionsJson<T>(
   path: string,
-  options?: { readonly redirect?: RequestRedirect; readonly cookie?: string },
+  options?: { readonly cookie?: string },
 ): Promise<T> {
-  const url = `${apiBaseUrl()}${path}`;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      signal: controller.signal,
-      cache: 'no-store',
-      ...(options?.redirect ? { redirect: options.redirect } : {}),
-      ...(options?.cookie ? { headers: { cookie: options.cookie } } : {}),
-    });
-  } catch (cause) {
-    console.error('[collections] transport failure', { url, cause });
-    throw new CollectionsError('Не вдалося звʼязатися з сервісом добірок.', null);
-  } finally {
-    clearTimeout(timer);
-  }
-
-  if (!response.ok) {
-    const envelope = await readErrorEnvelope(response);
-    throw new CollectionsError(
-      envelope.message ?? `Сервіс добірок повернув помилку (${response.status}).`,
-      response.status,
-      envelope.code,
-    );
-  }
-
-  return (await response.json()) as T;
+  return apiJson<T>(`${apiBaseUrl()}${path}`, { ...COLLECTIONS_REQUEST, cookie: options?.cookie });
 }
 
 /**
@@ -104,36 +52,14 @@ export async function getCollectionsHub(options?: { readonly cookie?: string }):
 export async function getCollection(
   slug: string,
 ): Promise<{ collection: CollectionDto } | { redirectedToHub: true }> {
-  const url = `${apiBaseUrl()}/api/collections/${encodeURIComponent(slug)}`;
+  const response = await apiRequest(`${apiBaseUrl()}/api/collections/${encodeURIComponent(slug)}`, {
+    ...COLLECTIONS_REQUEST,
+    redirect: 'manual',
+    // Genre below the 30-book threshold → backend 301 → hub.
+    passthrough: (status) => status === 301 || status === 308,
+  });
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      signal: controller.signal,
-      cache: 'no-store',
-      redirect: 'manual',
-    });
-  } catch (cause) {
-    console.error('[collections] transport failure', { url, cause });
-    throw new CollectionsError('Не вдалося звʼязатися з сервісом добірок.', null);
-  } finally {
-    clearTimeout(timer);
-  }
-
-  // Genre below the 30-book threshold → backend 301 → hub.
   if (response.status === 301 || response.status === 308) return { redirectedToHub: true };
-
-  if (!response.ok) {
-    const envelope = await readErrorEnvelope(response);
-    throw new CollectionsError(
-      envelope.message ?? `Сервіс добірок повернув помилку (${response.status}).`,
-      response.status,
-      envelope.code,
-    );
-  }
 
   return (await response.json()) as { collection: CollectionDto };
 }

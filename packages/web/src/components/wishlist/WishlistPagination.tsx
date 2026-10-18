@@ -1,7 +1,6 @@
 'use client';
 
-import { Button } from '@/components/ds/Button';
-import { getPageItems, PAGINATION_ELLIPSIS } from '@/lib/pagination';
+import { PageNav } from '@/components/ds/PageNav';
 
 export interface WishlistPaginationProps {
   readonly page: number;
@@ -16,37 +15,13 @@ export interface WishlistPaginationProps {
  * Hidden when there is a single page.
  */
 export function WishlistPagination({ page, pages, onPage }: WishlistPaginationProps): React.JSX.Element | null {
-  if (pages <= 1) return null;
-
-  const items = getPageItems(page, pages);
-
   return (
-    <nav className="kn-pagination" aria-label="Сторінки бажанок">
-      <Button variant="secondary" size="sm" disabled={page === 1} onClick={() => onPage(page - 1)}>
-        ← Назад
-      </Button>
-      <div className="kn-pagination__pages">
-        {items.map((item, i) =>
-          item === PAGINATION_ELLIPSIS ? (
-            <span key={`ellipsis-${i}`} className="kn-pagination__ellipsis">
-              {PAGINATION_ELLIPSIS}
-            </span>
-          ) : (
-            <Button
-              key={item}
-              variant={item === page ? 'primary' : 'ghost'}
-              size="sm"
-              aria-current={item === page ? 'page' : undefined}
-              onClick={() => onPage(item)}
-            >
-              {item}
-            </Button>
-          ),
-        )}
-      </div>
-      <Button variant="secondary" size="sm" disabled={page === pages} onClick={() => onPage(page + 1)}>
-        Далі →
-      </Button>
-    </nav>
+    <PageNav
+      page={page}
+      totalPages={pages}
+      onPage={onPage}
+      ariaLabel="Сторінки бажанок"
+      nextLabel="Далі →"
+    />
   );
 }

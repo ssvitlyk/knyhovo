@@ -1,12 +1,10 @@
 import Link from 'next/link';
-import { cookies } from 'next/headers';
 import { ThemeToggle } from '@/components/ds/ThemeToggle';
 import { HeaderSearch } from '@/components/header/HeaderSearch';
 import { HeaderNav } from '@/components/header/HeaderNav';
 import { MobileHeader } from '@/components/header/MobileHeader';
 import { HeaderAuthActions, type HeaderUser } from '@/components/auth/HeaderAuthActions';
-import { me } from '@/lib/api/auth';
-import { getWishlist } from '@/lib/api/wishlist';
+import { getCookieHeader, getSessionUser, getWishlistCached } from '@/lib/api/server';
 
 /**
  * Global Header v1.0 (frozen design) — server shell that resolves auth session
@@ -22,8 +20,8 @@ import { getWishlist } from '@/lib/api/wishlist';
 export async function SiteHeader(): Promise<React.JSX.Element> {
   let user: HeaderUser | null = null;
   try {
-    const cookie = (await cookies()).toString();
-    user = await me(cookie);
+    const cookie = await getCookieHeader();
+    user = await getSessionUser(cookie);
   } catch {
     user = null;
   }
@@ -31,8 +29,8 @@ export async function SiteHeader(): Promise<React.JSX.Element> {
   let wishlistCount = 0;
   if (user != null) {
     try {
-      const cookie = (await cookies()).toString();
-      const result = await getWishlist({ cookie });
+      const cookie = await getCookieHeader();
+      const result = await getWishlistCached(cookie);
       wishlistCount = 'unauthorized' in result ? 0 : result.items.length;
     } catch {
       wishlistCount = 0;

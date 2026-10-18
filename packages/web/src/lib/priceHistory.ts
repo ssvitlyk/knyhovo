@@ -21,7 +21,7 @@ export const PERIOD_MAP: Readonly<Record<PeriodKey, PriceHistoryPeriod>> = {
 };
 
 /** Maps API period string → internal period key. */
-export const PERIOD_REVERSE: Readonly<Record<PriceHistoryPeriod, PeriodKey>> = {
+const PERIOD_REVERSE: Readonly<Record<PriceHistoryPeriod, PeriodKey>> = {
   '30d': '30',
   '90d': '90',
   '1y': '365',
@@ -39,7 +39,7 @@ export const PERIOD_LABEL: Readonly<Record<PeriodKey, string>> = {
 /* ── Formatters ──────────────────────────────────────────────────────────── */
 
 /** U+2212 MINUS SIGN (typographic, not hyphen). */
-export const MINUS = '−';
+const MINUS = '−';
 
 /** копійки (integer) → hryvnia integer (rounded). 24000 → 240, 31850 → 319 */
 export function kopToUah(kop: number): number {
@@ -62,12 +62,6 @@ export function formatPercent(p: number): string {
   return (p < 0 ? MINUS : '+') + Math.abs(p) + '%';
 }
 
-/** change.amount (копійки) → "−80 ₴" / "+30 ₴" / "0 ₴". */
-export function formatChangeAmount(kop: number): string {
-  if (!kop) return '0 ₴';
-  return (kop < 0 ? MINUS : '+') + formatUah(Math.abs(kop));
-}
-
 /* ── Axis labels ─────────────────────────────────────────────────────────── */
 
 const UA_MONTH = [
@@ -80,7 +74,7 @@ const UA_MONTH = [
  * For 30d: day + month at start/mid/end; for all: year on change; otherwise
  * month abbreviation on month change.
  */
-export function axisLabel(
+function axisLabel(
   apiPeriod: PriceHistoryPeriod,
   iso: string,
   i: number,

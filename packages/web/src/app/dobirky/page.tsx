@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
+import { getCookieHeader } from '@/lib/api/server';
 import { getCollectionBooks, getCollectionsHub } from '@/lib/api/collections';
 import type { CollectionBookDto, CollectionsHubDto } from '@/lib/api/types';
 import { allocate } from '@/lib/collections/allocate';
@@ -83,7 +83,7 @@ function shelfItems(shelf: ShelfKind, books: readonly CollectionBookDto[]): Shel
  * (which stays reserved for an actual `getCollectionsHub` rejection below).
  */
 export default async function DobirkyPage(): Promise<React.JSX.Element> {
-  const cookie = (await cookies()).toString();
+  const cookie = await getCookieHeader();
 
   let hub: CollectionsHubDto;
   try {

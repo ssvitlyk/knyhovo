@@ -1,5 +1,5 @@
-import { cookies } from 'next/headers';
-import { getWishlist, getBuyingOpportunities } from '@/lib/api/wishlist';
+import { getBuyingOpportunities } from '@/lib/api/wishlist';
+import { getCookieHeader, getWishlistCached } from '@/lib/api/server';
 import { getBookDetails } from '@/lib/api/book';
 import { getPriceHistoryServer } from '@/lib/api/priceHistory';
 import type { BookDetailsDto, BuyingOpportunityDto, WishlistItemDto, BookPriceHistoryDto } from '@/lib/api/types';
@@ -112,10 +112,10 @@ function buildKnyhovykPick(
  * and price history, when configured) in parallel.
  */
 export default async function WishlistPage(): Promise<React.JSX.Element> {
-  const cookie = (await cookies()).toString();
+  const cookie = await getCookieHeader();
 
   const [wishlistResult, opportunitiesResult, pickDetails, pickHistory] = await Promise.all([
-    getWishlist({ cookie }),
+    getWishlistCached(cookie),
     getBuyingOpportunities({ cookie }),
     KNYHOVYK_PICK != null ? getBookDetails(KNYHOVYK_PICK.bookId).catch(() => null) : Promise.resolve(null),
     KNYHOVYK_PICK != null

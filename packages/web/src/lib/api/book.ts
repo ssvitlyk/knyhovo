@@ -1,19 +1,9 @@
 import { apiBaseUrl } from './env';
+import { apiJson, defineApiError } from './http';
 import type { BookDetailsDto } from './types';
 
-const REQUEST_TIMEOUT_MS = 8000;
-
 /** Error thrown when the book-details request fails (network, timeout, or non-2xx). */
-export class BookDetailsError extends Error {
-  /** HTTP status, or `null` for a transport/timeout failure. */
-  readonly status: number | null;
-
-  constructor(message: string, status: number | null) {
-    super(message);
-    this.name = 'BookDetailsError';
-    this.status = status;
-  }
-}
+export class BookDetailsError extends defineApiError('BookDetailsError') {}
 
 /**
  * Call `GET /api/books/:id` (S7a). Runs server-side (Server Component / route),
@@ -22,23 +12,10 @@ export class BookDetailsError extends Error {
  * retries). Throws {@link BookDetailsError} on transport, timeout, or non-2xx.
  */
 export async function getBookDetails(id: string): Promise<BookDetailsDto> {
-  const url = `${apiBaseUrl()}/api/books/${encodeURIComponent(id)}`;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-  let response: Response;
-  try {
-    response = await fetch(url, { signal: controller.signal, cache: 'no-store' });
-  } catch {
-    throw new BookDetailsError('Не вдалося звʼязатися з сервісом книг.', null);
-  } finally {
-    clearTimeout(timer);
-  }
-
-  if (!response.ok) {
-    throw new BookDetailsError(`Сервіс книг повернув помилку (${response.status}).`, response.status);
-  }
-
-  return (await response.json()) as BookDetailsDto;
+  return apiJson<BookDetailsDto>(`${apiBaseUrl()}/api/books/${encodeURIComponent(id)}`, {
+    cache: 'no-store',
+    errorClass: BookDetailsError,
+    transportMessage: 'Не вдалося звʼязатися з сервісом книг.',
+    httpMessage: (status) => `Сервіс книг повернув помилку (${status}).`,
+  });
 }

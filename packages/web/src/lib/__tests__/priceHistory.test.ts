@@ -4,7 +4,6 @@ import {
   formatUah,
   formatRange,
   formatPercent,
-  formatChangeAmount,
   toViewModel,
   buildAdvisory,
   PERIOD_MAP,
@@ -66,20 +65,6 @@ describe('formatPercent', () => {
 
   it('formats zero as "0%"', () => {
     expect(formatPercent(0)).toBe('0%');
-  });
-});
-
-describe('formatChangeAmount', () => {
-  it('formats negative amount with U+2212 and ₴', () => {
-    expect(formatChangeAmount(-8000)).toBe('−80 ₴');
-  });
-
-  it('formats positive amount with + and ₴', () => {
-    expect(formatChangeAmount(3000)).toBe('+30 ₴');
-  });
-
-  it('formats zero as "0 ₴"', () => {
-    expect(formatChangeAmount(0)).toBe('0 ₴');
   });
 });
 
