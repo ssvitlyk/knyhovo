@@ -1,4 +1,5 @@
 import type { ProviderName, Availability } from '@knyhovo/shared';
+import type { MoneyDto } from '../pricing/money.js';
 import type { AlertDto } from './alert/dto.js';
 
 export type { AlertDto };
@@ -18,12 +19,6 @@ export type { AlertDto };
  * slug types — all wishlist code imports from here.
  */
 export type { ProviderName, Availability };
-
-export interface MoneyDto {
-  /** Amount in the smallest currency unit (kopiyky). */
-  readonly amount: number;
-  readonly currency: string;
-}
 
 export interface WishlistProviderDto {
   /** Provider slug, e.g. `'yakaboo'` or `'book-club'`. */
@@ -68,12 +63,4 @@ export interface WishlistItemDto {
 
 export interface WishlistResponseDto {
   readonly items: readonly WishlistItemDto[];
-}
-
-export interface WishlistStatusDto {
-  readonly inWishlist: boolean;
-}
-
-export interface OkResponseDto {
-  readonly ok: true;
 }

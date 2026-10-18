@@ -8,6 +8,7 @@ import {
 import { GUARDED_KINDS } from './concurrency-guard.js';
 import { INCREMENTAL_SITEMAP_PROVIDERS } from './incremental-providers.js';
 import { getDisabledProviders } from '../config/provider-filter.js';
+import { PROVIDER_SLUG } from '../pricing/provider-maps.js';
 
 // ---------------------------------------------------------------------------
 // Public types
@@ -132,6 +133,23 @@ function readValidationMetadata(
 }
 
 /** Input shape for per-provider listing freshness (decoupled from the DB layer). */
+/** The `scrape_runs` columns the health derivation reads (see `fetchRecentRuns`). */
+export type HealthRun = Pick<
+  ScrapeRun,
+  | 'provider'
+  | 'kind'
+  | 'status'
+  | 'startedAt'
+  | 'finishedAt'
+  | 'durationMs'
+  | 'itemsFound'
+  | 'itemsUpdated'
+  | 'priceChanges'
+  | 'availabilityChanges'
+  | 'errorsCount'
+  | 'metadata'
+>;
+
 export interface ProviderListingFreshness {
   provider: Provider;
   totalListings: number;
@@ -142,17 +160,6 @@ export interface ProviderListingFreshness {
 // ---------------------------------------------------------------------------
 // Internal constants
 // ---------------------------------------------------------------------------
-
-const PROVIDER_SLUG: Record<Provider, ProviderName> = {
-  YAKABOO: 'yakaboo',
-  BOOK_CLUB: 'book-club',
-  VIVAT: 'vivat',
-  BOOK_YE: 'book-ye',
-  BOOKCHEF: 'bookchef',
-  LABORATORY: 'laboratory',
-  KNIGOLAND: 'knigoland',
-  MEGAKNIGA: 'megakniga',
-};
 
 const ALL_PROVIDERS: Provider[] = [
   Provider.YAKABOO,
@@ -170,7 +177,7 @@ const ALL_PROVIDERS: Provider[] = [
 // Pure derivation
 // ---------------------------------------------------------------------------
 
-function toLatestRun(run: ScrapeRun): ProviderLatestRun {
+function toLatestRun(run: HealthRun): ProviderLatestRun {
   return {
     kind: run.kind,
     status: run.status,
@@ -185,7 +192,7 @@ function toLatestRun(run: ScrapeRun): ProviderLatestRun {
   };
 }
 
-function isTerminal(run: ScrapeRun): boolean {
+function isTerminal(run: HealthRun): boolean {
   return (
     run.status === ScrapeRunStatus.SUCCESS ||
     run.status === ScrapeRunStatus.PARTIAL ||
@@ -199,7 +206,7 @@ function isTerminal(run: ScrapeRun): boolean {
  */
 export function deriveProviderHealth(input: {
   provider: Provider;
-  runs: ScrapeRun[];
+  runs: HealthRun[];
   freshness: ProviderListingFreshness | null;
   now: Date;
   config: RefreshHealthConfig;

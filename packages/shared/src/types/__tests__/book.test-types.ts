@@ -1,17 +1,13 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /**
- * Compile-time checks for Book, CanonicalBook, and ISBN types.
+ * Compile-time checks for CanonicalBook and ISBN types.
  */
-import type { ISBN, Book, CanonicalBook } from '../book.js';
+import type { ISBN, CanonicalBook } from '../book.js';
 import type { CanonicalBookId } from '../ids.js';
 
 // ISBN is nullable
 const _withIsbn: ISBN = '9786177933105';
 const _noIsbn: ISBN = null;
-
-// Book accepts both isbn variants
-const _bookWithIsbn: Book = { title: 'Кобзар', author: 'Шевченко', isbn: _withIsbn };
-const _bookWithoutIsbn: Book = { title: 'Кобзар', author: 'Шевченко', isbn: null };
 
 // CanonicalBook requires all fields
 const _canonical: CanonicalBook = {

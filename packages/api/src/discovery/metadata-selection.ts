@@ -1,4 +1,5 @@
 import type { ProviderName } from '@knyhovo/shared';
+import { PROVIDER_PRIORITY, orderByProviderThenPrice } from './ordering.js';
 
 /**
  * Discovery metadata-selection (book-metadata PRD).
@@ -20,7 +21,7 @@ import type { ProviderName } from '@knyhovo/shared';
  * Lower index wins. Providers absent from this list sort last.
  * Same order as cover/description selection so all three stay consistent.
  */
-export const METADATA_PROVIDER_PRIORITY: readonly ProviderName[] = ['yakaboo', 'vivat', 'book-ye'];
+export const METADATA_PROVIDER_PRIORITY: readonly ProviderName[] = PROVIDER_PRIORITY;
 
 /** A single listing's contribution to metadata selection. */
 export interface MetadataCandidate {
@@ -47,34 +48,12 @@ export interface SelectedMetadata {
   readonly publicationYear: number | null;
 }
 
-function priorityIndex(provider: ProviderName): number {
-  const index = METADATA_PROVIDER_PRIORITY.indexOf(provider);
-  return index === -1 ? METADATA_PROVIDER_PRIORITY.length : index;
-}
-
 function hasText(value: string | null | undefined): value is string {
   return typeof value === 'string' && value.trim() !== '';
 }
 
 function hasYear(value: number | null | undefined): value is number {
   return typeof value === 'number' && Number.isFinite(value);
-}
-
-function priceOrLast(amount: number | null | undefined): number {
-  return typeof amount === 'number' && Number.isFinite(amount)
-    ? amount
-    : Number.POSITIVE_INFINITY;
-}
-
-/** Sort candidates by provider priority, then ascending price — the shared ordering. */
-function orderCandidates(
-  candidates: readonly MetadataCandidate[],
-): readonly MetadataCandidate[] {
-  return [...candidates].sort((a, b) => {
-    const byPriority = priorityIndex(a.provider) - priorityIndex(b.provider);
-    if (byPriority !== 0) return byPriority;
-    return priceOrLast(a.priceAmount) - priceOrLast(b.priceAmount);
-  });
 }
 
 /**
@@ -90,7 +69,7 @@ function orderCandidates(
  * Book Details passes ALL listings (in-stock and out-of-stock alike).
  */
 export function selectBookMetadata(candidates: readonly MetadataCandidate[]): SelectedMetadata {
-  const ordered = orderCandidates(candidates);
+  const ordered = orderByProviderThenPrice(candidates);
 
   const publisher = ordered.find((c) => hasText(c.publisher))?.publisher?.trim() ?? null;
   const language = ordered.find((c) => hasText(c.language))?.language?.trim() ?? null;

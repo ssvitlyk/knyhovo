@@ -10,28 +10,10 @@ import {
   isNonPhysicalTitle,
   resolveUrl,
 } from './constants.js';
-import type { ParsedProductState } from '../single-product.js';
-
-/**
- * Resolve a cover image URL from a catalog card's <img>.
- *
- * Reads `src`, falling back to the common Magento lazy-load `data-src`, then
- * normalises to an absolute URL. Returns null when the card has no usable
- * image — a missing cover must never break the listing (W9a F1).
- */
-function extractCoverUrl(src: string | undefined): string | null {
-  const raw = src?.trim();
-  if (!raw) return null;
-  if (raw.startsWith('//')) return `https:${raw}`;
-  return resolveUrl(raw);
-}
-
-export interface ParseResult {
-  readonly listings: RawProviderListing[];
-  readonly errors: string[];
-  /** True when the page contained at least one card element (paginator should fetch next page). */
-  readonly hasNextPage: boolean;
-}
+import type { ParsedProductState, CatalogPageResult } from '../types.js';
+import { toMoney } from '../../lib/price.js';
+import { errMsg } from '../../lib/errors.js';
+import { extractCoverUrl, firstNonEmptyHtml, firstNonEmptyText } from '../../lib/html-helpers.js';
 
 /**
  * Convert a Magento `data-price-amount` value (whole hryvnias, e.g. "550" or
@@ -42,10 +24,6 @@ export function bookYePriceToKopecks(value: string | undefined): number | null {
   const amount = parseFloat(value.trim());
   if (!Number.isFinite(amount) || amount <= 0) return null;
   return Math.round(amount * 100);
-}
-
-function toMoney(kopecks: number): Money {
-  return { amount: kopecks, currency: 'UAH' };
 }
 
 /**
@@ -72,7 +50,7 @@ function resolveAvailability(
  * ISBN is not present on catalog cards (only on individual product pages), so
  * all returned listings have isbn: null — same as Yakaboo and Vivat.
  */
-export function parseBookYePage(html: string): ParseResult {
+export function parseBookYePage(html: string): CatalogPageResult {
   const $ = cheerio.load(html);
   const listings: RawProviderListing[] = [];
   const errors: string[] = [];
@@ -114,7 +92,7 @@ export function parseBookYePage(html: string): ParseResult {
       const availability = resolveAvailability(card.text(), hasPreorder, price !== null);
 
       const coverImg = card.find(SELECTORS.cover).first();
-      const coverUrl = extractCoverUrl(coverImg.attr('src') ?? coverImg.attr('data-src'));
+      const coverUrl = extractCoverUrl(coverImg.attr('src') ?? coverImg.attr('data-src'), resolveUrl);
 
       listings.push({
         provider: 'book-ye',
@@ -128,7 +106,7 @@ export function parseBookYePage(html: string): ParseResult {
       });
     } catch (err) {
       errors.push(
-        `Card ${rawCardCount}: unexpected error — ${err instanceof Error ? err.message : String(err)}`,
+        `Card ${rawCardCount}: unexpected error — ${errMsg(err)}`,
       );
     }
   });
@@ -143,12 +121,7 @@ export function parseBookYePage(html: string): ParseResult {
  * Sanitization to plain text happens at the enrichment boundary.
  */
 export function extractBookYeProductDescription(html: string): string | null {
-  const $ = cheerio.load(html);
-  for (const selector of PRODUCT_DESCRIPTION_SELECTORS) {
-    const inner = $(selector).first().html();
-    if (inner != null && inner.trim() !== '') return inner;
-  }
-  return null;
+  return firstNonEmptyHtml(cheerio.load(html), PRODUCT_DESCRIPTION_SELECTORS);
 }
 
 /**
@@ -168,23 +141,15 @@ export function parseBookYeProduct(html: string): ParsedProductState {
   }
 
   const priceKopecks = bookYePriceToKopecks(priceAttr);
-  const price: Money | null = priceKopecks !== null ? { amount: priceKopecks, currency: 'UAH' } : null;
+  const price: Money | null = priceKopecks !== null ? toMoney(priceKopecks) : null;
 
   if (!price) {
-    let statusText = '';
-    for (const selector of PRODUCT_STATUS_SELECTORS) {
-      const text = $(selector).first().text().trim();
-      if (text) { statusText = text; break; }
-    }
+    const statusText = firstNonEmptyText($, PRODUCT_STATUS_SELECTORS);
     if (!statusText) return { price: null, availability: 'unknown' };
     return { price: null, availability: 'out-of-stock' };
   }
 
-  let statusText = '';
-  for (const selector of PRODUCT_STATUS_SELECTORS) {
-    const text = $(selector).first().text().trim();
-    if (text) { statusText = text; break; }
-  }
+  const statusText = firstNonEmptyText($, PRODUCT_STATUS_SELECTORS);
 
   const hasPreorder = $(SELECTORS.preorder).length > 0;
   const availability = resolveAvailability(statusText, hasPreorder, true);

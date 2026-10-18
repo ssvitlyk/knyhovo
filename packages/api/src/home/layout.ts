@@ -9,10 +9,10 @@ import type { HomeShelfKey } from '@knyhovo/shared';
 import type { DiversityPolicy } from '../feed-composer/index.js';
 
 /** Final size of every Home shelf. */
-export const HOME_TAKE = 12;
+const HOME_TAKE = 12;
 
 /** Home business policy: no single provider should hold more than this share of a diversified shelf. */
-export const PROVIDER_SHARE_LIMIT = 1 / 3;
+const PROVIDER_SHARE_LIMIT = 1 / 3;
 
 export interface HomeSectionConfig {
   /** Section key returned to the client (presentation copy is a web concern). */

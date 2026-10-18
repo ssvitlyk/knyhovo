@@ -23,9 +23,7 @@ export interface ScrapeRunMetricsRow {
  * static slice of scrape_runs rows. Pure and synchronous — no DB access here;
  * the caller is responsible for fetching the rows.
  *
- * Metric names and help strings match {@link ProductionMetricsRegistry} for
- * the overlapping metrics so Prometheus sees a consistent label space regardless
- * of which source is queried.
+ * Metric names and help strings here are what Prometheus sees on `GET /metrics`.
  *
  * Counters and histograms are only registered (via get-or-create) the first time
  * a row is processed, so an empty row set produces an empty snapshot.

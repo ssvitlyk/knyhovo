@@ -1,39 +1,25 @@
+import { apiJson, apiRequest, defineApiError, type ApiRequestOptions } from './http';
 import type { AlertDto, AlertMode } from './types';
 
-const REQUEST_TIMEOUT_MS = 8000;
+/** Error thrown when a price-alert request fails (network, timeout, or non-2xx). `code` is the server error code (e.g. `THRESHOLD_NOT_BELOW_CURRENT`) when the body carried one. */
+export class AlertError extends defineApiError('AlertError') {}
 
-/** Shape of the `{ error: { code, message } }` body the API sends on failure. */
-interface ApiErrorBody {
-  readonly error?: { readonly code?: string; readonly message?: string };
+/** Shared options: server's own (already human-readable) message/code win over the generic fallback. */
+function alertOptions(
+  verb: string,
+  options: Pick<ApiRequestOptions, 'method' | 'body'>,
+): ApiRequestOptions {
+  return {
+    ...options,
+    credentials: 'include',
+    envelope: true,
+    errorClass: AlertError,
+    transportMessage: `Не вдалося ${verb}.`,
+    httpMessage: (status) => `Не вдалося ${verb} (${status}).`,
+  };
 }
 
-/** Error thrown when a price-alert request fails (network, timeout, or non-2xx). */
-export class AlertError extends Error {
-  /** HTTP status, or `null` for a transport/timeout failure. */
-  readonly status: number | null;
-  /** Server error code (e.g. `THRESHOLD_NOT_BELOW_CURRENT`), or `null` for a transport failure or an unparsable body. */
-  readonly code: string | null;
-
-  constructor(message: string, status: number | null, code: string | null = null) {
-    super(message);
-    this.name = 'AlertError';
-    this.status = status;
-    this.code = code;
-  }
-}
-
-/**
- * Try to read the server's `{ error: { code, message } }` body. Returns null
- * when the body isn't valid JSON (e.g. an upstream proxy error page) — callers
- * fall back to a generic message in that case.
- */
-async function readErrorBody(response: Response): Promise<ApiErrorBody | null> {
-  try {
-    return (await response.json()) as ApiErrorBody;
-  } catch {
-    return null;
-  }
-}
+const alertUrl = (bookId: string): string => `/api/wishlist/${encodeURIComponent(bookId)}/alert`;
 
 /**
  * Create or replace the price alert for a wishlist item
@@ -57,33 +43,13 @@ export async function setAlert(
   mode: AlertMode,
   threshold?: { amount: number; currency: 'UAH' },
 ): Promise<AlertDto> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-  let response: Response;
-  try {
-    response = await fetch(`/api/wishlist/${encodeURIComponent(bookId)}/alert`, {
+  const { alert } = await apiJson<{ alert: AlertDto }>(
+    alertUrl(bookId),
+    alertOptions('ввімкнути сповіщення', {
       method: 'PUT',
-      signal: controller.signal,
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(threshold !== undefined ? { mode, threshold } : { mode }),
-    });
-  } catch {
-    throw new AlertError('Не вдалося ввімкнути сповіщення.', null);
-  } finally {
-    clearTimeout(timer);
-  }
-
-  if (!response.ok) {
-    const body = await readErrorBody(response);
-    if (body?.error?.message != null) {
-      throw new AlertError(body.error.message, response.status, body.error.code ?? null);
-    }
-    throw new AlertError(`Не вдалося ввімкнути сповіщення (${response.status}).`, response.status);
-  }
-
-  const { alert } = (await response.json()) as { alert: AlertDto };
+      body: threshold !== undefined ? { mode, threshold } : { mode },
+    }),
+  );
   return alert;
 }
 
@@ -101,31 +67,7 @@ export async function setAlert(
  * Throws {@link AlertError} on non-2xx.
  */
 export async function pauseAlert(bookId: string, paused: boolean): Promise<void> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-  let response: Response;
-  try {
-    response = await fetch(`/api/wishlist/${encodeURIComponent(bookId)}/alert`, {
-      method: 'PATCH',
-      signal: controller.signal,
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ paused }),
-    });
-  } catch {
-    throw new AlertError('Не вдалося оновити сповіщення.', null);
-  } finally {
-    clearTimeout(timer);
-  }
-
-  if (!response.ok) {
-    const body = await readErrorBody(response);
-    if (body?.error?.message != null) {
-      throw new AlertError(body.error.message, response.status, body.error.code ?? null);
-    }
-    throw new AlertError(`Не вдалося оновити сповіщення (${response.status}).`, response.status);
-  }
+  await apiRequest(alertUrl(bookId), alertOptions('оновити сповіщення', { method: 'PATCH', body: { paused } }));
 }
 
 /**
@@ -139,27 +81,5 @@ export async function pauseAlert(bookId: string, paused: boolean): Promise<void>
  * Throws {@link AlertError} on non-2xx.
  */
 export async function removeAlert(bookId: string): Promise<void> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-  let response: Response;
-  try {
-    response = await fetch(`/api/wishlist/${encodeURIComponent(bookId)}/alert`, {
-      method: 'DELETE',
-      signal: controller.signal,
-      credentials: 'include',
-    });
-  } catch {
-    throw new AlertError('Не вдалося прибрати сповіщення.', null);
-  } finally {
-    clearTimeout(timer);
-  }
-
-  if (!response.ok) {
-    const body = await readErrorBody(response);
-    if (body?.error?.message != null) {
-      throw new AlertError(body.error.message, response.status, body.error.code ?? null);
-    }
-    throw new AlertError(`Не вдалося прибрати сповіщення (${response.status}).`, response.status);
-  }
+  await apiRequest(alertUrl(bookId), alertOptions('прибрати сповіщення', { method: 'DELETE' }));
 }

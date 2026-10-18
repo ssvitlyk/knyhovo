@@ -1,34 +1,12 @@
-import type { ProviderName, Availability } from '@knyhovo/shared';
-import type { BookListingRow, BookDetailsRow } from './repository.js';
-import type { BookProviderDto, BookDetailsDto, MoneyDto } from './dto.js';
+import type { BookDetailsRow } from './repository.js';
+import type { BookProviderDto, BookDetailsDto } from './dto.js';
+import type { MoneyDto } from '../pricing/money.js';
+import { PROVIDER_SLUG } from '../pricing/provider-maps.js';
+import { toOfferDtos } from '../pricing/offers.js';
 import { selectDescription } from '../discovery/description-selection.js';
 import { selectCoverUrl } from '../discovery/cover-selection.js';
 import { selectBookMetadata } from '../discovery/metadata-selection.js';
 import { canonicalPriceAmount } from '../pricing/canonical-price.js';
-
-/** Reverse map from the persisted provider enum to its public slug. */
-const PROVIDER_SLUG: Record<BookListingRow['provider'], ProviderName> = {
-  YAKABOO: 'yakaboo',
-  BOOK_CLUB: 'book-club',
-  VIVAT: 'vivat',
-  BOOK_YE: 'book-ye',
-  BOOKCHEF: 'bookchef',
-  LABORATORY: 'laboratory',
-  KNIGOLAND: 'knigoland',
-  MEGAKNIGA: 'megakniga',
-};
-
-/** Reverse map from the persisted availability enum to its public slug. */
-const AVAILABILITY_SLUG: Record<BookListingRow['availability'], Availability> = {
-  IN_STOCK: 'in-stock',
-  OUT_OF_STOCK: 'out-of-stock',
-  UNKNOWN: 'unknown',
-};
-
-/** A listing counts as priced only when it carries a usable numeric amount. */
-function hasPrice(listing: BookListingRow): boolean {
-  return listing.priceAmount != null && Number.isFinite(listing.priceAmount);
-}
 
 /**
  * Map a canonical book row to a book details DTO.
@@ -47,17 +25,7 @@ function hasPrice(listing: BookListingRow): boolean {
  *   state rather than a 404.
  */
 export function toBookDetails(row: BookDetailsRow): BookDetailsDto {
-  const providers: BookProviderDto[] = row.listings
-    .filter(hasPrice)
-    .filter((l) => l.availability !== 'OUT_OF_STOCK')
-    .map((l) => ({
-      provider: PROVIDER_SLUG[l.provider],
-      price: { amount: l.priceAmount, currency: l.priceCurrency } satisfies MoneyDto,
-      availability: AVAILABILITY_SLUG[l.availability],
-      url: l.url,
-      lastSeenAt: l.lastSeenAt.toISOString(),
-    }))
-    .sort((a, b) => a.price.amount - b.price.amount);
+  const providers: BookProviderDto[] = toOfferDtos(row.listings);
 
   const canonicalAmount = canonicalPriceAmount(row.listings);
   const lowestPrice: MoneyDto | null =

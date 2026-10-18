@@ -3,7 +3,7 @@ import { buildApp } from '../../app.js';
 import { clearCache } from '../../collections/cache.js';
 import { buildHome, getHome } from '../service.js';
 import { HOME_LAYOUT } from '../layout.js';
-import { fixedClock } from '../../clock.js';
+import { fixedClock } from '../../__tests__/helpers/fixed-clock.js';
 import { emptyDb, makeFakePrisma, book, listing, collection, itemsFor, hashTokenSeed, makeAuthDeps } from './fixtures.js';
 import type { FakeDb } from './fixtures.js';
 

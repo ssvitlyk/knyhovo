@@ -1,38 +1,23 @@
 import { apiBaseUrl } from './env';
+import { apiJson, apiRequest, defineApiError, type ApiRequestOptions } from './http';
 import type { AuthUserDto } from './types';
 
-const REQUEST_TIMEOUT_MS = 8000;
-
 /** Error thrown when an auth request fails (network, timeout, or non-2xx, except 401 from me()). */
-export class AuthError extends Error {
-  /** HTTP status, or `null` for a transport/timeout failure. */
-  readonly status: number | null;
+export class AuthError extends defineApiError('AuthError') {}
 
-  constructor(message: string, status: number | null) {
-    super(message);
-    this.name = 'AuthError';
-    this.status = status;
-  }
-}
+const TRANSPORT_MESSAGE = 'Unable to reach auth service.';
 
-async function authFetch(url: string, init: RequestInit): Promise<Response> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      ...init,
-      signal: controller.signal,
-      credentials: 'include',
-    });
-  } catch {
-    throw new AuthError('Unable to reach auth service.', null);
-  } finally {
-    clearTimeout(timer);
-  }
-
-  return response;
+function authOptions(
+  httpMessage: (status: number) => string,
+  options: Pick<ApiRequestOptions, 'method' | 'body' | 'cookie' | 'passthrough'> = {},
+): ApiRequestOptions {
+  return {
+    ...options,
+    credentials: 'include',
+    errorClass: AuthError,
+    transportMessage: TRANSPORT_MESSAGE,
+    httpMessage,
+  };
 }
 
 /** Result of a successful Magic Link verification. */
@@ -50,15 +35,13 @@ export interface VerifyLinkResult {
  * Throws {@link AuthError} on transport error or non-2xx response.
  */
 export async function requestMagicLink(email: string, returnTo?: string | null): Promise<void> {
-  const response = await authFetch('/api/auth/magic-link', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(returnTo ? { email, returnTo } : { email }),
-  });
-
-  if (!response.ok) {
-    throw new AuthError(`Magic link request failed (${response.status}).`, response.status);
-  }
+  await apiRequest(
+    '/api/auth/magic-link',
+    authOptions((status) => `Magic link request failed (${status}).`, {
+      method: 'POST',
+      body: returnTo ? { email, returnTo } : { email },
+    }),
+  );
 }
 
 /**
@@ -68,76 +51,33 @@ export async function requestMagicLink(email: string, returnTo?: string | null):
  * (a 401 means the link is invalid/expired/used).
  */
 export async function verifyMagicLink(token: string): Promise<VerifyLinkResult> {
-  const response = await authFetch('/api/auth/verify-link', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ token }),
-  });
-
-  if (!response.ok) {
-    throw new AuthError(`Verify link failed (${response.status}).`, response.status);
-  }
-
-  return (await response.json()) as VerifyLinkResult;
-}
-
-/**
- * Request a 6-digit OTP login code for `email`.
- * Throws {@link AuthError} on transport error or non-2xx response.
- */
-export async function requestCode(email: string): Promise<void> {
-  const url = `${apiBaseUrl()}/api/auth/request-code`;
-  const response = await authFetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email }),
-  });
-
-  if (!response.ok) {
-    throw new AuthError(`Request code failed (${response.status}).`, response.status);
-  }
-}
-
-/**
- * Verify a 6-digit OTP code and authenticate the user.
- * Returns the authenticated user on success.
- * Throws {@link AuthError} on transport error or non-2xx response.
- */
-export async function verifyCode(email: string, code: string): Promise<AuthUserDto> {
-  const url = `${apiBaseUrl()}/api/auth/verify-code`;
-  const response = await authFetch(url, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ email, code }),
-  });
-
-  if (!response.ok) {
-    throw new AuthError(`Verify code failed (${response.status}).`, response.status);
-  }
-
-  const body = (await response.json()) as { user: AuthUserDto };
-  return body.user;
+  return apiJson<VerifyLinkResult>(
+    '/api/auth/verify-link',
+    authOptions((status) => `Verify link failed (${status}).`, {
+      method: 'POST',
+      body: { token },
+    }),
+  );
 }
 
 /**
  * Return the currently authenticated user, or `null` if not authenticated.
  * Unlike other auth functions, a 401 response is returned as `null` rather
  * than throwing, so callers can use this as a lightweight session check.
+ * Server-side only: the session cookie must be forwarded explicitly via `cookie`
+ * (server-side fetch has no ambient browser cookie).
  */
 export async function me(cookie?: string): Promise<AuthUserDto | null> {
-  const url = `${apiBaseUrl()}/api/auth/me`;
-  // When called from a Server Component, forward the session cookie explicitly
-  // (server-side fetch has no ambient browser cookie). Client calls omit it.
-  const init: RequestInit = cookie
-    ? { method: 'GET', headers: { cookie } }
-    : { method: 'GET' };
-  const response = await authFetch(url, init);
+  const response = await apiRequest(
+    `${apiBaseUrl()}/api/auth/me`,
+    authOptions((status) => `me() failed (${status}).`, {
+      method: 'GET',
+      cookie,
+      passthrough: (status) => status === 401,
+    }),
+  );
 
   if (response.status === 401) return null;
-
-  if (!response.ok) {
-    throw new AuthError(`me() failed (${response.status}).`, response.status);
-  }
 
   const body = (await response.json()) as { user: AuthUserDto };
   return body.user;
@@ -145,13 +85,13 @@ export async function me(cookie?: string): Promise<AuthUserDto | null> {
 
 /**
  * Log the current user out by clearing their session.
+ * Runs browser-side (called from a client component): uses a relative `/api/*`
+ * URL so the Next.js rewrite proxies it same-origin.
  * Throws {@link AuthError} on transport error or non-2xx response.
  */
 export async function logout(): Promise<void> {
-  const url = `${apiBaseUrl()}/api/auth/logout`;
-  const response = await authFetch(url, { method: 'POST' });
-
-  if (!response.ok) {
-    throw new AuthError(`Logout failed (${response.status}).`, response.status);
-  }
+  await apiRequest(
+    '/api/auth/logout',
+    authOptions((status) => `Logout failed (${status}).`, { method: 'POST' }),
+  );
 }

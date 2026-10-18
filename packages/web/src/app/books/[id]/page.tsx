@@ -1,9 +1,8 @@
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
 import { notFound } from 'next/navigation';
 import { BookDetailsError } from '@/lib/api/book';
 import { getBookDetailsCached } from '@/lib/api/book-cache';
-import { getBookAlertContext } from '@/lib/api/wishlist';
+import { getBookAlertContextCached, getCookieHeader } from '@/lib/api/server';
 import { getAuthorShelfRoster } from '@/lib/author-shelf/roster';
 import { buildBookJsonLd, buildBookMetaDescription } from '@/lib/seo/book-jsonld';
 import type { BookDetailsDto } from '@/lib/api/types';
@@ -63,8 +62,8 @@ export async function generateMetadata({ params }: BookPageProps): Promise<Metad
  * Book details page — server component. Fetches the book from the API and
  * renders the two-column details layout. 404/400 responses trigger the
  * Next.js not-found boundary; other errors propagate to the error boundary.
- * Wishlist status is fetched in parallel; degrades gracefully to `false`
- * on auth or network failures (see getWishlistStatus contract).
+ * Wishlist/alert context is fetched in parallel; degrades gracefully to
+ * "not in wishlist" on auth or network failures (see getBookAlertContextCached contract).
  */
 export default async function BookPage({ params }: BookPageProps): Promise<React.JSX.Element> {
   const { id } = await params;
@@ -77,9 +76,9 @@ export default async function BookPage({ params }: BookPageProps): Promise<React
     throw error;
   }
 
-  const cookie = (await cookies()).toString();
+  const cookie = await getCookieHeader();
   const [ctx, authorRoster] = await Promise.all([
-    getBookAlertContext({ bookId: id, cookie }),
+    getBookAlertContextCached({ bookId: id, cookie }),
     getAuthorShelfRoster(book.author),
   ]);
 

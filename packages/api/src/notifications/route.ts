@@ -1,8 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { PrismaClient } from '@prisma/client';
 import type { AuthDeps } from '../auth/service.js';
-import { resolveSessionUser } from '../auth/service.js';
-import { SESSION_COOKIE } from '../auth/cookie.js';
+import { requireUser } from '../auth/guard.js';
 import { UnauthorizedError } from '../errors.js';
 import { parseUpdatePreferencesBody, parseUnsubscribeQuery } from './schema.js';
 import {
@@ -43,8 +42,7 @@ export function registerNotificationPreferencesRoute(
   authDeps: AuthDeps,
 ): void {
   app.get('/api/notifications/preferences', async (request, reply) => {
-    const user = await resolveSessionUser(authDeps, request.cookies?.[SESSION_COOKIE] ?? null);
-    if (!user) throw new UnauthorizedError();
+    const user = await requireUser(authDeps, request);
 
     const prefs = await getNotificationPreferences(prisma, user.id);
     if (!prefs) throw new UnauthorizedError();
@@ -52,8 +50,7 @@ export function registerNotificationPreferencesRoute(
   });
 
   app.patch('/api/notifications/preferences', async (request, reply) => {
-    const user = await resolveSessionUser(authDeps, request.cookies?.[SESSION_COOKIE] ?? null);
-    if (!user) throw new UnauthorizedError();
+    const user = await requireUser(authDeps, request);
 
     const body = parseUpdatePreferencesBody(request.body);
     const prefs = await updateNotificationPreferences(prisma, user.id, body);

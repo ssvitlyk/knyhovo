@@ -3,33 +3,10 @@ import { normalizeIsbn } from '../../canonical/isbn.js';
 import type { GraphqlResponse } from './graphql-client.js';
 import { buildProductUrl, buildCoverUrl } from './constants.js';
 import { finalizeRawCategories } from '../../lib/extract-breadcrumbs.js';
-
-// ─── Price ───────────────────────────────────────────────────────────────────
-
-/**
- * Convert a KSD price (number like 540 or numeric string) to a kopeck amount,
- * or null when the value is missing, zero, negative, NaN, or Infinity.
- */
-export function bookClubPriceToKopecks(value: unknown): number | null {
-  const num =
-    typeof value === 'number'
-      ? value
-      : typeof value === 'string'
-        ? Number(value.trim())
-        : NaN;
-  if (!Number.isFinite(num) || num <= 0) return null;
-  return Math.round(num * 100);
-}
-
-function toMoney(kopecks: number): Money {
-  return { amount: kopecks, currency: 'UAH' };
-}
+import { priceToKopecks, toMoney } from '../../lib/price.js';
+import { readString } from '../../lib/json-ld.js';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
-
-function readString(value: unknown): string | null {
-  return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
-}
 
 /**
  * Join a KSD authors array (objects with `name` and optional `surname`) into a
@@ -161,7 +138,7 @@ function mapProductPage(raw: Record<string, unknown>, slug: string): MappedProdu
   const author = resolveAuthors(raw['authors']);
   const isbn = normalizeIsbn(readString(raw['isbn']));
 
-  const priceKopecks = bookClubPriceToKopecks(raw['cost']);
+  const priceKopecks = priceToKopecks(raw['cost']);
   const price: Money | null = priceKopecks !== null ? toMoney(priceKopecks) : null;
 
   let availability: Availability;

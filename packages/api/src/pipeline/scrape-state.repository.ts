@@ -98,15 +98,13 @@ export async function advanceWatermark(
  * Count of state rows for `provider` whose last_seen_in_sitemap_at predates
  * `seenAt` — i.e. rows NOT touched by the presence-upsert for this run,
  * meaning their URL vanished from this run's sitemap. Call AFTER
- * recordSitemapPresence for the same run. `_sitemapUrls` is accepted for
- * interface clarity/future use but unused: every currently-present URL's row
- * was just bumped to `seenAt` by recordSitemapPresence, so anything strictly
- * older than `seenAt` was absent this run.
+ * recordSitemapPresence for the same run. Every currently-present URL's
+ * row was just bumped to `seenAt` by recordSitemapPresence, so anything
+ * strictly older than `seenAt` was absent this run.
  */
 export async function countVanished(
   prisma: PrismaClient,
   provider: Provider,
-  _sitemapUrls: ReadonlySet<string>,
   seenAt: Date,
 ): Promise<number> {
   return prisma.providerScrapeState.count({

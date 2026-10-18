@@ -1,8 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { PrismaClient } from '@prisma/client';
 import type { AuthDeps } from '../auth/service.js';
-import { resolveSessionUser } from '../auth/service.js';
-import { SESSION_COOKIE } from '../auth/cookie.js';
+import { optionalUser } from '../auth/guard.js';
 import type { Clock } from '../clock.js';
 import { systemClock } from '../clock.js';
 import { getHome } from './service.js';
@@ -26,7 +25,7 @@ export function registerHomeRoute(
   clock: Clock = systemClock,
 ): void {
   app.get('/api/home', async (request, reply) => {
-    const user = authDeps ? await resolveSessionUser(authDeps, request.cookies?.[SESSION_COOKIE] ?? null) : null;
+    const user = await optionalUser(authDeps, request);
     await reply.send(await getHome(prisma, user?.id ?? null, clock));
   });
 }

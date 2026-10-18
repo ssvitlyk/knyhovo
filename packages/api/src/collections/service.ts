@@ -40,8 +40,14 @@ import { parseMinGenreBookCountFromEnv } from './genre-threshold-env.js';
 
 const PER_PAGE = 24;
 
+/** Number of books in the hub's featured-collection preview. */
+const FEATURED_PREVIEW_SIZE = 3;
+
+/** Cached payloads carry a neutral `wishlistCount` of 0 — see {@link decorateBooks}. */
+const NO_WISHLIST_COUNTS: ReadonlyMap<string, number> = new Map();
+
 /** Redirect target for a taxonomic collection below the minimum genre book count. */
-export const THIN_GENRE_REDIRECT = '/dobirky';
+const THIN_GENRE_REDIRECT = '/dobirky';
 
 export const FEATURED_SLUG = 'knyhovyk-radyt';
 
@@ -165,30 +171,57 @@ export async function loadFeedCandidateIds(
   return feed.getPage({}, 'relevance', 1, limit);
 }
 
-function toBookDtos(rows: Awaited<ReturnType<typeof findCanonicalBooksByIds>>, wishlistCounts: Map<string, number>): CollectionBookDto[] {
-  return rows.map((row) => toCollectionBookDto(row, { wishlistCounts }));
+/**
+ * Fetch + map a page of book ids, preserving `ids`' order (SQL already
+ * sorted/paginated them). `wishlistCount` is NOT read here: every reader
+ * (`getHub`, `getCollectionBooks`) re-reads it live via {@link decorateBooks}
+ * after the cache read, so the cached payload carries a neutral `0`.
+ */
+async function mapPage(prisma: PrismaClient, ids: readonly string[]): Promise<CollectionBookDto[]> {
+  const rows = await findCanonicalBooksByIds(prisma, ids);
+  return rows.map((row) => toCollectionBookDto(row, { wishlistCounts: NO_WISHLIST_COUNTS }));
 }
 
-/** Fetch + map a page of book ids, preserving `ids`' order (SQL already sorted/paginated them). */
-async function mapPage(prisma: PrismaClient, ids: readonly string[]): Promise<CollectionBookDto[]> {
-  const [rows, wishlistCounts] = await Promise.all([
-    findCanonicalBooksByIds(prisma, ids),
-    findWishlistCountsByIds(prisma, ids),
-  ]);
-  return toBookDtos(rows, wishlistCounts);
+/** Live wishlist data for a set of book ids: per-book counts, plus the signed-in user's saved ids (if any). */
+export interface WishlistDecoration {
+  readonly counts: ReadonlyMap<string, number>;
+  readonly saved: ReadonlySet<string> | null;
+}
+
+export async function loadWishlistDecoration(
+  prisma: PrismaClient,
+  ids: readonly string[],
+  userId: string | null,
+): Promise<WishlistDecoration> {
+  const counts = await findWishlistCountsByIds(prisma, ids);
+  const saved = userId ? await findWishlistedBookIds(prisma, userId) : null;
+  return { counts, saved };
+}
+
+/** Apply a {@link WishlistDecoration} to one (possibly cached) book DTO. */
+export function applyWishlistDecoration<T extends CollectionBookDto>(book: T, deco: WishlistDecoration): T {
+  return {
+    ...book,
+    wishlistCount: deco.counts.get(book.id) ?? 0,
+    isWishlisted: deco.saved ? deco.saved.has(book.id) : false,
+  };
 }
 
 /**
- * Re-read `wishlistCount` live for a page of (possibly cached) book DTOs.
+ * Re-read `wishlistCount` live and decorate per-user `isWishlisted` onto a page
+ * of (possibly cached) book DTOs — the SOLE source of both fields.
  * `wishlistCount` is never allowed to sit stale for the books/hub cache's TTL
  * (up to 30 min for scrape-derived feeds, PRD §3.2 — it has a different
- * lifecycle than scrape data) — same "decorate after the cache read" pattern
- * already used for `isWishlisted` below.
+ * lifecycle than scrape data); guests get `isWishlisted: false`.
  */
-async function withLiveWishlistCounts(prisma: PrismaClient, books: readonly CollectionBookDto[]): Promise<CollectionBookDto[]> {
+export async function decorateBooks<T extends CollectionBookDto>(
+  prisma: PrismaClient,
+  books: readonly T[],
+  userId: string | null,
+): Promise<T[]> {
   if (books.length === 0) return [...books];
-  const counts = await findWishlistCountsByIds(prisma, books.map((b) => b.id));
-  return books.map((b) => ({ ...b, wishlistCount: counts.get(b.id) ?? 0 }));
+  const deco = await loadWishlistDecoration(prisma, books.map((b) => b.id), userId);
+  return books.map((b) => applyWishlistDecoration(b, deco));
 }
 
 // ── Hub ──────────────────────────────────────────────────────────────────────
@@ -204,20 +237,24 @@ async function buildHub(prisma: PrismaClient): Promise<HubResponseDto> {
     countBooksByGenre(prisma),
   ]);
   const bySlug = new Map(bySlugRows.map((r) => [r.slug, r] as const));
-  const itemCounts = await countCollectionItemsByCollectionIds(prisma, bySlugRows.map((r) => r.id));
-
   const featuredRow = bySlug.get(FEATURED_SLUG) ?? null;
-  let featured: HubResponseDto['featured'] = null;
-  if (featuredRow) {
-    const featuredIds = await findCollectionItemBookIds(prisma, featuredRow.id);
-    const previewBooks = await mapPage(prisma, featuredIds.slice(0, 3));
-    const featuredCollection = toCollectionDto(featuredRow, itemCounts.get(featuredRow.id) ?? 0);
-    featured = { collection: featuredCollection, previewBooks };
-  }
 
-  const dynamic = await Promise.all(
-    dynamicRows.map(async (row) => toCollectionDto(row, await feedTotalCount(prisma, row, now))),
-  );
+  // Independent of each other once the rows are known: run concurrently.
+  const [itemCounts, previewBooks, dynamic] = await Promise.all([
+    countCollectionItemsByCollectionIds(prisma, bySlugRows.map((r) => r.id)),
+    featuredRow
+      ? findCollectionItemBookIds(prisma, featuredRow.id, FEATURED_PREVIEW_SIZE).then((ids) => mapPage(prisma, ids))
+      : Promise.resolve(null),
+    Promise.all(dynamicRows.map(async (row) => toCollectionDto(row, await feedTotalCount(prisma, row, now)))),
+  ]);
+
+  let featured: HubResponseDto['featured'] = null;
+  if (featuredRow && previewBooks) {
+    featured = {
+      collection: toCollectionDto(featuredRow, itemCounts.get(featuredRow.id) ?? 0),
+      previewBooks,
+    };
+  }
 
   const bySlugDtos = (slugs: readonly string[]): CollectionDto[] =>
     slugs
@@ -240,24 +277,15 @@ async function buildHub(prisma: PrismaClient): Promise<HubResponseDto> {
  * `userId` is decorated onto the (user-agnostic, cached) hub payload after
  * the cache read — `isWishlisted` is never part of the cache key/value.
  * `wishlistCount` is likewise re-read live after every cache hit (see
- * {@link withLiveWishlistCounts}) — it must never sit stale for the cache's
+ * {@link decorateBooks}) — it must never sit stale for the cache's
  * TTL, unlike `isWishlisted` this happens regardless of `userId`.
  */
 export async function getHub(prisma: PrismaClient, userId: string | null): Promise<HubResponseDto> {
   const cached = await getOrSet('hub', HUB_CACHE_TTL_MS, () => buildHub(prisma));
   if (!cached.featured) return cached;
 
-  const previewBooks = await withLiveWishlistCounts(prisma, cached.featured.previewBooks);
-  if (!userId) return { ...cached, featured: { ...cached.featured, previewBooks } };
-
-  const saved = await findWishlistedBookIds(prisma, userId);
-  return {
-    ...cached,
-    featured: {
-      ...cached.featured,
-      previewBooks: previewBooks.map((b) => ({ ...b, isWishlisted: saved.has(b.id) })),
-    },
-  };
+  const previewBooks = await decorateBooks(prisma, cached.featured.previewBooks, userId);
+  return { ...cached, featured: { ...cached.featured, previewBooks } };
 }
 
 // ── Collection detail ────────────────────────────────────────────────────────
@@ -332,14 +360,8 @@ export async function getCollectionBooks(
   const ttl = booksTtlFor(row);
   const cacheKey = `books:${slug}:${JSON.stringify(params)}`;
   const cached = await getOrSet(cacheKey, ttl, () => buildCollectionBooksResponse(prisma, row, params));
-  const books = await withLiveWishlistCounts(prisma, cached.books);
-  if (!userId) return { ...cached, books };
-
-  const saved = await findWishlistedBookIds(prisma, userId);
-  return {
-    ...cached,
-    books: books.map((b) => ({ ...b, isWishlisted: saved.has(b.id) })),
-  };
+  const books = await decorateBooks(prisma, cached.books, userId);
+  return { ...cached, books };
 }
 
 // ── All collections ──────────────────────────────────────────────────────────

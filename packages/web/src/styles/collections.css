@@ -438,9 +438,6 @@
   .gems-band { padding: 32px 24px; border-radius: 18px; }
   .gems-band__title { font-size: 1.7rem; }
 }
-/* Hidden-gems section is hidden below 1024px (frozen §6.9). */
-@media (max-width: 1023px) { .sec--gems { display: none; } }
-
 /* ── DIVIDER (between consecutive plain sections) ── */
 .page-divider { border: none; border-top: 1px solid var(--border); margin: 0; }
 
@@ -543,13 +540,8 @@
 .cskel-shelf .cskel--card { flex: 0 0 202px; height: 400px; border-radius: 18px; }
 .cskel--title { height: 34px; width: 420px; max-width: 80%; margin-top: 20px; }
 .cskel--desc { height: 16px; width: 560px; max-width: 95%; margin-top: 12px; }
-.cskel--bar { height: 40px; width: 208px; margin: 14px 0 14px auto; }
-.cskel-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 18px; padding: 12px 0 8px; }
-.cskel-grid .cskel--card { height: 400px; border-radius: 18px; }
-@media (max-width: 1119px) { .cskel-grid { grid-template-columns: repeat(3, 1fr); } }
 @media (max-width: 768px) {
-  .cskel-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-  .cskel-grid .cskel--card, .cskel-shelf .cskel--card { height: 300px; }
+  .cskel-shelf .cskel--card { height: 300px; }
   .cskel-shelf .cskel--card { flex-basis: 142px; }
 }
 

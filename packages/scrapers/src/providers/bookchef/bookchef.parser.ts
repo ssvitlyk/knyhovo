@@ -4,15 +4,11 @@ import { normalizeIsbn } from '../../canonical/isbn.js';
 import { sanitizeDescription } from '../../lib/sanitize-description.js';
 import { extractBreadcrumbs } from '../../lib/extract-breadcrumbs.js';
 import { parseSitemapEntries } from '../../sitemap/parse-sitemap.js';
-import { JSON_LD_SELECTOR, buildCoverUrl } from './constants.js';
-import type { ParsedProductState } from '../single-product.js';
-
-/** Result of parsing a single BookChef product page into a raw listing. */
-export interface ParseResult {
-  /** The parsed listing, or null when the page lacked a usable Product block. */
-  readonly listing: RawProviderListing | null;
-  readonly errors: string[];
-}
+import { buildCoverUrl } from './constants.js';
+import type { ParsedProductState, ProductPageResult } from '../types.js';
+import { priceToKopecks, toMoney } from '../../lib/price.js';
+import { errMsg } from '../../lib/errors.js';
+import { readJsonLdBlocks, readName, resolveSchemaOrgAvailability } from '../../lib/json-ld.js';
 
 /** Shape of a BookChef JSON-LD `@type:Product` block (all fields untrusted). */
 interface BookChefProduct {
@@ -34,38 +30,9 @@ interface BookChefOffers {
   readonly availability?: unknown;
 }
 
-/**
- * Convert a BookChef price (a numeric string like "320.00" or a number) to a
- * Money amount in kopecks, or null when the value is not a usable price.
- *
- * Returns null for 0, negative, NaN, Infinity, null and undefined.
- */
-export function bookChefPriceToKopecks(value: unknown): number | null {
-  const num =
-    typeof value === 'number'
-      ? value
-      : typeof value === 'string'
-        ? Number(value.trim())
-        : NaN;
-  if (!Number.isFinite(num) || num <= 0) return null;
-  return Math.round(num * 100);
-}
-
-function toMoney(kopecks: number): Money {
-  return { amount: kopecks, currency: 'UAH' };
-}
-
-/**
- * Map a schema.org availability value (e.g. `https://schema.org/InStock`) to the
- * shared Availability enum. A missing price always wins → out-of-stock.
- */
+// BookChef's JSON-LD never uses `discontinued`, so it stays `unknown` here.
 function resolveAvailability(availability: unknown, hasPrice: boolean): Availability {
-  if (!hasPrice) return 'out-of-stock';
-  if (typeof availability !== 'string') return 'unknown';
-  const suffix = availability.split('/').pop()?.toLowerCase().trim() ?? '';
-  if (suffix === 'instock' || suffix === 'preorder') return 'in-stock';
-  if (suffix === 'outofstock' || suffix === 'soldout') return 'out-of-stock';
-  return 'unknown';
+  return resolveSchemaOrgAvailability(availability, hasPrice, { discontinued: false });
 }
 
 /** Join BookChef's author field (array of {name} / string) into one string. */
@@ -88,67 +55,19 @@ function joinNames(value: unknown): string | null {
   return readName(value);
 }
 
-function readName(value: unknown): string | null {
-  if (typeof value === 'string') return value.trim() !== '' ? value.trim() : null;
-  if (typeof value === 'object' && value !== null) {
-    const name = (value as { name?: unknown }).name;
-    if (typeof name === 'string' && name.trim() !== '') return name.trim();
-  }
-  return null;
-}
-
-function isProductType(type: unknown): boolean {
-  if (type === 'Product') return true;
-  if (Array.isArray(type)) return type.includes('Product');
-  return false;
-}
-
 /**
- * Find the first `@type:Product` object within a parsed JSON-LD value. Handles
- * single objects, arrays of objects and `@graph` containers.
+ * Read the `@type:Product` JSON-LD block from a BookChef product page, plus the
+ * loaded cheerio document so callers can reuse it. Pure — no IO. Malformed JSON
+ * in a block is recorded and skipped, never thrown.
  */
-function findProduct(parsed: unknown): BookChefProduct | null {
-  if (Array.isArray(parsed)) {
-    for (const entry of parsed) {
-      const found = findProduct(entry);
-      if (found) return found;
-    }
-    return null;
-  }
-  if (typeof parsed !== 'object' || parsed === null) return null;
-  const obj = parsed as Record<string, unknown>;
-  if (isProductType(obj['@type'])) return obj as BookChefProduct;
-  if (Array.isArray(obj['@graph'])) return findProduct(obj['@graph']);
-  return null;
-}
-
-/**
- * Read the `@type:Product` JSON-LD block from a BookChef product page.
- * Pure — no IO. Malformed JSON in a block is recorded and skipped, never thrown.
- */
-function readProduct(html: string): { product: BookChefProduct | null; errors: string[] } {
-  const errors: string[] = [];
+function readProduct(html: string): {
+  $: cheerio.CheerioAPI;
+  product: BookChefProduct | null;
+  errors: string[];
+} {
   const $ = cheerio.load(html);
-  const blocks = $(JSON_LD_SELECTOR).toArray();
-  if (blocks.length === 0) {
-    return { product: null, errors: ['no JSON-LD script found'] };
-  }
-
-  for (const block of blocks) {
-    const raw = $(block).contents().text().trim();
-    if (!raw) continue;
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch (err) {
-      errors.push(`malformed JSON-LD — ${err instanceof Error ? err.message : String(err)}`);
-      continue;
-    }
-    const product = findProduct(parsed);
-    if (product) return { product, errors };
-  }
-
-  return { product: null, errors };
+  const { found, errors } = readJsonLdBlocks($, ['Product'], { stopWhenFound: true });
+  return { $, product: found['Product'] as BookChefProduct | null, errors };
 }
 
 /**
@@ -156,8 +75,8 @@ function readProduct(html: string): { product: BookChefProduct | null; errors: s
  * Pure function — no IO, never throws. Any parse failure is collected into
  * `errors` and yields `listing: null`.
  */
-export function parseBookChefListing(html: string): ParseResult {
-  const { product, errors } = readProduct(html);
+export function parseBookChefListing(html: string): ProductPageResult {
+  const { $, product, errors } = readProduct(html);
   if (product === null) {
     if (errors.length === 0) errors.push('no Product JSON-LD found');
     return { listing: null, errors };
@@ -180,7 +99,7 @@ export function parseBookChefListing(html: string): ParseResult {
       return { listing: null, errors };
     }
 
-    const priceKopecks = bookChefPriceToKopecks(offers.price);
+    const priceKopecks = priceToKopecks(offers.price);
     const price: Money | null = priceKopecks !== null ? toMoney(priceKopecks) : null;
 
     const isbn =
@@ -202,11 +121,11 @@ export function parseBookChefListing(html: string): ParseResult {
       description: sanitizeDescription(
         typeof product.description === 'string' ? product.description : null,
       ),
-      rawCategories: extractBreadcrumbs(html, title),
+      rawCategories: extractBreadcrumbs($, title),
     };
     return { listing, errors };
   } catch (err) {
-    errors.push(`unexpected error — ${err instanceof Error ? err.message : String(err)}`);
+    errors.push(`unexpected error — ${errMsg(err)}`);
     return { listing: null, errors };
   }
 }
@@ -225,7 +144,7 @@ export function parseBookChefProduct(html: string): ParsedProductState {
     ? product.offers
     : {}) as BookChefOffers;
 
-  const priceKopecks = bookChefPriceToKopecks(offers.price);
+  const priceKopecks = priceToKopecks(offers.price);
   if (priceKopecks === null) return { price: null, availability: 'out-of-stock' };
 
   return {

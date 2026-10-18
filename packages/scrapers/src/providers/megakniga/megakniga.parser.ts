@@ -16,37 +16,10 @@ import {
   buildCoverUrl,
   resolveUrl,
 } from './constants.js';
-import type { ParsedProductState } from '../single-product.js';
+import type { ParsedProductState, CatalogPageResult } from '../types.js';
 import type { ExtractedListingMetadata, ExtractedProductDetails } from '../../lib/enrich-product-details.js';
-
-export interface ParseResult {
-  readonly listings: RawProviderListing[];
-  readonly errors: string[];
-  /** True when the page contained at least one card element (paginator should fetch next page). */
-  readonly hasNextPage: boolean;
-}
-
-/**
- * Convert a Megakniga price (e.g. `"432.10"` from a `data-price` attribute or a
- * `.price` element's text, or a plain number) to a Money amount in kopecks, or
- * null when the value is not a usable price.
- *
- * Returns null for 0, negative, NaN, Infinity, null and undefined.
- */
-export function megaknigaPriceToKopecks(value: unknown): number | null {
-  const num =
-    typeof value === 'number'
-      ? value
-      : typeof value === 'string'
-        ? Number(value.trim())
-        : NaN;
-  if (!Number.isFinite(num) || num <= 0) return null;
-  return Math.round(num * 100);
-}
-
-function toMoney(kopecks: number): Money {
-  return { amount: kopecks, currency: 'UAH' };
-}
+import { priceToKopecks, toMoney } from '../../lib/price.js';
+import { errMsg } from '../../lib/errors.js';
 
 /**
  * Map a Megakniga catalog card's availability container (class + text) to the
@@ -91,7 +64,7 @@ function resolveMicrodataAvailability(availability: unknown, hasPrice: boolean):
  * all returned listings have isbn: null (PRD §4) — filled in later by the
  * opt-in enrichment pass ({@link extractMegaknigaProductDetails}).
  */
-export function parseMegaknigaListing(html: string): ParseResult {
+export function parseMegaknigaListing(html: string): CatalogPageResult {
   const $ = cheerio.load(html);
   const listings: RawProviderListing[] = [];
   const errors: string[] = [];
@@ -123,8 +96,8 @@ export function parseMegaknigaListing(html: string): ParseResult {
       // `.price-old` (the pre-discount price must never win).
       const formPrice = card.find(PRICE_FORM_SELECTOR).first().attr('data-price');
       const priceKopecks =
-        megaknigaPriceToKopecks(formPrice) ??
-        megaknigaPriceToKopecks(card.find(PRICE_TEXT_SELECTOR).first().text().trim());
+        priceToKopecks(formPrice) ??
+        priceToKopecks(card.find(PRICE_TEXT_SELECTOR).first().text().trim());
       const price: Money | null = priceKopecks !== null ? toMoney(priceKopecks) : null;
 
       const availabilityEl = card.find(AVAILABILITY_SELECTOR).first();
@@ -149,7 +122,7 @@ export function parseMegaknigaListing(html: string): ParseResult {
       });
     } catch (err) {
       errors.push(
-        `Card ${rawCardCount}: unexpected error — ${err instanceof Error ? err.message : String(err)}`,
+        `Card ${rawCardCount}: unexpected error — ${errMsg(err)}`,
       );
     }
   });
@@ -168,7 +141,7 @@ export function parseMegaknigaProduct(html: string): ParsedProductState {
   const $ = cheerio.load(html);
 
   const priceContent = $('meta[itemprop="price"]').first().attr('content');
-  const priceKopecks = megaknigaPriceToKopecks(priceContent);
+  const priceKopecks = priceToKopecks(priceContent);
   if (priceKopecks === null) {
     // No usable microdata price at all (missing meta tag) is indistinguishable
     // here from an explicit zero/invalid price; both yield 'unknown' unless the

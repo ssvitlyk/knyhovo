@@ -12,9 +12,9 @@ import {
   parseKnigolandSitemap,
   parseKnigolandListing,
 } from './knigoland.parser.js';
-
-const DEFAULT_TIMEOUT_MS = 10_000;
-const DEFAULT_DELAY_MS = 500;
+import { errMsg } from '../../lib/errors.js';
+import { sleep } from '../../lib/sleep.js';
+import { DEFAULT_TIMEOUT_MS, DEFAULT_DELAY_MS } from '../../lib/defaults.js';
 
 /** Emit a progress line once every this many processed targets (plus one at completion). */
 const PROGRESS_INTERVAL = 100;
@@ -76,7 +76,7 @@ export class KnigolandScraper implements ScraperProvider {
         errors.push('Knigoland blocked by HTTP 403, likely anti-bot protection');
       } else {
         errors.push(
-          `Sitemap index: network error — ${err instanceof Error ? err.message : String(err)}`,
+          `Sitemap index: network error — ${errMsg(err)}`,
         );
       }
       return { provider: 'knigoland', listings: allListings, scrapedAt, errors };
@@ -111,7 +111,7 @@ export class KnigolandScraper implements ScraperProvider {
         subSitemapXml = await this.fetcher.fetch(subSitemapUrl, timeoutMs);
       } catch (err) {
         errors.push(
-          `Sub-sitemap ${subSitemapUrl}: fetch error — ${err instanceof Error ? err.message : String(err)}`,
+          `Sub-sitemap ${subSitemapUrl}: fetch error — ${errMsg(err)}`,
         );
         continue;
       }
@@ -126,7 +126,7 @@ export class KnigolandScraper implements ScraperProvider {
       }
 
       if (s < sitemapUrls.length - 1 && delayMs > 0) {
-        await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+        await sleep(delayMs);
       }
     }
 
@@ -199,7 +199,7 @@ export class KnigolandScraper implements ScraperProvider {
         html = await this.fetcher.fetch(productUrl, timeoutMs);
       } catch (err) {
         errors.push(
-          `Product ${productUrl}: fetch error — ${err instanceof Error ? err.message : String(err)}`,
+          `Product ${productUrl}: fetch error — ${errMsg(err)}`,
         );
         maybeLogProgress();
         continue;
@@ -215,7 +215,7 @@ export class KnigolandScraper implements ScraperProvider {
       maybeLogProgress();
 
       if (i < targets.length - 1 && delayMs > 0) {
-        await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+        await sleep(delayMs);
       }
     }
 

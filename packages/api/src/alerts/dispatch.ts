@@ -65,6 +65,29 @@ export interface DispatchSummary {
   readonly deferred: number;
 }
 
+type DeliveryContext = NonNullable<Awaited<ReturnType<typeof loadDeliveryContext>>>;
+
+/** A delivery context whose book still has an in-stock listing to advertise. */
+type SendableContext = DeliveryContext & {
+  readonly bestListing: NonNullable<DeliveryContext['bestListing']>;
+};
+
+/**
+ * Pre-send gates, checked in order — the first failing one decides the skip
+ * reason: missing context, unsubscribed, per-type preference off, no in-stock
+ * listing (the book must still be in stock to advertise a price/link).
+ */
+function checkSendable(
+  ctx: DeliveryContext | null,
+): { readonly ctx: SendableContext } | { readonly skipReason: string } {
+  if (!ctx) return { skipReason: 'context missing' };
+  if (ctx.user.unsubscribedAt != null) return { skipReason: 'user unsubscribed' };
+  if (ctx.type === 'PRICE_DROP' && !ctx.user.priceDropEnabled) return { skipReason: 'price-drop disabled' };
+  if (ctx.type === 'BACK_IN_STOCK' && !ctx.user.backInStockEnabled) return { skipReason: 'back-in-stock disabled' };
+  if (!ctx.bestListing) return { skipReason: 'no in-stock listing' };
+  return { ctx: { ...ctx, bestListing: ctx.bestListing } };
+}
+
 export async function dispatchPendingDeliveries(
   prisma: PrismaClient,
   deps: DispatchDeps,
@@ -81,36 +104,13 @@ export async function dispatchPendingDeliveries(
 
   for (const delivery of due) {
     try {
-      const ctx = await loadDeliveryContext(prisma, delivery.id);
-      if (!ctx) {
-        await markDeliverySkipped(prisma, delivery.id, { lastError: 'context missing' });
+      const gate = checkSendable(await loadDeliveryContext(prisma, delivery.id));
+      if ('skipReason' in gate) {
+        await markDeliverySkipped(prisma, delivery.id, { lastError: gate.skipReason });
         skipped++;
         continue;
       }
-
-      // --- Preference / unsubscribe gates ---------------------------------
-      if (ctx.user.unsubscribedAt != null) {
-        await markDeliverySkipped(prisma, delivery.id, { lastError: 'user unsubscribed' });
-        skipped++;
-        continue;
-      }
-      if (ctx.type === 'PRICE_DROP' && !ctx.user.priceDropEnabled) {
-        await markDeliverySkipped(prisma, delivery.id, { lastError: 'price-drop disabled' });
-        skipped++;
-        continue;
-      }
-      if (ctx.type === 'BACK_IN_STOCK' && !ctx.user.backInStockEnabled) {
-        await markDeliverySkipped(prisma, delivery.id, { lastError: 'back-in-stock disabled' });
-        skipped++;
-        continue;
-      }
-
-      // The book must still be in stock to advertise a price/link.
-      if (!ctx.bestListing) {
-        await markDeliverySkipped(prisma, delivery.id, { lastError: 'no in-stock listing' });
-        skipped++;
-        continue;
-      }
+      const { ctx } = gate;
 
       // --- Rate limit (rolling 24h) ---------------------------------------
       const windowStart = new Date(now().getTime() - 24 * 60 * 60_000);

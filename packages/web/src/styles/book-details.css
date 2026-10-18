@@ -16,7 +16,6 @@
 .bd-cover { border: 1px solid var(--border); border-radius: var(--radius-md); background: linear-gradient(135deg, var(--surface-accent), var(--surface-sunk)); box-shadow: var(--shadow-md); display: flex; align-items: center; justify-content: center; flex: none; object-fit: cover; }
 .bd-cover span { font-size: var(--fs-xs); letter-spacing: var(--ls-eyebrow); text-transform: uppercase; color: var(--text-faint); }
 .bd-cover--lg { width: 300px; height: 440px; }
-.bd-cover--md { width: 220px; height: 320px; }
 
 .bd-desc__text { margin: 0 0 var(--space-4); max-width: 66ch; text-wrap: pretty; }
 @media (max-width: 767px) {
@@ -67,7 +66,6 @@
 .bdc-best { background: var(--accent-weak); border-radius: var(--radius-md); padding: var(--space-5); margin: var(--space-4) 0 var(--space-2); }
 .bdc-best__pricerow { display: flex; align-items: baseline; gap: var(--space-3); margin: var(--space-2) 0 var(--space-1); }
 .bdc-best__price { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: 2.25rem; line-height: 1; color: var(--accent); }
-.bdc-best__old { font-size: var(--fs-body); color: var(--text-muted); text-decoration: line-through; }
 .bdc-best__store { font-size: var(--fs-sm); color: var(--text-body); margin-bottom: var(--space-4); }
 .bdc-best__store b { color: var(--text); }
 .bdc-row { display: flex; align-items: center; gap: var(--space-4); padding: var(--space-3) 0; border-top: 1px solid var(--border); }
@@ -75,7 +73,6 @@
 .bdc-row__store { font-weight: var(--fw-medium); color: var(--text); flex: 1; min-width: 0; }
 .bdc-row__avail { font-size: var(--fs-xs); white-space: nowrap; }
 .bdc-row__price { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: 1.25rem; color: var(--accent); white-space: nowrap; }
-.bdc-row__old { font-size: var(--fs-xs); color: var(--text-muted); text-decoration: line-through; white-space: nowrap; }
 .bdc-row--out { opacity: 0.66; }
 .bdc-row--out .bdc-row__price { color: var(--text-faint); }
 
@@ -180,24 +177,6 @@
   .bdm-sticky__price { font-family: var(--font-display); font-weight: var(--fw-semibold); font-size: var(--fs-title); line-height: 1; color: var(--accent); }
   .bdm-sticky__store { font-size: var(--fs-xs); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   .bdm-sticky .kn-btn { flex: none; min-height: 44px; }
-}
-
-/* ---------- Icon button (Remove / AlertBell etc.) ----------
-   Relocated from wishlist.css (wishlist v2.2 CSS port) — these consumers
-   (AlertBell, WishlistToggle) live on Book Details, not the wishlist page. */
-.wl-iconbtn {
-  display: inline-flex; align-items: center; justify-content: center;
-  width: 32px; height: 32px; min-width: 32px;
-  border: 1px solid var(--border); border-radius: var(--radius-sm);
-  background: transparent; color: var(--icon-muted); cursor: pointer;
-  transition: color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out);
-}
-.wl-iconbtn:hover:not(:disabled) { color: var(--accent); border-color: var(--accent); }
-.wl-iconbtn:disabled { opacity: 0.45; cursor: not-allowed; }
-.wl-iconbtn svg { width: 16px; height: 16px; }
-
-@media (max-width: 767px) {
-  .wl-iconbtn { width: 44px; height: 44px; min-width: 44px; }
 }
 
 /* ---------- WishlistToggle (book details integration) ---------- */

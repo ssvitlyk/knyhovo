@@ -1,4 +1,4 @@
-import type { Availability } from '@knyhovo/shared';
+import { AVAILABILITY_SLUG } from '../../pricing/provider-maps.js';
 import type {
   PriceHistoryPeriod,
   PriceHistoryPointDto,
@@ -7,13 +7,6 @@ import type {
   PriceHistoryChangeDto,
   BookPriceHistoryDto,
 } from './dto.js';
-
-/** Reverse map from the persisted availability enum to its public slug. */
-const AVAILABILITY_SLUG: Record<'IN_STOCK' | 'OUT_OF_STOCK' | 'UNKNOWN', Availability> = {
-  IN_STOCK: 'in-stock',
-  OUT_OF_STOCK: 'out-of-stock',
-  UNKNOWN: 'unknown',
-};
 
 /** Internal representation of a price point before DTO mapping. */
 interface RawPoint {

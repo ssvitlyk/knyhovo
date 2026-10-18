@@ -1,18 +1,16 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 /**
  * Compile-time checks for ProviderName, Availability, ScraperOptions,
- * RawProviderListing, ProviderListing, ScraperProvider, ScraperResult.
+ * RawProviderListing, ScraperProvider, ScraperResult.
  */
 import type {
   ProviderName,
   Availability,
   ScraperOptions,
   RawProviderListing,
-  ProviderListing,
   ScraperProvider,
   ScraperResult,
 } from '../provider.js';
-import type { CanonicalBookId, ProviderListingId } from '../ids.js';
 
 // Valid provider names
 const _yakaboo: ProviderName = 'yakaboo';
@@ -84,49 +82,6 @@ const _badRaw: RawProviderListing = {
   price: null,
   url: 'https://rozetka.ua/test.html',
   availability: 'unknown',
-};
-
-// ProviderListing — persisted DB entity (has id, canonicalBookId, lastSeenAt, availability)
-const _listing: ProviderListing = {
-  id: 'pl-1' as ProviderListingId,
-  canonicalBookId: 'cb-1' as CanonicalBookId,
-  provider: 'yakaboo',
-  title: 'Кобзар',
-  author: 'Тарас Шевченко',
-  isbn: null,
-  price: { amount: 34999, currency: 'UAH' },
-  url: 'https://yakaboo.ua/kobzar.html',
-  lastSeenAt: '2026-06-09T00:00:00.000Z',
-  availability: 'in-stock',
-  description: null,
-  publisher: null,
-  language: null,
-  format: null,
-  series: null,
-  publicationYear: null,
-  rawCategories: [],
-};
-
-// ProviderListing rejects unknown provider
-const _badListing: ProviderListing = {
-  id: 'pl-2' as ProviderListingId,
-  canonicalBookId: 'cb-1' as CanonicalBookId,
-  // @ts-expect-error 'rozetka' is not a known ProviderName
-  provider: 'rozetka',
-  title: 'Кобзар',
-  author: 'Тарас Шевченко',
-  isbn: null,
-  price: { amount: 34999, currency: 'UAH' },
-  url: 'https://rozetka.ua/kobzar.html',
-  lastSeenAt: '2026-06-09T00:00:00.000Z',
-  availability: 'in-stock',
-  description: null,
-  publisher: null,
-  language: null,
-  format: null,
-  series: null,
-  publicationYear: null,
-  rawCategories: [],
 };
 
 // ScraperProvider shape — scrape accepts optional ScraperOptions

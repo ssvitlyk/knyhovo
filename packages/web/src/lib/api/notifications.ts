@@ -1,19 +1,9 @@
 import { apiBaseUrl } from './env';
+import { apiJson, apiRequest, defineApiError } from './http';
 import type { NotificationPreferencesDto } from './types';
 
-const REQUEST_TIMEOUT_MS = 8000;
-
 /** Error thrown when a notifications request fails (network, timeout, or non-2xx). */
-export class NotificationsError extends Error {
-  /** HTTP status, or `null` for a transport/timeout failure. */
-  readonly status: number | null;
-
-  constructor(message: string, status: number | null) {
-    super(message);
-    this.name = 'NotificationsError';
-    this.status = status;
-  }
-}
+export class NotificationsError extends defineApiError('NotificationsError') {}
 
 /**
  * Fetch the authenticated user's notification preferences (server-side).
@@ -25,32 +15,16 @@ export async function getNotificationPreferences({
 }: {
   cookie: string;
 }): Promise<NotificationPreferencesDto | { unauthorized: true }> {
-  const url = `${apiBaseUrl()}/api/notifications/preferences`;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      signal: controller.signal,
-      cache: 'no-store',
-      headers: { cookie },
-    });
-  } catch {
-    throw new NotificationsError('Не вдалося звʼязатися з сервісом сповіщень.', null);
-  } finally {
-    clearTimeout(timer);
-  }
+  const response = await apiRequest(`${apiBaseUrl()}/api/notifications/preferences`, {
+    cache: 'no-store',
+    cookie,
+    errorClass: NotificationsError,
+    transportMessage: 'Не вдалося звʼязатися з сервісом сповіщень.',
+    httpMessage: (status) => `Сервіс сповіщень повернув помилку (${status}).`,
+    passthrough: (status) => status === 401,
+  });
 
   if (response.status === 401) return { unauthorized: true };
-
-  if (!response.ok) {
-    throw new NotificationsError(
-      `Сервіс сповіщень повернув помилку (${response.status}).`,
-      response.status,
-    );
-  }
 
   return (await response.json()) as NotificationPreferencesDto;
 }
@@ -64,32 +38,14 @@ export async function updateNotificationPreferences(body: {
   priceDropEnabled?: boolean;
   backInStockEnabled?: boolean;
 }): Promise<NotificationPreferencesDto> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-  let response: Response;
-  try {
-    response = await fetch('/api/notifications/preferences', {
-      method: 'PATCH',
-      signal: controller.signal,
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(body),
-    });
-  } catch {
-    throw new NotificationsError('Не вдалося оновити налаштування сповіщень.', null);
-  } finally {
-    clearTimeout(timer);
-  }
-
-  if (!response.ok) {
-    throw new NotificationsError(
-      `Не вдалося оновити налаштування сповіщень (${response.status}).`,
-      response.status,
-    );
-  }
-
-  return (await response.json()) as NotificationPreferencesDto;
+  return apiJson<NotificationPreferencesDto>('/api/notifications/preferences', {
+    method: 'PATCH',
+    credentials: 'include',
+    body,
+    errorClass: NotificationsError,
+    transportMessage: 'Не вдалося оновити налаштування сповіщень.',
+    httpMessage: (status) => `Не вдалося оновити налаштування сповіщень (${status}).`,
+  });
 }
 
 /**
@@ -100,18 +56,13 @@ export async function updateNotificationPreferences(body: {
 export async function unsubscribe(token: string): Promise<void> {
   const url = `${apiBaseUrl()}/api/notifications/unsubscribe?token=${encodeURIComponent(token)}`;
 
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
   try {
-    await fetch(url, {
-      signal: controller.signal,
+    await apiRequest(url, {
       cache: 'no-store',
+      transportMessage: 'Unsubscribe request failed.',
     });
   } catch {
     // Intentional: side-effect may have succeeded even if the response fails.
     // The confirmation screen is always shown.
-  } finally {
-    clearTimeout(timer);
   }
 }

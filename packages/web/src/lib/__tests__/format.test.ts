@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatMoney, knBookWord, providerDisplayName } from '../format';
+import { formatMoney, knBookWord, providerDisplayName, toMajorUnits } from '../format';
 
 describe('formatMoney', () => {
   it('renders whole hryvnia without decimals and a space before the symbol', () => {
@@ -37,5 +37,17 @@ describe('providerDisplayName', () => {
   it('maps provider slugs to store names', () => {
     expect(providerDisplayName('yakaboo')).toBe('Yakaboo');
     expect(providerDisplayName('book-club')).toBe('BookClub');
+  });
+});
+
+describe('toMajorUnits', () => {
+  it('converts kopiyky to major units', () => {
+    expect(toMajorUnits(34900)).toBe(349);
+    expect(toMajorUnits(34950)).toBe(349.5);
+  });
+
+  it('rounds to two decimals', () => {
+    expect(toMajorUnits(1)).toBe(0.01);
+    expect(toMajorUnits(0)).toBe(0);
   });
 });

@@ -1,3 +1,5 @@
+import { makeResolveUrl } from '../../lib/html-helpers.js';
+
 export const BOOK_YE_BASE_URL = 'https://book-ye.com.ua';
 /** Main books catalog. Pagination is Magento-style `?p=N`; ~20 products per page. */
 export const BOOK_YE_CATALOG_URL = `${BOOK_YE_BASE_URL}/catalog/`;
@@ -108,7 +110,4 @@ export const PRODUCT_STATUS_SELECTORS = [
 ] as const;
 
 /** Resolve a possibly-relative href to an absolute Книгарня «Є» URL. */
-export function resolveUrl(href: string): string {
-  if (href.startsWith('http')) return href;
-  return `${BOOK_YE_BASE_URL}${href.startsWith('/') ? '' : '/'}${href}`;
-}
+export const resolveUrl = makeResolveUrl(BOOK_YE_BASE_URL);

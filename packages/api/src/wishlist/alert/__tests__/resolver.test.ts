@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { resolveAlertPolicy, type ResolverContext } from '../resolver.js';
 import type { GoodPriceResult } from '../good-price.js';
-import { formatUah } from '../../../alerts/templates.js';
+import { formatUah } from '../../../email/common.js';
 
 const UNAVAILABLE_GOOD_PRICE: GoodPriceResult = {
   available: false,

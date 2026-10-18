@@ -12,14 +12,10 @@ import {
   detectFormat,
   stripBookPrefix,
 } from './constants.js';
-import type { ParsedProductState } from '../single-product.js';
-
-export interface ParseResult {
-  readonly listings: RawProviderListing[];
-  readonly errors: string[];
-  /** True when the page contained at least one card element (paginator should fetch next page). */
-  readonly hasNextPage: boolean;
-}
+import type { ParsedProductState, CatalogPageResult } from '../types.js';
+import { toMoney } from '../../lib/price.js';
+import { errMsg } from '../../lib/errors.js';
+import { extractCoverUrl, firstNonEmptyHtml, firstNonEmptyText, makeResolveUrl } from '../../lib/html-helpers.js';
 
 /**
  * Convert a Yakaboo price string (e.g. "620 грн", "2 450 грн", "199,50 грн")
@@ -33,10 +29,6 @@ export function parsePriceAsKopecks(text: string): number | null {
   const value = parseFloat(cleaned);
   if (!Number.isFinite(value) || value < 0) return null;
   return Math.round(value * 100);
-}
-
-function toMoney(kopecks: number): Money {
-  return { amount: kopecks, currency: 'UAH' };
 }
 
 function resolveAvailability(
@@ -53,24 +45,7 @@ function resolveAvailability(
   return 'unknown';
 }
 
-function resolveUrl(href: string): string {
-  if (href.startsWith('http')) return href;
-  return `${YAKABOO_BASE_URL}${href.startsWith('/') ? '' : '/'}${href}`;
-}
-
-/**
- * Resolve a cover image URL from a catalog card's <img>.
- *
- * Reads `src`, falling back to the common lazy-load `data-src` attribute, then
- * normalises it to an absolute URL. Returns null when the card has no usable
- * image — a missing cover must never break the listing (W9a F1).
- */
-function extractCoverUrl(src: string | undefined): string | null {
-  const raw = src?.trim();
-  if (!raw) return null;
-  if (raw.startsWith('//')) return `https:${raw}`;
-  return resolveUrl(raw);
-}
+const resolveUrl = makeResolveUrl(YAKABOO_BASE_URL);
 
 /**
  * Parse a Yakaboo catalog HTML page into a list of raw provider listings.
@@ -79,7 +54,7 @@ function extractCoverUrl(src: string | undefined): string | null {
  * ISBN is not available on catalog listing cards (only on individual book pages),
  * so all returned listings have isbn: null.
  */
-export function parseYakabooPage(html: string): ParseResult {
+export function parseYakabooPage(html: string): CatalogPageResult {
   const $ = cheerio.load(html);
   const listings: RawProviderListing[] = [];
   const errors: string[] = [];
@@ -127,7 +102,7 @@ export function parseYakabooPage(html: string): ParseResult {
       const availability = resolveAvailability(statusText, price !== null);
 
       const coverImg = card.find(SELECTORS.cover).first();
-      const coverUrl = extractCoverUrl(coverImg.attr('src') ?? coverImg.attr('data-src'));
+      const coverUrl = extractCoverUrl(coverImg.attr('src') ?? coverImg.attr('data-src'), resolveUrl);
 
       listings.push({
         provider: 'yakaboo',
@@ -141,7 +116,7 @@ export function parseYakabooPage(html: string): ParseResult {
       });
     } catch (err) {
       errors.push(
-        `Card ${rawCardCount}: unexpected error — ${err instanceof Error ? err.message : String(err)}`,
+        `Card ${rawCardCount}: unexpected error — ${errMsg(err)}`,
       );
     }
   });
@@ -156,12 +131,7 @@ export function parseYakabooPage(html: string): ParseResult {
  * plain text happens at the enrichment boundary (sanitizeDescription).
  */
 export function extractYakabooProductDescription(html: string): string | null {
-  const $ = cheerio.load(html);
-  for (const selector of PRODUCT_DESCRIPTION_SELECTORS) {
-    const inner = $(selector).first().html();
-    if (inner != null && inner.trim() !== '') return inner;
-  }
-  return null;
+  return firstNonEmptyHtml(cheerio.load(html), PRODUCT_DESCRIPTION_SELECTORS);
 }
 
 /**
@@ -174,22 +144,14 @@ export function extractYakabooProductDescription(html: string): string | null {
 export function parseYakabooProduct(html: string): ParsedProductState {
   const $ = cheerio.load(html);
 
-  let priceText = '';
-  for (const selector of PRODUCT_PRICE_SELECTORS) {
-    const text = $(selector).first().text().trim();
-    if (text) { priceText = text; break; }
-  }
+  const priceText = firstNonEmptyText($, PRODUCT_PRICE_SELECTORS);
 
   const priceKopecks = priceText ? parsePriceAsKopecks(priceText) : null;
-  const price: Money | null = priceKopecks !== null ? { amount: priceKopecks, currency: 'UAH' } : null;
+  const price: Money | null = priceKopecks !== null ? toMoney(priceKopecks) : null;
 
   if (!price) return { price: null, availability: 'out-of-stock' };
 
-  let statusText = '';
-  for (const selector of PRODUCT_STATUS_SELECTORS) {
-    const text = $(selector).first().text().trim();
-    if (text) { statusText = text; break; }
-  }
+  const statusText = firstNonEmptyText($, PRODUCT_STATUS_SELECTORS);
 
   const availability = resolveAvailability(statusText, true);
   return { price, availability };

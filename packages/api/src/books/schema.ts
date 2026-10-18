@@ -11,13 +11,11 @@ import { BadRequestError } from '../errors.js';
  */
 const bookParamsSchema = z.object({ id: z.string().uuid() });
 
-export type BookParams = z.infer<typeof bookParamsSchema>;
-
 /**
  * Parse and validate raw request route parameters.
  * Throws {@link BadRequestError} (→ HTTP 400) when `id` is not a valid UUID.
  */
-export function parseBookParams(params: unknown): BookParams {
+export function parseBookParams(params: unknown): z.infer<typeof bookParamsSchema> {
   const result = bookParamsSchema.safeParse(params);
   if (!result.success) {
     throw new BadRequestError('Invalid book id');

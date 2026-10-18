@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { LineChart, Info } from 'lucide-react';
 import { Badge } from '@/components/ds/Badge';
 import { Button } from '@/components/ds/Button';
@@ -132,47 +132,16 @@ export function PriceHistorySection({
   const [vm, setVm] = useState<PriceHistoryViewModel | null>(null);
   const reqRef = useRef(0);
 
-  function load(key: PeriodKey): void {
-    const apiPeriod: PriceHistoryPeriod = PERIOD_MAP[key];
-    setStatus('loading');
-    const reqId = ++reqRef.current;
+  // Fetch one period and settle the state machine. Does not set `loading`
+  // itself (the initial state already is) so it is safe to call from an effect.
+  const fetchPeriod = useCallback(
+    (key: PeriodKey): void => {
+      const apiPeriod: PriceHistoryPeriod = PERIOD_MAP[key];
+      const reqId = ++reqRef.current;
 
-    getPriceHistory(bookId, apiPeriod)
-      .then((dto) => {
-        if (reqId !== reqRef.current) return; // ignore stale responses
-
-        const points = dto && Array.isArray(dto.points) ? dto.points : [];
-        if (points.length === 0) {
-          setVm(null);
-          setStatus('empty');
-          return;
-        }
-
-        const model = toViewModel(dto);
-        if (!model) {
-          setStatus('error');
-          return;
-        }
-
-        setVm(model);
-        setStatus('filled');
-      })
-      .catch(() => {
-        if (reqId !== reqRef.current) return;
-        setStatus('error');
-      });
-  }
-
-  useEffect(
-    () => {
-      void (async () => {
-        const key = periodKey;
-        const apiPeriod: PriceHistoryPeriod = PERIOD_MAP[key];
-        const reqId = ++reqRef.current;
-
-        try {
-          const dto = await getPriceHistory(bookId, apiPeriod);
-          if (reqId !== reqRef.current) return;
+      getPriceHistory(bookId, apiPeriod)
+        .then((dto) => {
+          if (reqId !== reqRef.current) return; // ignore stale responses
 
           const points = dto && Array.isArray(dto.points) ? dto.points : [];
           if (points.length === 0) {
@@ -189,15 +158,23 @@ export function PriceHistorySection({
 
           setVm(model);
           setStatus('filled');
-        } catch {
+        })
+        .catch(() => {
           if (reqId !== reqRef.current) return;
           setStatus('error');
-        }
-      })();
+        });
     },
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [],
+    [bookId],
   );
+
+  function load(key: PeriodKey): void {
+    setStatus('loading');
+    fetchPeriod(key);
+  }
+
+  useEffect(() => {
+    fetchPeriod(DEFAULT_PERIOD_KEY);
+  }, [fetchPeriod]);
 
   function onPeriod(key: PeriodKey): void {
     setPeriodKey(key);

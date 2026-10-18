@@ -9,6 +9,8 @@
  * a misspelled `--dry-run`).
  */
 
+import { parsePositiveInt } from './scrape-env.js';
+
 /** Default keyset page size (PRD §8.1: `--batch-size=500`). */
 export const DEFAULT_BATCH_SIZE = 500;
 
@@ -82,10 +84,11 @@ export function parseGenreBackfillArgs(argv: readonly string[]): GenreBackfillAr
     }
     if (token.startsWith('--batch-size=')) {
       const raw = token.slice('--batch-size='.length);
-      if (!/^[1-9]\d*$/.test(raw)) {
+      const parsed = parsePositiveInt(raw);
+      if (parsed === undefined) {
         throw new Error(`genres:backfill: --batch-size must be a positive integer, got "${raw}"`);
       }
-      batchSize = Number(raw);
+      batchSize = parsed;
       continue;
     }
     if (token.startsWith('--cursor=')) {

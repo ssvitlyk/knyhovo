@@ -1,4 +1,8 @@
 import type { ProviderName } from '@knyhovo/shared';
+import type { MoneyDto } from '../pricing/money.js';
+
+/** Public: re-exported from `src/index.ts`. */
+export type { MoneyDto };
 
 /**
  * Search Results v1.0 response contract.
@@ -11,12 +15,6 @@ import type { ProviderName } from '@knyhovo/shared';
  * matching the shared `Money` semantics. Formatting to a display value is the
  * UI's responsibility.
  */
-
-export interface MoneyDto {
-  /** Amount in the smallest currency unit (kopiyky). */
-  readonly amount: number;
-  readonly currency: string;
-}
 
 export interface ProviderOfferDto {
   /** Provider slug, e.g. `'yakaboo'` or `'book-club'`. */

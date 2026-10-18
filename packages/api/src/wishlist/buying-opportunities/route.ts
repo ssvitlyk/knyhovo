@@ -1,9 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { PrismaClient } from '@prisma/client';
 import type { AuthDeps } from '../../auth/service.js';
-import { resolveSessionUser } from '../../auth/service.js';
-import { SESSION_COOKIE } from '../../auth/cookie.js';
-import { UnauthorizedError } from '../../errors.js';
+import { requireUser } from '../../auth/guard.js';
 import { getBuyingOpportunities } from './service.js';
 
 /**
@@ -19,8 +17,7 @@ export function registerBuyingOpportunitiesRoute(
   authDeps: AuthDeps,
 ): void {
   app.get('/api/wishlist/buying-opportunities', async (request, reply) => {
-    const user = await resolveSessionUser(authDeps, request.cookies?.[SESSION_COOKIE] ?? null);
-    if (!user) throw new UnauthorizedError();
+    const user = await requireUser(authDeps, request);
 
     await reply.send(await getBuyingOpportunities(prisma, user.id, { now: () => new Date() }));
   });

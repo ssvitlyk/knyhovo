@@ -154,7 +154,7 @@ describe('countVanished', () => {
     const prisma = makeFakePrisma();
     vi.mocked(prisma.providerScrapeState.count).mockResolvedValue(7);
 
-    const result = await countVanished(prisma, Provider.BOOKCHEF, new Set(['https://x/1']), SEEN_AT);
+    const result = await countVanished(prisma, Provider.BOOKCHEF, SEEN_AT);
 
     expect(prisma.providerScrapeState.count).toHaveBeenCalledWith({
       where: { provider: Provider.BOOKCHEF, lastSeenInSitemapAt: { lt: SEEN_AT } },

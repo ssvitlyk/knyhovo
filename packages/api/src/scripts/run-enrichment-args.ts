@@ -13,6 +13,8 @@
  * so the parser stays free of provider knowledge.
  */
 
+import { parsePositiveInt } from './scrape-env.js';
+
 export interface EnrichmentArgs {
   /** Target provider slug (required). */
   readonly provider: string;
@@ -34,11 +36,12 @@ export const ENRICHMENT_USAGE = `usage: pnpm --filter @knyhovo/api scrape:enrich
   --force               ignore the missing-field predicate, re-walk every listing
   --dry-run             report queue size + last run state; no fetches, no writes`;
 
-function parsePositiveInt(flag: string, raw: string): number {
-  if (!/^[1-9]\d*$/.test(raw)) {
+function requirePositiveInt(flag: string, raw: string): number {
+  const value = parsePositiveInt(raw);
+  if (value === undefined) {
     throw new Error(`scrape:enrich: ${flag} must be a positive integer, got "${raw}"`);
   }
-  return Number(raw);
+  return value;
 }
 
 /**
@@ -70,11 +73,11 @@ export function parseEnrichmentArgs(argv: readonly string[]): EnrichmentArgs {
       continue;
     }
     if (token.startsWith('--batch-size=')) {
-      batchSize = parsePositiveInt('--batch-size', token.slice('--batch-size='.length));
+      batchSize = requirePositiveInt('--batch-size', token.slice('--batch-size='.length));
       continue;
     }
     if (token.startsWith('--limit=')) {
-      limit = parsePositiveInt('--limit', token.slice('--limit='.length));
+      limit = requirePositiveInt('--limit', token.slice('--limit='.length));
       continue;
     }
     if (token === '--force') {

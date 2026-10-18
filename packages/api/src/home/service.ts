@@ -22,12 +22,10 @@
  */
 import type { PrismaClient } from '@prisma/client';
 import { getOrSet } from '../collections/cache.js';
-import { loadFeedCandidateIds } from '../collections/service.js';
+import { applyWishlistDecoration, loadFeedCandidateIds, loadWishlistDecoration } from '../collections/service.js';
 import {
   findCollectionsBySlugs,
   findCanonicalBooksByIds,
-  findWishlistCountsByIds,
-  findWishlistedBookIds,
 } from '../collections/repository.js';
 import type { CollectionBookRow } from '../collections/repository.js';
 import { hasPricedListing } from '../collections/mapper.js';
@@ -49,12 +47,12 @@ import type { HomeLogSink } from './observability.js';
  * own composition fields are folded in via {@link layoutFingerprint}, so a
  * `HOME_LAYOUT` tweak invalidates the cache automatically (PRD §13).
  */
-export const HOME_CACHE_VERSION = 1;
+const HOME_CACHE_VERSION = 1;
 /** 5-min TTL — composed payload reflects wishlist-derived `popular`, mirroring collections PRD §3.1. */
-export const HOME_CACHE_TTL_MS = 5 * 60 * 1000;
+const HOME_CACHE_TTL_MS = 5 * 60 * 1000;
 
 /** Versioned + layout-fingerprinted cache key. */
-export function homeCacheKey(layout: HomeLayout): string {
+function homeCacheKey(layout: HomeLayout): string {
   return `home:v${HOME_CACHE_VERSION}:${layoutFingerprint(layout)}`;
 }
 
@@ -163,17 +161,12 @@ async function decorateHome(prisma: PrismaClient, home: HomeResponseDto, userId:
   const allIds = home.shelves.flatMap((s) => s.books.map((b) => b.id));
   if (allIds.length === 0) return home;
 
-  const counts = await findWishlistCountsByIds(prisma, allIds);
-  const saved = userId ? await findWishlistedBookIds(prisma, userId) : null;
+  const deco = await loadWishlistDecoration(prisma, allIds, userId);
 
   return {
     shelves: home.shelves.map((shelf) => ({
       key: shelf.key,
-      books: shelf.books.map((book) => ({
-        ...book,
-        wishlistCount: counts.get(book.id) ?? 0,
-        isWishlisted: saved ? saved.has(book.id) : false,
-      })),
+      books: shelf.books.map((book) => applyWishlistDecoration(book, deco)),
     })),
   };
 }

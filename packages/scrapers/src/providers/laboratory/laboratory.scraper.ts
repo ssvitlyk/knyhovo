@@ -21,8 +21,10 @@ import {
   DEFAULT_PROGRESS_INTERVAL,
 } from './constants.js';
 import { parseLaboratorySitemap, parseLaboratoryListing } from './laboratory.parser.js';
+import { errMsg } from '../../lib/errors.js';
+import { sleep } from '../../lib/sleep.js';
+import { NOOP_LOGGER } from '../../lib/noop-logger.js';
 
-const NOOP_LOGGER: ScraperLogger = { info: () => {} };
 
 /** Construction-time knobs. All optional; each falls back to its provider default. */
 export interface LaboratoryScraperConfig {
@@ -101,7 +103,7 @@ export class LaboratoryScraper implements ScraperProvider {
     this.progressInterval = config.progressInterval ?? DEFAULT_PROGRESS_INTERVAL;
     this.logger = config.logger ?? NOOP_LOGGER;
     this.now = config.now ?? ((): number => Date.now());
-    this.sleep = config.sleep ?? ((ms): Promise<void> => new Promise((r) => setTimeout(r, ms)));
+    this.sleep = config.sleep ?? sleep;
   }
 
   async scrape(options?: ScraperOptions): Promise<ScraperResult> {
@@ -133,7 +135,7 @@ export class LaboratoryScraper implements ScraperProvider {
         errors.push('Laboratory blocked by HTTP 403, likely anti-bot protection');
       } else {
         errors.push(
-          `Sitemap: network error — ${err instanceof Error ? err.message : String(err)}`,
+          `Sitemap: network error — ${errMsg(err)}`,
         );
       }
       return { provider: 'laboratory', listings: [], scrapedAt, errors };
@@ -247,7 +249,7 @@ export class LaboratoryScraper implements ScraperProvider {
         } catch (err) {
           metrics.failed++;
           errors.push(
-            `Product ${productUrl}: fetch error — ${err instanceof Error ? err.message : String(err)}`,
+            `Product ${productUrl}: fetch error — ${errMsg(err)}`,
           );
         }
         metrics.latencySumMs += this.now() - attemptStart;

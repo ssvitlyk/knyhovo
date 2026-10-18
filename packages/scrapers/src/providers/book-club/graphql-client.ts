@@ -1,4 +1,5 @@
 import { KSD_GRAPHQL_ENDPOINT } from './constants.js';
+import { sleep } from '../../lib/sleep.js';
 
 /** A single GraphQL error from the response `errors` array. */
 export interface GraphqlError {
@@ -56,7 +57,7 @@ export class HttpGraphqlClient implements GraphqlClient {
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch;
     this.maxRetries = options.maxRetries ?? 2;
     this.backoffBaseMs = options.backoffBaseMs ?? 500;
-    this.sleep = options.sleep ?? ((ms) => new Promise<void>((r) => setTimeout(r, ms)));
+    this.sleep = options.sleep ?? sleep;
   }
 
   async request(

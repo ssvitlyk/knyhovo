@@ -1,33 +1,11 @@
-import type { ProviderName, Availability } from '@knyhovo/shared';
 import { selectCoverUrl } from '../discovery/cover-selection.js';
-import type { WishlistRow, WishlistListingRow } from './repository.js';
-import type { WishlistProviderDto, WishlistBookDto, WishlistItemDto, WishlistResponseDto, MoneyDto, AlertDto, WishlistGenreDto } from './dto.js';
+import type { WishlistRow } from './repository.js';
+import type { WishlistProviderDto, WishlistBookDto, WishlistItemDto, WishlistResponseDto, AlertDto, WishlistGenreDto } from './dto.js';
+import type { MoneyDto } from '../pricing/money.js';
+import { PROVIDER_SLUG } from '../pricing/provider-maps.js';
+import { toOfferDtos } from '../pricing/offers.js';
 import { deriveAlertState, toLifecycle, ALERT_MODE_SLUG } from './alert/service.js';
 import { canonicalPriceAmount } from '../pricing/canonical-price.js';
-
-/** Reverse map from the persisted provider enum to its public slug. */
-export const PROVIDER_SLUG: Record<WishlistListingRow['provider'], ProviderName> = {
-  YAKABOO: 'yakaboo',
-  BOOK_CLUB: 'book-club',
-  VIVAT: 'vivat',
-  BOOK_YE: 'book-ye',
-  BOOKCHEF: 'bookchef',
-  LABORATORY: 'laboratory',
-  KNIGOLAND: 'knigoland',
-  MEGAKNIGA: 'megakniga',
-};
-
-/** Reverse map from the persisted availability enum to its public slug. */
-const AVAILABILITY_SLUG: Record<WishlistListingRow['availability'], Availability> = {
-  IN_STOCK: 'in-stock',
-  OUT_OF_STOCK: 'out-of-stock',
-  UNKNOWN: 'unknown',
-};
-
-/** A listing counts as priced only when it carries a usable numeric amount. */
-function hasPrice(listing: WishlistListingRow): boolean {
-  return listing.priceAmount != null && Number.isFinite(listing.priceAmount);
-}
 
 /**
  * Map an array of wishlist rows to a wishlist response DTO.
@@ -47,17 +25,7 @@ function hasPrice(listing: WishlistListingRow): boolean {
  */
 export function toWishlistResponse(rows: WishlistRow[]): WishlistResponseDto {
   const items: WishlistItemDto[] = rows.map((row): WishlistItemDto => {
-    const providers: WishlistProviderDto[] = row.canonicalBook.listings
-      .filter(hasPrice)
-      .filter((l) => l.availability !== 'OUT_OF_STOCK')
-      .map((l) => ({
-        provider: PROVIDER_SLUG[l.provider],
-        price: { amount: l.priceAmount, currency: l.priceCurrency } satisfies MoneyDto,
-        availability: AVAILABILITY_SLUG[l.availability],
-        url: l.url,
-        lastSeenAt: l.lastSeenAt.toISOString(),
-      }))
-      .sort((a, b) => a.price.amount - b.price.amount);
+    const providers: WishlistProviderDto[] = toOfferDtos(row.canonicalBook.listings);
 
     const canonicalAmount = canonicalPriceAmount(row.canonicalBook.listings);
     const lowestPrice: MoneyDto | null =

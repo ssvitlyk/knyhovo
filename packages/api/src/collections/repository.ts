@@ -35,7 +35,7 @@ export interface CollectionBookRow {
   readonly listings: readonly CollectionListingRow[];
 }
 
-export type CollectionTypeRow = 'DYNAMIC' | 'EDITORIAL' | 'TAXONOMIC';
+type CollectionTypeRow = 'DYNAMIC' | 'EDITORIAL' | 'TAXONOMIC';
 
 export interface CollectionRow {
   readonly id: string;
@@ -155,14 +155,19 @@ export async function findAllActiveCollections(prisma: PrismaClient): Promise<Co
   });
 }
 
-/** Fetch ordered canonical book ids for a collection (by CollectionItem.sortOrder). */
+/**
+ * Fetch ordered canonical book ids for a collection (by CollectionItem.sortOrder),
+ * optionally capped to the first `limit` items.
+ */
 export async function findCollectionItemBookIds(
   prisma: PrismaClient,
   collectionId: string,
+  limit?: number,
 ): Promise<string[]> {
   const items = await prisma.collectionItem.findMany({
     where: { collectionId },
     orderBy: { sortOrder: 'asc' },
+    ...(limit !== undefined ? { take: limit } : {}),
     select: { canonicalBookId: true },
   });
   return items.map((i) => i.canonicalBookId);

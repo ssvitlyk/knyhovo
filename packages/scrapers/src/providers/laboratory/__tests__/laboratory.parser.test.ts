@@ -5,10 +5,10 @@ import {
   parseLaboratoryListing,
   parseLaboratoryProduct,
   parseLaboratorySitemap,
-  laboratoryPriceToKopecks,
 } from '../laboratory.parser.js';
-import { buildCoverUrl, buildProductUrl, isPaperBookType } from '../constants.js';
+import { buildCoverUrl } from '../constants.js';
 import { normalizeIsbn } from '../../../canonical/isbn.js';
+import { priceToKopecks } from '../../../lib/price.js';
 
 const FIXTURES_DIR = resolve(import.meta.dirname, '../__fixtures__');
 
@@ -40,47 +40,47 @@ function productHtml(opts: { product?: unknown; book?: unknown }): string {
 }
 
 // ──────────────────────────────────────────────────────────────
-// laboratoryPriceToKopecks — Money parsing
+// priceToKopecks — Money parsing
 // ──────────────────────────────────────────────────────────────
 
-describe('laboratoryPriceToKopecks', () => {
+describe('priceToKopecks', () => {
   it('parses a whole-number string like "990" to kopecks', () => {
-    expect(laboratoryPriceToKopecks('990')).toBe(99000);
+    expect(priceToKopecks('990')).toBe(99000);
   });
 
   it('parses a plain number to kopecks', () => {
-    expect(laboratoryPriceToKopecks(409)).toBe(40900);
+    expect(priceToKopecks(409)).toBe(40900);
   });
 
   it('rounds fractional hryvnias (number and string)', () => {
-    expect(laboratoryPriceToKopecks(199.5)).toBe(19950);
-    expect(laboratoryPriceToKopecks('199.50')).toBe(19950);
+    expect(priceToKopecks(199.5)).toBe(19950);
+    expect(priceToKopecks('199.50')).toBe(19950);
   });
 
   it('returns null for zero', () => {
-    expect(laboratoryPriceToKopecks(0)).toBeNull();
-    expect(laboratoryPriceToKopecks('0')).toBeNull();
+    expect(priceToKopecks(0)).toBeNull();
+    expect(priceToKopecks('0')).toBeNull();
   });
 
   it('returns null for negative values', () => {
-    expect(laboratoryPriceToKopecks(-100)).toBeNull();
-    expect(laboratoryPriceToKopecks('-5')).toBeNull();
+    expect(priceToKopecks(-100)).toBeNull();
+    expect(priceToKopecks('-5')).toBeNull();
   });
 
   it('returns null for NaN / Infinity', () => {
-    expect(laboratoryPriceToKopecks(NaN)).toBeNull();
-    expect(laboratoryPriceToKopecks(Infinity)).toBeNull();
+    expect(priceToKopecks(NaN)).toBeNull();
+    expect(priceToKopecks(Infinity)).toBeNull();
   });
 
   it('returns null for null / undefined', () => {
-    expect(laboratoryPriceToKopecks(null)).toBeNull();
-    expect(laboratoryPriceToKopecks(undefined)).toBeNull();
+    expect(priceToKopecks(null)).toBeNull();
+    expect(priceToKopecks(undefined)).toBeNull();
   });
 
   it('returns null for non-numeric / empty / object input', () => {
-    expect(laboratoryPriceToKopecks('abc')).toBeNull();
-    expect(laboratoryPriceToKopecks('')).toBeNull();
-    expect(laboratoryPriceToKopecks({})).toBeNull();
+    expect(priceToKopecks('abc')).toBeNull();
+    expect(priceToKopecks('')).toBeNull();
+    expect(priceToKopecks({})).toBeNull();
   });
 });
 
@@ -556,7 +556,7 @@ describe('parseLaboratoryProduct', () => {
 });
 
 // ──────────────────────────────────────────────────────────────
-// constants — buildCoverUrl / buildProductUrl / isPaperBookType
+// constants — buildCoverUrl
 // ──────────────────────────────────────────────────────────────
 
 describe('buildCoverUrl', () => {
@@ -586,33 +586,6 @@ describe('buildCoverUrl', () => {
     expect(buildCoverUrl('')).toBeNull();
     expect(buildCoverUrl(123)).toBeNull();
     expect(buildCoverUrl([])).toBeNull();
-  });
-});
-
-describe('buildProductUrl', () => {
-  it('builds an absolute URL from a slug', () => {
-    expect(buildProductUrl('pro-vijnu')).toBe('https://laboratory.ua/pro-vijnu');
-  });
-
-  it('trims leading slashes', () => {
-    expect(buildProductUrl('/pro-vijnu')).toBe('https://laboratory.ua/pro-vijnu');
-  });
-});
-
-describe('isPaperBookType', () => {
-  it('treats missing / blank format as paper', () => {
-    expect(isPaperBookType(undefined)).toBe(true);
-    expect(isPaperBookType('')).toBe(true);
-  });
-
-  it('treats Hardcover / Paperback as paper', () => {
-    expect(isPaperBookType('https://schema.org/Hardcover')).toBe(true);
-    expect(isPaperBookType('https://schema.org/Paperback')).toBe(true);
-  });
-
-  it('flags non-paper formats (EBook / Audiobook)', () => {
-    expect(isPaperBookType('https://schema.org/EBook')).toBe(false);
-    expect(isPaperBookType('https://schema.org/AudiobookFormat')).toBe(false);
   });
 });
 

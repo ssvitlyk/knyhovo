@@ -1,25 +1,15 @@
 'use client';
 
-import { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
-import type { CollectionBookDto } from '@/lib/api/types';
-import type { CardBadge } from '@/lib/collections/badges';
 import { Button } from '@/components/ds/Button';
 import { BookCard } from './BookCard';
-import { useWishlistHearts } from './useWishlistHearts';
+import { useWishlistHearts, type BookCardItem } from './useWishlistHearts';
 
-export interface GridItem {
-  readonly book: CollectionBookDto;
-  readonly badge: CardBadge | null;
-}
+export type GridItem = BookCardItem;
 
 /** The paginated `.cd-grid` of frozen `.bkc` cards (badges precomputed server-side). */
 export function BooksGrid({ items }: { readonly items: readonly GridItem[] }): React.JSX.Element {
-  const initialSavedIds = useMemo(
-    () => items.filter(({ book }) => book.isWishlisted).map(({ book }) => book.id),
-    [items],
-  );
-  const { saved, toggle } = useWishlistHearts(initialSavedIds);
+  const { saved, toggle } = useWishlistHearts(items);
 
   if (items.length === 0) {
     return <div className="cd-empty">У цій добірці поки немає книг.</div>;

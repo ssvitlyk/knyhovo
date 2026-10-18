@@ -2,14 +2,11 @@ import type { PrismaClient, ScrapeRunTrigger, Prisma } from '@prisma/client';
 import { ScrapeRunKind, ScrapeRunStatus } from '@prisma/client';
 import type { ScraperProvider, ScraperOptions, ProviderName } from '@knyhovo/shared';
 import { isRateLimited, planIncrementalFetch } from '@knyhovo/scrapers';
-import {
-  runScrapePipeline,
-  formatSummary,
-  mapProviderName,
-  createMetrics,
-  bindContext,
-} from '../pipeline/index.js';
-import type { ScrapeMetrics, Logger } from '../pipeline/index.js';
+import { runScrapePipeline } from '../pipeline/run-scrape.js';
+import { formatSummary, createMetrics } from '../pipeline/metrics.js';
+import { mapProviderName } from '../pipeline/persist-listing.js';
+import { bindContext, createConsoleLogger } from '../logging/logger.js';
+import type { ScrapeMetrics, Logger } from '../pipeline/types.js';
 import {
   loadKnownSourceLastmod,
   recordSitemapPresence,
@@ -17,9 +14,9 @@ import {
   sweepStaleState,
 } from '../pipeline/scrape-state.repository.js';
 import { startScrapeRun, finishScrapeRun, deriveRunStatus, startHeartbeat } from './scrape-run.repository.js';
+import { closeRunAsFailed } from './run-lifecycle.js';
 import { acquireRefreshLock, releaseRefreshLock } from './concurrency-guard.js';
 import type { StaleReapConfig } from './concurrency-guard.js';
-import type { ProductionMetricsRegistry } from '../metrics/index.js';
 import { INCREMENTAL_SITEMAP_PROVIDERS } from './incremental-providers.js';
 import { shouldAutoEscalateToFull, findPreviousFullSitemapTotal } from './auto-escalation.js';
 
@@ -31,12 +28,6 @@ export interface FullCatalogRefreshOptions {
   readonly logger?: Logger;
   /** Injectable clock for deterministic timestamps in tests. */
   readonly now?: () => Date;
-  /**
-   * Optional production metrics registry. When supplied, each finished provider
-   * run is folded into the metrics via `record(...)`. Recording is observation
-   * only — it never alters control flow or persistence.
-   */
-  readonly metrics?: ProductionMetricsRegistry;
   /**
    * Requested scrape mode (bookchef-incremental-scraping PRD §5). Only affects
    * providers in `INCREMENTAL_SITEMAP_PROVIDERS` — every other provider always
@@ -101,10 +92,7 @@ export interface FullCatalogRefreshResult {
 export async function runFullCatalogRefresh(
   opts: FullCatalogRefreshOptions,
 ): Promise<FullCatalogRefreshResult> {
-  const logger: Logger = opts.logger ?? {
-    info: (m: string) => console.log(m),
-    error: (m: string) => console.error(m),
-  };
+  const logger: Logger = opts.logger ?? createConsoleLogger();
   const clock = opts.now ?? ((): Date => new Date());
 
   // W10.6 concurrency guard: refuse to start when another FULL_CATALOG or
@@ -216,12 +204,7 @@ async function refreshProvider(
       const entries = result.sitemap.entries;
       const seenAt = finishedAt;
       await recordSitemapPresence(opts.prisma, dbProvider, entries, seenAt);
-      const vanishedFromSitemap = await countVanished(
-        opts.prisma,
-        dbProvider,
-        new Set(entries.map((e) => e.url)),
-        seenAt,
-      );
+      const vanishedFromSitemap = await countVanished(opts.prisma, dbProvider, seenAt);
 
       const shadowPlan = planIncrementalFetch(entries, knownSnapshot);
       const toFetch = effectiveMode === 'incremental' ? shadowPlan.toFetch.length : entries.length;
@@ -313,14 +296,6 @@ async function refreshProvider(
       providerLogger.error(`${provider.name}: rate-limited (HTTP 429/503) — stopped without retry`);
     }
 
-    opts.metrics?.record({
-      provider: result.provider,
-      status,
-      metrics: result.metrics,
-      rateLimited,
-      durationMs: finishedAt.getTime() - startedAt.getTime(),
-    });
-
     return {
       provider: result.provider,
       runId,
@@ -340,35 +315,19 @@ async function refreshProvider(
     const finishedAt = clock();
     // Best-effort: close an already-opened run as FAILED so it never dangles RUNNING.
     if (runId !== null && startedAt !== null) {
-      try {
-        // If the failure above was a dropped DB connection (e.g. after a long
-        // enrichment pass), this touch lets the pool re-establish it so the
-        // run row can still be closed instead of dangling RUNNING.
-        try {
-          await opts.prisma.$queryRaw`SELECT 1`;
-        } catch {
-          // Touch is best-effort only; finishScrapeRun below has its own guard.
-        }
-        await finishScrapeRun(opts.prisma, runId, {
-          startedAt,
-          finishedAt,
-          status: ScrapeRunStatus.FAILED,
-          metrics,
-          scrapeErrors: [message],
-        });
-      } catch (finishErr) {
-        const finishMsg = finishErr instanceof Error ? finishErr.message : String(finishErr);
-        logger.error(`Failed to finalize run ${runId} for ${provider.name}: ${finishMsg}`);
-      }
+      // If the failure above was a dropped DB connection (e.g. after a long
+      // enrichment pass), touching the connection first lets the pool
+      // re-establish it so the run row can still be closed.
+      await closeRunAsFailed(opts.prisma, logger, {
+        runId,
+        startedAt,
+        finishedAt,
+        provider: provider.name,
+        metrics,
+        message,
+        touchConnectionFirst: true,
+      });
     }
-
-    opts.metrics?.record({
-      provider: provider.name,
-      status: ScrapeRunStatus.FAILED,
-      metrics,
-      rateLimited,
-      ...(startedAt !== null ? { durationMs: finishedAt.getTime() - startedAt.getTime() } : {}),
-    });
 
     return {
       provider: provider.name,

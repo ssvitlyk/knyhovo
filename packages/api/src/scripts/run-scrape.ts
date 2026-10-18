@@ -16,16 +16,13 @@ import {
   browserManager,
 } from '@knyhovo/scrapers';
 import type { ScraperProvider, ProviderName } from '@knyhovo/shared';
-import { ScrapeRunTrigger } from '@prisma/client';
-import { createLogger } from '../pipeline/index.js';
+import { createLogger } from '../logging/logger.js';
 import { runProductionScrape } from '../refresh/production-runner.js';
 import {
   parseScraperOptionsFromEnv,
   getScrapeStateRetentionDays,
-  getHeartbeatIntervalSeconds,
-  getHeartbeatTimeoutMinutes,
-  getLegacyStaleTimeoutHours,
 } from './scrape-env.js';
+import { parseTriggeredBy, getHeartbeatIntervalMs, getStaleReapConfig } from './cli-common.js';
 import { isGenreAssignAfterScrapeEnabled } from './genre-assign-env.js';
 import { parseModeArg, parseProviderArg, parseForceProviderArg } from './run-scrape-args.js';
 import { getDisabledProviders } from '../config/provider-filter.js';
@@ -44,21 +41,6 @@ const providers: ScraperProvider[] = [
   new BookClubScraper(),
   new MegaknigaScraper(),
 ];
-
-/**
- * Parse the SCRAPE_TRIGGERED_BY environment variable into a ScrapeRunTrigger
- * enum value. Defaults to MANUAL when the value is absent or unrecognised.
- */
-function parseTriggeredBy(val: string | undefined): ScrapeRunTrigger {
-  switch (val?.toUpperCase()) {
-    case 'CRON':
-      return ScrapeRunTrigger.CRON;
-    case 'SYSTEM':
-      return ScrapeRunTrigger.SYSTEM;
-    default:
-      return ScrapeRunTrigger.MANUAL;
-  }
-}
 
 async function main(): Promise<void> {
   const logger = createLogger();
@@ -103,11 +85,8 @@ async function main(): Promise<void> {
   const disabledProvidersList = Array.from(disabled);
 
   const retentionDays = getScrapeStateRetentionDays(process.env);
-  const heartbeatIntervalMs = getHeartbeatIntervalSeconds(process.env) * 1000;
-  const staleReap = {
-    heartbeatTimeoutMs: getHeartbeatTimeoutMinutes(process.env) * 60_000,
-    legacyStartedAtTimeoutMs: getLegacyStaleTimeoutHours(process.env) * 3_600_000,
-  };
+  const heartbeatIntervalMs = getHeartbeatIntervalMs(process.env);
+  const staleReap = getStaleReapConfig(process.env);
   const startedAt = Date.now();
   logger.info(
     `run-scrape starting at ${new Date(startedAt).toISOString()} (requestedProvider=${requestedProvider}, forced=${forced}, ` +

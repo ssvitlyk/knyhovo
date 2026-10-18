@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseModeArg, parseProviderArg, parseForceProviderArg } from '../run-scrape-args.js';
+import { parseModeArg, parseProviderArg, parseForceProviderArg, parseProviderFlag } from '../run-scrape-args.js';
 
 describe('parseModeArg', () => {
   it("defaults to 'full' when --mode is absent", () => {
@@ -76,5 +76,20 @@ describe('parseForceProviderArg', () => {
     const argv = ['--provider=yakaboo', '--force-provider=bookchef'];
     expect(parseProviderArg(argv, validNames)).toBe('yakaboo');
     expect(parseForceProviderArg(argv, validNames)).toBe('bookchef');
+  });
+});
+
+describe('parseProviderFlag', () => {
+  const names = ['a', 'b'];
+
+  it('returns undefined when the flag is absent', () => {
+    expect(parseProviderFlag(['--provider=a'], '--force-provider', names)).toBeUndefined();
+  });
+
+  it('returns a valid value and reports the flag name on error', () => {
+    expect(parseProviderFlag(['--force-provider=b'], '--force-provider', names)).toBe('b');
+    expect(() => parseProviderFlag(['--force-provider=z'], '--force-provider', names)).toThrow(
+      "Invalid --force-provider value 'z' — expected one of: a, b",
+    );
   });
 });

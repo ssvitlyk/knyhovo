@@ -2,8 +2,16 @@
 
 import { useCallback, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import type { CollectionBookDto } from '@/lib/api/types';
+import type { CardBadge } from '@/lib/collections/badges';
 import { addToWishlist, removeFromWishlist, WishlistError } from '@/lib/api/wishlist';
 import { useLoginModal } from '@/components/auth/LoginModalProvider';
+
+/** A card-grid/shelf item: the card data + its precomputed (serializable) badge. */
+export interface BookCardItem {
+  readonly book: CollectionBookDto;
+  readonly badge: CardBadge | null;
+}
 
 export interface WishlistHearts {
   readonly saved: ReadonlySet<string>;
@@ -14,11 +22,13 @@ export interface WishlistHearts {
  * Quick-wishlist state for the collections card hearts (`.bkc__wish`).
  * Optimistic toggle backed by the real wishlist API; a 401 reverts the heart
  * and opens the app-wide login modal with the current path as returnTo.
- * Seeded from each book's `isWishlisted` (server-decorated per-user; always
- * empty for a guest request).
+ * Seeded once (on mount) from each item's `book.isWishlisted` (server-decorated
+ * per-user; always empty for a guest request).
  */
-export function useWishlistHearts(initialSavedIds: readonly string[]): WishlistHearts {
-  const [saved, setSaved] = useState<ReadonlySet<string>>(() => new Set(initialSavedIds));
+export function useWishlistHearts(items: readonly BookCardItem[]): WishlistHearts {
+  const [saved, setSaved] = useState<ReadonlySet<string>>(
+    () => new Set(items.filter(({ book }) => book.isWishlisted).map(({ book }) => book.id)),
+  );
   const { openLogin } = useLoginModal();
   const pathname = usePathname();
 

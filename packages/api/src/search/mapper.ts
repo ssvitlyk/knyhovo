@@ -1,24 +1,8 @@
-import type { ProviderName } from '@knyhovo/shared';
 import { selectCoverUrl } from '../discovery/cover-selection.js';
-import type { CanonicalBookRow, ListingRow } from './repository.js';
+import type { CanonicalBookRow } from './repository.js';
+import { PROVIDER_SLUG } from '../pricing/provider-maps.js';
+import { eligibleListings } from '../pricing/offers.js';
 import type { ProviderOfferDto, SearchItemDto } from './dto.js';
-
-/** Reverse map from the persisted provider enum to its public slug. */
-const PROVIDER_SLUG: Record<ListingRow['provider'], ProviderName> = {
-  YAKABOO: 'yakaboo',
-  BOOK_CLUB: 'book-club',
-  VIVAT: 'vivat',
-  BOOK_YE: 'book-ye',
-  BOOKCHEF: 'bookchef',
-  LABORATORY: 'laboratory',
-  KNIGOLAND: 'knigoland',
-  MEGAKNIGA: 'megakniga',
-};
-
-/** A listing counts as priced only when it carries a usable numeric amount. */
-function hasPrice(listing: ListingRow): boolean {
-  return listing.priceAmount != null && Number.isFinite(listing.priceAmount);
-}
 
 /**
  * Map a canonical book row to a search item DTO.
@@ -30,9 +14,7 @@ function hasPrice(listing: ListingRow): boolean {
  *   it from the results.
  */
 export function toSearchItem(row: CanonicalBookRow): SearchItemDto | null {
-  const eligible = row.listings
-    .filter(hasPrice)
-    .filter((listing) => listing.availability !== 'OUT_OF_STOCK');
+  const eligible = eligibleListings(row.listings);
 
   const providers: ProviderOfferDto[] = eligible
     .map((listing) => ({

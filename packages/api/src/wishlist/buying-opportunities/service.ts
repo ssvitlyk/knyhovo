@@ -4,7 +4,7 @@ import { evaluateBuyingOpportunities } from './engine.js';
 import type { BuyingOpportunitiesResponseDto } from './dto.js';
 
 /** Dependency injection interface for clock-dependent operations. */
-export interface BuyingOpportunitiesDeps {
+interface BuyingOpportunitiesDeps {
   now(): Date;
 }
 

@@ -1,6 +1,5 @@
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
-import { me } from '@/lib/api/auth';
+import { getCookieHeader, getSessionUser } from '@/lib/api/server';
 import { isSafeReturnTo, safeReturnTo } from '@/lib/returnTo';
 import { LoginForm } from '@/components/auth/LoginForm';
 
@@ -21,10 +20,10 @@ export default async function LoginPage({
   // Best-effort: if already authenticated, skip the form. Any error (API down,
   // 500) is treated as "not logged in" so the login form still renders.
   // NOTE: redirect() throws NEXT_REDIRECT, so it must run outside the try/catch.
-  const cookie = (await cookies()).toString();
+  const cookie = await getCookieHeader();
   let user = null;
   try {
-    user = await me(cookie);
+    user = await getSessionUser(cookie);
   } catch {
     user = null;
   }

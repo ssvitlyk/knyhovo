@@ -55,64 +55,44 @@ export async function persistRefreshedListing(
       return { kind: 'missing-listing' };
     }
 
-    if (refreshed.priceAmount != null) {
-      // Price is known — update price + availability + lastSeenAt.
-      await tx.providerListing.update({
-        where: { id: existing.id },
-        data: {
-          priceAmount: refreshed.priceAmount,
-          availability: refreshed.availability,
-          lastSeenAt: now,
-        },
-      });
+    // With a known price: update price + availability + lastSeenAt. Without
+    // one: update availability + lastSeenAt only and keep the existing price.
+    const newPrice = refreshed.priceAmount;
+    const hasNewPrice = newPrice != null;
 
-      const { created } = await recordPriceChange(tx as Parameters<typeof recordPriceChange>[0], {
-        providerListingId: existing.id,
-        previous: {
-          priceAmount: existing.priceAmount,
-          priceCurrency: existing.priceCurrency,
-          availability: existing.availability,
-        },
-        next: {
-          priceAmount: refreshed.priceAmount,
-          priceCurrency: existing.priceCurrency,
-          availability: refreshed.availability,
-        },
-        recordedAt: now,
-      });
+    await tx.providerListing.update({
+      where: { id: existing.id },
+      data: {
+        ...(hasNewPrice ? { priceAmount: newPrice } : {}),
+        availability: refreshed.availability,
+        lastSeenAt: now,
+      },
+    });
 
+    // A snapshot is recorded only if price or availability changed
+    // (shouldCreateSnapshot in the service decides).
+    const { created } = await recordPriceChange(tx, {
+      providerListingId: existing.id,
+      previous: {
+        priceAmount: existing.priceAmount,
+        priceCurrency: existing.priceCurrency,
+        availability: existing.availability,
+      },
+      next: {
+        priceAmount: hasNewPrice ? newPrice : existing.priceAmount,
+        priceCurrency: existing.priceCurrency,
+        availability: refreshed.availability,
+      },
+      recordedAt: now,
+    });
+
+    if (hasNewPrice) {
       return {
         kind: 'price-updated',
         priceHistoryCreated: created,
         availabilityChanged: existing.availability !== refreshed.availability,
       };
-    } else {
-      // No price available — update availability + lastSeenAt; keep existing price.
-      await tx.providerListing.update({
-        where: { id: existing.id },
-        data: {
-          availability: refreshed.availability,
-          lastSeenAt: now,
-        },
-      });
-
-      // Record snapshot only when availability changed (shouldCreateSnapshot in service handles this).
-      const { created } = await recordPriceChange(tx as Parameters<typeof recordPriceChange>[0], {
-        providerListingId: existing.id,
-        previous: {
-          priceAmount: existing.priceAmount,
-          priceCurrency: existing.priceCurrency,
-          availability: existing.availability,
-        },
-        next: {
-          priceAmount: existing.priceAmount,
-          priceCurrency: existing.priceCurrency,
-          availability: refreshed.availability,
-        },
-        recordedAt: now,
-      });
-
-      return { kind: 'availability-updated', priceHistoryCreated: created };
     }
+    return { kind: 'availability-updated', priceHistoryCreated: created };
   });
 }

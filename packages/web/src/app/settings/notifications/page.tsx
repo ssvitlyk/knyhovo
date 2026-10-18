@@ -1,4 +1,4 @@
-import { cookies } from 'next/headers';
+import { getCookieHeader } from '@/lib/api/server';
 import { getNotificationPreferences } from '@/lib/api/notifications';
 import { NotificationsPanel } from '@/components/settings/NotificationsPanel';
 import { SettingsAuthRequired } from '@/components/settings/SettingsAuthRequired';
@@ -9,7 +9,7 @@ import { SettingsAuthRequired } from '@/components/settings/SettingsAuthRequired
  * auth-required notice on 401.
  */
 export default async function NotificationsPage(): Promise<React.JSX.Element> {
-  const cookie = (await cookies()).toString();
+  const cookie = await getCookieHeader();
   const result = await getNotificationPreferences({ cookie });
 
   if ('unauthorized' in result) {

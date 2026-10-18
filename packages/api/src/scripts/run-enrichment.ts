@@ -1,4 +1,4 @@
-import { ScrapeRunKind, ScrapeRunStatus, ScrapeRunTrigger } from '@prisma/client';
+import { ScrapeRunKind, ScrapeRunStatus } from '@prisma/client';
 import type { ProviderName } from '@knyhovo/shared';
 import { prisma } from '../db.js';
 import {
@@ -20,9 +20,8 @@ import {
   type EnrichmentExitReason,
 } from '../enrichment/lifecycle.js';
 import { ENRICHMENT_PROVIDERS } from '../enrichment/providers.js';
-import { createLogger } from '../pipeline/index.js';
+import { createLogger } from '../logging/logger.js';
 import { mapProviderName } from '../pipeline/persist-listing.js';
-import type { StaleReapConfig } from '../refresh/concurrency-guard.js';
 import {
   findRecentScrapeRuns,
   finishScrapeRun,
@@ -34,10 +33,8 @@ import {
   getEnrichCircuitBreakerThreshold,
   getEnrichDelayMs,
   getEnrichMaxNoProgressRestarts,
-  getHeartbeatIntervalSeconds,
-  getHeartbeatTimeoutMinutes,
-  getLegacyStaleTimeoutHours,
 } from './scrape-env.js';
+import { parseTriggeredBy, getHeartbeatIntervalMs, getStaleReapConfig } from './cli-common.js';
 
 /**
  * `scrape:enrich` CLI entrypoint (megakniga-resumable-enrichment PRD §4.9, PR1).
@@ -82,21 +79,6 @@ function asEnrichableProvider(name: string): ProviderName | null {
     if (key === name) return key;
   }
   return null;
-}
-
-/**
- * Same SCRAPE_TRIGGERED_BY convention as run-scrape.ts (kept local: that file
- * is a script entrypoint with top-level execution, not an importable module).
- */
-function parseTriggeredBy(val: string | undefined): ScrapeRunTrigger {
-  switch (val?.toUpperCase()) {
-    case 'CRON':
-      return ScrapeRunTrigger.CRON;
-    case 'SYSTEM':
-      return ScrapeRunTrigger.SYSTEM;
-    default:
-      return ScrapeRunTrigger.MANUAL;
-  }
 }
 
 async function main(): Promise<void> {
@@ -186,10 +168,7 @@ async function main(): Promise<void> {
   const maxNoProgressRestarts = getEnrichMaxNoProgressRestarts(process.env);
 
   // Same env-driven staleness thresholds as run-scrape.ts / run-wishlist-refresh.ts.
-  const staleReap: StaleReapConfig = {
-    heartbeatTimeoutMs: getHeartbeatTimeoutMinutes(process.env) * 60_000,
-    legacyStartedAtTimeoutMs: getLegacyStaleTimeoutHours(process.env) * 3_600_000,
-  };
+  const staleReap = getStaleReapConfig(process.env);
 
   // Restart-loop guard (PRD §4.7 layer 2): if the last N runs each made zero
   // progress, a resumable-but-repeatedly-failing cause is looping under
@@ -295,7 +274,7 @@ async function main(): Promise<void> {
   // Liveness signal (stale-scrape-recovery reuse, PRD §4.4): without it a
   // SIGKILL'd job would look alive forever and could never be auto-reaped.
   const stopHeartbeat = startHeartbeat(prisma, run.id, {
-    intervalMs: getHeartbeatIntervalSeconds(process.env) * 1000,
+    intervalMs: getHeartbeatIntervalMs(process.env),
   });
 
   // Graceful shutdown (PRD §4.7): both signals abort the engine identically

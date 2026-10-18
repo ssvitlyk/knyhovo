@@ -7,16 +7,11 @@ import {
   buildCoverUrl,
 } from './constants.js';
 import type { VivatSingleProduct } from './constants.js';
-import type { ParsedProductState } from '../single-product.js';
+import type { ParsedProductState, CatalogPageResult } from '../types.js';
 import type { ExtractedListingMetadata, ExtractedProductDetails } from '../../lib/enrich-product-details.js';
 import { sanitizeMetadataValue, parsePublicationYear } from '../../lib/sanitize-metadata.js';
-
-export interface ParseResult {
-  readonly listings: RawProviderListing[];
-  readonly errors: string[];
-  /** True when the page contained at least one product (paginator should fetch next page). */
-  readonly hasNextPage: boolean;
-}
+import { toMoney } from '../../lib/price.js';
+import { errMsg } from '../../lib/errors.js';
 
 /** Shape of a single product entry inside Vivat's `__NEXT_DATA__` payload. */
 interface VivatProduct {
@@ -47,10 +42,6 @@ export function vivatPriceToKopecks(value: unknown): number | null {
     return null;
   }
   return Math.round(value * 100);
-}
-
-function toMoney(kopecks: number): Money {
-  return { amount: kopecks, currency: 'UAH' };
 }
 
 /**
@@ -102,7 +93,7 @@ function readProducts(html: string): { products: VivatProduct[] | null; error: s
   } catch (err) {
     return {
       products: null,
-      error: `unparseable __NEXT_DATA__ JSON — ${err instanceof Error ? err.message : String(err)}`,
+      error: `unparseable __NEXT_DATA__ JSON — ${errMsg(err)}`,
     };
   }
 }
@@ -115,7 +106,7 @@ function readProducts(html: string): { products: VivatProduct[] | null; error: s
  * ISBN is not present on the catalog payload (only on individual product
  * pages), so all returned listings have isbn: null — same as Yakaboo.
  */
-export function parseVivatPage(html: string): ParseResult {
+export function parseVivatPage(html: string): CatalogPageResult {
   const listings: RawProviderListing[] = [];
   const errors: string[] = [];
 
@@ -163,7 +154,7 @@ export function parseVivatPage(html: string): ParseResult {
       });
     } catch (err) {
       errors.push(
-        `Product ${index}: unexpected error — ${err instanceof Error ? err.message : String(err)}`,
+        `Product ${index}: unexpected error — ${errMsg(err)}`,
       );
     }
   });
@@ -344,7 +335,7 @@ export function parseVivatProduct(html: string): ParsedProductState {
     vivatPriceToKopecks(product.price?.promotion) ??
     vivatPriceToKopecks(product.price?.retail) ??
     vivatPriceToKopecks(product.price?.priceRebate);
-  const price: Money | null = priceKopecks !== null ? { amount: priceKopecks, currency: 'UAH' } : null;
+  const price: Money | null = priceKopecks !== null ? toMoney(priceKopecks) : null;
 
   if (!price) return { price: null, availability: 'out-of-stock' };
 

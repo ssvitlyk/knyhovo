@@ -1,5 +1,6 @@
 import type { Availability } from '@knyhovo/shared';
 import type { BookDetailsDto } from '@/lib/api/types';
+import { toMajorUnits } from '@/lib/format';
 
 /**
  * SEO helpers for the Book Details page. Pure functions over the existing
@@ -10,11 +11,6 @@ import type { BookDetailsDto } from '@/lib/api/types';
  */
 
 const META_DESCRIPTION_MAX = 155;
-
-/** Convert an integer kopiyky amount to major currency units (e.g. 34900 → 349). */
-function toMajorUnits(amount: number): number {
-  return Number((amount / 100).toFixed(2));
-}
 
 /** Map the internal availability to a schema.org availability URL. */
 function schemaAvailability(availability: Availability): string {

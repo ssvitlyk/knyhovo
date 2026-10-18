@@ -1,9 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { PrismaClient } from '@prisma/client';
 import type { AuthDeps } from '../auth/service.js';
-import { resolveSessionUser } from '../auth/service.js';
-import { SESSION_COOKIE } from '../auth/cookie.js';
-import { UnauthorizedError } from '../errors.js';
+import { requireUser } from '../auth/guard.js';
 import { parseAddWishlistBody, parseWishlistParams } from './schema.js';
 import { listWishlist, addToWishlist, removeFromWishlist, isBookInWishlist } from './service.js';
 
@@ -28,15 +26,13 @@ export function registerWishlistRoute(
   authDeps: AuthDeps,
 ): void {
   app.get('/api/wishlist', async (request, reply) => {
-    const user = await resolveSessionUser(authDeps, request.cookies?.[SESSION_COOKIE] ?? null);
-    if (!user) throw new UnauthorizedError();
+    const user = await requireUser(authDeps, request);
 
     await reply.send(await listWishlist(prisma, user.id));
   });
 
   app.post('/api/wishlist', async (request, reply) => {
-    const user = await resolveSessionUser(authDeps, request.cookies?.[SESSION_COOKIE] ?? null);
-    if (!user) throw new UnauthorizedError();
+    const user = await requireUser(authDeps, request);
 
     const { bookId } = parseAddWishlistBody(request.body);
     await addToWishlist(prisma, user.id, bookId);
@@ -44,16 +40,14 @@ export function registerWishlistRoute(
   });
 
   app.get('/api/wishlist/status/:bookId', async (request, reply) => {
-    const user = await resolveSessionUser(authDeps, request.cookies?.[SESSION_COOKIE] ?? null);
-    if (!user) throw new UnauthorizedError();
+    const user = await requireUser(authDeps, request);
 
     const { bookId } = parseWishlistParams(request.params);
     await reply.send({ inWishlist: await isBookInWishlist(prisma, user.id, bookId) });
   });
 
   app.delete('/api/wishlist/:bookId', async (request, reply) => {
-    const user = await resolveSessionUser(authDeps, request.cookies?.[SESSION_COOKIE] ?? null);
-    if (!user) throw new UnauthorizedError();
+    const user = await requireUser(authDeps, request);
 
     const { bookId } = parseWishlistParams(request.params);
     await removeFromWishlist(prisma, user.id, bookId);

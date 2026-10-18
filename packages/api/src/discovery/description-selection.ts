@@ -1,4 +1,5 @@
 import type { ProviderName } from '@knyhovo/shared';
+import { PROVIDER_PRIORITY, orderByProviderThenPrice } from './ordering.js';
 
 /**
  * Discovery description-selection (W9a F2).
@@ -16,7 +17,7 @@ import type { ProviderName } from '@knyhovo/shared';
  * Lower index wins. Providers absent from this list sort last.
  * Same order as cover selection so the two features stay consistent.
  */
-export const DESCRIPTION_PROVIDER_PRIORITY: readonly ProviderName[] = ['yakaboo', 'vivat', 'book-ye'];
+export const DESCRIPTION_PROVIDER_PRIORITY: readonly ProviderName[] = PROVIDER_PRIORITY;
 
 /** A single listing's contribution to description selection. */
 export interface DescriptionCandidate {
@@ -31,19 +32,8 @@ export interface DescriptionCandidate {
   readonly priceAmount?: number | null;
 }
 
-function priorityIndex(provider: ProviderName): number {
-  const index = DESCRIPTION_PROVIDER_PRIORITY.indexOf(provider);
-  return index === -1 ? DESCRIPTION_PROVIDER_PRIORITY.length : index;
-}
-
 function hasDescription(text: string | null | undefined): text is string {
   return typeof text === 'string' && text.trim() !== '';
-}
-
-function priceOrLast(amount: number | null | undefined): number {
-  return typeof amount === 'number' && Number.isFinite(amount)
-    ? amount
-    : Number.POSITIVE_INFINITY;
 }
 
 /**
@@ -58,11 +48,7 @@ function priceOrLast(amount: number | null | undefined): number {
  * Book Details passes ALL listings (in-stock and out-of-stock alike).
  */
 export function selectDescription(candidates: readonly DescriptionCandidate[]): string | null {
-  const ordered = [...candidates].sort((a, b) => {
-    const byPriority = priorityIndex(a.provider) - priorityIndex(b.provider);
-    if (byPriority !== 0) return byPriority;
-    return priceOrLast(a.priceAmount) - priceOrLast(b.priceAmount);
-  });
+  const ordered = orderByProviderThenPrice(candidates);
 
   for (const candidate of ordered) {
     if (hasDescription(candidate.description)) {

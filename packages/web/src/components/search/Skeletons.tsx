@@ -1,7 +1,7 @@
 import { SKELETON_CARD_COUNT } from './constants';
 
 /** BookCard skeleton — mirrors the full card anatomy (frozen, warm surfaces). */
-export function SkeletonCard(): React.JSX.Element {
+function SkeletonCard(): React.JSX.Element {
   return (
     <div className="kn-skeleton" aria-hidden="true">
       <div className="kn-skeleton__cover" />

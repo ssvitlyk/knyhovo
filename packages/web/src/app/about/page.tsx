@@ -1,6 +1,5 @@
 import type { Metadata } from 'next';
-import { cookies } from 'next/headers';
-import { me } from '@/lib/api/auth';
+import { getCookieHeader, getSessionUser } from '@/lib/api/server';
 import { AboutHero } from '@/components/about/AboutHero';
 import { HowItWorks } from '@/components/about/HowItWorks';
 import { WhyKnyhovo } from '@/components/about/WhyKnyhovo';
@@ -25,8 +24,8 @@ export default async function AboutPage(): Promise<React.JSX.Element> {
   // cookies — every route here is already server-rendered per request.
   let authenticated = false;
   try {
-    const cookie = (await cookies()).toString();
-    authenticated = (await me(cookie)) != null;
+    const cookie = await getCookieHeader();
+    authenticated = (await getSessionUser(cookie)) != null;
   } catch {
     authenticated = false;
   }

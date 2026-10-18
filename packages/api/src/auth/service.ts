@@ -58,12 +58,15 @@ function assertEmailAllowed(config: AuthConfig, email: string): void {
 }
 
 /**
- * Request a one-time login code for the given email address.
- * Creates the user record if it does not yet exist, then sends the code via
- * the injected mailer. Enforces a rate limit on code requests per time window.
+ * Shared start of every login request: allow-list check, user upsert, stale
+ * session housekeeping. Returns the user, the pinned `now` and the start of the
+ * rate-limit window (the caller counts its own table within it).
  */
-export async function requestCode(deps: AuthDeps, email: string): Promise<void> {
-  const { prisma, mailer, config, now, generateCode: genCode } = deps;
+async function beginLoginRequest(
+  deps: AuthDeps,
+  email: string,
+): Promise<{ userId: string; currentTime: Date; windowStart: Date }> {
+  const { prisma, config, now } = deps;
   const currentTime = now();
 
   assertEmailAllowed(config, email);
@@ -73,17 +76,46 @@ export async function requestCode(deps: AuthDeps, email: string): Promise<void> 
   // Housekeeping: remove stale sessions in the background.
   await deleteExpiredSessions(prisma, currentTime);
 
-  // Rate-limit: count ALL codes (including consumed/expired) in the window.
-  const windowStart = new Date(currentTime.getTime() - config.rateWindowMs);
-  const codeCount = await countLoginCodesInWindow(prisma, user.id, windowStart);
-  if (codeCount >= config.maxCodesPerWindow) {
+  return {
+    userId: user.id,
+    currentTime,
+    windowStart: new Date(currentTime.getTime() - config.rateWindowMs),
+  };
+}
+
+/** Throw the shared rate-limit error when `count` has reached the per-window cap. */
+function assertWithinRateLimit(config: AuthConfig, count: number): void {
+  if (count >= config.maxCodesPerWindow) {
     throw new RateLimitedError('Too many login attempts. Please try again later.');
   }
+}
+
+/** Shared tail of every successful verification: mint and store a new session; returns its token. */
+async function issueSession(deps: AuthDeps, userId: string, currentTime: Date): Promise<string> {
+  const { prisma, config, generateToken } = deps;
+  const sessionToken = generateToken();
+  const tokenHash = hashToken(sessionToken);
+  const sessionExpiresAt = new Date(currentTime.getTime() + config.sessionTtlMs);
+  await createSession(prisma, { userId, tokenHash, expiresAt: sessionExpiresAt });
+  return sessionToken;
+}
+
+/**
+ * Request a one-time login code for the given email address.
+ * Creates the user record if it does not yet exist, then sends the code via
+ * the injected mailer. Enforces a rate limit on code requests per time window.
+ */
+export async function requestCode(deps: AuthDeps, email: string): Promise<void> {
+  const { prisma, mailer, config, generateCode: genCode } = deps;
+  const { userId, currentTime, windowStart } = await beginLoginRequest(deps, email);
+
+  // Rate-limit: count ALL codes (including consumed/expired) in the window.
+  assertWithinRateLimit(config, await countLoginCodesInWindow(prisma, userId, windowStart));
 
   const code = genCode();
   const expiresAt = new Date(currentTime.getTime() + config.codeTtlMs);
   await createLoginCode(prisma, {
-    userId: user.id,
+    userId,
     codeHash: hashCode(code, config.secret),
     expiresAt,
   });
@@ -104,27 +136,16 @@ export async function requestMagicLink(
   email: string,
   returnTo: string | null,
 ): Promise<void> {
-  const { prisma, mailer, config, now, generateToken: genToken } = deps;
-  const currentTime = now();
-
-  assertEmailAllowed(config, email);
-
-  const user = await upsertUserByEmail(prisma, email);
-
-  // Housekeeping: remove stale sessions in the background.
-  await deleteExpiredSessions(prisma, currentTime);
+  const { prisma, mailer, config, generateToken: genToken } = deps;
+  const { userId, currentTime, windowStart } = await beginLoginRequest(deps, email);
 
   // Rate-limit: count ALL tokens (including consumed/expired) in the window.
-  const windowStart = new Date(currentTime.getTime() - config.rateWindowMs);
-  const tokenCount = await countMagicLinkTokensInWindow(prisma, user.id, windowStart);
-  if (tokenCount >= config.maxCodesPerWindow) {
-    throw new RateLimitedError('Too many login attempts. Please try again later.');
-  }
+  assertWithinRateLimit(config, await countMagicLinkTokensInWindow(prisma, userId, windowStart));
 
   const token = genToken();
   const expiresAt = new Date(currentTime.getTime() + config.magicLinkTtlMs);
   await createMagicLinkToken(prisma, {
-    userId: user.id,
+    userId,
     tokenHash: hashToken(token),
     returnTo: sanitizeReturnTo(returnTo),
     expiresAt,
@@ -148,7 +169,7 @@ export async function verifyMagicLink(
   user: { id: string; email: string; createdAt: Date };
   returnTo: string | null;
 }> {
-  const { prisma, config, now, generateToken: genToken } = deps;
+  const { prisma, now } = deps;
   const currentTime = now();
 
   const record = await findMagicLinkTokenByHash(prisma, hashToken(token));
@@ -161,10 +182,7 @@ export async function verifyMagicLink(
   await invalidateOtherMagicLinkTokens(prisma, record.userId, record.id, currentTime);
 
   // Issue a new session (same cookie/session mechanism as the OTP flow).
-  const sessionToken = genToken();
-  const tokenHash = hashToken(sessionToken);
-  const sessionExpiresAt = new Date(currentTime.getTime() + config.sessionTtlMs);
-  await createSession(prisma, { userId: record.userId, tokenHash, expiresAt: sessionExpiresAt });
+  const sessionToken = await issueSession(deps, record.userId, currentTime);
 
   return {
     token: sessionToken,
@@ -183,7 +201,7 @@ export async function verifyCode(
   email: string,
   code: string,
 ): Promise<{ token: string; user: { id: string; email: string; createdAt: Date } }> {
-  const { prisma, config, now, generateToken: genToken } = deps;
+  const { prisma, config, now } = deps;
   const currentTime = now();
 
   const user = await findUserByEmail(prisma, email);
@@ -214,10 +232,7 @@ export async function verifyCode(
   await invalidateOtherLoginCodes(prisma, user.id, loginCode.id, currentTime);
 
   // Issue a new session.
-  const token = genToken();
-  const tokenHash = hashToken(token);
-  const sessionExpiresAt = new Date(currentTime.getTime() + config.sessionTtlMs);
-  await createSession(prisma, { userId: user.id, tokenHash, expiresAt: sessionExpiresAt });
+  const token = await issueSession(deps, user.id, currentTime);
 
   return { token, user };
 }

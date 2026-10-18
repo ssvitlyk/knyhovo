@@ -1,7 +1,7 @@
 import { writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { prisma } from '../db.js';
-import { createLogger } from '../pipeline/index.js';
+import { createLogger } from '../logging/logger.js';
 import {
   formatBackfillSummary,
   formatBatchProgress,

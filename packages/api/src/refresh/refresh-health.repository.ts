@@ -1,20 +1,30 @@
-import type { Provider, PrismaClient, ScrapeRun } from '@prisma/client';
+import type { Provider, PrismaClient } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import type { ProviderName } from '@knyhovo/shared';
-import type { ProviderListingFreshness } from './refresh-health.js';
+import type { HealthRun, ProviderListingFreshness } from './refresh-health.js';
 import { mapProviderName, unmapProviderName } from '../pipeline/persist-listing.js';
 
 /**
- * Fetch all scrape runs, optionally filtered to those started at or after
- * `since`, ordered newest-first.
+ * Fetch every scrape run (only the columns the health derivation reads),
+ * ordered newest-first.
  */
-export async function fetchRecentRuns(
-  prisma: PrismaClient,
-  params?: { since?: Date },
-): Promise<ScrapeRun[]> {
+export async function fetchRecentRuns(prisma: PrismaClient): Promise<HealthRun[]> {
   return prisma.scrapeRun.findMany({
-    where: params?.since ? { startedAt: { gte: params.since } } : {},
     orderBy: { startedAt: 'desc' },
+    select: {
+      provider: true,
+      kind: true,
+      status: true,
+      startedAt: true,
+      finishedAt: true,
+      durationMs: true,
+      itemsFound: true,
+      itemsUpdated: true,
+      priceChanges: true,
+      availabilityChanges: true,
+      errorsCount: true,
+      metadata: true,
+    },
   });
 }
 

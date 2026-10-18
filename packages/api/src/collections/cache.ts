@@ -3,7 +3,11 @@
  *
  * There is no shared cache table/layer for collections yet — this is a
  * process-local `Map` with a TTL per key. It is intentionally simple:
- * no eviction beyond lazy expiry-on-read, no cross-process invalidation.
+ * no cross-process invalidation. The store is bounded to
+ * {@link DEFAULT_MAX_ENTRIES} entries with least-recently-used eviction —
+ * some keys embed user-controlled query params (`books:${slug}:${params}`), so
+ * an unbounded map would be a memory-exhaustion vector. Eviction only drops
+ * stored values; in-flight builds and the semaphore are unaffected.
  * Good enough for the read-mostly, short-TTL collections endpoints.
  *
  * Resilience notes (fix/collections-cache-stampede):
@@ -23,7 +27,37 @@ interface CacheEntry<T> {
   readonly expiresAt: number;
 }
 
+/** Default cap on stored entries (LRU-evicted beyond this). */
+export const DEFAULT_MAX_ENTRIES = 1000;
+
+let maxEntries = DEFAULT_MAX_ENTRIES;
+
+/**
+ * Insertion-ordered: the first key is the least recently used (hits and writes
+ * re-insert their key at the end).
+ */
 const store = new Map<string, CacheEntry<unknown>>();
+
+/** Store `value` for `key` as most-recently-used, evicting the oldest entries beyond the cap. */
+function putEntry(key: string, value: unknown, ttlMs: number): void {
+  store.delete(key);
+  store.set(key, { value, expiresAt: Date.now() + ttlMs });
+  while (store.size > maxEntries) {
+    const oldest = store.keys().next();
+    if (oldest.done) break;
+    store.delete(oldest.value);
+  }
+}
+
+/** Test-only: override the entry cap (pass nothing to restore the default). */
+export function setMaxEntries(limit: number = DEFAULT_MAX_ENTRIES): void {
+  maxEntries = limit;
+}
+
+/** Test-only: number of stored entries. */
+export function cacheSize(): number {
+  return store.size;
+}
 
 /** Promises for factory builds currently in flight, keyed by cache key. */
 const inFlight = new Map<string, Promise<unknown>>();
@@ -106,6 +140,9 @@ export async function getOrSet<T>(key: string, ttlMs: number, factory: () => Pro
   const entry = store.get(key);
 
   if (entry && entry.expiresAt > now) {
+    // Mark as most-recently-used (re-insert at the end of the map).
+    store.delete(key);
+    store.set(key, entry);
     return entry.value as T;
   }
 
@@ -114,7 +151,7 @@ export async function getOrSet<T>(key: string, ttlMs: number, factory: () => Pro
     if (!inFlight.has(key)) {
       coalescedBuild(key, factory)
         .then((value) => {
-          store.set(key, { value, expiresAt: Date.now() + ttlMs });
+          putEntry(key, value, ttlMs);
         })
         .catch((error: unknown) => {
           const message = error instanceof Error ? error.message : String(error);
@@ -125,7 +162,7 @@ export async function getOrSet<T>(key: string, ttlMs: number, factory: () => Pro
   }
 
   const value = await coalescedBuild(key, factory);
-  store.set(key, { value, expiresAt: Date.now() + ttlMs });
+  putEntry(key, value, ttlMs);
   return value;
 }
 
@@ -133,4 +170,5 @@ export async function getOrSet<T>(key: string, ttlMs: number, factory: () => Pro
 export function clearCache(): void {
   store.clear();
   inFlight.clear();
+  maxEntries = DEFAULT_MAX_ENTRIES;
 }

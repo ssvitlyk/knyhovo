@@ -48,3 +48,14 @@ export function createLogger(opts: CreateLoggerOptions = {}): Logger {
 export function bindContext(logger: Logger, ctx: LogContext): Logger {
   return logger.child ? logger.child(ctx) : logger;
 }
+
+/**
+ * Plain-console `Logger` used when a caller injects none. Resolves
+ * `console.log`/`console.error` at call time so spies installed later apply.
+ */
+export function createConsoleLogger(): Logger {
+  return {
+    info: (m: string) => console.log(m),
+    error: (m: string) => console.error(m),
+  };
+}

@@ -10,15 +10,14 @@
  * responsibility.
  */
 
+import type { MoneyDto as BaseMoneyDto } from '../pricing/money.js';
+
 export type CollectionTypeDto = 'dynamic' | 'editorial' | 'taxonomic';
 
 export type SortOption = 'relevance' | 'price_asc' | 'price_desc' | 'newest' | 'oldest' | 'discount_desc';
 
-/** Slice-local money shape, mirrored from search/books/wishlist. */
-export interface MoneyDto {
-  readonly amount: number;
-  readonly currency: 'UAH';
-}
+/** Collections only ever emit UAH. */
+export type MoneyDto = BaseMoneyDto<'UAH'>;
 
 export interface CollectionDto {
   readonly id: string;

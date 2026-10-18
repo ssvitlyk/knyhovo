@@ -611,3 +611,27 @@ describe('regression: volume/bundle conflicts gated by title similarity', () => 
     expect(canonicals).toHaveLength(3);
   });
 });
+
+// ── Per-candidate derived-value memoization ─────────────────────────────
+describe('candidate memoization', () => {
+  it('returns identical results when the same candidates are reused across listings', () => {
+    const candidates = [
+      makeCanonical({ id: makeId('a'), title: 'Кобзар', isbn: '9780306406157' }),
+      makeCanonical({ id: makeId('b'), title: 'Лісова пісня', author: 'Леся Українка' }),
+    ];
+    const listing = makeListing({ title: 'Лісова пісня', author: 'Леся Українка' });
+    const first = matchOrCreate(listing, candidates);
+    const second = matchOrCreate(listing, candidates);
+    expect(second).toEqual(first);
+    expect(first).toEqual({ type: 'matched', canonicalBookId: 'b' });
+  });
+
+  it('recomputes when a cached candidate is mutated in place', () => {
+    const candidate = { ...makeCanonical({ id: makeId('a') }) } as { -readonly [K in keyof CanonicalBook]: CanonicalBook[K] };
+    const listing = makeListing({ title: 'Лісова пісня', author: 'Леся Українка' });
+    expect(matchOrCreate(listing, [candidate]).type).toBe('created');
+    candidate.title = 'Лісова пісня';
+    candidate.author = 'Леся Українка';
+    expect(matchOrCreate(listing, [candidate])).toEqual({ type: 'matched', canonicalBookId: 'a' });
+  });
+});

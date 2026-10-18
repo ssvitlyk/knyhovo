@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import { formatUah } from '../../email/common.js';
 import {
-  formatUah,
   providerLabel,
   renderPriceDropEmail,
   renderBackInStockEmail,

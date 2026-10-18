@@ -1,6 +1,23 @@
 import type { ScraperOptions } from '@knyhovo/shared';
 
 /**
+ * Parse a strictly positive base-10 integer string (`/^[1-9]\d*$/`): rejects
+ * zero, negatives, fractions, signs, whitespace and non-numeric text.
+ * Returns `undefined` for anything else.
+ */
+export function parsePositiveInt(raw: string | undefined): number | undefined {
+  return raw !== undefined && /^[1-9]\d*$/.test(raw) ? Number(raw) : undefined;
+}
+
+/**
+ * Read env var `name` as a strictly positive integer; `undefined` when absent
+ * or invalid (see {@link parsePositiveInt}). Pure — does not mutate `env`.
+ */
+export function positiveIntEnv(env: NodeJS.ProcessEnv, name: string): number | undefined {
+  return parsePositiveInt(env[name]);
+}
+
+/**
  * Parse environment variables into a `ScraperOptions` fragment. Composes two
  * independent opt-in features:
  *
@@ -41,9 +58,9 @@ export function parseScraperOptionsFromEnv(env: NodeJS.ProcessEnv): ScraperOptio
 
   if (enrichDescriptions) {
     options = { enrichDescriptions: true };
-    const rawDelay = env['SCRAPE_DESCRIPTION_DELAY_MS'];
-    if (rawDelay !== undefined && /^[1-9]\d*$/.test(rawDelay)) {
-      options = { ...options, descriptionDelayMs: Number(rawDelay) };
+    const descriptionDelayMs = positiveIntEnv(env, 'SCRAPE_DESCRIPTION_DELAY_MS');
+    if (descriptionDelayMs !== undefined) {
+      options = { ...options, descriptionDelayMs };
     }
   }
 
@@ -51,23 +68,23 @@ export function parseScraperOptionsFromEnv(env: NodeJS.ProcessEnv): ScraperOptio
     options = { ...options, debugFetchStages: true };
   }
 
-  const rawSitemapTimeout = env['SCRAPE_SITEMAP_TIMEOUT_MS'];
-  if (rawSitemapTimeout !== undefined && /^[1-9]\d*$/.test(rawSitemapTimeout)) {
-    options = { ...options, sitemapTimeoutMs: Number(rawSitemapTimeout) };
+  const sitemapTimeoutMs = positiveIntEnv(env, 'SCRAPE_SITEMAP_TIMEOUT_MS');
+  if (sitemapTimeoutMs !== undefined) {
+    options = { ...options, sitemapTimeoutMs };
   }
 
-  const rawMaxConsecutiveFailures = env['SCRAPE_MAX_CONSECUTIVE_FETCH_FAILURES'];
-  if (rawMaxConsecutiveFailures !== undefined && /^[1-9]\d*$/.test(rawMaxConsecutiveFailures)) {
-    options = { ...options, maxConsecutiveFetchFailures: Number(rawMaxConsecutiveFailures) };
+  const maxConsecutiveFetchFailures = positiveIntEnv(env, 'SCRAPE_MAX_CONSECUTIVE_FETCH_FAILURES');
+  if (maxConsecutiveFetchFailures !== undefined) {
+    options = { ...options, maxConsecutiveFetchFailures };
   }
 
   // Explicit product/page cap for manual & staging runs. Absent → provider default
   // (Knigoland is uncapped by default — it pulls the full ~50k catalog). Combine
   // with `--provider=knigoland` to cap only Knigoland without touching other
   // providers, since a scoped run executes no others.
-  const rawMaxPages = env['SCRAPE_MAX_PAGES'];
-  if (rawMaxPages !== undefined && /^[1-9]\d*$/.test(rawMaxPages)) {
-    options = { ...options, maxPages: Number(rawMaxPages) };
+  const maxPages = positiveIntEnv(env, 'SCRAPE_MAX_PAGES');
+  if (maxPages !== undefined) {
+    options = { ...options, maxPages };
   }
 
   return options;
@@ -86,11 +103,7 @@ const DEFAULT_LASTMOD_PRECISION_MIN = 0.05;
  * fractional) falls back to the default. Always returns a number.
  */
 export function getScrapeStateRetentionDays(env: NodeJS.ProcessEnv): number {
-  const raw = env['SCRAPE_STATE_RETENTION_DAYS'];
-  if (raw !== undefined && /^[1-9]\d*$/.test(raw)) {
-    return Number(raw);
-  }
-  return DEFAULT_SCRAPE_STATE_RETENTION_DAYS;
+  return positiveIntEnv(env, 'SCRAPE_STATE_RETENTION_DAYS') ?? DEFAULT_SCRAPE_STATE_RETENTION_DAYS;
 }
 
 /**
@@ -120,11 +133,7 @@ const DEFAULT_ENRICH_BATCH_SIZE = 50;
  * CLI flag takes precedence over this env in the CLI entrypoint.
  */
 export function getEnrichBatchSize(env: NodeJS.ProcessEnv): number {
-  const raw = env['SCRAPE_ENRICH_BATCH_SIZE'];
-  if (raw !== undefined && /^[1-9]\d*$/.test(raw)) {
-    return Number(raw);
-  }
-  return DEFAULT_ENRICH_BATCH_SIZE;
+  return positiveIntEnv(env, 'SCRAPE_ENRICH_BATCH_SIZE') ?? DEFAULT_ENRICH_BATCH_SIZE;
 }
 
 /**
@@ -133,11 +142,7 @@ export function getEnrichBatchSize(env: NodeJS.ProcessEnv): number {
  * (the provider's own enrichment default applies, e.g. 300ms for megakniga).
  */
 export function getEnrichDelayMs(env: NodeJS.ProcessEnv): number | undefined {
-  const raw = env['SCRAPE_ENRICH_DELAY_MS'];
-  if (raw !== undefined && /^[1-9]\d*$/.test(raw)) {
-    return Number(raw);
-  }
-  return undefined;
+  return positiveIntEnv(env, 'SCRAPE_ENRICH_DELAY_MS') ?? undefined;
 }
 
 /** Default circuit-breaker threshold: consecutive infrastructure failures that stop a run (megakniga-resumable-enrichment PRD §4). */
@@ -151,11 +156,7 @@ const DEFAULT_ENRICH_CIRCUIT_BREAKER_THRESHOLD = 10;
  * Always returns a number (the breaker is on by default).
  */
 export function getEnrichCircuitBreakerThreshold(env: NodeJS.ProcessEnv): number {
-  const raw = env['SCRAPE_ENRICH_CIRCUIT_BREAKER_THRESHOLD'];
-  if (raw !== undefined && /^[1-9]\d*$/.test(raw)) {
-    return Number(raw);
-  }
-  return DEFAULT_ENRICH_CIRCUIT_BREAKER_THRESHOLD;
+  return positiveIntEnv(env, 'SCRAPE_ENRICH_CIRCUIT_BREAKER_THRESHOLD') ?? DEFAULT_ENRICH_CIRCUIT_BREAKER_THRESHOLD;
 }
 
 /** Default max consecutive no-progress restarts before the restart-loop guard blocks (megakniga-resumable-enrichment PRD §4.7). */
@@ -169,11 +170,7 @@ const DEFAULT_ENRICH_MAX_NO_PROGRESS_RESTARTS = 3;
  * the default. Always returns a number.
  */
 export function getEnrichMaxNoProgressRestarts(env: NodeJS.ProcessEnv): number {
-  const raw = env['SCRAPE_ENRICH_MAX_NO_PROGRESS_RESTARTS'];
-  if (raw !== undefined && /^[1-9]\d*$/.test(raw)) {
-    return Number(raw);
-  }
-  return DEFAULT_ENRICH_MAX_NO_PROGRESS_RESTARTS;
+  return positiveIntEnv(env, 'SCRAPE_ENRICH_MAX_NO_PROGRESS_RESTARTS') ?? DEFAULT_ENRICH_MAX_NO_PROGRESS_RESTARTS;
 }
 
 /** Default heartbeat interval (seconds) for a running scrape (stale-scrape-recovery PRD §2.2). */
@@ -192,11 +189,7 @@ const DEFAULT_LEGACY_STALE_TIMEOUT_HOURS = 24;
  * Always returns a number.
  */
 export function getHeartbeatIntervalSeconds(env: NodeJS.ProcessEnv): number {
-  const raw = env['SCRAPE_HEARTBEAT_INTERVAL_SECONDS'];
-  if (raw !== undefined && /^[1-9]\d*$/.test(raw)) {
-    return Number(raw);
-  }
-  return DEFAULT_HEARTBEAT_INTERVAL_SECONDS;
+  return positiveIntEnv(env, 'SCRAPE_HEARTBEAT_INTERVAL_SECONDS') ?? DEFAULT_HEARTBEAT_INTERVAL_SECONDS;
 }
 
 /**
@@ -206,11 +199,7 @@ export function getHeartbeatIntervalSeconds(env: NodeJS.ProcessEnv): number {
  * number.
  */
 export function getHeartbeatTimeoutMinutes(env: NodeJS.ProcessEnv): number {
-  const raw = env['SCRAPE_HEARTBEAT_TIMEOUT_MINUTES'];
-  if (raw !== undefined && /^[1-9]\d*$/.test(raw)) {
-    return Number(raw);
-  }
-  return DEFAULT_HEARTBEAT_TIMEOUT_MINUTES;
+  return positiveIntEnv(env, 'SCRAPE_HEARTBEAT_TIMEOUT_MINUTES') ?? DEFAULT_HEARTBEAT_TIMEOUT_MINUTES;
 }
 
 /**
@@ -221,9 +210,5 @@ export function getHeartbeatTimeoutMinutes(env: NodeJS.ProcessEnv): number {
  * number.
  */
 export function getLegacyStaleTimeoutHours(env: NodeJS.ProcessEnv): number {
-  const raw = env['SCRAPE_STALE_STARTEDAT_TIMEOUT_HOURS'];
-  if (raw !== undefined && /^[1-9]\d*$/.test(raw)) {
-    return Number(raw);
-  }
-  return DEFAULT_LEGACY_STALE_TIMEOUT_HOURS;
+  return positiveIntEnv(env, 'SCRAPE_STALE_STARTEDAT_TIMEOUT_HOURS') ?? DEFAULT_LEGACY_STALE_TIMEOUT_HOURS;
 }

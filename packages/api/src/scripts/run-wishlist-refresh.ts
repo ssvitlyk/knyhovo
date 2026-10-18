@@ -1,5 +1,4 @@
 import { prisma } from '../db.js';
-import { ScrapeRunTrigger } from '@prisma/client';
 import { runWishlistRefresh } from '../refresh/wishlist.refresh.js';
 import { HttpTargetFetcher } from '../refresh/http-target-fetcher.js';
 import { closeRegistryResources } from '../refresh/fetcher-registry.js';
@@ -8,27 +7,8 @@ import { loadAlertConfig } from '../alerts/config.js';
 import { createAlertMailer } from '../alerts/mailer-factory.js';
 import { dispatchPendingDeliveries } from '../alerts/dispatch.js';
 import { generateToken } from '../auth/crypto.js';
-import {
-  getHeartbeatIntervalSeconds,
-  getHeartbeatTimeoutMinutes,
-  getLegacyStaleTimeoutHours,
-} from './scrape-env.js';
+import { parseTriggeredBy, getHeartbeatIntervalMs, getStaleReapConfig } from './cli-common.js';
 import { getDisabledProviders } from '../config/provider-filter.js';
-
-/**
- * Parse the SCRAPE_TRIGGERED_BY environment variable into a ScrapeRunTrigger
- * enum value. Defaults to MANUAL when the value is absent or unrecognised.
- */
-function parseTriggeredBy(val: string | undefined): ScrapeRunTrigger {
-  switch (val?.toUpperCase()) {
-    case 'CRON':
-      return ScrapeRunTrigger.CRON;
-    case 'SYSTEM':
-      return ScrapeRunTrigger.SYSTEM;
-    default:
-      return ScrapeRunTrigger.MANUAL;
-  }
-}
 
 // W10.6: HttpTargetFetcher() with no argument routes per-provider through the
 // fetcher registry — Cloudflare-protected providers (Yakaboo, Book-Ye) use
@@ -51,11 +31,8 @@ async function main(): Promise<void> {
       fetcher,
       triggeredBy,
       disabledProviders: getDisabledProviders(process.env),
-      heartbeatIntervalMs: getHeartbeatIntervalSeconds(process.env) * 1000,
-      staleReap: {
-        heartbeatTimeoutMs: getHeartbeatTimeoutMinutes(process.env) * 60_000,
-        legacyStartedAtTimeoutMs: getLegacyStaleTimeoutHours(process.env) * 3_600_000,
-      },
+      heartbeatIntervalMs: getHeartbeatIntervalMs(process.env),
+      staleReap: getStaleReapConfig(process.env),
       dispatch: (p, now) =>
         dispatchPendingDeliveries(p, {
           mailer: alertMailer,

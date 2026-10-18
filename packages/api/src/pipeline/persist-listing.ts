@@ -1,50 +1,21 @@
 import type { RawProviderListing, CanonicalBook, ProviderName, Currency, Availability } from '@knyhovo/shared';
 import type { CanonicalBookId } from '@knyhovo/shared';
 import type { MatchResult } from '@knyhovo/scrapers';
+import type { PrismaClient } from '@prisma/client';
 import { Prisma } from '@prisma/client';
 import type { ListingPersistOutcome, UnavailableOutcome } from './types.js';
 import { recordPriceChange } from '../price-history/service.js';
 import { advanceWatermark } from './scrape-state.repository.js';
+import { PROVIDER_DB_ENUM, PROVIDER_SLUG } from '../pricing/provider-maps.js';
+import type { DbProvider } from '../pricing/provider-maps.js';
 
-const PROVIDER_NAME_MAP: Record<
-  ProviderName,
-  'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY' | 'KNIGOLAND' | 'MEGAKNIGA'
-> = {
-  yakaboo: 'YAKABOO',
-  'book-club': 'BOOK_CLUB',
-  vivat: 'VIVAT',
-  'book-ye': 'BOOK_YE',
-  bookchef: 'BOOKCHEF',
-  laboratory: 'LABORATORY',
-  knigoland: 'KNIGOLAND',
-  megakniga: 'MEGAKNIGA',
-};
-
-export function mapProviderName(
-  name: ProviderName,
-): 'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY' | 'KNIGOLAND' | 'MEGAKNIGA' {
-  return PROVIDER_NAME_MAP[name];
+export function mapProviderName(name: ProviderName): DbProvider {
+  return PROVIDER_DB_ENUM[name];
 }
 
-const PROVIDER_SLUG_MAP: Record<
-  'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY' | 'KNIGOLAND' | 'MEGAKNIGA',
-  ProviderName
-> = {
-  YAKABOO: 'yakaboo',
-  BOOK_CLUB: 'book-club',
-  VIVAT: 'vivat',
-  BOOK_YE: 'book-ye',
-  BOOKCHEF: 'bookchef',
-  LABORATORY: 'laboratory',
-  KNIGOLAND: 'knigoland',
-  MEGAKNIGA: 'megakniga',
-};
-
 /** Inverse of {@link mapProviderName}: Prisma `Provider` enum → shared slug. */
-export function unmapProviderName(
-  provider: 'YAKABOO' | 'BOOK_CLUB' | 'VIVAT' | 'BOOK_YE' | 'BOOKCHEF' | 'LABORATORY' | 'KNIGOLAND' | 'MEGAKNIGA',
-): ProviderName {
-  return PROVIDER_SLUG_MAP[provider];
+export function unmapProviderName(provider: DbProvider): ProviderName {
+  return PROVIDER_SLUG[provider];
 }
 
 const CURRENCY_MAP: Record<Currency, 'UAH'> = {
@@ -77,6 +48,20 @@ function cleanRawCategories(raw: readonly string[]): string[] {
   return result;
 }
 
+/**
+ * Advance the per-URL sitemap-lastmod watermark, but only when the listing
+ * carries a `sourceLastmod` signal (`undefined` = provider has none; `null` =
+ * explicitly no lastmod, which is still recorded).
+ */
+export async function maybeAdvanceWatermark(
+  db: Prisma.TransactionClient | PrismaClient,
+  listing: RawProviderListing,
+  scrapedAt: Date,
+): Promise<void> {
+  if (listing.sourceLastmod === undefined) return;
+  await advanceWatermark(db, mapProviderName(listing.provider), listing.url, listing.sourceLastmod, scrapedAt);
+}
+
 export async function persistListing(
   tx: Prisma.TransactionClient,
   ctx: { listing: RawProviderListing; result: MatchResult; scrapedAt: Date },
@@ -93,6 +78,7 @@ export async function persistListing(
 
   const priceAmount = listing.price!.amount;
   const priceCurrency = mapCurrency(listing.price!.currency);
+  const availability = mapAvailability(listing.availability);
   const author = listing.author ?? '';
 
   if (existing === null) {
@@ -133,7 +119,7 @@ export async function persistListing(
         priceCurrency,
         url: listing.url,
         lastSeenAt: scrapedAt,
-        availability: mapAvailability(listing.availability),
+        availability,
         coverUrl: listing.coverUrl ?? null,
         description: listing.description ?? null,
         publisher: listing.publisher ?? null,
@@ -148,13 +134,11 @@ export async function persistListing(
     await recordPriceChange(tx, {
       providerListingId: created.id,
       previous: null,
-      next: { priceAmount, priceCurrency, availability: mapAvailability(listing.availability) },
+      next: { priceAmount, priceCurrency, availability },
       recordedAt: scrapedAt,
     });
 
-    if (listing.sourceLastmod !== undefined) {
-      await advanceWatermark(tx, provider, listing.url, listing.sourceLastmod ?? null, scrapedAt);
-    }
+    await maybeAdvanceWatermark(tx, listing, scrapedAt);
 
     return { kind: 'listing-created', createdCanonical, canonicalBookId, priceHistoryCreated: true };
   } else {
@@ -181,7 +165,7 @@ export async function persistListing(
       title: listing.title,
       author,
       lastSeenAt: scrapedAt,
-      availability: mapAvailability(listing.availability),
+      availability,
     };
 
     if (existing.isbn === null && listing.isbn != null) {
@@ -242,13 +226,11 @@ export async function persistListing(
         priceCurrency: existing.priceCurrency,
         availability: existing.availability,
       },
-      next: { priceAmount, priceCurrency, availability: mapAvailability(listing.availability) },
+      next: { priceAmount, priceCurrency, availability },
       recordedAt: scrapedAt,
     });
 
-    if (listing.sourceLastmod !== undefined) {
-      await advanceWatermark(tx, provider, listing.url, listing.sourceLastmod ?? null, scrapedAt);
-    }
+    await maybeAdvanceWatermark(tx, listing, scrapedAt);
 
     return { kind: 'listing-updated', canonicalBookId: existing.canonicalBookId, priceHistoryCreated: created };
   }
@@ -260,6 +242,7 @@ export async function markUnavailable(
 ): Promise<UnavailableOutcome> {
   const { listing, scrapedAt } = ctx;
   const provider = mapProviderName(listing.provider);
+  const availability = mapAvailability(listing.availability);
   const existing = await tx.providerListing.findUnique({
     where: { provider_url: { provider, url: listing.url } },
   });
@@ -272,7 +255,7 @@ export async function markUnavailable(
   await tx.providerListing.update({
     where: { id: existing.id },
     data: {
-      availability: mapAvailability(listing.availability),
+      availability,
       lastSeenAt: scrapedAt,
     },
   });
@@ -289,14 +272,12 @@ export async function markUnavailable(
     next: {
       priceAmount: existing.priceAmount,
       priceCurrency: existing.priceCurrency,
-      availability: mapAvailability(listing.availability),
+      availability,
     },
     recordedAt: scrapedAt,
   });
 
-  if (listing.sourceLastmod !== undefined) {
-    await advanceWatermark(tx, provider, listing.url, listing.sourceLastmod ?? null, scrapedAt);
-  }
+  await maybeAdvanceWatermark(tx, listing, scrapedAt);
 
   return { kind: 'availability-updated', priceHistoryCreated: created };
 }

@@ -7,49 +7,6 @@
    Wishlist (wishlist.css) and Book Details (book-details.css) chassis.
    ================================================================ */
 
-/* ── Bell / alert control — extends the frozen .wl-iconbtn ─────────────────
-   Shape (the glyph) always distinguishes state — colour is secondary, so the
-   control stays legible for colourblind users & in print. */
-.wl-iconbtn--trig { color: var(--brand-green); }
-.wl-iconbtn--trig:hover { background: color-mix(in oklab, var(--brand-green) 12%, transparent); color: var(--brand-green); }
-.wl-iconbtn--paused { color: var(--text-muted); }
-.wl-iconbtn--unavail { color: var(--text-faint); cursor: not-allowed; }
-.wl-iconbtn--unavail:hover { background: transparent; color: var(--text-faint); }
-
-/* ── Alert status chip — the quiet in-row indicator ───────────────────────
-   Mirrors the frozen .phv-badge anatomy (icon + label pill). Lives in the
-   existing status column — no row-height change. */
-.al-chip {
-  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
-  font-family: var(--font-body); font-size: var(--fs-xs); font-weight: var(--fw-semibold);
-  line-height: 1.4; border-radius: var(--radius-pill); padding: 3px 10px 3px 8px;
-}
-.al-chip svg { flex: none; }
-.al-chip--watch  { background: var(--accent-weak); color: var(--accent); }
-.al-chip--trig   { background: color-mix(in oklab, var(--brand-green) 16%, transparent); color: var(--brand-green); }
-.al-chip--paused { background: var(--surface-accent); color: var(--text-muted); }
-.al-chip--unavail{ background: var(--surface-accent); color: var(--text-faint); }
-
-/* the target-price reason line (e.g. «нижче 240 ₴») — reuses verdict reason tone */
-.al-target { font-size: var(--fs-xs); color: var(--text-muted); text-wrap: pretty; }
-.al-target b { color: var(--text-body); font-weight: var(--fw-semibold); }
-.al-target--green { color: var(--brand-green); }
-.al-target--green b { color: var(--brand-green); }
-
-/* small muted helper line (e.g. paused notice next to the chip) */
-.al-muted { font-size: var(--fs-xs); color: var(--text-muted); text-wrap: pretty; }
-
-/* quiet ghost affordance — «Сповістити про ціну» / «Змінити» (text button) */
-.al-link {
-  display: inline-flex; align-items: center; gap: 5px; white-space: nowrap;
-  background: none; border: none; padding: 2px 0; cursor: pointer;
-  font-family: var(--font-body); font-size: var(--fs-sm); font-weight: var(--fw-medium);
-  color: var(--text-muted); transition: color var(--dur-fast) var(--ease-out);
-}
-.al-link:hover { color: var(--accent); }
-.al-link svg { flex: none; }
-.al-link--sm { font-size: var(--fs-xs); }
-
 /* ── Alert configuration — centred dialog (desktop) / sheet (mobile) ─────────
    notifications-model-v2 §6-8: one question, three answers, one action. A
    single 520px vertical column of exactly 3 mode cards — no grid, no fourth
@@ -170,9 +127,7 @@
    Was an absolutely-positioned popover anchored to the trigger; a 600px
    desktop-first form does not belong in a dropdown hanging off a 52px row, and
    the anchor could be clipped/mis-positioned by the sticky offers panel. */
-.al-anchor { position: relative; display: inline-flex; }
-/* Labelled variant (mobile WishlistCard): action text + bell share a row. */
-.al-anchor--labelled { align-items: center; gap: var(--space-3); }
+
 .al-pop { position: relative; z-index: 1; max-height: calc(100vh - var(--space-8)); overflow-y: auto; }
 
 /* ── Mobile bottom sheet (lightweight — not a full modal) ────────────────── */

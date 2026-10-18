@@ -1,18 +1,20 @@
 import { apiBaseUrl } from './env';
+import { apiRequest, defineApiError } from './http';
 import type { AlertDto, BuyingOpportunitiesResponseDto, WishlistResponseDto } from './types';
 
-const REQUEST_TIMEOUT_MS = 8000;
-
 /** Error thrown when a wishlist request fails (network, timeout, or non-2xx, except 401 sentinels). */
-export class WishlistError extends Error {
-  /** HTTP status, or `null` for a transport/timeout failure. */
-  readonly status: number | null;
+export class WishlistError extends defineApiError('WishlistError') {}
 
-  constructor(message: string, status: number | null) {
-    super(message);
-    this.name = 'WishlistError';
-    this.status = status;
-  }
+/** Server-side GET with the forwarded cookie; 401 is returned (not thrown) so callers can map it to a sentinel. */
+async function getWithCookie(path: string, cookie: string): Promise<Response> {
+  return apiRequest(`${apiBaseUrl()}${path}`, {
+    cache: 'no-store',
+    cookie,
+    errorClass: WishlistError,
+    transportMessage: 'Не вдалося звʼязатися з сервісом бажанок.',
+    httpMessage: (status) => `Сервіс бажанок повернув помилку (${status}).`,
+    passthrough: (status) => status === 401,
+  });
 }
 
 /**
@@ -27,32 +29,9 @@ export async function getWishlist({
 }: {
   cookie: string;
 }): Promise<WishlistResponseDto | { unauthorized: true }> {
-  const url = `${apiBaseUrl()}/api/wishlist`;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      signal: controller.signal,
-      cache: 'no-store',
-      headers: { cookie },
-    });
-  } catch {
-    throw new WishlistError('Не вдалося звʼязатися з сервісом бажанок.', null);
-  } finally {
-    clearTimeout(timer);
-  }
+  const response = await getWithCookie('/api/wishlist', cookie);
 
   if (response.status === 401) return { unauthorized: true };
-
-  if (!response.ok) {
-    throw new WishlistError(
-      `Сервіс бажанок повернув помилку (${response.status}).`,
-      response.status,
-    );
-  }
 
   return (await response.json()) as WishlistResponseDto;
 }
@@ -69,32 +48,9 @@ export async function getBuyingOpportunities({
 }: {
   cookie: string;
 }): Promise<BuyingOpportunitiesResponseDto | { unauthorized: true }> {
-  const url = `${apiBaseUrl()}/api/wishlist/buying-opportunities`;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      signal: controller.signal,
-      cache: 'no-store',
-      headers: { cookie },
-    });
-  } catch {
-    throw new WishlistError('Не вдалося звʼязатися з сервісом бажанок.', null);
-  } finally {
-    clearTimeout(timer);
-  }
+  const response = await getWithCookie('/api/wishlist/buying-opportunities', cookie);
 
   if (response.status === 401) return { unauthorized: true };
-
-  if (!response.ok) {
-    throw new WishlistError(
-      `Сервіс бажанок повернув помилку (${response.status}).`,
-      response.status,
-    );
-  }
 
   return (await response.json()) as BuyingOpportunitiesResponseDto;
 }
@@ -107,30 +63,14 @@ export async function getBuyingOpportunities({
  * detect 401 and prompt for login).
  */
 export async function addToWishlist(bookId: string): Promise<void> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-  let response: Response;
-  try {
-    response = await fetch('/api/wishlist', {
-      method: 'POST',
-      signal: controller.signal,
-      credentials: 'include',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ bookId }),
-    });
-  } catch {
-    throw new WishlistError('Не вдалося додати книгу до бажанок.', null);
-  } finally {
-    clearTimeout(timer);
-  }
-
-  if (!response.ok) {
-    throw new WishlistError(
-      `Не вдалося додати книгу до бажанок (${response.status}).`,
-      response.status,
-    );
-  }
+  await apiRequest('/api/wishlist', {
+    method: 'POST',
+    credentials: 'include',
+    body: { bookId },
+    errorClass: WishlistError,
+    transportMessage: 'Не вдалося додати книгу до бажанок.',
+    httpMessage: (status) => `Не вдалося додати книгу до бажанок (${status}).`,
+  });
 }
 
 /**
@@ -138,28 +78,26 @@ export async function addToWishlist(bookId: string): Promise<void> {
  * Runs browser-side. Throws {@link WishlistError} on non-2xx.
  */
 export async function removeFromWishlist(bookId: string): Promise<void> {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+  await apiRequest(`/api/wishlist/${bookId}`, {
+    method: 'DELETE',
+    credentials: 'include',
+    errorClass: WishlistError,
+    transportMessage: 'Не вдалося видалити книгу з бажанок.',
+    httpMessage: (status) => `Не вдалося видалити книгу з бажанок (${status}).`,
+  });
+}
 
-  let response: Response;
-  try {
-    response = await fetch(`/api/wishlist/${bookId}`, {
-      method: 'DELETE',
-      signal: controller.signal,
-      credentials: 'include',
-    });
-  } catch {
-    throw new WishlistError('Не вдалося видалити книгу з бажанок.', null);
-  } finally {
-    clearTimeout(timer);
-  }
+/** Raw `GET /api/wishlist` result (or 401 sentinel) → the alert context for one book. */
+export function alertContextFromWishlist(
+  result: WishlistResponseDto | { unauthorized: true },
+  bookId: string,
+): { inWishlist: boolean; alert: AlertDto | null } {
+  if ('unauthorized' in result) return { inWishlist: false, alert: null };
 
-  if (!response.ok) {
-    throw new WishlistError(
-      `Не вдалося видалити книгу з бажанок (${response.status}).`,
-      response.status,
-    );
-  }
+  const item = result.items.find((i) => i.book.id === bookId);
+  if (item == null) return { inWishlist: false, alert: null };
+
+  return { inWishlist: true, alert: item.alert };
 }
 
 /**
@@ -179,55 +117,9 @@ export async function getBookAlertContext({
   bookId: string;
   cookie: string;
 }): Promise<{ inWishlist: boolean; alert: AlertDto | null }> {
-  const FALLBACK = { inWishlist: false, alert: null };
-
-  let result: WishlistResponseDto | { unauthorized: true };
   try {
-    result = await getWishlist({ cookie });
+    return alertContextFromWishlist(await getWishlist({ cookie }), bookId);
   } catch {
-    return FALLBACK;
+    return { inWishlist: false, alert: null };
   }
-
-  if ('unauthorized' in result) return FALLBACK;
-
-  const item = result.items.find((i) => i.book.id === bookId);
-  if (item == null) return FALLBACK;
-
-  return { inWishlist: true, alert: item.alert };
-}
-
-/**
- * Check whether a specific book is in the wishlist (S9 `GET /api/wishlist/status/:bookId`).
- * Runs server-side. Degrades gracefully — returns `false` on 401 (unauthenticated)
- * and on any other non-2xx so the book page never breaks due to wishlist errors.
- */
-export async function getWishlistStatus({
-  bookId,
-  cookie,
-}: {
-  bookId: string;
-  cookie: string;
-}): Promise<boolean> {
-  const url = `${apiBaseUrl()}/api/wishlist/status/${bookId}`;
-
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
-
-  let response: Response;
-  try {
-    response = await fetch(url, {
-      signal: controller.signal,
-      cache: 'no-store',
-      headers: { cookie },
-    });
-  } catch {
-    return false;
-  } finally {
-    clearTimeout(timer);
-  }
-
-  if (!response.ok) return false;
-
-  const body = (await response.json()) as { inWishlist: boolean };
-  return body.inWishlist;
 }

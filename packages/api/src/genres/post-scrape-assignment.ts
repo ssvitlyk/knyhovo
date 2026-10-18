@@ -1,10 +1,7 @@
 import type { PrismaClient } from '@prisma/client';
-import { applyGenreAssignment, decideGenreAssignment, loadEngineContext } from './assignment.js';
+import { applyGenreAssignment, loadEngineContext } from './assignment.js';
 import type { AssignmentDecision } from './assignment.js';
-import { mapBookGenre } from './mapping-engine.js';
-import type { ListingSignal } from './mapping-engine.js';
-import { unmapProviderName } from '../pipeline/persist-listing.js';
-import { classify, createEmptyBackfillCounters } from './backfill.js';
+import { BOOK_SIGNAL_SELECT, classify, createEmptyBackfillCounters, evaluateBook } from './backfill.js';
 import type { BackfillBookRow, BackfillCounters } from './backfill.js';
 
 /**
@@ -73,31 +70,12 @@ export async function runPostScrapeGenreAssignment(
   for (const ids of chunks) {
     const books: readonly BackfillBookRow[] = await prisma.canonicalBook.findMany({
       where: { id: { in: [...ids] } },
-      select: {
-        id: true,
-        title: true,
-        isbn: true,
-        genreId: true,
-        genreSource: true,
-        genreConfidence: true,
-        listings: { select: { provider: true, rawCategories: true, url: true } },
-      },
+      select: BOOK_SIGNAL_SELECT,
     });
 
     const writes: { bookId: string; decision: AssignmentDecision }[] = [];
     for (const book of books) {
-      const signals: ListingSignal[] = book.listings.map((listing) => ({
-        provider: unmapProviderName(listing.provider),
-        rawCategories: listing.rawCategories,
-        url: listing.url,
-      }));
-      const hasSignal = signals.some((signal) => signal.rawCategories.length > 0);
-      const result = mapBookGenre(signals, ctx);
-      const decision = decideGenreAssignment(
-        { genreId: book.genreId, genreSource: book.genreSource, genreConfidence: book.genreConfidence },
-        result,
-        { now },
-      );
+      const { hasSignal, result, decision } = evaluateBook(book, ctx, { now });
 
       counters.processed += 1;
       classify(counters, decision, book, hasSignal, result.genreId);

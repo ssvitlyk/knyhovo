@@ -2,7 +2,8 @@ import type { PrismaClient } from '@prisma/client';
 import type { SearchParams } from './schema.js';
 import type { SearchItemDto, SearchResponseDto } from './dto.js';
 import type { CanonicalBookRow } from './repository.js';
-import { searchCanonicalBooks, findWishlistCountsForBooks } from './repository.js';
+import { searchCanonicalBooks } from './repository.js';
+import { findWishlistCountsByIds } from '../collections/repository.js';
 import { toSearchItem } from './mapper.js';
 
 /**
@@ -41,7 +42,7 @@ export async function search(
 
   let items: SearchItemDto[];
   if (params.sort === 'popular') {
-    const counts = await findWishlistCountsForBooks(
+    const counts = await findWishlistCountsByIds(
       prisma,
       pairs.map((p) => p.item.id),
     );

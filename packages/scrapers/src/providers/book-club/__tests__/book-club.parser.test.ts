@@ -2,11 +2,11 @@ import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import {
-  bookClubPriceToKopecks,
   parseCatalogProducts,
   parseProductPageBatch,
 } from '../book-club.parser.js';
 import type { GraphqlResponse } from '../graphql-client.js';
+import { priceToKopecks } from '../../../lib/price.js';
 
 const FIXTURES_DIR = resolve(import.meta.dirname, '../__fixtures__');
 
@@ -14,47 +14,47 @@ function loadFixture(name: string): GraphqlResponse {
   return JSON.parse(readFileSync(resolve(FIXTURES_DIR, name), 'utf-8')) as GraphqlResponse;
 }
 
-// ─── bookClubPriceToKopecks ───────────────────────────────────────────────────
+// ─── priceToKopecks ───────────────────────────────────────────────────
 
-describe('bookClubPriceToKopecks', () => {
+describe('priceToKopecks', () => {
   it('converts a positive integer to kopecks', () => {
-    expect(bookClubPriceToKopecks(540)).toBe(54000);
+    expect(priceToKopecks(540)).toBe(54000);
   });
 
   it('converts a numeric string', () => {
-    expect(bookClubPriceToKopecks('324')).toBe(32400);
+    expect(priceToKopecks('324')).toBe(32400);
   });
 
   it('rounds fractional values', () => {
-    expect(bookClubPriceToKopecks(10.555)).toBe(1056);
+    expect(priceToKopecks(10.555)).toBe(1056);
   });
 
   it('returns null for zero', () => {
-    expect(bookClubPriceToKopecks(0)).toBeNull();
+    expect(priceToKopecks(0)).toBeNull();
   });
 
   it('returns null for negative', () => {
-    expect(bookClubPriceToKopecks(-5)).toBeNull();
+    expect(priceToKopecks(-5)).toBeNull();
   });
 
   it('returns null for null', () => {
-    expect(bookClubPriceToKopecks(null)).toBeNull();
+    expect(priceToKopecks(null)).toBeNull();
   });
 
   it('returns null for undefined', () => {
-    expect(bookClubPriceToKopecks(undefined)).toBeNull();
+    expect(priceToKopecks(undefined)).toBeNull();
   });
 
   it('returns null for NaN string', () => {
-    expect(bookClubPriceToKopecks('abc')).toBeNull();
+    expect(priceToKopecks('abc')).toBeNull();
   });
 
   it('returns null for Infinity', () => {
-    expect(bookClubPriceToKopecks(Infinity)).toBeNull();
+    expect(priceToKopecks(Infinity)).toBeNull();
   });
 
   it('returns null for empty string', () => {
-    expect(bookClubPriceToKopecks('')).toBeNull();
+    expect(priceToKopecks('')).toBeNull();
   });
 });
 

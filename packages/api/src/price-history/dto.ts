@@ -25,14 +25,3 @@ export interface PriceSnapshotInput extends ListingPriceState {
   readonly providerListingId: string;
   readonly recordedAt: Date;
 }
-
-/** A single recorded price-history point returned by read queries. */
-export interface PricePoint extends ListingPriceState {
-  readonly recordedAt: Date;
-}
-
-/** Optional time window for history timeline queries. */
-export interface HistoryRange {
-  readonly since?: Date;
-  readonly until?: Date;
-}

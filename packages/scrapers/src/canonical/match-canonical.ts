@@ -19,6 +19,47 @@ const CONFLICT_PRIORITY: Record<ConflictReason, number> = {
   BUNDLE_MISMATCH: 1,
 };
 
+interface Derived {
+  // Source fields the derived values were computed from — a mismatch means the
+  // object was mutated after caching (CanonicalBook is readonly, but be safe).
+  readonly title: string;
+  readonly author: string;
+  readonly isbn: string | null;
+  readonly normTitle: string;
+  readonly normAuthor: string;
+  readonly normIsbn: string | null;
+  readonly volume: number | null;
+  readonly bundle: boolean;
+}
+
+// Per-candidate normalization is identical for every listing in a scrape, so
+// compute it once per candidate object instead of once per (listing × candidate).
+const derivedCache = new WeakMap<CanonicalBook, Derived>();
+
+function deriveCandidate(candidate: CanonicalBook): Derived {
+  const cached = derivedCache.get(candidate);
+  if (
+    cached !== undefined &&
+    cached.title === candidate.title &&
+    cached.author === candidate.author &&
+    cached.isbn === candidate.isbn
+  ) {
+    return cached;
+  }
+  const derived: Derived = {
+    title: candidate.title,
+    author: candidate.author,
+    isbn: candidate.isbn,
+    normTitle: normalizeTitle(candidate.title),
+    normAuthor: normalizeAuthor(candidate.author),
+    normIsbn: normalizeIsbn(candidate.isbn),
+    volume: extractVolumeNumber(candidate.title),
+    bundle: isBundle(candidate.title),
+  };
+  derivedCache.set(candidate, derived);
+  return derived;
+}
+
 export function matchOrCreate(
   listing: RawProviderListing,
   candidates: CanonicalBook[],
@@ -45,7 +86,7 @@ export function matchOrCreate(
   // everything else, including title/volume differences in formatting.
   if (normIsbn !== null) {
     for (const candidate of candidates) {
-      const candIsbn = normalizeIsbn(candidate.isbn);
+      const candIsbn = deriveCandidate(candidate).normIsbn;
       if (candIsbn !== null && candIsbn === normIsbn) {
         return { type: 'matched', canonicalBookId: candidate.id };
       }
@@ -63,8 +104,9 @@ export function matchOrCreate(
   let bestScore = 0;
 
   for (const candidate of candidates) {
-    const candNormTitle = normalizeTitle(candidate.title);
-    const candNormAuthor = normalizeAuthor(candidate.author);
+    const derived = deriveCandidate(candidate);
+    const candNormTitle = derived.normTitle;
+    const candNormAuthor = derived.normAuthor;
 
     // Title similarity gate — FIRST. Only title-similar candidates are considered
     // for a match, an ISBN/volume/bundle conflict, or a fuzzy candidate. Titles
@@ -73,8 +115,8 @@ export function matchOrCreate(
     const tSim = exactKey ? 1 : titleSimilarity(normTitle, candNormTitle);
     if (tSim < TITLE_THRESHOLD) continue;
 
-    const candVolume = extractVolumeNumber(candidate.title);
-    const candBundle = isBundle(candidate.title);
+    const candVolume = derived.volume;
+    const candBundle = derived.bundle;
 
     // Hard conflict: differing explicit volumes of an otherwise near-identical
     // title (e.g. "…Книга 1" vs "…Книга 2"). normalizeTitle strips the volume
@@ -99,7 +141,7 @@ export function matchOrCreate(
     // ISBN seen here necessarily differs. Looser title overlap (0.85–0.92) is
     // left to the fuzzy path so genuinely different books with similar-looking
     // titles are still created rather than dropped.
-    const candIsbn = normalizeIsbn(candidate.isbn);
+    const candIsbn = derived.normIsbn;
     if (normIsbn !== null && candIsbn !== null && tSim >= TITLE_NO_AUTHOR_THRESHOLD) {
       recordConflict('ISBN_CONFLICT');
       continue;

@@ -15,8 +15,8 @@ vi.mock('../scrape-run.repository.js', async (importOriginal) => {
 });
 
 // Mock only runScrapePipeline; keep formatSummary, mapProviderName, createMetrics real.
-vi.mock('../../pipeline/index.js', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('../../pipeline/index.js')>();
+vi.mock('../../pipeline/run-scrape.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../pipeline/run-scrape.js')>();
   return {
     ...actual,
     runScrapePipeline: vi.fn(),
@@ -58,7 +58,7 @@ vi.mock('../auto-escalation.js', async (importOriginal) => {
 
 import { runFullCatalogRefresh } from '../full-catalog.refresh.js';
 import { startScrapeRun, finishScrapeRun } from '../scrape-run.repository.js';
-import { runScrapePipeline } from '../../pipeline/index.js';
+import { runScrapePipeline } from '../../pipeline/run-scrape.js';
 import { acquireRefreshLock, releaseRefreshLock, RefreshAlreadyRunningError } from '../concurrency-guard.js';
 import {
   loadKnownSourceLastmod,

@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ValidationError } from '../errors.js';
+import { parseOrThrow } from '../http/parse.js';
 
 const PER_PAGE = 24;
 
@@ -43,35 +43,19 @@ const slugParamsSchema = z.object({
   slug: z.string().trim().min(1),
 });
 
-export type SlugParams = z.infer<typeof slugParamsSchema>;
-
 /**
  * Parse and validate raw request query parameters for
  * `GET /api/collections/:slug/books`.
- * Throws {@link ValidationError} (→ HTTP 400) on any invalid input.
+ * Throws `ValidationError` (→ HTTP 400) on any invalid input.
  */
 export function parseBooksQuery(query: unknown): BooksQueryParams {
-  const result = booksQuerySchema.safeParse(query);
-  if (!result.success) {
-    const issue = result.error.issues[0];
-    const path = issue?.path.join('.') ?? '';
-    const message = issue ? `${path ? `${path}: ` : ''}${issue.message}` : 'Invalid query parameters';
-    throw new ValidationError(message);
-  }
-  return result.data;
+  return parseOrThrow(booksQuerySchema, query, 'Invalid query parameters');
 }
 
 /**
  * Parse and validate a `:slug` route parameter.
- * Throws {@link ValidationError} (→ HTTP 400) on any invalid input.
+ * Throws `ValidationError` (→ HTTP 400) on any invalid input.
  */
-export function parseSlugParams(params: unknown): SlugParams {
-  const result = slugParamsSchema.safeParse(params);
-  if (!result.success) {
-    const issue = result.error.issues[0];
-    const path = issue?.path.join('.') ?? '';
-    const message = issue ? `${path ? `${path}: ` : ''}${issue.message}` : 'Invalid route parameters';
-    throw new ValidationError(message);
-  }
-  return result.data;
+export function parseSlugParams(params: unknown): z.infer<typeof slugParamsSchema> {
+  return parseOrThrow(slugParamsSchema, params, 'Invalid route parameters');
 }

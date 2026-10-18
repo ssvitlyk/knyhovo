@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { clearCache } from '../../collections/cache.js';
-import { fixedClock } from '../../clock.js';
+import { fixedClock } from '../../__tests__/helpers/fixed-clock.js';
 import { emptyDb, makeFakePrisma, book, listing, collection, itemsFor } from './fixtures.js';
 import type { FakeDb } from './fixtures.js';
 

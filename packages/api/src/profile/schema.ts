@@ -1,12 +1,5 @@
 import { z } from 'zod';
-import { ValidationError } from '../errors.js';
-
-function firstIssueMessage(error: z.ZodError, fallback: string): string {
-  const issue = error.issues[0];
-  if (!issue) return fallback;
-  const path = issue.path.join('.');
-  return `${path ? `${path}: ` : ''}${issue.message}`;
-}
+import { parseOrThrow } from '../http/parse.js';
 
 /**
  * `PATCH /api/profile` body.
@@ -25,11 +18,7 @@ const updateProfileBody = z.object({
   displayName: z.union([displayNameSchema, z.null()]).optional(),
 });
 
-export type UpdateProfileBody = { displayName: string | null };
-
-export function parseUpdateProfileBody(input: unknown): UpdateProfileBody {
-  const result = updateProfileBody.safeParse(input);
-  if (!result.success) throw new ValidationError(firstIssueMessage(result.error, 'Invalid request body'));
-  const displayName = result.data.displayName;
+export function parseUpdateProfileBody(input: unknown): { displayName: string | null } {
+  const { displayName } = parseOrThrow(updateProfileBody, input, 'Invalid request body');
   return { displayName: displayName !== undefined ? displayName : null };
 }

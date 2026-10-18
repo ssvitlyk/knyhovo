@@ -17,7 +17,7 @@
  */
 
 /** A resolved good-price threshold, ready to be frozen into a policy. */
-export interface GoodPriceSuggestion {
+interface GoodPriceSuggestion {
   /** Threshold amount in kopiyky. */
   readonly amount: number;
   /** Which formula produced it — persisted as `thresholdBasis`. */
@@ -31,7 +31,7 @@ export type GoodPriceResult =
   | { readonly available: false; readonly reason: 'PENDING_CALIBRATION' | 'INSUFFICIENT_HISTORY' };
 
 /** The observations a formula will need, so callers already gather the right data. */
-export interface PriceHistorySample {
+interface PriceHistorySample {
   /** Recorded price points (kopiyky) inside the evaluation window, any order. */
   readonly amounts: readonly number[];
   /** The book's canonical price right now, or null when nothing is in stock. */

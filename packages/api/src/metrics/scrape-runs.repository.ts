@@ -1,17 +1,8 @@
 import type { PrismaClient } from '@prisma/client';
-import type { ProviderName } from '@knyhovo/shared';
 import type { ScrapeRunMetricsRow } from './scrape-runs-source.js';
+import { PROVIDER_SLUG } from '../pricing/provider-maps.js';
 
-const PROVIDER_SLUG: Record<string, ProviderName> = {
-  YAKABOO: 'yakaboo',
-  BOOK_CLUB: 'book-club',
-  VIVAT: 'vivat',
-  BOOK_YE: 'book-ye',
-  BOOKCHEF: 'bookchef',
-  LABORATORY: 'laboratory',
-  KNIGOLAND: 'knigoland',
-  MEGAKNIGA: 'megakniga',
-};
+const PROVIDER_SLUG_BY_ENUM: Readonly<Record<string, string>> = PROVIDER_SLUG;
 
 /**
  * Fetch all scrape_runs rows and map them to the plain {@link ScrapeRunMetricsRow}
@@ -32,7 +23,7 @@ export async function fetchScrapeRunMetricRows(prisma: PrismaClient): Promise<Sc
   });
 
   return rows.map((row) => ({
-    provider: PROVIDER_SLUG[String(row.provider)] ?? String(row.provider),
+    provider: PROVIDER_SLUG_BY_ENUM[String(row.provider)] ?? String(row.provider),
     status: String(row.status),
     durationMs: row.durationMs,
     itemsFound: row.itemsFound,

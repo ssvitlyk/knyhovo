@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ValidationError } from '../errors.js';
+import { parseOrThrow } from '../http/parse.js';
 
 /**
  * Validation for `GET /api/search` query parameters.
@@ -24,15 +24,8 @@ export type SearchParams = z.infer<typeof searchQuerySchema>;
 
 /**
  * Parse and validate raw request query parameters.
- * Throws {@link ValidationError} (→ HTTP 400) on any invalid input.
+ * Throws `ValidationError` (→ HTTP 400) on any invalid input.
  */
 export function parseSearchQuery(query: unknown): SearchParams {
-  const result = searchQuerySchema.safeParse(query);
-  if (!result.success) {
-    const issue = result.error.issues[0];
-    const path = issue?.path.join('.') ?? '';
-    const message = issue ? `${path ? `${path}: ` : ''}${issue.message}` : 'Invalid query parameters';
-    throw new ValidationError(message);
-  }
-  return result.data;
+  return parseOrThrow(searchQuerySchema, query, 'Invalid query parameters');
 }

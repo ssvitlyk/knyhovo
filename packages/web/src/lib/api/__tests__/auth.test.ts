@@ -1,8 +1,6 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   me,
-  requestCode,
-  verifyCode,
   logout,
   requestMagicLink,
   verifyMagicLink,
@@ -59,60 +57,6 @@ describe('me()', () => {
 
     await me();
     expect(capturedInit?.credentials).toBe('include');
-  });
-});
-
-describe('verifyCode()', () => {
-  it('200 → returns user', async () => {
-    mockFetch((async () =>
-      new Response(JSON.stringify({ user: USER }), { status: 200 })) as typeof fetch);
-
-    const result = await verifyCode('test@example.com', '123456');
-    expect(result).toEqual(USER);
-  });
-
-  it('401 → throws AuthError', async () => {
-    mockFetch((async () => new Response('{}', { status: 401 })) as typeof fetch);
-
-    await expect(verifyCode('test@example.com', '000000')).rejects.toMatchObject({
-      name: 'AuthError',
-      status: 401,
-    });
-  });
-});
-
-describe('requestCode()', () => {
-  it('posts to the correct URL with credentials: include', async () => {
-    let calledUrl = '';
-    let capturedInit: RequestInit | undefined;
-
-    mockFetch((async (input: RequestInfo | URL, init?: RequestInit) => {
-      calledUrl = String(input);
-      capturedInit = init;
-      return new Response(JSON.stringify({ ok: true }), { status: 200 });
-    }) as typeof fetch);
-
-    await requestCode('user@example.com');
-
-    expect(calledUrl).toContain('/api/auth/request-code');
-    expect(capturedInit?.credentials).toBe('include');
-    expect(capturedInit?.method).toBe('POST');
-  });
-
-  it('throws AuthError on non-2xx', async () => {
-    mockFetch((async () => new Response('{}', { status: 429 })) as typeof fetch);
-
-    await expect(requestCode('x@y.com')).rejects.toMatchObject({ name: 'AuthError', status: 429 });
-  });
-
-  it('throws AuthError with null status on network failure', async () => {
-    mockFetch((async () => {
-      throw new Error('network down');
-    }) as typeof fetch);
-
-    const err = await requestCode('x@y.com').catch((e: unknown) => e);
-    expect(err).toBeInstanceOf(AuthError);
-    expect((err as AuthError).status).toBeNull();
   });
 });
 
@@ -191,7 +135,9 @@ describe('logout()', () => {
 
     await logout();
 
-    expect(calledUrl).toContain('/api/auth/logout');
+    // Browser-side: relative URL (Next rewrite), never the server-only absolute API origin.
+    expect(calledUrl).toBe('/api/auth/logout');
+    expect(capturedInit?.method).toBe('POST');
     expect(capturedInit?.credentials).toBe('include');
   });
 
