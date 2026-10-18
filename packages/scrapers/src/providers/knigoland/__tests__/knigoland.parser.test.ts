@@ -6,10 +6,10 @@ import {
   parseKnigolandProduct,
   parseKnigolandSitemap,
   parseKnigolandSitemapIndex,
-  knigolandPriceToKopecks,
 } from '../knigoland.parser.js';
 import { buildCoverUrl } from '../constants.js';
 import { normalizeIsbn } from '../../../canonical/isbn.js';
+import { priceToKopecks } from '../../../lib/price.js';
 
 const FIXTURES_DIR = resolve(import.meta.dirname, '../__fixtures__');
 
@@ -51,47 +51,47 @@ function productHtml(opts: { product?: unknown; isbn?: string; author?: string }
 }
 
 // ──────────────────────────────────────────────────────────────
-// knigolandPriceToKopecks — Money parsing
+// priceToKopecks — Money parsing
 // ──────────────────────────────────────────────────────────────
 
-describe('knigolandPriceToKopecks', () => {
+describe('priceToKopecks', () => {
   it('parses a plain number to kopecks', () => {
-    expect(knigolandPriceToKopecks(200)).toBe(20000);
+    expect(priceToKopecks(200)).toBe(20000);
   });
 
   it('parses a whole-number string like "780" to kopecks', () => {
-    expect(knigolandPriceToKopecks('780')).toBe(78000);
+    expect(priceToKopecks('780')).toBe(78000);
   });
 
   it('rounds fractional hryvnias (number and string)', () => {
-    expect(knigolandPriceToKopecks(199.5)).toBe(19950);
-    expect(knigolandPriceToKopecks('199.50')).toBe(19950);
+    expect(priceToKopecks(199.5)).toBe(19950);
+    expect(priceToKopecks('199.50')).toBe(19950);
   });
 
   it('returns null for zero', () => {
-    expect(knigolandPriceToKopecks(0)).toBeNull();
-    expect(knigolandPriceToKopecks('0')).toBeNull();
+    expect(priceToKopecks(0)).toBeNull();
+    expect(priceToKopecks('0')).toBeNull();
   });
 
   it('returns null for negative values', () => {
-    expect(knigolandPriceToKopecks(-100)).toBeNull();
-    expect(knigolandPriceToKopecks('-5')).toBeNull();
+    expect(priceToKopecks(-100)).toBeNull();
+    expect(priceToKopecks('-5')).toBeNull();
   });
 
   it('returns null for NaN / Infinity', () => {
-    expect(knigolandPriceToKopecks(NaN)).toBeNull();
-    expect(knigolandPriceToKopecks(Infinity)).toBeNull();
+    expect(priceToKopecks(NaN)).toBeNull();
+    expect(priceToKopecks(Infinity)).toBeNull();
   });
 
   it('returns null for null / undefined', () => {
-    expect(knigolandPriceToKopecks(null)).toBeNull();
-    expect(knigolandPriceToKopecks(undefined)).toBeNull();
+    expect(priceToKopecks(null)).toBeNull();
+    expect(priceToKopecks(undefined)).toBeNull();
   });
 
   it('returns null for non-numeric / empty / object input', () => {
-    expect(knigolandPriceToKopecks('abc')).toBeNull();
-    expect(knigolandPriceToKopecks('')).toBeNull();
-    expect(knigolandPriceToKopecks({})).toBeNull();
+    expect(priceToKopecks('abc')).toBeNull();
+    expect(priceToKopecks('')).toBeNull();
+    expect(priceToKopecks({})).toBeNull();
   });
 });
 

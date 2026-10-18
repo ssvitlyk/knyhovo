@@ -1,13 +1,11 @@
 import type { ScraperProvider, ScraperResult, ScraperOptions } from '@knyhovo/shared';
-import type { RawProviderListing } from '@knyhovo/shared';
 import { FetchHtmlFetcher, type HtmlFetcher } from '../../http/html-fetcher.js';
 import { VIVAT_CATALOG_URL } from './constants.js';
 import { parseVivatPage, extractVivatProductDetails } from './vivat.parser.js';
 import { enrichProductDetails } from '../../lib/enrich-product-details.js';
-
-const DEFAULT_MAX_PAGES = 50;
-const DEFAULT_TIMEOUT_MS = 10_000;
-const DEFAULT_DELAY_MS = 500;
+import { paginateCatalog } from '../../lib/paginate-catalog.js';
+import { NOOP_LOGGER } from '../../lib/noop-logger.js';
+import { DEFAULT_MAX_PAGES, DEFAULT_TIMEOUT_MS, DEFAULT_DELAY_MS } from '../../lib/defaults.js';
 
 /**
  * Vivat catalog scraper. The catalog is server-rendered Next.js, so the default
@@ -27,46 +25,23 @@ export class VivatScraper implements ScraperProvider {
     const maxPages = options?.maxPages ?? DEFAULT_MAX_PAGES;
     const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const delayMs = options?.delayMs ?? DEFAULT_DELAY_MS;
-    const logger = options?.logger ?? { info: () => {} };
+    const logger = options?.logger ?? NOOP_LOGGER;
 
-    const allListings: RawProviderListing[] = [];
     const errors: string[] = [];
-    const seenUrls = new Set<string>();
 
     logger.info(`vivat: catalog pass starting (maxPages=${maxPages}, delayMs=${delayMs})`);
 
-    let pagesFetched = 0;
-    for (let page = 1; page <= maxPages; page++) {
-      const url = `${this.catalogUrl}?page=${page}`;
-      logger.info(`vivat: fetching catalog page ${page}/${maxPages} — ${url}`);
-
-      let html: string;
-      try {
-        html = await this.fetcher.fetch(url, timeoutMs);
-      } catch (err) {
-        errors.push(
-          `Page ${page}: network error — ${err instanceof Error ? err.message : String(err)}`,
-        );
-        break;
-      }
-      pagesFetched = page;
-
-      const { listings, errors: parseErrors, hasNextPage } = parseVivatPage(html);
-
-      for (const listing of listings) {
-        if (!seenUrls.has(listing.url)) {
-          seenUrls.add(listing.url);
-          allListings.push(listing);
-        }
-      }
-      errors.push(...parseErrors);
-
-      if (!hasNextPage) break;
-
-      if (page < maxPages && delayMs > 0) {
-        await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
-      }
-    }
+    const { listings: allListings, pagesFetched } = await paginateCatalog({
+      maxPages,
+      delayMs,
+      errors,
+      buildUrl: (page) => `${this.catalogUrl}?page=${page}`,
+      fetch: (url) => this.fetcher.fetch(url, timeoutMs),
+      parse: parseVivatPage,
+      onPageStart: (page, url) => {
+        logger.info(`vivat: fetching catalog page ${page}/${maxPages} — ${url}`);
+      },
+    });
 
     logger.info(
       `vivat: catalog pass done — ${allListings.length} listings from ${pagesFetched} pages ` +

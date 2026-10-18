@@ -4,10 +4,10 @@ import { describe, it, expect } from 'vitest';
 import {
   parseBookChefListing,
   parseBookChefProduct,
-  bookChefPriceToKopecks,
 } from '../bookchef.parser.js';
-import { buildCoverUrl, buildProductUrl, isPaperBookType } from '../constants.js';
+import { buildCoverUrl } from '../constants.js';
 import { normalizeIsbn } from '../../../canonical/isbn.js';
+import { priceToKopecks } from '../../../lib/price.js';
 
 const FIXTURES_DIR = resolve(import.meta.dirname, '../__fixtures__');
 
@@ -25,47 +25,47 @@ function loadFixture(name: string): string {
 // minimal inline string — never by a synthetic fixture file.
 
 // ──────────────────────────────────────────────────────────────
-// bookChefPriceToKopecks — Money parsing
+// priceToKopecks — Money parsing
 // ──────────────────────────────────────────────────────────────
 
-describe('bookChefPriceToKopecks', () => {
+describe('priceToKopecks', () => {
   it('parses a numeric string like "320.00" to kopecks', () => {
-    expect(bookChefPriceToKopecks('320.00')).toBe(32000);
+    expect(priceToKopecks('320.00')).toBe(32000);
   });
 
   it('parses a plain number to kopecks', () => {
-    expect(bookChefPriceToKopecks(259)).toBe(25900);
+    expect(priceToKopecks(259)).toBe(25900);
   });
 
   it('rounds fractional hryvnias (number and string)', () => {
-    expect(bookChefPriceToKopecks(199.5)).toBe(19950);
-    expect(bookChefPriceToKopecks('199.50')).toBe(19950);
+    expect(priceToKopecks(199.5)).toBe(19950);
+    expect(priceToKopecks('199.50')).toBe(19950);
   });
 
   it('returns null for zero', () => {
-    expect(bookChefPriceToKopecks(0)).toBeNull();
-    expect(bookChefPriceToKopecks('0')).toBeNull();
+    expect(priceToKopecks(0)).toBeNull();
+    expect(priceToKopecks('0')).toBeNull();
   });
 
   it('returns null for negative values', () => {
-    expect(bookChefPriceToKopecks(-100)).toBeNull();
-    expect(bookChefPriceToKopecks('-5')).toBeNull();
+    expect(priceToKopecks(-100)).toBeNull();
+    expect(priceToKopecks('-5')).toBeNull();
   });
 
   it('returns null for NaN / Infinity', () => {
-    expect(bookChefPriceToKopecks(NaN)).toBeNull();
-    expect(bookChefPriceToKopecks(Infinity)).toBeNull();
+    expect(priceToKopecks(NaN)).toBeNull();
+    expect(priceToKopecks(Infinity)).toBeNull();
   });
 
   it('returns null for null / undefined', () => {
-    expect(bookChefPriceToKopecks(null)).toBeNull();
-    expect(bookChefPriceToKopecks(undefined)).toBeNull();
+    expect(priceToKopecks(null)).toBeNull();
+    expect(priceToKopecks(undefined)).toBeNull();
   });
 
   it('returns null for non-numeric / empty / object input', () => {
-    expect(bookChefPriceToKopecks('abc')).toBeNull();
-    expect(bookChefPriceToKopecks('')).toBeNull();
-    expect(bookChefPriceToKopecks({})).toBeNull();
+    expect(priceToKopecks('abc')).toBeNull();
+    expect(priceToKopecks('')).toBeNull();
+    expect(priceToKopecks({})).toBeNull();
   });
 });
 
@@ -334,7 +334,7 @@ describe('parseBookChefProduct', () => {
 });
 
 // ──────────────────────────────────────────────────────────────
-// constants — buildCoverUrl / buildProductUrl / isPaperBookType
+// constants — buildCoverUrl
 // ──────────────────────────────────────────────────────────────
 
 describe('buildCoverUrl', () => {
@@ -364,32 +364,6 @@ describe('buildCoverUrl', () => {
     expect(buildCoverUrl('')).toBeNull();
     expect(buildCoverUrl(123)).toBeNull();
     expect(buildCoverUrl([])).toBeNull();
-  });
-});
-
-describe('buildProductUrl', () => {
-  it('builds an absolute URL from a slug', () => {
-    expect(buildProductUrl('donka-zemli')).toBe('https://bookchef.ua/donka-zemli');
-  });
-
-  it('trims a leading slash', () => {
-    expect(buildProductUrl('/donka-zemli')).toBe('https://bookchef.ua/donka-zemli');
-  });
-});
-
-describe('isPaperBookType', () => {
-  it('treats missing / blank type as paper', () => {
-    expect(isPaperBookType(undefined)).toBe(true);
-    expect(isPaperBookType('')).toBe(true);
-  });
-
-  it('flags non-paper markers', () => {
-    expect(isPaperBookType('ebook')).toBe(false);
-    expect(isPaperBookType('audio')).toBe(false);
-  });
-
-  it('treats a plain book type as paper', () => {
-    expect(isPaperBookType('Паперова книга')).toBe(true);
   });
 });
 

@@ -82,11 +82,13 @@ export function parseSitemapEntries(xml: string): ParseSitemapResult {
 /**
  * Parse a sitemap index (`<sitemapindex>` of `<sitemap><loc>`) into
  * deduplicated sub-sitemap URLs, optionally narrowed by `filter`. Pure
- * function — no IO, never throws.
+ * function — no IO, never throws. `locSelector` overrides where `<loc>`s are
+ * read from (e.g. `'loc'` for an index whose entries are not `<sitemap>`-wrapped).
  */
 export function parseSitemapIndexEntries(
   xml: string,
   filter?: (loc: string) => boolean,
+  locSelector = 'sitemap > loc',
 ): ParseSitemapIndexResult {
   const trimmed = typeof xml === 'string' ? xml.trim() : '';
   if (!trimmed) {
@@ -97,7 +99,7 @@ export function parseSitemapIndexEntries(
   const sitemaps: string[] = [];
   const seen = new Set<string>();
 
-  $('sitemap > loc').each((_, el) => {
+  $(locSelector).each((_, el) => {
     const loc = $(el).text().trim();
     if (!loc || seen.has(loc)) return;
     if (filter && !filter(loc)) return;

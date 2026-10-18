@@ -131,4 +131,13 @@ describe('parseSitemapIndexEntries', () => {
     expect(sitemaps).toEqual([]);
     expect(error).toBe('no <sitemap><loc> entries found in sitemap index');
   });
+
+  it('reads <loc>s from a custom selector', () => {
+    const xml = '<urlset><url><loc>https://x/a.xml</loc></url><url><loc>https://x/b.xml</loc></url></urlset>';
+    expect(parseSitemapIndexEntries(xml).sitemaps).toEqual([]);
+    expect(parseSitemapIndexEntries(xml, undefined, 'loc').sitemaps).toEqual([
+      'https://x/a.xml',
+      'https://x/b.xml',
+    ]);
+  });
 });

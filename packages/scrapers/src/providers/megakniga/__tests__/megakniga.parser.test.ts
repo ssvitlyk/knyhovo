@@ -3,9 +3,9 @@ import { resolve } from 'node:path';
 import { describe, it, expect } from 'vitest';
 import {
   parseMegaknigaListing,
-  megaknigaPriceToKopecks,
   extractMegaknigaProductDetails,
 } from '../megakniga.parser.js';
+import { priceToKopecks } from '../../../lib/price.js';
 
 const FIXTURES_DIR = resolve(import.meta.dirname, '../__fixtures__');
 
@@ -14,39 +14,39 @@ function loadFixture(name: string): string {
 }
 
 // ──────────────────────────────────────────────────────────────
-// megaknigaPriceToKopecks
+// priceToKopecks
 // ──────────────────────────────────────────────────────────────
 
-describe('megaknigaPriceToKopecks', () => {
+describe('priceToKopecks', () => {
   it('scales a decimal hryvnia string to kopecks', () => {
-    expect(megaknigaPriceToKopecks('432.10')).toBe(43210);
+    expect(priceToKopecks('432.10')).toBe(43210);
   });
 
   it('scales a whole-number string', () => {
-    expect(megaknigaPriceToKopecks('270')).toBe(27000);
+    expect(priceToKopecks('270')).toBe(27000);
   });
 
   it('scales a plain number', () => {
-    expect(megaknigaPriceToKopecks(270.1)).toBe(27010);
+    expect(priceToKopecks(270.1)).toBe(27010);
   });
 
   it('trims surrounding whitespace (as seen in .price element text)', () => {
-    expect(megaknigaPriceToKopecks('  270.10                    ')).toBe(27010);
+    expect(priceToKopecks('  270.10                    ')).toBe(27010);
   });
 
   it('returns null for zero', () => {
-    expect(megaknigaPriceToKopecks('0')).toBeNull();
-    expect(megaknigaPriceToKopecks(0)).toBeNull();
+    expect(priceToKopecks('0')).toBeNull();
+    expect(priceToKopecks(0)).toBeNull();
   });
 
   it('returns null for a negative value', () => {
-    expect(megaknigaPriceToKopecks('-1')).toBeNull();
+    expect(priceToKopecks('-1')).toBeNull();
   });
 
   it('returns null for non-numeric input', () => {
-    expect(megaknigaPriceToKopecks('—')).toBeNull();
-    expect(megaknigaPriceToKopecks(undefined)).toBeNull();
-    expect(megaknigaPriceToKopecks(null)).toBeNull();
+    expect(priceToKopecks('—')).toBeNull();
+    expect(priceToKopecks(undefined)).toBeNull();
+    expect(priceToKopecks(null)).toBeNull();
   });
 });
 

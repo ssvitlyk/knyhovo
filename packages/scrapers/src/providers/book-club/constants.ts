@@ -18,10 +18,10 @@ export const DEFAULT_BATCH_SIZE = 30;
 export const DEFAULT_MAX_PRODUCTS = Number.POSITIVE_INFINITY;
 
 /** Default HTTP request timeout in milliseconds. */
-export const DEFAULT_TIMEOUT_MS = 10_000;
+export { DEFAULT_TIMEOUT_MS } from '../../lib/defaults.js';
 
 /** Default delay between requests in milliseconds. */
-export const DEFAULT_DELAY_MS = 500;
+export { DEFAULT_DELAY_MS } from '../../lib/defaults.js';
 
 /**
  * Build the canonical product page URL for a KSD slug.

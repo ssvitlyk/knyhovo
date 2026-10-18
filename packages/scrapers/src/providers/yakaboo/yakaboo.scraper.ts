@@ -4,11 +4,10 @@ import { classifyBlockedPage, isForbiddenError } from '../../http/blocked-page.j
 import { YAKABOO_CATALOG_URL } from './constants.js';
 import { parseYakabooPage, extractYakabooProductDescription } from './yakaboo.parser.js';
 import { enrichProductDetails, type ExtractedProductDetails } from '../../lib/enrich-product-details.js';
-import type { RawProviderListing } from '@knyhovo/shared';
-
-const DEFAULT_MAX_PAGES = 50;
-const DEFAULT_TIMEOUT_MS = 10_000;
-const DEFAULT_DELAY_MS = 500;
+import { errMsg } from '../../lib/errors.js';
+import { paginateCatalog } from '../../lib/paginate-catalog.js';
+import { NOOP_LOGGER } from '../../lib/noop-logger.js';
+import { DEFAULT_MAX_PAGES, DEFAULT_TIMEOUT_MS, DEFAULT_DELAY_MS } from '../../lib/defaults.js';
 
 export class YakabooScraper implements ScraperProvider {
   readonly name = 'yakaboo' as const;
@@ -24,45 +23,23 @@ export class YakabooScraper implements ScraperProvider {
     const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const delayMs = options?.delayMs ?? DEFAULT_DELAY_MS;
 
-    const allListings: RawProviderListing[] = [];
     const errors: string[] = [];
-    const seenUrls = new Set<string>();
-    let firstPageHtml: string | null = null;
 
-    for (let page = 1; page <= maxPages; page++) {
-      const url = `${this.catalogUrl}?page=${page}`;
-
-      let html: string;
-      try {
-        html = await this.fetcher.fetch(url, timeoutMs);
-        if (firstPageHtml === null) firstPageHtml = html;
-      } catch (err) {
+    const { listings: allListings, firstPageHtml } = await paginateCatalog({
+      maxPages,
+      delayMs,
+      errors,
+      buildUrl: (page) => `${this.catalogUrl}?page=${page}`,
+      fetch: (url) => this.fetcher.fetch(url, timeoutMs),
+      parse: parseYakabooPage,
+      onFetchError: (err, page, errs) => {
         if (isForbiddenError(err)) {
-          errors.push('Yakaboo blocked by HTTP 403, likely anti-bot protection');
+          errs.push('Yakaboo blocked by HTTP 403, likely anti-bot protection');
         } else {
-          errors.push(
-            `Page ${page}: network error — ${err instanceof Error ? err.message : String(err)}`,
-          );
+          errs.push(`Page ${page}: network error — ${errMsg(err)}`);
         }
-        break;
-      }
-
-      const { listings, errors: parseErrors, hasNextPage } = parseYakabooPage(html);
-
-      for (const listing of listings) {
-        if (!seenUrls.has(listing.url)) {
-          seenUrls.add(listing.url);
-          allListings.push(listing);
-        }
-      }
-      errors.push(...parseErrors);
-
-      if (!hasNextPage) break;
-
-      if (page < maxPages && delayMs > 0) {
-        await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
-      }
-    }
+      },
+    });
 
     // When nothing was scraped, classify the first page so an empty result is
     // explained (anti-bot block vs. a legitimately empty catalog). A fetch that
@@ -92,7 +69,7 @@ export class YakabooScraper implements ScraperProvider {
           timeoutMs,
           delayMs: options.descriptionDelayMs ?? delayMs,
           errors,
-          logger: options.logger ?? { info: () => {} },
+          logger: options.logger ?? NOOP_LOGGER,
           ...(options.skipDescriptionUrls ? { skipUrls: options.skipDescriptionUrls } : {}),
         },
       );

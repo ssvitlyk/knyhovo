@@ -2,7 +2,6 @@ import type {
   ScraperProvider,
   ScraperResult,
   ScraperOptions,
-  RawProviderListing,
 } from '@knyhovo/shared';
 import { FetchHtmlFetcher, type HtmlFetcher } from '../../http/html-fetcher.js';
 import { fetchWithRetry } from '../../http/retry.js';
@@ -18,6 +17,8 @@ import {
 } from './constants.js';
 import { parseMegaknigaListing, extractMegaknigaProductDetails } from './megakniga.parser.js';
 import { enrichProductDetails } from '../../lib/enrich-product-details.js';
+import { paginateCatalog } from '../../lib/paginate-catalog.js';
+import { NOOP_LOGGER } from '../../lib/noop-logger.js';
 
 /**
  * Wrap an `HtmlFetcher` so every `fetch()` call goes through `fetchWithRetry`
@@ -71,54 +72,30 @@ export class MegaknigaScraper implements ScraperProvider {
     const timeoutMs = options?.timeoutMs ?? DEFAULT_TIMEOUT_MS;
     const delayMs = options?.delayMs ?? DEFAULT_DELAY_MS;
     const maxRetries = options?.maxRetries ?? DEFAULT_MAX_RETRIES;
-    const logger = options?.logger ?? { info: () => {} };
+    const logger = options?.logger ?? NOOP_LOGGER;
 
     const retryingFetcher = withRetry(this.fetcher, maxRetries);
 
-    const allListings: RawProviderListing[] = [];
     const errors: string[] = [];
-    const seenUrls = new Set<string>();
 
     logger.info(`megakniga: catalog pass starting (maxPages=${maxPages}, delayMs=${delayMs})`);
 
-    let pagesFetched = 0;
-    for (let page = 1; page <= maxPages; page++) {
-      const url = buildListingUrl(page);
-      logger.info(`megakniga: fetching catalog page ${page}/${maxPages} — ${url}`);
-
-      let html: string;
-      try {
-        html = await retryingFetcher.fetch(url, timeoutMs);
-      } catch (err) {
-        errors.push(
-          `Page ${page}: network error — ${err instanceof Error ? err.message : String(err)}`,
-        );
-        break;
-      }
-      pagesFetched = page;
-
-      const { listings, errors: parseErrors, hasNextPage } = parseMegaknigaListing(html);
-      errors.push(...parseErrors);
-
-      let newCount = 0;
-      for (const listing of listings) {
-        if (!seenUrls.has(listing.url)) {
-          seenUrls.add(listing.url);
-          allListings.push(listing);
-          newCount++;
-        }
-      }
-
-      // Stop when the page contributed zero NEW urls. A genuinely empty page
-      // (hasNextPage false) always has newCount 0 too, so this single check
-      // covers both the "empty page" and "paginator repeats the last page"
-      // stop conditions (recon §7).
-      if (!hasNextPage || newCount === 0) break;
-
-      if (page < maxPages && delayMs > 0) {
-        await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
-      }
-    }
+    // Stop when the page contributed zero NEW urls. A genuinely empty page
+    // (hasNextPage false) always has zero new urls too, so this single check
+    // covers both the "empty page" and "paginator repeats the last page"
+    // stop conditions (recon §7).
+    const { listings: allListings, pagesFetched } = await paginateCatalog({
+      maxPages,
+      delayMs,
+      errors,
+      buildUrl: buildListingUrl,
+      fetch: (url) => retryingFetcher.fetch(url, timeoutMs),
+      parse: parseMegaknigaListing,
+      stopWhenNoNewListings: true,
+      onPageStart: (page, url) => {
+        logger.info(`megakniga: fetching catalog page ${page}/${maxPages} — ${url}`);
+      },
+    });
 
     logger.info(
       `megakniga: catalog pass done — ${allListings.length} listings from ${pagesFetched} pages ` +

@@ -7,16 +7,6 @@ import type { CanonicalBookId } from './ids.js';
 export type ISBN = string | null;
 
 /**
- * Minimal shared attributes that describe a book regardless of provider or
- * canonical status. Used as a base for more specific types.
- */
-export interface Book {
-  readonly title: string;
-  readonly author: string;
-  readonly isbn: ISBN;
-}
-
-/**
  * The single, deduplicated record for a book in the system.
  * Multiple ProviderListings from different providers resolve to one CanonicalBook
  * via the canonical matching pipeline.

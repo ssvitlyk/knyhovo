@@ -1,24 +1,14 @@
 import * as cheerio from 'cheerio';
-import type { RawProviderListing, Availability, Money } from '@knyhovo/shared';
+import type { RawProviderListing, Money } from '@knyhovo/shared';
 import { normalizeIsbn } from '../../canonical/isbn.js';
 import { sanitizeDescription } from '../../lib/sanitize-description.js';
 import { extractBreadcrumbs } from '../../lib/extract-breadcrumbs.js';
-import {
-  JSON_LD_SELECTOR,
-  CATALOG_PRODUCTS_SITEMAP_PATTERN,
-  buildCoverUrl,
-} from './constants.js';
-import type { ParsedProductState } from '../single-product.js';
-
-/** Result of parsing a single Knigoland product page into a raw listing. */
-export interface ParseResult {
-  /**
-   * The parsed listing, or null when the page lacked a usable Product block OR
-   * when the page is not a paper book (a silent skip — see {@link parseKnigolandListing}).
-   */
-  readonly listing: RawProviderListing | null;
-  readonly errors: string[];
-}
+import { CATALOG_PRODUCTS_SITEMAP_PATTERN, buildCoverUrl } from './constants.js';
+import type { ParsedProductState, ProductPageResult } from '../types.js';
+import { priceToKopecks, toMoney } from '../../lib/price.js';
+import { errMsg } from '../../lib/errors.js';
+import { parseSitemapEntries, parseSitemapIndexEntries } from '../../sitemap/parse-sitemap.js';
+import { readJsonLdBlocks, readString, resolveSchemaOrgAvailability } from '../../lib/json-ld.js';
 
 /**
  * Shape of a Knigoland JSON-LD `@type:Product` block (all fields untrusted).
@@ -43,48 +33,8 @@ interface KnigolandOffers {
   readonly availability?: unknown;
 }
 
-/**
- * Convert a Knigoland price (a number like 200 or a numeric string "200") to a
- * Money amount in kopecks, or null when the value is not a usable price.
- *
- * Returns null for 0, negative, NaN, Infinity, null and undefined.
- */
-export function knigolandPriceToKopecks(value: unknown): number | null {
-  const num =
-    typeof value === 'number'
-      ? value
-      : typeof value === 'string'
-        ? Number(value.trim())
-        : NaN;
-  if (!Number.isFinite(num) || num <= 0) return null;
-  return Math.round(num * 100);
-}
-
-function toMoney(kopecks: number): Money {
-  return { amount: kopecks, currency: 'UAH' };
-}
-
-function readString(value: unknown): string | null {
-  return typeof value === 'string' && value.trim() !== '' ? value.trim() : null;
-}
-
 function asOffers(value: unknown): KnigolandOffers | null {
   return typeof value === 'object' && value !== null ? (value as KnigolandOffers) : null;
-}
-
-/**
- * Map a schema.org availability value (e.g. `https://schema.org/InStock`) to the
- * shared Availability enum. A missing price always wins → out-of-stock.
- */
-function resolveAvailability(availability: unknown, hasPrice: boolean): Availability {
-  if (!hasPrice) return 'out-of-stock';
-  if (typeof availability !== 'string') return 'unknown';
-  const suffix = availability.split('/').pop()?.toLowerCase().trim() ?? '';
-  if (suffix === 'instock' || suffix === 'preorder') return 'in-stock';
-  if (suffix === 'outofstock' || suffix === 'soldout' || suffix === 'discontinued') {
-    return 'out-of-stock';
-  }
-  return 'unknown';
 }
 
 /**
@@ -133,31 +83,6 @@ function isBooklandIsbn13(raw: string): boolean {
   return digits.length === 13 && (digits.startsWith('978') || digits.startsWith('979'));
 }
 
-function matchesType(type: unknown, wanted: string): boolean {
-  if (type === wanted) return true;
-  if (Array.isArray(type)) return type.includes(wanted);
-  return false;
-}
-
-/**
- * Find the first object with the given `@type` within a parsed JSON-LD value.
- * Handles single objects, arrays of objects and `@graph` containers.
- */
-function findByType(parsed: unknown, wanted: string): Record<string, unknown> | null {
-  if (Array.isArray(parsed)) {
-    for (const entry of parsed) {
-      const found = findByType(entry, wanted);
-      if (found) return found;
-    }
-    return null;
-  }
-  if (typeof parsed !== 'object' || parsed === null) return null;
-  const obj = parsed as Record<string, unknown>;
-  if (matchesType(obj['@type'], wanted)) return obj;
-  if (Array.isArray(obj['@graph'])) return findByType(obj['@graph'], wanted);
-  return null;
-}
-
 /**
  * Read the `@type:Product` JSON-LD block from a Knigoland product page, plus a
  * loaded cheerio document for reading spec-table fields (ISBN, authors) that
@@ -169,29 +94,9 @@ function readBlocks(html: string): {
   product: KnigolandProduct | null;
   errors: string[];
 } {
-  const errors: string[] = [];
   const $ = cheerio.load(html);
-  const blocks = $(JSON_LD_SELECTOR).toArray();
-  if (blocks.length === 0) {
-    return { $, product: null, errors: ['no JSON-LD script found'] };
-  }
-
-  let product: KnigolandProduct | null = null;
-
-  for (const block of blocks) {
-    const raw = $(block).contents().text().trim();
-    if (!raw) continue;
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch (err) {
-      errors.push(`malformed JSON-LD — ${err instanceof Error ? err.message : String(err)}`);
-      continue;
-    }
-    if (product === null) product = findByType(parsed, 'Product') as KnigolandProduct | null;
-  }
-
-  return { $, product, errors };
+  const { found, errors } = readJsonLdBlocks($, ['Product']);
+  return { $, product: found['Product'] as KnigolandProduct | null, errors };
 }
 
 /**
@@ -209,7 +114,7 @@ function readBlocks(html: string): {
  * expected, not an error. A genuinely malformed/incomplete page yields
  * `listing: null` with a message in `errors`.
  */
-export function parseKnigolandListing(html: string): ParseResult {
+export function parseKnigolandListing(html: string): ProductPageResult {
   const { $, product, errors } = readBlocks(html);
   if (product === null) {
     if (errors.length === 0) errors.push('no Product JSON-LD found');
@@ -239,7 +144,7 @@ export function parseKnigolandListing(html: string): ParseResult {
       return { listing: null, errors };
     }
 
-    const priceKopecks = knigolandPriceToKopecks(offers.price);
+    const priceKopecks = priceToKopecks(offers.price);
     const price: Money | null = priceKopecks !== null ? toMoney(priceKopecks) : null;
 
     // ISBN cascade: spec-table ISBN → Product.sku → Product.mpn. sku/mpn are
@@ -257,17 +162,17 @@ export function parseKnigolandListing(html: string): ParseResult {
       isbn,
       price,
       url,
-      availability: resolveAvailability(offers.availability, price !== null),
+      availability: resolveSchemaOrgAvailability(offers.availability, price !== null),
       coverUrl: buildCoverUrl(product.image),
       // Always-on extraction (not gated by the opt-in enrichDescriptions flag): this
       // sitemap-driven provider already fetches the product page for every listing,
       // so the description comes for free — no extra request like W9a F2 enrichment.
       description: sanitizeDescription(readString(product.description)),
-      rawCategories: extractBreadcrumbs(html, title),
+      rawCategories: extractBreadcrumbs($, title),
     };
     return { listing, errors };
   } catch (err) {
-    errors.push(`unexpected error — ${err instanceof Error ? err.message : String(err)}`);
+    errors.push(`unexpected error — ${errMsg(err)}`);
     return { listing: null, errors };
   }
 }
@@ -283,12 +188,12 @@ export function parseKnigolandProduct(html: string): ParsedProductState {
   const offers = asOffers(product?.offers);
   if (offers === null) return { price: null, availability: 'unknown' };
 
-  const priceKopecks = knigolandPriceToKopecks(offers.price);
+  const priceKopecks = priceToKopecks(offers.price);
   if (priceKopecks === null) return { price: null, availability: 'out-of-stock' };
 
   return {
     price: toMoney(priceKopecks),
-    availability: resolveAvailability(offers.availability, true),
+    availability: resolveSchemaOrgAvailability(offers.availability, true),
   };
 }
 
@@ -306,25 +211,17 @@ export interface SitemapIndexResult {
  * `sitemapUrls: []` and an error message.
  */
 export function parseKnigolandSitemapIndex(xml: string): SitemapIndexResult {
-  const trimmed = typeof xml === 'string' ? xml.trim() : '';
-  if (!trimmed) {
-    return { sitemapUrls: [], errors: ['empty sitemap index'] };
-  }
-
-  const $ = cheerio.load(trimmed, { xml: true });
-  const sitemapUrls: string[] = [];
-  const seen = new Set<string>();
-  $('loc').each((_, el) => {
-    const loc = $(el).text().trim();
-    if (loc && CATALOG_PRODUCTS_SITEMAP_PATTERN.test(loc) && !seen.has(loc)) {
-      seen.add(loc);
-      sitemapUrls.push(loc);
-    }
-  });
-
-  const errors =
-    sitemapUrls.length === 0 ? ['no catalog-products sub-sitemaps found in index'] : [];
-  return { sitemapUrls, errors };
+  const { sitemaps } = parseSitemapIndexEntries(
+    xml,
+    (loc) => CATALOG_PRODUCTS_SITEMAP_PATTERN.test(loc),
+    'loc',
+  );
+  if (sitemaps.length > 0) return { sitemapUrls: sitemaps, errors: [] };
+  const blank = (typeof xml === 'string' ? xml.trim() : '') === '';
+  return {
+    sitemapUrls: [],
+    errors: [blank ? 'empty sitemap index' : 'no catalog-products sub-sitemaps found in index'],
+  };
 }
 
 /** Result of parsing a Knigoland product sub-sitemap into product-page URLs. */
@@ -341,22 +238,6 @@ export interface SitemapResult {
  * error message.
  */
 export function parseKnigolandSitemap(xml: string): SitemapResult {
-  const trimmed = typeof xml === 'string' ? xml.trim() : '';
-  if (!trimmed) {
-    return { urls: [], errors: ['empty sitemap'] };
-  }
-
-  const $ = cheerio.load(trimmed, { xml: true });
-  const urls: string[] = [];
-  const seen = new Set<string>();
-  $('loc').each((_, el) => {
-    const loc = $(el).text().trim();
-    if (loc && !seen.has(loc)) {
-      seen.add(loc);
-      urls.push(loc);
-    }
-  });
-
-  const errors = urls.length === 0 ? ['no <loc> entries found in sitemap'] : [];
-  return { urls, errors };
+  const { entries, error } = parseSitemapEntries(xml);
+  return { urls: entries.map((entry) => entry.url), errors: error ? [error] : [] };
 }

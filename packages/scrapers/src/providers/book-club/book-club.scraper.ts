@@ -10,6 +10,8 @@ import {
 } from './constants.js';
 import { HttpGraphqlClient, type GraphqlClient } from './graphql-client.js';
 import { parseCatalogProducts, parseProductPageBatch } from './book-club.parser.js';
+import { errMsg } from '../../lib/errors.js';
+import { sleep } from '../../lib/sleep.js';
 
 /**
  * BookClub (КСД) scraper — the project's first API-based (GraphQL) provider.
@@ -55,7 +57,7 @@ export class BookClubScraper implements ScraperProvider {
         );
       } catch (err) {
         errors.push(
-          `Catalog page ${page}: network error — ${err instanceof Error ? err.message : String(err)}`,
+          `Catalog page ${page}: network error — ${errMsg(err)}`,
         );
         break;
       }
@@ -77,7 +79,7 @@ export class BookClubScraper implements ScraperProvider {
 
       page++;
       if (delayMs > 0) {
-        await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+        await sleep(delayMs);
       }
     }
 
@@ -99,10 +101,10 @@ export class BookClubScraper implements ScraperProvider {
         );
       } catch (err) {
         errors.push(
-          `Batch [${batch[0]}...]: fetch error — ${err instanceof Error ? err.message : String(err)}`,
+          `Batch [${batch[0]}...]: fetch error — ${errMsg(err)}`,
         );
         if (i + this.batchSize < targets.length && delayMs > 0) {
-          await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+          await sleep(delayMs);
         }
         continue;
       }
@@ -118,7 +120,7 @@ export class BookClubScraper implements ScraperProvider {
       }
 
       if (i + this.batchSize < targets.length && delayMs > 0) {
-        await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+        await sleep(delayMs);
       }
     }
 

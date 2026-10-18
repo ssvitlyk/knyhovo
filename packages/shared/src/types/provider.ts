@@ -1,4 +1,3 @@
-import type { CanonicalBookId, ProviderListingId } from './ids.js';
 import type { ISBN } from './book.js';
 import type { Money } from './money.js';
 
@@ -119,7 +118,7 @@ export type SitemapEntry = {
  * Raw listing data as returned by the scraper layer, before canonical matching or DB persistence.
  * This is the output of a scraper run — it has no DB ids and no canonicalBookId.
  *
- * Contrast with ProviderListing, which is the persisted DB entity created after canonical matching.
+ * Contrast with the persisted `ProviderListing` DB row (Prisma) created after canonical matching.
  */
 export interface RawProviderListing {
   readonly provider: ProviderName;
@@ -183,64 +182,6 @@ export interface RawProviderListing {
    * entry carried no `lastmod`.
    */
   readonly sourceLastmod?: string | null;
-}
-
-/**
- * A book entry as returned by a single provider (e.g. Yakaboo, BookClub).
- * One CanonicalBook may have multiple ProviderListings — one per provider that
- * carries the book.
- *
- * This is the persisted DB entity created after canonical matching.
- * Contrast with RawProviderListing, which is the pre-DB scraper output.
- */
-export interface ProviderListing {
-  readonly id: ProviderListingId;
-  /** The canonical record this listing has been matched to. */
-  readonly canonicalBookId: CanonicalBookId;
-  readonly provider: ProviderName;
-  /** Title as it appears on the provider's site (may differ from canonical title). */
-  readonly title: string;
-  /** Author as it appears on the provider's site. */
-  readonly author: string;
-  /** null when the provider page does not include an ISBN. */
-  readonly isbn: ISBN;
-  readonly price: Money;
-  /** Direct URL to the book's page on the provider's site. */
-  readonly url: string;
-  /** ISO 8601 timestamp of the last successful scrape that found this listing. */
-  readonly lastSeenAt: string;
-  /** Stock availability persisted from the last scrape that saw this listing. */
-  readonly availability: Availability;
-  /**
-   * Sanitized plain-text description scraped from the provider's product page (W9a F2).
-   * null when no usable description has been enriched yet.
-   */
-  readonly description: string | null;
-  /**
-   * Publisher as provider text, as-is (book-metadata PRD). null when not yet enriched.
-   */
-  readonly publisher: string | null;
-  /**
-   * Language as provider text, as-is (book-metadata PRD). null when not yet enriched.
-   */
-  readonly language: string | null;
-  /**
-   * Format/cover type as provider text, as-is (book-metadata PRD). null when not yet enriched.
-   */
-  readonly format: string | null;
-  /**
-   * Series as provider text, as-is (book-metadata PRD). null when not yet enriched.
-   */
-  readonly series: string | null;
-  /**
-   * Publication year (book-metadata PRD). null when not yet enriched.
-   */
-  readonly publicationYear: number | null;
-  /**
-   * Raw provider-native category/breadcrumb signals, root→leaf
-   * (genres-taxonomy PRD G2). [] when no signal has been collected yet.
-   */
-  readonly rawCategories: readonly string[];
 }
 
 /**

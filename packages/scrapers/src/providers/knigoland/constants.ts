@@ -1,3 +1,5 @@
+import { makeCoverUrlBuilder } from '../../lib/json-ld.js';
+
 export const KNIGOLAND_BASE_URL = 'https://knigoland.com.ua';
 
 /**
@@ -25,7 +27,7 @@ export const CATALOG_PRODUCTS_SITEMAP_PATTERN = /\/sections\/catalog-products-\d
  */
 export const DEFAULT_MAX_PRODUCTS = Number.POSITIVE_INFINITY;
 
-/**
+/*
  * Knigoland product pages are server-rendered (Next.js, no Cloudflare/WAF) with
  * several JSON-LD blocks; the parser reads `@type:Product` (price, availability,
  * sku/mpn, image) and ignores the rest (LocalBusiness, WebSite, BreadcrumbList,
@@ -43,7 +45,6 @@ export const DEFAULT_MAX_PRODUCTS = Number.POSITIVE_INFINITY;
  * (Книги, Комікси та манга, Навчальна література, …) and would silently drop
  * whole categories.
  */
-export const JSON_LD_SELECTOR = 'script[type="application/ld+json"]';
 
 /**
  * Resolve a Knigoland `image` value to an absolute cover URL.
@@ -55,23 +56,4 @@ export const JSON_LD_SELECTOR = 'script[type="application/ld+json"]';
  * the base URL. Returns null for missing/blank/non-string values — a missing cover
  * must never break the listing.
  */
-export function buildCoverUrl(image: unknown): string | null {
-  const raw = firstNonEmptyString(image);
-  if (raw === null) return null;
-  if (raw.startsWith('http')) return raw;
-  if (raw.startsWith('//')) return `https:${raw}`;
-  return `${KNIGOLAND_BASE_URL}${raw.startsWith('/') ? '' : '/'}${raw}`;
-}
-
-function firstNonEmptyString(value: unknown): string | null {
-  if (typeof value === 'string') {
-    const trimmed = value.trim();
-    return trimmed !== '' ? trimmed : null;
-  }
-  if (Array.isArray(value)) {
-    for (const item of value) {
-      if (typeof item === 'string' && item.trim() !== '') return item.trim();
-    }
-  }
-  return null;
-}
+export const buildCoverUrl = makeCoverUrlBuilder(KNIGOLAND_BASE_URL);

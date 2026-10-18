@@ -1,3 +1,5 @@
+import { makeResolveUrl } from '../../lib/html-helpers.js';
+
 export const MEGAKNIGA_BASE_URL = 'https://www.megakniga.com.ua';
 
 /** Books catalog root. Pagination is path-style `pageN`, e.g. `/catalog/knigi/page2`. */
@@ -87,7 +89,4 @@ export function buildCoverUrl(image: unknown): string | null {
 }
 
 /** Resolve a catalog-card or product href to an absolute Megakniga URL. */
-export function resolveUrl(href: string): string {
-  if (href.startsWith('http')) return href;
-  return `${MEGAKNIGA_BASE_URL}${href.startsWith('/') ? '' : '/'}${href}`;
-}
+export const resolveUrl = makeResolveUrl(MEGAKNIGA_BASE_URL);

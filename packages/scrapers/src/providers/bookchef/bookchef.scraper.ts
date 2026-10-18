@@ -2,7 +2,6 @@ import type {
   ScraperProvider,
   ScraperResult,
   ScraperOptions,
-  ScraperLogger,
   RawProviderListing,
 } from '@knyhovo/shared';
 import { FetchHtmlFetcher, type HtmlFetcher } from '../../http/html-fetcher.js';
@@ -20,10 +19,10 @@ import {
   DEFAULT_MAX_CONSECUTIVE_FETCH_FAILURES,
 } from './constants.js';
 import { parseBookChefListing } from './bookchef.parser.js';
-
-const DEFAULT_TIMEOUT_MS = 10_000;
-const DEFAULT_DELAY_MS = 500;
-const NOOP_LOGGER: ScraperLogger = { info: () => {} };
+import { errMsg } from '../../lib/errors.js';
+import { sleep } from '../../lib/sleep.js';
+import { NOOP_LOGGER } from '../../lib/noop-logger.js';
+import { DEFAULT_TIMEOUT_MS, DEFAULT_DELAY_MS } from '../../lib/defaults.js';
 
 // A full BookChef run walks up to ~15k pages sequentially over multiple hours
 // with no other output between the sitemap-plan log and the final result —
@@ -102,7 +101,7 @@ export class BookChefScraper implements ScraperProvider {
         onRetry: (info) => {
           sitemapAttemptsMade = info.attempt + 1;
           const elapsedMs = Date.now() - sitemapFetchStartMs;
-          const msg = info.error instanceof Error ? info.error.message : String(info.error);
+          const msg = errMsg(info.error);
           logger.info(
             `bookchef: sitemap attempt ${info.attempt}/${SITEMAP_MAX_RETRIES + 1} failed after ${elapsedMs}ms — ${msg}; retrying in ${info.delayMs}ms`,
           );
@@ -119,7 +118,7 @@ export class BookChefScraper implements ScraperProvider {
         errors.push('BookChef blocked by HTTP 403, likely anti-bot protection');
       } else {
         const elapsedMs = Date.now() - sitemapFetchStartMs;
-        const msg = err instanceof Error ? err.message : String(err);
+        const msg = errMsg(err);
         errors.push(
           `Sitemap: network error after ${sitemapAttemptsMade} attempt(s) in ${elapsedMs}ms — ${msg}`,
         );
@@ -185,13 +184,13 @@ export class BookChefScraper implements ScraperProvider {
           logger.info(`bookchef: [stage] fetch failed ${i + 1} (${Date.now() - fetchStartMs}ms)`);
         }
         errors.push(
-          `Product ${productUrl}: fetch error — ${err instanceof Error ? err.message : String(err)}`,
+          `Product ${productUrl}: fetch error — ${errMsg(err)}`,
         );
 
         if (isRetryableFetchError(err)) {
           consecutiveNetworkFailures++;
           if (consecutiveNetworkFailures >= maxConsecutiveFetchFailures) {
-            const msg = err instanceof Error ? err.message : String(err);
+            const msg = errMsg(err);
             logger.info(
               `bookchef: circuit breaker tripped — ${consecutiveNetworkFailures} consecutive network/timeout ` +
                 `failures at page ${i + 1}/${targets.length}; failing run and discarding ${allListings.length} ` +
@@ -244,7 +243,7 @@ export class BookChefScraper implements ScraperProvider {
       }
 
       if (i < targets.length - 1 && delayMs > 0) {
-        await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+        await sleep(delayMs);
         if (debugFetchStages) {
           logger.info(`bookchef: [stage] sleep completed ${i + 1}`);
         }

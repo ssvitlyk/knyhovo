@@ -1,6 +1,9 @@
 import type { RawProviderListing, ScraperLogger } from '@knyhovo/shared';
 import type { HtmlFetcher } from '../http/html-fetcher.js';
 import { sanitizeDescription } from './sanitize-description.js';
+import { errMsg } from './errors.js';
+import { sleep } from './sleep.js';
+import { NOOP_LOGGER } from './noop-logger.js';
 
 /** Emit a progress line every this many listings during the enrichment pass. */
 const PROGRESS_LOG_EVERY = 100;
@@ -119,7 +122,7 @@ function defaultSkipListing(listing: RawProviderListing): boolean {
  * (Service Unavailable) response — the signal to stop the enrichment pass.
  */
 export function isRateLimited(err: unknown): boolean {
-  const message = err instanceof Error ? err.message : String(err);
+  const message = errMsg(err);
   return /\b(429|503)\b/.test(message);
 }
 
@@ -134,7 +137,7 @@ export function isRateLimited(err: unknown): boolean {
  */
 export function isInfrastructureFailure(err: unknown): boolean {
   if (isRateLimited(err)) return false;
-  const message = err instanceof Error ? err.message : String(err);
+  const message = errMsg(err);
   return /\b(500|502|504)\b|timeout|timed out|ETIMEDOUT|ECONNREFUSED|ECONNRESET|EPIPE|ENOTFOUND|EAI_AGAIN|getaddrinfo|socket hang up|network|fetch failed/i.test(
     message,
   );
@@ -242,7 +245,7 @@ export async function enrichProductDetails(
   opts: EnrichProductDetailsOptions,
 ): Promise<EnrichProductDetailsResult> {
   const { timeoutMs, delayMs, errors } = opts;
-  const logger = opts.logger ?? { info: () => {} };
+  const logger = opts.logger ?? NOOP_LOGGER;
   const skipListing = opts.skipListing ?? defaultSkipListing;
   const total = listings.length;
   const errorsBefore = errors.length;
@@ -309,7 +312,7 @@ export async function enrichProductDetails(
       consecutiveInfraFailures = 0;
     } catch (err) {
       errors.push(
-        `Product ${listing.url}: ${err instanceof Error ? err.message : String(err)}`,
+        `Product ${listing.url}: ${errMsg(err)}`,
       );
       // Stop this provider's pass on rate-limit/overload — keep what we have,
       // do not retry. The scrape result remains valid. The offending item is
@@ -353,7 +356,7 @@ export async function enrichProductDetails(
     }
 
     if (delayMs > 0 && i < listings.length - 1) {
-      await new Promise<void>((resolve) => setTimeout(resolve, delayMs));
+      await sleep(delayMs);
     }
   }
 

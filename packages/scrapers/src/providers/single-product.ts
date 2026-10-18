@@ -1,4 +1,5 @@
-import type { Money, Availability, ProviderName } from '@knyhovo/shared';
+import type { ProviderName } from '@knyhovo/shared';
+import type { SingleProductParser } from './types.js';
 import { parseYakabooProduct } from './yakaboo/yakaboo.parser.js';
 import { parseVivatProduct } from './vivat/vivat.parser.js';
 import { parseBookYeProduct } from './book-ye/book-ye.parser.js';
@@ -6,13 +7,6 @@ import { parseBookChefProduct } from './bookchef/bookchef.parser.js';
 import { parseLaboratoryProduct } from './laboratory/laboratory.parser.js';
 import { parseKnigolandProduct } from './knigoland/knigoland.parser.js';
 import { parseMegaknigaProduct } from './megakniga/megakniga.parser.js';
-
-export interface ParsedProductState {
-  readonly price: Money | null;
-  readonly availability: Availability;
-}
-
-export type SingleProductParser = (html: string) => ParsedProductState;
 
 // Keyed by the real scraper providers. ProviderName also includes
 // 'book-club' which has no scraper; it is intentionally absent here.
@@ -25,3 +19,5 @@ export const SINGLE_PRODUCT_PARSERS: Partial<Record<ProviderName, SingleProductP
   knigoland: parseKnigolandProduct,
   megakniga: parseMegaknigaProduct,
 };
+
+export type { SingleProductParser, ParsedProductState } from './types.js';

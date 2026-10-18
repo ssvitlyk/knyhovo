@@ -1,3 +1,4 @@
+import { errMsg } from '../lib/errors.js';
 /**
  * Shared blocked-page detection.
  *
@@ -87,6 +88,6 @@ export function classifyBlockedPage(html: string): BlockedPageReason {
  * reaches us, so {@link isForbiddenPage} cannot see it).
  */
 export function isForbiddenError(err: unknown): boolean {
-  const message = err instanceof Error ? err.message : String(err);
+  const message = errMsg(err);
   return /\b403\b/.test(message) || /forbidden/i.test(message);
 }

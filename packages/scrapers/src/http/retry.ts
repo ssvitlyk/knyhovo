@@ -1,4 +1,6 @@
 import type { HtmlFetcher } from './html-fetcher.js';
+import { errMsg } from '../lib/errors.js';
+import { sleep as defaultSleep } from '../lib/sleep.js';
 
 /**
  * Retry policy for HTML fetches. Only TRANSIENT failures are retried:
@@ -34,7 +36,7 @@ export function isRetryableFetchError(err: unknown): boolean {
   const code = extractErrorCode(err);
   if (code === 'ECONNRESET' || code === 'ECONNABORTED' || code === 'ETIMEDOUT') return true;
 
-  const message = err instanceof Error ? err.message : String(err);
+  const message = errMsg(err);
   if (/\bHTTP 429\b/.test(message)) return true;
   if (/\b(ECONNRESET|ECONNABORTED|ETIMEDOUT)\b/.test(message)) return true;
   if (/\b(timed out|timeout|aborted)\b/i.test(message)) return true;
@@ -82,7 +84,7 @@ export async function fetchWithRetry(
   options: FetchWithRetryOptions,
 ): Promise<FetchWithRetryResult> {
   const isRetryable = options.isRetryable ?? isRetryableFetchError;
-  const sleep = options.sleep ?? ((ms) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  const sleep = options.sleep ?? defaultSleep;
 
   let attempt = 0;
   for (;;) {

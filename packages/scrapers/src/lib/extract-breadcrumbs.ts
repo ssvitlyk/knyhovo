@@ -1,4 +1,5 @@
 import * as cheerio from 'cheerio';
+import { readJsonLdBlocks } from './json-ld.js';
 
 /**
  * Shared JSON-LD `BreadcrumbList` extraction for raw provider-category signals
@@ -8,31 +9,6 @@ import * as cheerio from 'cheerio';
  *
  * Pure — no IO, never throws. Malformed JSON-LD blocks are skipped silently.
  */
-
-function matchesType(type: unknown, wanted: string): boolean {
-  if (type === wanted) return true;
-  if (Array.isArray(type)) return type.includes(wanted);
-  return false;
-}
-
-/**
- * Find the first object with the given `@type` within a parsed JSON-LD value.
- * Handles single objects, arrays of objects and `@graph` containers.
- */
-function findByType(parsed: unknown, wanted: string): Record<string, unknown> | null {
-  if (Array.isArray(parsed)) {
-    for (const entry of parsed) {
-      const found = findByType(entry, wanted);
-      if (found) return found;
-    }
-    return null;
-  }
-  if (typeof parsed !== 'object' || parsed === null) return null;
-  const obj = parsed as Record<string, unknown>;
-  if (matchesType(obj['@type'], wanted)) return obj;
-  if (Array.isArray(obj['@graph'])) return findByType(obj['@graph'], wanted);
-  return null;
-}
 
 function readPosition(value: unknown): number | null {
   if (typeof value === 'number' && Number.isFinite(value)) return value;
@@ -80,7 +56,8 @@ export function finalizeRawCategories(names: readonly (string | null | undefined
 
 /**
  * Extract raw provider-category names (root→leaf) from a JSON-LD
- * `BreadcrumbList` block on a product page. Pure — no IO, never throws.
+ * `BreadcrumbList` block on a product page (raw HTML, or an already-loaded
+ * cheerio document to avoid parsing the page twice). Pure — no IO, never throws.
  *
  * The first crumb (home/store-name) is always dropped unconditionally, and
  * when `title` is passed and it matches the last remaining crumb
@@ -88,23 +65,14 @@ export function finalizeRawCategories(names: readonly (string | null | undefined
  * Returns `[]` when no `BreadcrumbList` is found or none of its entries carry
  * a usable name.
  */
-export function extractBreadcrumbs(html: string, title?: string | null): string[] {
-  const $ = cheerio.load(html);
-  const blocks = $('script[type="application/ld+json"]').toArray();
-
-  let breadcrumbList: Record<string, unknown> | null = null;
-  for (const block of blocks) {
-    const raw = $(block).contents().text().trim();
-    if (!raw) continue;
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      continue;
-    }
-    breadcrumbList = findByType(parsed, 'BreadcrumbList');
-    if (breadcrumbList) break;
-  }
+export function extractBreadcrumbs(
+  htmlOrDoc: string | cheerio.CheerioAPI,
+  title?: string | null,
+): string[] {
+  const $ = typeof htmlOrDoc === 'string' ? cheerio.load(htmlOrDoc) : htmlOrDoc;
+  const breadcrumbList = readJsonLdBlocks($, ['BreadcrumbList'], { stopWhenFound: true }).found[
+    'BreadcrumbList'
+  ]!;
 
   if (breadcrumbList === null) return [];
 
