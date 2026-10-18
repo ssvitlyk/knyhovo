@@ -76,6 +76,30 @@ function needsUpdate(existing: ExistingGenreRow, genre: (typeof CANONICAL_GENRES
   );
 }
 
+/** Upsert one canonical genre as a TAXONOMIC, active collection row (keyed by `slug`). */
+async function upsertGenre(prisma: PrismaClient, genre: (typeof CANONICAL_GENRES)[number]): Promise<void> {
+  await prisma.collection.upsert({
+    where: { slug: genre.slug },
+    update: {
+      name: genre.name,
+      description: genre.description,
+      icon: genre.icon,
+      displayOrder: genre.displayOrder,
+      type: CollectionType.TAXONOMIC,
+      isActive: true,
+    },
+    create: {
+      slug: genre.slug,
+      type: CollectionType.TAXONOMIC,
+      name: genre.name,
+      description: genre.description,
+      icon: genre.icon,
+      displayOrder: genre.displayOrder,
+      isActive: true,
+    },
+  });
+}
+
 /**
  * Validate the seed's structural invariants before touching the DB. Throws on
  * a curation error: an unknown genre slug, a non-normalized source category,
@@ -130,26 +154,7 @@ export async function syncGenres(
     if (!existing) {
       created += 1;
       if (!dryRun) {
-        await prisma.collection.upsert({
-          where: { slug: genre.slug },
-          update: {
-            name: genre.name,
-            description: genre.description,
-            icon: genre.icon,
-            displayOrder: genre.displayOrder,
-            type: CollectionType.TAXONOMIC,
-            isActive: true,
-          },
-          create: {
-            slug: genre.slug,
-            type: CollectionType.TAXONOMIC,
-            name: genre.name,
-            description: genre.description,
-            icon: genre.icon,
-            displayOrder: genre.displayOrder,
-            isActive: true,
-          },
-        });
+        await upsertGenre(prisma, genre);
       }
       continue;
     }
@@ -157,26 +162,7 @@ export async function syncGenres(
     if (needsUpdate(existing, genre)) {
       updated += 1;
       if (!dryRun) {
-        await prisma.collection.upsert({
-          where: { slug: genre.slug },
-          update: {
-            name: genre.name,
-            description: genre.description,
-            icon: genre.icon,
-            displayOrder: genre.displayOrder,
-            type: CollectionType.TAXONOMIC,
-            isActive: true,
-          },
-          create: {
-            slug: genre.slug,
-            type: CollectionType.TAXONOMIC,
-            name: genre.name,
-            description: genre.description,
-            icon: genre.icon,
-            displayOrder: genre.displayOrder,
-            isActive: true,
-          },
-        });
+        await upsertGenre(prisma, genre);
       }
     }
   }

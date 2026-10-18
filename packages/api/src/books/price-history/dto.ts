@@ -1,5 +1,5 @@
 import type { Availability, AlertMode } from '@knyhovo/shared';
-import type { MoneyDto } from '../../wishlist/dto.js';
+import type { MoneyDto } from '../../pricing/money.js';
 
 /**
  * Price History API v1.0 response contract.

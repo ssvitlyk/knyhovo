@@ -8,8 +8,7 @@ export type AlertEventType =
   | 'PRICE_DROP'
   | 'BACK_IN_STOCK'
   | 'OUT_OF_STOCK'
-  | 'LISTING_GONE'
-  | 'LISTING_STALE'; // reserved for time-based staleness signal (W10.4); not emitted by detectAlertEvents
+  | 'LISTING_GONE';
 
 export interface AlertEvent {
   readonly type: AlertEventType;

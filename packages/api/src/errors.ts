@@ -1,8 +1,19 @@
 /**
+ * Base class for every domain error that maps to an HTTP response. The Fastify
+ * error handler in `app.ts` serialises any `HttpError` as
+ * `{ error: { code, message } }` with `httpStatus`.
+ */
+export abstract class HttpError extends Error {
+  abstract readonly code: string;
+  abstract readonly httpStatus: number;
+}
+
+/**
  * Domain-level error raised when request input fails validation at the API
  * boundary. The Fastify error handler in `app.ts` maps this to HTTP 400.
  */
-export class ValidationError extends Error {
+export class ValidationError extends HttpError {
+  readonly httpStatus = 400;
   readonly code = 'VALIDATION_ERROR';
 
   constructor(message: string) {
@@ -15,7 +26,8 @@ export class ValidationError extends Error {
  * Domain-level error raised when a request parameter is syntactically invalid
  * (e.g. a non-UUID book id). The Fastify error handler maps this to HTTP 400.
  */
-export class BadRequestError extends Error {
+export class BadRequestError extends HttpError {
+  readonly httpStatus = 400;
   readonly code = 'BAD_REQUEST';
 
   constructor(message: string) {
@@ -28,7 +40,8 @@ export class BadRequestError extends Error {
  * Domain-level error raised when a canonical book cannot be found by id.
  * The Fastify error handler maps this to HTTP 404.
  */
-export class BookNotFoundError extends Error {
+export class BookNotFoundError extends HttpError {
+  readonly httpStatus = 404;
   readonly code = 'BOOK_NOT_FOUND';
 
   constructor(message = 'Book not found') {
@@ -41,7 +54,8 @@ export class BookNotFoundError extends Error {
  * Domain-level error raised when a request requires authentication but no
  * valid session was found. The Fastify error handler maps this to HTTP 401.
  */
-export class UnauthorizedError extends Error {
+export class UnauthorizedError extends HttpError {
+  readonly httpStatus = 401;
   readonly code = 'AUTH_REQUIRED';
 
   constructor(message = 'Authentication required.') {
@@ -55,7 +69,8 @@ export class UnauthorizedError extends Error {
  * is not on the environment's allow-list (`AUTH_ALLOWED_EMAILS`). Used to gate
  * access on staging. The Fastify error handler maps this to HTTP 403.
  */
-export class ForbiddenError extends Error {
+export class ForbiddenError extends HttpError {
+  readonly httpStatus = 403;
   readonly code = 'FORBIDDEN';
 
   constructor(message = 'Access is restricted on this environment.') {
@@ -70,7 +85,8 @@ export class ForbiddenError extends Error {
  * "code expired", "user not found", etc. (no oracle).
  * The Fastify error handler maps this to HTTP 401.
  */
-export class InvalidCredentialsError extends Error {
+export class InvalidCredentialsError extends HttpError {
+  readonly httpStatus = 401;
   readonly code = 'AUTH_INVALID_CODE';
 
   constructor(message = 'Invalid or expired code.') {
@@ -83,7 +99,8 @@ export class InvalidCredentialsError extends Error {
  * Domain-level error raised when the login-code rate limit is exceeded.
  * The Fastify error handler maps this to HTTP 429.
  */
-export class RateLimitedError extends Error {
+export class RateLimitedError extends HttpError {
+  readonly httpStatus = 429;
   readonly code = 'RATE_LIMITED';
 
   constructor(message = 'Too many requests. Please try again later.') {
@@ -96,7 +113,8 @@ export class RateLimitedError extends Error {
  * Domain-level error raised when a wishlist item cannot be found for the given
  * user + book combination. The Fastify error handler maps this to HTTP 404.
  */
-export class WishlistItemNotFoundError extends Error {
+export class WishlistItemNotFoundError extends HttpError {
+  readonly httpStatus = 404;
   readonly code = 'WISHLIST_ITEM_NOT_FOUND';
 
   constructor(message = 'Book is not in your wishlist.') {
@@ -109,7 +127,8 @@ export class WishlistItemNotFoundError extends Error {
  * Domain-level error raised when a collection (or dynamic feed / genre / mood)
  * cannot be found by slug. The Fastify error handler maps this to HTTP 404.
  */
-export class CollectionNotFoundError extends Error {
+export class CollectionNotFoundError extends HttpError {
+  readonly httpStatus = 404;
   readonly code = 'COLLECTION_NOT_FOUND';
 
   constructor(message = 'Добірку не знайдено.') {
@@ -126,7 +145,7 @@ export class CollectionNotFoundError extends Error {
  * but has no calibrated threshold for this book yet) and every other reason to
  * 422 (the request is well-formed but cannot produce an honest policy).
  */
-export class AlertPolicyError extends Error {
+export class AlertPolicyError extends HttpError {
   constructor(
     readonly code:
       | 'NO_CANONICAL_PRICE'

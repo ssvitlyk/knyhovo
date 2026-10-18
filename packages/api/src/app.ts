@@ -4,18 +4,7 @@ import cookie from '@fastify/cookie';
 import { STATUS_CODES } from 'node:http';
 import type { PrismaClient } from '@prisma/client';
 import { ZodError } from 'zod';
-import {
-  ValidationError,
-  BadRequestError,
-  BookNotFoundError,
-  UnauthorizedError,
-  ForbiddenError,
-  InvalidCredentialsError,
-  RateLimitedError,
-  WishlistItemNotFoundError,
-  AlertPolicyError,
-  CollectionNotFoundError,
-} from './errors.js';
+import { HttpError } from './errors.js';
 import { registerSearchRoute } from './search/route.js';
 import { registerBooksRoute } from './books/route.js';
 import { registerBookPriceHistoryRoute } from './books/price-history/route.js';
@@ -106,59 +95,14 @@ export function buildApp(prisma: PrismaClient, authDeps?: AuthDeps, opts?: { rea
   void app.register(cookie);
 
   app.setErrorHandler((error, _request, reply): void => {
-    if (error instanceof ValidationError) {
+    if (error instanceof HttpError) {
       const body: ErrorBody = { error: { code: error.code, message: error.message } };
-      void reply.code(400).send(body);
+      void reply.code(error.httpStatus).send(body);
       return;
     }
     if (error instanceof ZodError) {
       const body: ErrorBody = { error: { code: 'VALIDATION_ERROR', message: error.message } };
       void reply.code(400).send(body);
-      return;
-    }
-    if (error instanceof BadRequestError) {
-      const body: ErrorBody = { error: { code: error.code, message: error.message } };
-      void reply.code(400).send(body);
-      return;
-    }
-    if (error instanceof BookNotFoundError) {
-      const body: ErrorBody = { error: { code: error.code, message: error.message } };
-      void reply.code(404).send(body);
-      return;
-    }
-    if (error instanceof UnauthorizedError) {
-      const body: ErrorBody = { error: { code: error.code, message: error.message } };
-      void reply.code(401).send(body);
-      return;
-    }
-    if (error instanceof ForbiddenError) {
-      const body: ErrorBody = { error: { code: error.code, message: error.message } };
-      void reply.code(403).send(body);
-      return;
-    }
-    if (error instanceof InvalidCredentialsError) {
-      const body: ErrorBody = { error: { code: error.code, message: error.message } };
-      void reply.code(401).send(body);
-      return;
-    }
-    if (error instanceof RateLimitedError) {
-      const body: ErrorBody = { error: { code: error.code, message: error.message } };
-      void reply.code(429).send(body);
-      return;
-    }
-    if (error instanceof WishlistItemNotFoundError) {
-      const body: ErrorBody = { error: { code: error.code, message: error.message } };
-      void reply.code(404).send(body);
-      return;
-    }
-    if (error instanceof AlertPolicyError) {
-      const body: ErrorBody = { error: { code: error.code, message: error.message } };
-      void reply.code(error.httpStatus).send(body);
-      return;
-    }
-    if (error instanceof CollectionNotFoundError) {
-      const body: ErrorBody = { error: { code: error.code, message: error.message } };
-      void reply.code(404).send(body);
       return;
     }
     const body: ErrorBody = { error: { code: 'INTERNAL_ERROR', message: 'Internal server error' } };

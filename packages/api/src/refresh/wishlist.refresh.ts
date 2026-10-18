@@ -16,9 +16,11 @@ import { ScrapeRunKind, ScrapeRunStatus } from '@prisma/client';
 import type { ProviderName } from '@knyhovo/shared';
 import { isRateLimited } from '@knyhovo/scrapers';
 import { unmapProviderName } from '../pipeline/persist-listing.js';
-import { createMetrics } from '../pipeline/index.js';
-import type { ScrapeMetrics, Logger } from '../pipeline/index.js';
+import { createMetrics } from '../pipeline/metrics.js';
+import type { ScrapeMetrics, Logger } from '../pipeline/types.js';
 import { startScrapeRun, finishScrapeRun, deriveRunStatus, startHeartbeat } from './scrape-run.repository.js';
+import { closeRunAsFailed } from './run-lifecycle.js';
+import { createConsoleLogger } from '../logging/logger.js';
 import { acquireRefreshLock, releaseRefreshLock } from './concurrency-guard.js';
 import type { StaleReapConfig } from './concurrency-guard.js';
 import { collectRefreshTargets } from './refresh-targets.js';
@@ -28,6 +30,7 @@ import type { AlertEvent, RefreshedListingState, TargetPreviousState } from './e
 import { persistRefreshedListing } from './persist-refresh.js';
 import type { PersistRefreshOutcome } from './persist-refresh.js';
 import { runAlertNotificationsForBooks } from './alert-notify.js';
+import { sleep as defaultSleep } from '../sleep.js';
 import type { EnqueuedDelivery } from './alert-notify.js';
 import type { DispatchSummary } from '../alerts/dispatch.js';
 
@@ -133,20 +136,14 @@ export interface WishlistRefreshResult {
 export async function runWishlistRefresh(
   opts: WishlistRefreshOptions,
 ): Promise<WishlistRefreshResult> {
-  const logger: Logger = opts.logger ?? {
-    info: (m: string) => console.log(m),
-    error: (m: string) => console.error(m),
-  };
+  const logger: Logger = opts.logger ?? createConsoleLogger();
   const clock = opts.now ?? ((): Date => new Date());
-  const sleep = opts.sleep ?? ((ms: number): Promise<void> => new Promise((r) => setTimeout(r, ms)));
+  const sleep = opts.sleep ?? defaultSleep;
   const timeoutMs = opts.timeoutMs ?? 30000;
   const delayMs = opts.delayMs ?? 1000;
   const loadTargets = opts.loadTargets ?? collectRefreshTargets;
   const _persistRefresh = opts.persistRefresh ?? persistRefreshedListing;
-  const _runAlertNotifications =
-    opts.runAlertNotifications ??
-    ((prisma: PrismaClient, ids: readonly string[], now: Date) =>
-      runAlertNotificationsForBooks(prisma, ids, now));
+  const _runAlertNotifications = opts.runAlertNotifications ?? runAlertNotificationsForBooks;
 
   // W10.6 concurrency guard: refuse to start when another FULL_CATALOG or
   // WISHLIST_REFRESH run is already RUNNING (cron-overlap). Throws
@@ -393,18 +390,14 @@ async function refreshProviderTargets(
     const metrics = createMetrics();
     // Best-effort: close an already-opened run as FAILED so it never dangles RUNNING.
     if (runId !== null && startedAt !== null) {
-      try {
-        await finishScrapeRun(opts.prisma, runId, {
-          startedAt,
-          finishedAt: clock(),
-          status: ScrapeRunStatus.FAILED,
-          metrics,
-          scrapeErrors: [message],
-        });
-      } catch (finishErr) {
-        const finishMsg = finishErr instanceof Error ? finishErr.message : String(finishErr);
-        logger.error(`Failed to finalize run ${runId} for ${provider}: ${finishMsg}`);
-      }
+      await closeRunAsFailed(opts.prisma, logger, {
+        runId,
+        startedAt,
+        finishedAt: clock(),
+        provider,
+        metrics,
+        message,
+      });
     }
 
     return {

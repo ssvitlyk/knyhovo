@@ -5,7 +5,12 @@ import {
   loadEngineContext,
   type AssignmentDecision,
 } from './assignment.js';
-import { mapBookGenre, type ListingSignal } from './mapping-engine.js';
+import {
+  mapBookGenre,
+  type EngineContext,
+  type GenreMappingResult,
+  type ListingSignal,
+} from './mapping-engine.js';
 import { unmapProviderName } from '../pipeline/persist-listing.js';
 import { AmbiguousReportAccumulator, UnmappedReportAccumulator } from './report.js';
 
@@ -149,6 +154,42 @@ interface PendingWrite {
   readonly decision: AssignmentDecision;
 }
 
+/** Prisma `select` for the book rows the pass reads (PRD §8.1 step 2). Shared with the G5 post-scrape hook. */
+export const BOOK_SIGNAL_SELECT = {
+  id: true,
+  title: true,
+  isbn: true,
+  genreId: true,
+  genreSource: true,
+  genreConfidence: true,
+  listings: { select: { provider: true, rawCategories: true, url: true } },
+} as const;
+
+/**
+ * The per-book evaluation sequence shared by the backfill and the G5
+ * post-scrape hook: listing signals -> mapping-engine result -> assignment
+ * decision. `clearStale` is passed through only when the caller sets it.
+ */
+export function evaluateBook(
+  book: BackfillBookRow,
+  ctx: EngineContext,
+  options: { readonly clearStale?: boolean; readonly now: Date },
+): { hasSignal: boolean; result: GenreMappingResult; decision: AssignmentDecision } {
+  const signals: ListingSignal[] = book.listings.map((listing) => ({
+    provider: unmapProviderName(listing.provider),
+    rawCategories: listing.rawCategories,
+    url: listing.url,
+  }));
+  const hasSignal = signals.some((signal) => signal.rawCategories.length > 0);
+  const result = mapBookGenre(signals, ctx);
+  const decision = decideGenreAssignment(
+    { genreId: book.genreId, genreSource: book.genreSource, genreConfidence: book.genreConfidence },
+    result,
+    options,
+  );
+  return { hasSignal, result, decision };
+}
+
 /** Fresh zero-valued counters. Shared with the G5 post-scrape hook. */
 export function createEmptyBackfillCounters(): BackfillCounters {
   return {
@@ -241,33 +282,13 @@ export async function runGenreBackfill(
       },
       orderBy: { id: 'asc' },
       take: batchSize,
-      select: {
-        id: true,
-        title: true,
-        isbn: true,
-        genreId: true,
-        genreSource: true,
-        genreConfidence: true,
-        listings: { select: { provider: true, rawCategories: true, url: true } },
-      },
+      select: BOOK_SIGNAL_SELECT,
     });
     if (books.length === 0) break;
 
     const writes: PendingWrite[] = [];
     for (const book of books) {
-      const signals: ListingSignal[] = book.listings.map((listing) => ({
-        provider: unmapProviderName(listing.provider),
-        rawCategories: listing.rawCategories,
-        url: listing.url,
-      }));
-      const hasSignal = signals.some((signal) => signal.rawCategories.length > 0);
-
-      const result = mapBookGenre(signals, ctx);
-      const decision = decideGenreAssignment(
-        { genreId: book.genreId, genreSource: book.genreSource, genreConfidence: book.genreConfidence },
-        result,
-        { clearStale, now },
-      );
+      const { hasSignal, result, decision } = evaluateBook(book, ctx, { clearStale, now });
 
       counters.processed += 1;
       classify(counters, decision, book, hasSignal, result.genreId);

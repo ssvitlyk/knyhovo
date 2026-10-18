@@ -7,6 +7,13 @@ import type { PrismaClient } from '@prisma/client';
 
 // ── User ─────────────────────────────────────────────────────────────────────
 
+/**
+ * The user columns auth consumers actually read (`toAuthUserDto`, route guards):
+ * the joined user is selected narrowly so session/magic-link lookups don't pull
+ * unrelated columns (e.g. unsubscribe token, notification flags).
+ */
+const USER_SELECT = { id: true, email: true, createdAt: true, displayName: true } as const;
+
 /** Find or create a user by email. Returns the persisted user. */
 export async function upsertUserByEmail(
   prisma: PrismaClient,
@@ -110,18 +117,6 @@ export async function invalidateOtherLoginCodes(
   });
 }
 
-/** Consume all unconsumed login codes for a user (used after rate-limit breach). */
-export async function invalidateAllLoginCodes(
-  prisma: PrismaClient,
-  userId: string,
-  now: Date,
-): Promise<void> {
-  await prisma.loginCode.updateMany({
-    where: { userId, consumedAt: null },
-    data: { consumedAt: now },
-  });
-}
-
 // ── MagicLinkToken ─────────────────────────────────────────────────────────────
 
 /**
@@ -170,13 +165,13 @@ export async function findMagicLinkTokenByHash(
       returnTo: string | null;
       expiresAt: Date;
       consumedAt: Date | null;
-      user: { id: string; email: string; createdAt: Date };
+      user: { id: string; email: string; createdAt: Date; displayName: string | null };
     }
   | null
 > {
   return prisma.magicLinkToken.findFirst({
     where: { tokenHash },
-    include: { user: true },
+    include: { user: { select: USER_SELECT } },
   });
 }
 
@@ -235,7 +230,7 @@ export async function findSessionByTokenHash(
       tokenHash,
       expiresAt: { gt: now },
     },
-    include: { user: true },
+    include: { user: { select: USER_SELECT } },
   });
 }
 

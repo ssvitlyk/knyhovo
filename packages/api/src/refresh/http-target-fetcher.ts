@@ -17,20 +17,16 @@ import type { WishlistTargetFetcher } from './wishlist.refresh.js';
 import type { RefreshTarget } from './refresh-targets.js';
 import type { RefreshedListingState } from './events.js';
 import { mapAvailability } from '../pipeline/persist-listing.js';
+import { PROVIDER_SLUG } from '../pricing/provider-maps.js';
 
-// ---------------------------------------------------------------------------
-// Reverse lookup: Prisma Provider enum → ProviderName
-// ---------------------------------------------------------------------------
-
-// PROVIDER_NAME_MAP in persist-listing.ts is ProviderName → Provider enum string.
-// We build the inverse once at module load to avoid importing the full map
-// and to keep this module self-contained.
-const PROVIDER_ENUM_TO_NAME: Partial<Record<string, ProviderName>> = {
-  YAKABOO: 'yakaboo',
-  BOOK_CLUB: 'book-club',
-  VIVAT: 'vivat',
-  BOOK_YE: 'book-ye',
-};
+// Providers with a single-product refresh path. Intentionally a subset of all
+// providers: anything else is rejected as "no single-product parser".
+const SINGLE_PRODUCT_PROVIDERS: ReadonlySet<ProviderName> = new Set<ProviderName>([
+  'yakaboo',
+  'book-club',
+  'vivat',
+  'book-ye',
+]);
 
 // ---------------------------------------------------------------------------
 // Implementation
@@ -52,8 +48,8 @@ export class HttpTargetFetcher implements WishlistTargetFetcher {
     target: RefreshTarget,
     opts: { readonly timeoutMs: number },
   ): Promise<RefreshedListingState> {
-    const providerName = PROVIDER_ENUM_TO_NAME[target.provider as string];
-    if (providerName === undefined) {
+    const providerName = PROVIDER_SLUG[target.provider];
+    if (!SINGLE_PRODUCT_PROVIDERS.has(providerName)) {
       throw new Error(`no single-product parser for provider ${target.provider}`);
     }
 

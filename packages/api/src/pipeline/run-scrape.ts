@@ -10,9 +10,9 @@ import type { CanonicalBookId } from '@knyhovo/shared';
 import { Prisma } from '@prisma/client';
 import type { RunScrapeOptions, PipelineResult, ProviderRunResult, Logger } from './types.js';
 import { createMetrics } from './metrics.js';
-import { persistListing, markUnavailable, mapProviderName } from './persist-listing.js';
-import { advanceWatermark } from './scrape-state.repository.js';
-import { bindContext } from '../logging/logger.js';
+import { persistListing, markUnavailable, mapProviderName, maybeAdvanceWatermark } from './persist-listing.js';
+import { bindContext, createConsoleLogger } from '../logging/logger.js';
+import { touchConnection } from '../db-connection.js';
 
 /**
  * Load canonical rows for matching, surviving a stale DB connection.
@@ -24,23 +24,30 @@ import { bindContext } from '../logging/logger.js';
  * connection touch recovers that case; a genuinely down DB still throws.
  * This is one deliberate reconnect, not a retry loop.
  */
+/** Only the columns `matchOrCreate` / `CanonicalBook` read — genre columns etc. are not loaded. */
+const CANONICAL_ROW_SELECT = { id: true, title: true, author: true, isbn: true, createdAt: true } as const;
+
+interface CanonicalRow {
+  readonly id: string;
+  readonly title: string;
+  readonly author: string;
+  readonly isbn: string | null;
+  readonly createdAt: Date;
+}
+
 async function loadCanonicalRows(
   prisma: RunScrapeOptions['prisma'],
   logger: Logger,
-): Promise<Awaited<ReturnType<RunScrapeOptions['prisma']['canonicalBook']['findMany']>>> {
+): Promise<CanonicalRow[]> {
   try {
-    return await prisma.canonicalBook.findMany();
+    return await prisma.canonicalBook.findMany({ select: CANONICAL_ROW_SELECT });
   } catch (err) {
     logger.error(
       `canonical candidates query failed (stale connection after a long scrape?): ` +
         `${err instanceof Error ? err.message : String(err)} — reconnecting once`,
     );
-    try {
-      await prisma.$queryRaw`SELECT 1`;
-    } catch {
-      // Touch is best-effort; the re-attempt below decides success or failure.
-    }
-    return await prisma.canonicalBook.findMany();
+    await touchConnection(prisma);
+    return await prisma.canonicalBook.findMany({ select: CANONICAL_ROW_SELECT });
   }
 }
 
@@ -81,10 +88,7 @@ export function resolveProviderScraperOptions(
 }
 
 export async function runScrapePipeline(opts: RunScrapeOptions): Promise<PipelineResult> {
-  const logger: Logger = opts.logger ?? {
-    info: (m: string) => console.log(m),
-    error: (m: string) => console.error(m),
-  };
+  const logger: Logger = opts.logger ?? createConsoleLogger();
 
   const results: ProviderRunResult[] = [];
 
@@ -200,15 +204,7 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
           }
         } else {
           metrics.skippedNoPrice++;
-          if (listing.sourceLastmod !== undefined) {
-            await advanceWatermark(
-              opts.prisma,
-              mapProviderName(listing.provider),
-              listing.url,
-              listing.sourceLastmod ?? null,
-              scrapedAt,
-            );
-          }
+          await maybeAdvanceWatermark(opts.prisma, listing, scrapedAt);
         }
         continue;
       }
@@ -249,7 +245,7 @@ export async function runScrapePipeline(opts: RunScrapeOptions): Promise<Pipelin
         }
       } catch (err) {
         metrics.errors++;
-        bindContext(logger, { phase: 'persist' }).error(
+        persistLogger.error(
           `Listing failed (${listing.url}): ${err instanceof Error ? err.message : String(err)}`,
         );
       }

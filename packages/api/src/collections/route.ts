@@ -1,8 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { PrismaClient } from '@prisma/client';
 import type { AuthDeps } from '../auth/service.js';
-import { resolveSessionUser } from '../auth/service.js';
-import { SESSION_COOKIE } from '../auth/cookie.js';
+import { optionalUser } from '../auth/guard.js';
 import { parseBooksQuery, parseSlugParams } from './schema.js';
 import { getHub, getCollectionDetail, getCollectionBooks, getAllCollections } from './service.js';
 
@@ -17,7 +16,7 @@ import { getHub, getCollectionDetail, getCollectionBooks, getAllCollections } fr
  */
 export function registerCollectionsRoute(app: FastifyInstance, prisma: PrismaClient, authDeps?: AuthDeps): void {
   app.get('/api/collections/hub', async (request, reply) => {
-    const user = authDeps ? await resolveSessionUser(authDeps, request.cookies?.[SESSION_COOKIE] ?? null) : null;
+    const user = await optionalUser(authDeps, request);
     await reply.send(await getHub(prisma, user?.id ?? null));
   });
 
@@ -28,7 +27,7 @@ export function registerCollectionsRoute(app: FastifyInstance, prisma: PrismaCli
   app.get('/api/collections/:slug/books', async (request, reply) => {
     const { slug } = parseSlugParams(request.params);
     const params = parseBooksQuery(request.query);
-    const user = authDeps ? await resolveSessionUser(authDeps, request.cookies?.[SESSION_COOKIE] ?? null) : null;
+    const user = await optionalUser(authDeps, request);
     await reply.send(await getCollectionBooks(prisma, slug, params, user?.id ?? null));
   });
 

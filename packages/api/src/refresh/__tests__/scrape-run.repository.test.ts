@@ -11,7 +11,6 @@ import {
   mapMetricsToRunCounts,
   startScrapeRun,
   finishScrapeRun,
-  latestHealthByProvider,
   heartbeatScrapeRun,
   startHeartbeat,
 } from '../scrape-run.repository.js';
@@ -256,36 +255,6 @@ describe('finishScrapeRun', () => {
     expect(callArgs.data.errorsCount).toBe(2); // metrics.errors + scrapeErrors.length
     expect(callArgs.data.errorSummary).toBe('oops');
     expect(callArgs.data.finishedAt).toEqual(FINISHED_AT);
-  });
-});
-
-// ── latestHealthByProvider ────────────────────────────────────────────────────
-
-describe('latestHealthByProvider', () => {
-  it('calls findMany with distinct provider and correct orderBy', async () => {
-    const prisma = makeFakePrisma();
-    await latestHealthByProvider(prisma);
-
-    expect(prisma.scrapeRun.findMany).toHaveBeenCalledOnce();
-    const callArgs = vi.mocked(prisma.scrapeRun.findMany).mock.calls[0]![0];
-    expect(callArgs?.distinct).toEqual(['provider']);
-    expect(callArgs?.orderBy).toEqual([{ provider: 'asc' }, { startedAt: 'desc' }]);
-    expect(callArgs?.where).toEqual({});
-  });
-
-  it('filters by kind when kind param is provided', async () => {
-    const prisma = makeFakePrisma();
-    await latestHealthByProvider(prisma, { kind: ScrapeRunKind.FULL_CATALOG });
-
-    const callArgs = vi.mocked(prisma.scrapeRun.findMany).mock.calls[0]![0];
-    expect(callArgs?.where).toEqual({ kind: ScrapeRunKind.FULL_CATALOG });
-  });
-
-  it('returns the rows returned by findMany', async () => {
-    const prisma = makeFakePrisma();
-    const rows = await latestHealthByProvider(prisma);
-    expect(rows).toHaveLength(1);
-    expect(rows[0]!.provider).toBe(Provider.YAKABOO);
   });
 });
 

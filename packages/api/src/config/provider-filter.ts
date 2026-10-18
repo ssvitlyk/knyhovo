@@ -1,16 +1,8 @@
 import type { ProviderName } from '@knyhovo/shared';
+import { PROVIDER_DB_ENUM } from '../pricing/provider-maps.js';
 
 /** The full set of registered provider slugs — used to validate `SCRAPE_DISABLED_PROVIDERS` entries. */
-const VALID_PROVIDER_NAMES: readonly ProviderName[] = [
-  'yakaboo',
-  'book-club',
-  'vivat',
-  'book-ye',
-  'bookchef',
-  'laboratory',
-  'knigoland',
-  'megakniga',
-];
+const VALID_PROVIDER_NAMES = Object.keys(PROVIDER_DB_ENUM) as readonly ProviderName[];
 
 /**
  * Parse `SCRAPE_DISABLED_PROVIDERS` — the single source of truth for which

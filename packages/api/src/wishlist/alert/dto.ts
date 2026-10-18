@@ -1,5 +1,5 @@
 import type { AlertLifecycle, AlertMode, AlertState } from '@knyhovo/shared';
-import type { MoneyDto } from '../dto.js';
+import type { MoneyDto } from '../../pricing/money.js';
 
 export type { AlertLifecycle, AlertMode, AlertState };
 

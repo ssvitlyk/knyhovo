@@ -251,16 +251,18 @@ export async function loadDeliveryContext(
   });
   if (!d) return null;
 
-  const book = await prisma.canonicalBook.findUnique({
-    where: { id: d.canonicalBookId },
-    select: { title: true, author: true },
-  });
-
-  const bestListing = await prisma.providerListing.findFirst({
-    where: { canonicalBookId: d.canonicalBookId, availability: 'IN_STOCK' },
-    orderBy: { priceAmount: 'asc' },
-    select: { provider: true, url: true, priceAmount: true },
-  });
+  // Independent lookups keyed only by the delivery's book — run concurrently.
+  const [book, bestListing] = await Promise.all([
+    prisma.canonicalBook.findUnique({
+      where: { id: d.canonicalBookId },
+      select: { title: true, author: true },
+    }),
+    prisma.providerListing.findFirst({
+      where: { canonicalBookId: d.canonicalBookId, availability: 'IN_STOCK' },
+      orderBy: { priceAmount: 'asc' },
+      select: { provider: true, url: true, priceAmount: true },
+    }),
+  ]);
 
   return {
     id: d.id,

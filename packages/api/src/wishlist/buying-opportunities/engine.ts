@@ -1,6 +1,6 @@
 import type { BuyingReason, ProviderName } from '@knyhovo/shared';
 import { selectListing } from '../../books/price-history/service.js';
-import { PROVIDER_SLUG } from '../mapper.js';
+import { PROVIDER_SLUG } from '../../pricing/provider-maps.js';
 import type { BuyingOpportunityWishlistRow } from './repository.js';
 import type { BuyingOpportunityItemDto } from './dto.js';
 import { isCanonicalCandidate } from '../../pricing/canonical-price.js';
@@ -104,7 +104,7 @@ export function extractSignals(row: BuyingOpportunityWishlistRow, now: Date): Bu
 }
 
 /** The verdict for a book that qualifies for the section. */
-export interface BuyingVerdict {
+interface BuyingVerdict {
   readonly reason: BuyingReason;
   readonly savingsAmount: number;
 }

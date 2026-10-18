@@ -1,9 +1,7 @@
 import type { FastifyInstance } from 'fastify';
 import type { PrismaClient } from '@prisma/client';
 import type { AuthDeps } from '../../auth/service.js';
-import { resolveSessionUser } from '../../auth/service.js';
-import { SESSION_COOKIE } from '../../auth/cookie.js';
-import { UnauthorizedError } from '../../errors.js';
+import { requireUser } from '../../auth/guard.js';
 import { parseAlertParams, parseSetAlertBody, parsePauseAlertBody } from './schema.js';
 import { setAlert, setAlertPaused, removeAlert } from './service.js';
 
@@ -24,8 +22,7 @@ export function registerWishlistAlertRoute(
   authDeps: AuthDeps,
 ): void {
   app.put('/api/wishlist/:bookId/alert', async (request, reply) => {
-    const user = await resolveSessionUser(authDeps, request.cookies?.[SESSION_COOKIE] ?? null);
-    if (!user) throw new UnauthorizedError();
+    const user = await requireUser(authDeps, request);
 
     const { bookId } = parseAlertParams(request.params);
     const body = parseSetAlertBody(request.body);
@@ -36,8 +33,7 @@ export function registerWishlistAlertRoute(
   });
 
   app.patch('/api/wishlist/:bookId/alert', async (request, reply) => {
-    const user = await resolveSessionUser(authDeps, request.cookies?.[SESSION_COOKIE] ?? null);
-    if (!user) throw new UnauthorizedError();
+    const user = await requireUser(authDeps, request);
 
     const { bookId } = parseAlertParams(request.params);
     const { paused } = parsePauseAlertBody(request.body);
@@ -46,8 +42,7 @@ export function registerWishlistAlertRoute(
   });
 
   app.delete('/api/wishlist/:bookId/alert', async (request, reply) => {
-    const user = await resolveSessionUser(authDeps, request.cookies?.[SESSION_COOKIE] ?? null);
-    if (!user) throw new UnauthorizedError();
+    const user = await requireUser(authDeps, request);
 
     const { bookId } = parseAlertParams(request.params);
     await removeAlert(prisma, user.id, bookId);

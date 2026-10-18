@@ -5,6 +5,7 @@
  */
 
 import { DEFAULT_DISPATCH_CONFIG, type DispatchConfig } from './dispatch.js';
+import { loadEmailEnv } from '../email/common.js';
 import type { SignificanceConfig } from '../wishlist/alert/policy.js';
 
 /**
@@ -41,9 +42,7 @@ function intFromEnv(name: string, fallback: number): number {
 }
 
 export function loadAlertConfig(): AlertConfig {
-  const resendApiKey = process.env['RESEND_API_KEY']?.trim() || null;
-  const fromEmail = process.env['ALERT_FROM_EMAIL']?.trim() || 'Knyhovo <alerts@knyhovo.com>';
-  const baseUrl = (process.env['ALERT_BASE_URL']?.trim() || 'https://knyhovo.com').replace(/\/$/, '');
+  const { resendApiKey, fromEmail, baseUrl } = loadEmailEnv();
   const maxEmailsPerDay = intFromEnv('ALERT_MAX_EMAILS_PER_DAY', DEFAULT_DISPATCH_CONFIG.maxEmailsPerDay);
 
   return {

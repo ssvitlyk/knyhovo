@@ -15,6 +15,7 @@ import {
   summarizeScrapeErrors,
 } from '../refresh/scrape-run.repository.js';
 import { ENRICHMENT_PROVIDERS, type ProviderEnrichmentConfig } from './providers.js';
+import { sleep } from '../sleep.js';
 
 /**
  * Background enrichment engine (megakniga-resumable-enrichment PRD §4.4).
@@ -43,9 +44,8 @@ const BATCH_TX_RETRIES = 2;
 /** Base backoff between batch-transaction retries; attempt N waits base × 2^N. */
 const BATCH_TX_RETRY_DELAY_MS = 1_000;
 
-function sleep(ms: number): Promise<void> {
-  if (ms <= 0) return Promise.resolve();
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function pause(ms: number): Promise<void> {
+  return ms <= 0 ? Promise.resolve() : sleep(ms);
 }
 
 /**
@@ -701,7 +701,7 @@ export async function runEnrichment(opts: RunEnrichmentOptions): Promise<Enrichm
             `(attempt ${attempt + 1}/${BATCH_TX_RETRIES + 1}), retrying in ${backoffMs}ms — ` +
             `${err instanceof Error ? err.message : String(err)}`,
         );
-        await sleep(backoffMs);
+        await pause(backoffMs);
       }
     }
 

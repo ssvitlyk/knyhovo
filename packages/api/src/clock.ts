@@ -9,8 +9,3 @@ export interface Clock {
 
 /** Production default. */
 export const systemClock: Clock = { now: () => new Date() };
-
-/** Test/helper clock pinned to a fixed instant. */
-export function fixedClock(instant: Date): Clock {
-  return { now: () => instant };
-}

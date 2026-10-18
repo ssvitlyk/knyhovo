@@ -8,7 +8,3 @@ export interface AuthUserDto {
   readonly createdAt: string;
   readonly displayName: string | null;
 }
-
-export interface MeResponseDto {
-  readonly user: AuthUserDto;
-}

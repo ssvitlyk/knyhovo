@@ -3,7 +3,6 @@ import type {
   ScrapeRunKind,
   ScrapeRunStatus,
   ScrapeRunTrigger,
-  ScrapeRun,
   PrismaClient,
   Prisma,
 } from '@prisma/client';
@@ -320,20 +319,5 @@ export async function finishScrapeRun(
       ...(params.itemsProcessed !== undefined ? { itemsProcessed: params.itemsProcessed } : {}),
       ...(params.metadata !== undefined ? { metadata: params.metadata } : {}),
     },
-  });
-}
-
-/**
- * Return the latest run per provider (distinct on provider, ordered by
- * startedAt desc). Optionally filter to a specific kind.
- */
-export async function latestHealthByProvider(
-  prisma: PrismaClient,
-  params?: { kind?: ScrapeRunKind },
-): Promise<ScrapeRun[]> {
-  return prisma.scrapeRun.findMany({
-    where: params?.kind != null ? { kind: params.kind } : {},
-    orderBy: [{ provider: 'asc' }, { startedAt: 'desc' }],
-    distinct: ['provider'],
   });
 }

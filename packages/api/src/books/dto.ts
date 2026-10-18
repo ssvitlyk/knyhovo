@@ -1,4 +1,5 @@
 import type { ProviderName, Availability } from '@knyhovo/shared';
+import type { MoneyDto } from '../pricing/money.js';
 
 /**
  * Book Details v1.0 response contract.
@@ -11,12 +12,6 @@ import type { ProviderName, Availability } from '@knyhovo/shared';
  * matching the shared `Money` semantics. Formatting to a display value is the
  * UI's responsibility.
  */
-
-export interface MoneyDto {
-  /** Amount in the smallest currency unit (kopiyky). */
-  readonly amount: number;
-  readonly currency: string;
-}
 
 export interface BookProviderDto {
   /** Provider slug, e.g. `'yakaboo'` or `'book-club'`. */

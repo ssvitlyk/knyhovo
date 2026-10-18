@@ -36,7 +36,7 @@ const FAKE_RUN: ScrapeRun = {
 // ── fetchRecentRuns ───────────────────────────────────────────────────────────
 
 describe('fetchRecentRuns', () => {
-  it('calls findMany with orderBy startedAt desc and no where clause when no since given', async () => {
+  it('orders newest-first with no where clause and selects only the columns health reads', async () => {
     const prisma = {
       scrapeRun: { findMany: vi.fn(async () => [FAKE_RUN]) },
     } as unknown as PrismaClient;
@@ -46,20 +46,10 @@ describe('fetchRecentRuns', () => {
     expect(prisma.scrapeRun.findMany).toHaveBeenCalledOnce();
     const args = vi.mocked(prisma.scrapeRun.findMany).mock.calls[0]![0];
     expect(args?.orderBy).toEqual({ startedAt: 'desc' });
-    expect(args?.where).toEqual({});
+    expect(args).not.toHaveProperty('where');
+    expect(args?.select).toMatchObject({ provider: true, kind: true, status: true, metadata: true });
+    expect(args?.select).not.toHaveProperty('errorSummary');
     expect(result).toEqual([FAKE_RUN]);
-  });
-
-  it('passes where: { startedAt: { gte: since } } when since is given', async () => {
-    const since = new Date('2026-06-20T00:00:00.000Z');
-    const prisma = {
-      scrapeRun: { findMany: vi.fn(async () => []) },
-    } as unknown as PrismaClient;
-
-    await fetchRecentRuns(prisma, { since });
-
-    const args = vi.mocked(prisma.scrapeRun.findMany).mock.calls[0]![0];
-    expect(args?.where).toEqual({ startedAt: { gte: since } });
   });
 
   it('returns the rows from findMany', async () => {
@@ -69,7 +59,7 @@ describe('fetchRecentRuns', () => {
 
     const rows = await fetchRecentRuns(prisma);
     expect(rows).toHaveLength(1);
-    expect(rows[0]!.id).toBe('run-1');
+    expect(rows[0]!.provider).toBe(Provider.YAKABOO);
   });
 });
 

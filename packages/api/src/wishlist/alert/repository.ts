@@ -48,7 +48,7 @@ export async function findWishlistItemId(
 }
 
 /** The persisted shape of a policy write (create or replace). */
-export interface AlertPolicyWrite {
+interface AlertPolicyWrite {
   readonly mode: 'ANY_DROP' | 'GOOD_PRICE' | 'MY_PRICE';
   readonly targetPriceAmount: number;
   readonly targetPriceCurrency: 'UAH';

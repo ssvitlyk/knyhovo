@@ -1,5 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import {
+  parsePositiveInt,
+  positiveIntEnv,
   parseScraperOptionsFromEnv,
   getScrapeStateRetentionDays,
   getLastmodPrecisionMin,
@@ -318,5 +320,19 @@ describe('getEnrichMaxNoProgressRestarts', () => {
     expect(getEnrichMaxNoProgressRestarts({ SCRAPE_ENRICH_MAX_NO_PROGRESS_RESTARTS: '-1' })).toBe(3);
     expect(getEnrichMaxNoProgressRestarts({ SCRAPE_ENRICH_MAX_NO_PROGRESS_RESTARTS: 'nope' })).toBe(3);
     expect(getEnrichMaxNoProgressRestarts({ SCRAPE_ENRICH_MAX_NO_PROGRESS_RESTARTS: '2.2' })).toBe(3);
+  });
+});
+
+describe('positiveIntEnv / parsePositiveInt', () => {
+  it('parses strictly positive integers', () => {
+    expect(positiveIntEnv({ X: '42' }, 'X')).toBe(42);
+    expect(parsePositiveInt('7')).toBe(7);
+  });
+
+  it('returns undefined for absent, zero, negative, fractional, padded or non-numeric values', () => {
+    for (const raw of [undefined, '', '0', '-1', '1.5', '01', ' 1', '1 ', '+1', 'abc']) {
+      expect(parsePositiveInt(raw)).toBeUndefined();
+    }
+    expect(positiveIntEnv({}, 'X')).toBeUndefined();
   });
 });

@@ -28,7 +28,7 @@ function readRunMetadata(metadata: Prisma.JsonValue | null): { mode?: string; si
  * A run "reflects real full-mode work" when its metadata is absent (legacy,
  * pre-this-feature runs are implicitly full) or explicitly `mode: 'full'`.
  */
-function isFullModeRun(run: ScrapeRun): boolean {
+function isFullModeRun(run: Pick<ScrapeRun, 'metadata'>): boolean {
   const meta = readRunMetadata(run.metadata);
   return meta === null || meta.mode === undefined || meta.mode === 'full';
 }
@@ -68,6 +68,7 @@ export async function shouldAutoEscalateToFull(
     where: { provider, kind: ScrapeRunKind.FULL_CATALOG },
     orderBy: { startedAt: 'desc' },
     take: LOOKBACK_TAKE,
+    select: { status: true, startedAt: true, metadata: true },
   });
 
   const lastFullRun = runs.find((r) => TERMINAL_STATUSES.has(r.status) && isFullModeRun(r)) ?? null;
@@ -93,6 +94,7 @@ export async function findPreviousFullSitemapTotal(
     where: { provider, kind: ScrapeRunKind.FULL_CATALOG, id: { not: currentRunId } },
     orderBy: { startedAt: 'desc' },
     take: LOOKBACK_TAKE,
+    select: { metadata: true },
   });
 
   for (const run of runs) {

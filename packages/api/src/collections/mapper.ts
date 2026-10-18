@@ -1,5 +1,6 @@
 import type { CollectionBookRow, CollectionListingRow, CollectionRow } from './repository.js';
 import type { CollectionBookDto, CollectionDto, CollectionTypeDto, MoneyDto } from './dto.js';
+import { hasPrice } from '../pricing/provider-maps.js';
 
 /** Display name shown to users for the store backing the cheapest listing. */
 const PROVIDER_DISPLAY: Record<CollectionListingRow['provider'], string> = {
@@ -18,11 +19,6 @@ const COLLECTION_TYPE_DTO: Record<CollectionRow['type'], CollectionTypeDto> = {
   EDITORIAL: 'editorial',
   TAXONOMIC: 'taxonomic',
 };
-
-/** A listing counts as priced only when it carries a usable numeric amount. */
-function hasPrice(listing: CollectionListingRow): boolean {
-  return listing.priceAmount != null && Number.isFinite(listing.priceAmount);
-}
 
 /** Whether a book row has at least one priced listing (any availability). */
 export function hasPricedListing(row: CollectionBookRow): boolean {

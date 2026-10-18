@@ -1,5 +1,5 @@
 import type { AlertMode } from '@knyhovo/shared';
-import { formatUah } from '../../alerts/templates.js';
+import { formatUah } from '../../email/common.js';
 import type { AlertPolicy } from './policy.js';
 import type { GoodPriceResult } from './good-price.js';
 

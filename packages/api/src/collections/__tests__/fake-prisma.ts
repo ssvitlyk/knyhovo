@@ -209,11 +209,12 @@ export function makeFakePrisma(db: FakeDb): PrismaClient {
       ),
     },
     collectionItem: {
-      findMany: vi.fn(async ({ where }: { where: { collectionId: string } }) => {
-        return db.collectionItems
+      findMany: vi.fn(async ({ where, take }: { where: { collectionId: string }; take?: number }) => {
+        const ordered = db.collectionItems
           .filter((i) => i.collectionId === where.collectionId)
           .sort((a, b) => a.sortOrder - b.sortOrder)
           .map((i) => ({ canonicalBookId: i.canonicalBookId }));
+        return take === undefined ? ordered : ordered.slice(0, take);
       }),
       groupBy: vi.fn(async ({ where }: { where?: { collectionId?: { in: string[] } } } = {}) => {
         const ids = where?.collectionId?.in ? new Set(where.collectionId.in) : null;

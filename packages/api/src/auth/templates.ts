@@ -4,19 +4,8 @@
  * of `alerts/templates.ts`.
  */
 
-export interface RenderedEmail {
-  readonly subject: string;
-  readonly html: string;
-  readonly text: string;
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
-}
+import { escapeHtml } from '../email/common.js';
+import type { RenderedEmail } from '../email/common.js';
 
 const SECURITY_NOTE =
   'Посилання діє обмежений час і працює один раз. Якщо ви не намагалися увійти — просто проігноруйте цей лист.';

@@ -4,6 +4,8 @@
  */
 
 import type { Provider } from '@prisma/client';
+import { escapeHtml, formatUah } from '../email/common.js';
+import type { RenderedEmail } from '../email/common.js';
 
 export interface AlertTemplateData {
   readonly bookTitle: string;
@@ -19,12 +21,6 @@ export interface AlertTemplateData {
   readonly unsubscribeUrl: string;
 }
 
-export interface RenderedEmail {
-  readonly subject: string;
-  readonly html: string;
-  readonly text: string;
-}
-
 const PROVIDER_LABELS: Record<Provider, string> = {
   YAKABOO: 'Yakaboo',
   BOOK_CLUB: 'КСД (BookClub)',
@@ -38,21 +34,6 @@ const PROVIDER_LABELS: Record<Provider, string> = {
 
 export function providerLabel(provider: Provider): string {
   return PROVIDER_LABELS[provider] ?? provider;
-}
-
-/** Format копійки as a UAH string, e.g. 34999 → "349,99 ₴". */
-export function formatUah(amount: number): string {
-  const hryvnia = Math.floor(amount / 100);
-  const kopecks = Math.abs(amount % 100);
-  return `${hryvnia},${kopecks.toString().padStart(2, '0')} ₴`;
-}
-
-function escapeHtml(s: string): string {
-  return s
-    .replace(/&/g, '&amp;')
-    .replace(/</g, '&lt;')
-    .replace(/>/g, '&gt;')
-    .replace(/"/g, '&quot;');
 }
 
 function footer(unsubscribeUrl: string): { html: string; text: string } {

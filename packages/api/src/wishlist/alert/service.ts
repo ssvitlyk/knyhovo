@@ -24,7 +24,7 @@ export const ALERT_MODE_SLUG: Record<'ANY_DROP' | 'GOOD_PRICE' | 'MY_PRICE', Ale
 };
 
 /** Public slug → Prisma AlertMode identifier (for writes). */
-export const MODE_ENUM: Record<AlertMode, 'ANY_DROP' | 'GOOD_PRICE' | 'MY_PRICE'> = {
+const MODE_ENUM: Record<AlertMode, 'ANY_DROP' | 'GOOD_PRICE' | 'MY_PRICE'> = {
   'any-drop': 'ANY_DROP',
   'good-price': 'GOOD_PRICE',
   'my-price': 'MY_PRICE',
@@ -126,11 +126,13 @@ export async function setAlert(
   const wishlistItemId = await resolveWishlistItemId(prisma, userId, bookId);
 
   const readCanonical = deps?.canonicalPriceFor ?? canonicalPriceForBook;
-  const readGoodPrice = deps?.goodPriceFor ?? goodPriceForBook;
 
+  // The default good-price source needs the canonical price too: hand it the
+  // same in-flight read instead of querying it a second time.
+  const canonicalRead = readCanonical(prisma, bookId);
   const [canonical, goodPrice] = await Promise.all([
-    readCanonical(prisma, bookId),
-    readGoodPrice(prisma, bookId),
+    canonicalRead,
+    deps?.goodPriceFor ? deps.goodPriceFor(prisma, bookId) : goodPriceForBook(prisma, bookId, canonicalRead),
   ]);
 
   const resolved = resolveAlertPolicy(input.mode, {
@@ -189,9 +191,10 @@ async function canonicalPriceForBook(
 async function goodPriceForBook(
   prisma: PrismaClient,
   bookId: string,
+  canonicalRead: Promise<{ amount: number | null; currency: 'UAH' }>,
 ): Promise<GoodPriceResult> {
   const [canonical, points] = await Promise.all([
-    canonicalPriceForBook(prisma, bookId),
+    canonicalRead,
     prisma.priceHistoryPoint.findMany({
       where: { providerListing: { canonicalBookId: bookId } },
       select: { priceAmount: true },

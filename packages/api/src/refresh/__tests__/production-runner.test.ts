@@ -2,7 +2,7 @@ import { describe, it, expect, vi } from 'vitest';
 import type { PrismaClient } from '@prisma/client';
 import { ScrapeRunStatus, ScrapeRunTrigger, ScrapeRunKind, Provider } from '@prisma/client';
 import type { ProviderName } from '@knyhovo/shared';
-import { createMetrics } from '../../pipeline/index.js';
+import { createMetrics } from '../../pipeline/metrics.js';
 import { runProductionScrape } from '../production-runner.js';
 import type { RunProductionScrapeDeps } from '../production-runner.js';
 import type { ProviderRefreshOutcome, FullCatalogRefreshResult } from '../full-catalog.refresh.js';

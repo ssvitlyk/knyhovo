@@ -1,12 +1,11 @@
 import type { PrismaClient, ScrapeRunTrigger } from '@prisma/client';
 import { ScrapeRunStatus } from '@prisma/client';
 import type { ScraperProvider, ScraperOptions, ProviderName } from '@knyhovo/shared';
-import type { Logger } from '../pipeline/index.js';
+import type { Logger } from '../pipeline/types.js';
 import { runFullCatalogRefresh } from './full-catalog.refresh.js';
 import type { ProviderRefreshOutcome } from './full-catalog.refresh.js';
 import { RefreshAlreadyRunningError } from './concurrency-guard.js';
 import type { StaleReapConfig } from './concurrency-guard.js';
-import type { ProductionMetricsRegistry } from '../metrics/index.js';
 import { runPostScrapeGenreAssignment } from '../genres/post-scrape-assignment.js';
 
 /**
@@ -49,8 +48,6 @@ export interface RunProductionScrapeDeps {
   readonly now?: () => Date;
   /** Injectable refresh implementation for deterministic exit-semantics tests. */
   readonly refresh?: typeof runFullCatalogRefresh;
-  /** Optional production metrics registry; passed through to the refresh layer. */
-  readonly metrics?: ProductionMetricsRegistry;
   /**
    * Genres-taxonomy PRD G5: run post-scrape genre assignment for the books
    * this refresh touched. Env-gated (`GENRE_ASSIGN_AFTER_SCRAPE=true`),
@@ -137,7 +134,6 @@ export async function runProductionScrape(
       logger: deps.logger,
       ...(deps.scraperOptions !== undefined ? { scraperOptions: deps.scraperOptions } : {}),
       ...(deps.now !== undefined ? { now: deps.now } : {}),
-      ...(deps.metrics !== undefined ? { metrics: deps.metrics } : {}),
       ...(deps.mode !== undefined ? { mode: deps.mode } : {}),
       ...(deps.retentionDays !== undefined ? { retentionDays: deps.retentionDays } : {}),
       ...(deps.heartbeatIntervalMs !== undefined ? { heartbeatIntervalMs: deps.heartbeatIntervalMs } : {}),

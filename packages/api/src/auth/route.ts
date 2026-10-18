@@ -5,7 +5,6 @@ import {
   verifyCode,
   requestMagicLink,
   verifyMagicLink,
-  resolveSessionUser,
   logout,
 } from './service.js';
 import {
@@ -16,7 +15,7 @@ import {
 } from './schema.js';
 import { toAuthUserDto } from './mapper.js';
 import { setSessionCookie, clearSessionCookie, SESSION_COOKIE } from './cookie.js';
-import { UnauthorizedError } from '../errors.js';
+import { requireUser } from './guard.js';
 
 /**
  * Register the auth routes onto `app`.
@@ -60,9 +59,7 @@ export function registerAuthRoute(app: FastifyInstance, deps: AuthDeps): void {
   });
 
   app.get('/api/auth/me', async (request, reply) => {
-    const token = request.cookies?.[SESSION_COOKIE] ?? null;
-    const user = await resolveSessionUser(deps, token);
-    if (!user) throw new UnauthorizedError();
+    const user = await requireUser(deps, request);
     await reply.code(200).send({ user: toAuthUserDto(user) });
   });
 

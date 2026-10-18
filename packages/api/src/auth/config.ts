@@ -1,3 +1,5 @@
+import { loadEmailEnv } from '../email/common.js';
+
 /**
  * Auth configuration. Call `loadAuthConfig()` once at startup; the returned
  * object is then injected wherever it is needed — never imported globally.
@@ -49,6 +51,7 @@ export function loadAuthConfig(): AuthConfig {
   if (!secret) {
     throw new Error('AUTH_SECRET environment variable is required but not set.');
   }
+  const { resendApiKey, fromEmail, baseUrl } = loadEmailEnv();
   return {
     secret,
     cookieSecure: process.env['NODE_ENV'] === 'production',
@@ -58,9 +61,9 @@ export function loadAuthConfig(): AuthConfig {
     rateWindowMs: 15 * 60_000,
     maxCodesPerWindow: 5,
     maxVerifyAttempts: 5,
-    resendApiKey: process.env['RESEND_API_KEY']?.trim() || null,
-    fromEmail: process.env['ALERT_FROM_EMAIL']?.trim() || 'Knyhovo <alerts@knyhovo.com>',
-    linkBaseUrl: (process.env['ALERT_BASE_URL']?.trim() || 'https://knyhovo.com').replace(/\/$/, ''),
+    resendApiKey,
+    fromEmail,
+    linkBaseUrl: baseUrl,
     allowedEmails: parseAllowedEmails(process.env['AUTH_ALLOWED_EMAILS']),
   };
 }

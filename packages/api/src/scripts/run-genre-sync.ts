@@ -1,5 +1,5 @@
 import { prisma } from '../db.js';
-import { createLogger } from '../pipeline/index.js';
+import { createLogger } from '../logging/logger.js';
 import { syncGenres } from '../genres/sync.js';
 
 /**
